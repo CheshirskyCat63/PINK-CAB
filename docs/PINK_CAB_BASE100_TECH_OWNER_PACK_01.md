@@ -1,7 +1,7 @@
 # PINK CAB · BASE-100 Technical Owner Pack 01
 
 **Status:** CURRENT EXHAUSTIVE CODE-ONLY OWNER PACK
-**Snapshot:** 2026-09-10
+**Snapshot:** 2026-09-11
 **Program:** `CD-746`
 **Domains:** `CD-747..753`
 **Readiness:** `CD-660/CD-661` / Confluence `6553617` / `docs/PINK_CAB_START90_READINESS.md`
@@ -22,7 +22,7 @@ Statuses:
 
 Readiness scoring uses `LOCKED/CALIBRATION = 1.0`, `PROPOSED DEFAULT = 0.5`, `OPEN = 0.0`. A proposed default never masquerades as owner canon.
 
-Owner may answer compactly, e.g. `A01 default; F05 B; H04 no; all other proposed defaults accepted`.
+Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults accepted`.
 
 ## Scope locks already accepted
 
@@ -43,7 +43,7 @@ Owner may answer compactly, e.g. `A01 default; F05 B; H04 no; all other proposed
 
 ## A · Runtime / project structure / PC release foundation
 
-- `A01 OPEN` — exact Unreal version policy: one pinned production version vs planned minor upgrades. Proposed: pin one exact production version; upgrade only through explicit migration project.
+- `A01 LOCKED` ? production engine line is Unreal Engine 5.8. Bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186). Stay on the pinned 5.8 production line; changing the production engine line requires an explicit compatibility/migration decision.
 - `A02 PROPOSED DEFAULT` — C++ core + thin Blueprint composition/orchestration.
 - `A03 OPEN` — exact UE runtime module split. Proposed starting map: Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction.
 - `A04 PROPOSED DEFAULT` — modules consume public contracts only; no private cross-module internals.
@@ -298,18 +298,18 @@ Owner may answer compactly, e.g. `A01 default; F05 B; H04 no; all other proposed
 
 This normalized pack contains **196 code-facing rows**:
 
-- **44 LOCKED**
+- **45 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **61 OPEN**
+- **60 OPEN**
 
-Readiness points: `44 + 3 + 88×0.5 = 91`.
+Readiness points: `45 + 3 + 88?0.5 = 92`.
 
-Current item-weighted START-90 specification readiness: `91 / 196 = 46.4%`.
+Current item-weighted START-90 specification readiness: `92 / 196 = 46.9%`.
 
 Domain snapshots under the same rubric:
 
-- CORE `A/B/C/Q/R/S`: **48.2%**
+- CORE `A/B/C/Q/R/S`: **50.0%**
 - VEHICLE `D/E/M/N`: **68.6%**
 - TAXI `F/G`: **38.3%**
 - STATE `H/I`: **23.8%**
@@ -317,14 +317,14 @@ Domain snapshots under the same rubric:
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `135/196 = 68.9%`. At least **42 of the 61 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `136/196 = 69.4%`. At least **41 of the 60 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`A01 A03 A07 A09 A10 A13 A14 A15 C08 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`A03 A07 A09 A10 A13 A14 A15 C08 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-Highest structural priority for broad-start readiness: `A01/A03/A09/A10/A13/A14`, `I01-I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
+Highest structural priority for broad-start readiness: `A03/A09/A10/A13/A14`, `I01-I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
 Everything not OPEN is either already locked, an engineering default awaiting batch acceptance, or calibration inside a locked observable contract. No admin process may silently promote an OPEN or PROPOSED DEFAULT row to LOCKED.

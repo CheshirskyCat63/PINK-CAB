@@ -140,6 +140,6 @@ Do not import legacy DEADRACE launcher/police pursuit/combat/destruction/drone-n
 
 ## Current readiness
 
-The old ≈59% readiness figure is historical. Current normalized Technical Owner Pack census is 196 rows and current START-90 specification readiness is **46.4%**; broad production remains HOLD.
+The old ≈59% readiness figure is historical. Current normalized Technical Owner Pack census is 196 rows and current START-90 specification readiness is **46.9%**; broad production remains HOLD.
 
 Runtime remains **NOT IMPLEMENTED / NOT VERIFIED**.

@@ -87,7 +87,7 @@ Repository cut-over is complete. Next execution owner: `CD-755 / PF-00`.
 1. work only in `CheshirskyCat63/PINK-CAB`;
 2. use branch `feat/CD-755-pf00-bootstrap`;
 3. inventory installed Unreal/MSVC/Windows SDK/Git LFS before creating runtime files;
-4. do not silently decide `A01` or `A09`;
+4. use the owner-locked UE 5.8 production line (`A01`) and do not silently decide `A09`;
 5. introduce no paid dependency before PF-16.
 
 ## Truth rule

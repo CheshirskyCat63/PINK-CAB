@@ -61,6 +61,6 @@ Each domain must specify `PURPOSE → BUY/ENGINE/WRITE → OWNER → STATES → 
 
 ## Readiness
 
-The historical six-domain ≈59% figure is retired. Current code-only START-90 readiness is **46.4%** from the normalized 196-row Technical Owner Pack 01. Administrative authority hygiene is separate from unresolved owner decisions.
+The historical six-domain ≈59% figure is retired. Current code-only START-90 readiness is **46.9%** from the normalized 196-row Technical Owner Pack 01. Administrative authority hygiene is separate from unresolved owner decisions.
 
 Documentation establishes CANON/SPECIFIED only. Runtime remains **NOT IMPLEMENTED / NOT VERIFIED** without exact executable evidence.

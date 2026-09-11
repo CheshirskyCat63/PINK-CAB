@@ -21,7 +21,7 @@
 
 The old <=20% / ~59% estimates and previous 240-question/20-question-pack methodology are SUPERSEDED.
 
-Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. `START-90` is not currently scored; fresh scoring waits for Technical Owner Pack 01 answers + contradiction reconciliation.
+Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **46.9% (92/196)** after owner-locking A01.
 
 Administrative/specification work is allowed before START-90. Broad production should not rely on unresolved owner decisions.
 
@@ -32,7 +32,7 @@ There is no proven canonical PINK CAB executable yet. `CD-596`/current foundatio
 ## Engine / plugin direction
 
 - engine family: Unreal Engine 5;
-- exact UE version remains an owner/toolchain lock until Pack A01 / `CD-557/CD-596` settles it;
+- `A01 LOCKED`: production engine line is Unreal Engine 5.8; bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186); changing the production engine line requires an explicit migration/compatibility decision;
 - **FGear Vehicle Physics** = sole hero-Tatra road-dynamics solver;
 - **Debugging Delight Vehicle Damage System** = sole permanent body-deformation owner;
 - purchased/vendor systems remain behind PINK CAB adapters;
@@ -44,7 +44,7 @@ Do not treat an old UE candidate or long-range mobile/console wish list as a cur
 
 ## Repository / branch model
 
-Current repository remains `CheshirskyCat63/DEADRACE` until an explicitly authorized clean-repo migration occurs. There must not be two active product repositories.
+Current repository is `CheshirskyCat63/PINK-CAB`, the sole active PINK CAB technical source. `CheshirskyCat63/DEADRACE` is frozen legacy/migration-source history only.
 
 - `main` = integration target;
 - implementation uses short-lived Jira-keyed branches;

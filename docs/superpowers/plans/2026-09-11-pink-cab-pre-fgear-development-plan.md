@@ -6,7 +6,7 @@
 
 **Architecture:** PINK CAB owns semantic input, state, data, persistence, transaction, world-identity and vendor-adapter contracts. Before FGear there is intentionally no production hero-vehicle dynamics implementation; synthetic providers exist only in tests. Domain work proceeds behind stable interfaces and stops at unresolved owner decisions instead of silently choosing them.
 
-**Tech Stack:** Unreal Engine 5 C++ (exact production version remains owner-open `A01` until pinned), Enhanced Input, Unreal Automation Tests / functional smoke where appropriate, Git, Jira, Confluence. No paid assets/plugins before PF-16.
+**Tech Stack:** Unreal Engine 5.8 C++ (`A01 LOCKED`; bootstrap machine currently has 5.8.2), Enhanced Input, Unreal Automation Tests / functional smoke where appropriate, Git, Jira, Confluence. No paid assets/plugins before PF-16.
 
 **Spec:** `docs/superpowers/specs/2026-09-11-pink-cab-pre-fgear-development-design.md`
 
@@ -93,7 +93,7 @@ The generated `PinkCab` module is a bootstrap container, not a decision that A03
 - Produces: a compiling C++ Unreal project, one empty canonical development map, a runtime module and non-shipping test module.
 
 **Owner gates before finalizing PF-00:**
-- `A01`: exact Unreal production-version policy.
+- `A01`: LOCKED to Unreal Engine 5.8 production line; bootstrap install observed at 5.8.2.
 - `A09`: canonical build/package invocation is not chosen by this task.
 
 - [ ] **Step 1: Inventory the authorized local Unreal environment**
@@ -102,9 +102,9 @@ Record installed Unreal versions, Visual Studio/MSVC workload state, Windows SDK
 
 Expected evidence: a text record attached to PF-00 containing exact versions/paths; no credentials/secrets.
 
-- [ ] **Step 2: Resolve or explicitly hold A01 before binding the project to an Engine version**
+- [ ] **Step 2: Bind bootstrap to the owner-locked UE 5.8 production line**
 
-If owner has already pinned an exact engine version, use it. Otherwise generate no committed `.uproject` until A01 is answered; report PF-00 blocked by `A01` rather than guessing.
+Use the installed UE 5.8 line selected by the owner. Record the exact local build (currently 5.8.2) in bootstrap evidence. Do not change engine line without an explicit migration decision. `A09` remains separately OPEN.
 
 - [ ] **Step 3: Generate the minimal C++ project**
 

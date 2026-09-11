@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 44, calibration: 3, proposed_default: 88, open: 61}
+  status_counts: {locked: 45, calibration: 3, proposed_default: 88, open: 60}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 91.0
-  start90_percent: 46.4
+  numerator_points: 92.0
+  start90_percent: 46.9
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 43.6
-  domain_percent: {core: 48.2, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 43.1
+  domain_percent: {core: 50.0, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 68.9
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 42
+  all_proposed_defaults_accepted_percent: 69.4
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 41
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -89,6 +89,19 @@ base100:
     world: CD-751
     service: CD-752
     scope: CD-753
+
+runtime_toolchain:
+  unreal_engine:
+    owner_row: A01
+    status: LOCKED
+    production_line: UE_5.8
+    owner_decision: use_Unreal_Engine_5_8
+    bootstrap_installed_build_observed: 5.8.2
+    bootstrap_branch_observed: ++UE5+Release-5.8
+    bootstrap_changelist_observed: 56702186
+    version_policy: pinned_5_8_line_change_only_by_explicit_migration_decision
+    owner_decision_date: 2026-09-11
+  canonical_build_package_command: OPEN_BASE100_A09
 
 first_euro_scope:
   horizon_months: 12
@@ -381,9 +394,8 @@ current_canon:
     current_first_euro_uninsured_recovery: OPEN_CD-750_BASE100_I06
 
 open_owner_rows:
-  count: 61
+  count: 60
   ids:
-    - A01
     - A03
     - A07
     - A09

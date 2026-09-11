@@ -34,7 +34,7 @@ FIRST EURO includes full L1+L2; hero Tatra; taxi/fare/passenger; persistent repe
 
 Post-FIRST-EURO implementation: multiplayer/coop/shared rooms/network stack; L3 gameplay; lifestyle ServiceNodes; full Taxi Regulator; daily insurance.
 
-Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **46.4%** from 196 Technical Owner Pack rows.
+Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **46.9%** from 196 Technical Owner Pack rows.
 
 ## `OD-ARCH-BUY-BEFORE-BUILD-001` — LOCKED DIRECTION
 
@@ -144,13 +144,17 @@ Fuel credit and money settlement must be save/crash/retry safe and exactly-once.
 
 Still OPEN: queue/slot policy, distance/speed envelope, target gap, warning/disconnect behavior, settlement timing and insufficient-funds interaction.
 
+## Newly resolved owner lock ? 2026-09-11
+
+- `A01 LOCKED`: Unreal Engine 5.8 is the production engine line. Bootstrap machine currently exposes UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186). Any production engine-line change requires an explicit compatibility/migration decision.
+
 ## Current highest-impact OPEN code questions
 
 Technical Owner Pack 01 priority:
 
-`A01 A03 A07 A09 A10 A13 A14 A15 C08 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`A03 A07 A09 A10 A13 A14 A15 C08 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-These are the **61 genuine OPEN owner rows**. The **88 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
+These are the **60 genuine OPEN owner rows**. The **88 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
 
 Batch acceptance/rejection of the remaining `PROPOSED DEFAULT` rows will close many additional code contracts without re-asking already-resolved behavior.
 
