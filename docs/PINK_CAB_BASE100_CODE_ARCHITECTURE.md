@@ -78,6 +78,10 @@ Own tunable gameplay profiles: vehicle, surfaces, fare, passenger, traffic, city
 
 Actors are materialized runtime representations. Logical/persistent identities may exist without an Actor and survive Actor recycling/destruction.
 
+### Locked runtime/release/input foundation (2026-09-11)
+
+Shipping runtime modules are `Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction`; optional `Editor / Tests` modules are non-shipping and the project must not overfragment. CI uses GitHub Actions with a self-hosted Windows Unreal runner and the same canonical build/smoke path as local development; production merge fails closed without canonical CI, with explicit local evidence allowed only as bootstrap fallback. FIRST EURO support is Windows 10/11 x64 + DX12 + Steam. Acceptance seeds are 1080p60 Low minimum and 1440p60 High recommended with a 16.67 ms frame target (~14 ms GPU / ~8 ms Game Thread seeds), subject to empirical hardware-equivalence validation. Semantic KBM rebinding ships with conflict handling and Restore Defaults while preserving the canonical physical-control model.
+
 ## 5. Cross-system architecture rules
 
 - one authoritative owner per state;

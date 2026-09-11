@@ -45,18 +45,18 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 - `A01 LOCKED` ? production engine line is Unreal Engine 5.8. Bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186). Stay on the pinned 5.8 production line; changing the production engine line requires an explicit compatibility/migration decision.
 - `A02 PROPOSED DEFAULT` — C++ core + thin Blueprint composition/orchestration.
-- `A03 OPEN` — exact UE runtime module split. Proposed starting map: Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction.
+- `A03 LOCKED` - runtime modules: `Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction`; optional `Editor / Tests` are non-shipping; do not overfragment.
 - `A04 PROPOSED DEFAULT` — modules consume public contracts only; no private cross-module internals.
 - `A05 PROPOSED DEFAULT` — UE Subsystems over custom global singleton managers.
 - `A06 PROPOSED DEFAULT` — Actors are not universal persistent state owners.
 - `A07 OPEN` — initial feature-flag set and ownership. Proposed flags include L2, Damage, Neural, MovingFuel, ServiceNodes.
 - `A08 PROPOSED DEFAULT` — debug/test behavior is compile/config gated; Shipping gameplay cannot depend on debug framework.
 - `A09 LOCKED` - canonical clean-checkout build entrypoint is `scripts/build.ps1`; `\.\scripts\build.ps1` is the human/CI build command. The wrapper calls the pinned UE 5.8 native Build.bat/RunUAT.bat toolchain; Visual Studio is an IDE, not build authority. Packaging uses the same wrapper with `-Package`.
-- `A10 OPEN` — CI runner policy and fail-closed fallback when cloud CI is unavailable; local guard may be authoritative bootstrap fallback but must be explicit.
+- `A10 LOCKED` - CI is GitHub Actions on a self-hosted Windows Unreal runner; local and CI use the same canonical build/smoke scripts; production merge is fail-closed if canonical CI is unavailable; explicit local evidence is bootstrap fallback only.
 - `A11 PROPOSED DEFAULT` — build identity/artifact/log/crash contract records commit SHA, BuildId, content/config/schema versions and structured crash/log paths.
 - `A12 PROPOSED DEFAULT` — one deterministic smoke invocation launches canonical greybox, reports identity/fixtures and exits with machine-readable pass/fail.
-- `A13 OPEN` — exact FIRST EURO PC support matrix: Windows/Linux/macOS subset, graphics API/shader/package policy, storefront SDK/package targets. Post-year mobile/console ports are excluded.
-- `A14 OPEN` — exact PC performance/scalability/minimum/recommended hardware envelope and frame-time budgets used by acceptance.
+- `A13 LOCKED` - FIRST EURO support matrix is Windows 10/11 x64 + DX12 + Steam only; Linux/macOS/additional storefronts are post-FIRST-EURO.
+- `A14 LOCKED` - acceptance seed: minimum 1080p60 Low on Ryzen 3600/i5-10400 6-core class, 16 GB RAM, SSD, GTX 1660/RX 5600 class; recommended 1440p60 High on Ryzen 5600X/i5-12400 class, 32 GB RAM, SSD, RTX 3060 Ti/RX 6700 XT class; 16.67 ms frame target with ~14 ms GPU and ~8 ms Game Thread budget seeds; hardware equivalence is empirically validated.
 - `A15 OPEN` — minimum FIRST EURO settings/accessibility contract beyond rebinding: required video/audio/subtitle/readability/input options and persistence.
 - `A16 LOCKED` — primary optimization direction is 1440p and 60+ FPS; exact frame-time/hardware tiers remain A14.
 
@@ -80,7 +80,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `C05 PROPOSED DEFAULT` — physical controls emit semantic commands; they do not reach into unrelated subsystem internals.
 - `C06 LOCKED` — common interaction grammar is `1–4 START -> LMB ATTENTION -> RMB GO`; Space gaze; default mouse steering.
 - `C07 PROPOSED DEFAULT` — bounded interaction trace/current target; no world scan.
-- `C08 OPEN` — input rebinding in FIRST EURO or only abstraction for later. Proposed: abstraction first; rebinding may be cut if schedule requires.
+- `C08 LOCKED` - FIRST EURO includes semantic KBM rebinding with conflict detection and Restore Defaults; rebinding cannot change the canonical physical-control model.
 
 ## D · Vehicle / FGear
 
@@ -298,18 +298,18 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **46 LOCKED**
+- **51 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **59 OPEN**
+- **54 OPEN**
 
-Readiness points: `46 + 3 + 88?0.5 = 93`.
+Readiness points: `51 + 3 + 88×0.5 = 98`.
 
-Current item-weighted START-90 specification readiness: `93 / 196 = 47.4%`.
+Current item-weighted START-90 specification readiness: `98 / 196 = 50.0%`.
 
 Domain snapshots under the same rubric:
 
-- CORE `A/B/C/Q/R/S`: **51.8%**
+- CORE `A/B/C/Q/R/S`: **60.9%**
 - VEHICLE `D/E/M/N`: **68.6%**
 - TAXI `F/G`: **38.3%**
 - STATE `H/I`: **23.8%**
@@ -317,14 +317,14 @@ Domain snapshots under the same rubric:
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `137/196 = 69.9%`. At least **40 of the 59 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `142/196 = 72.4%`. At least **35 of the 54 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`A03 A07 A10 A13 A14 A15 C08 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`A07 A15 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-Highest structural priority for broad-start readiness: `A03/A10/A13/A14`, `I01-I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
+Highest structural priority for broad-start readiness: `A07/A15`, `I01-I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
 Everything not OPEN is either already locked, an engineering default awaiting batch acceptance, or calibration inside a locked observable contract. No admin process may silently promote an OPEN or PROPOSED DEFAULT row to LOCKED.
