@@ -103,6 +103,8 @@ Shipping runtime modules are `Core / Vehicle / Taxi / World / Traffic / Economy 
 
 Runtime foundation, module boundaries, config/data architecture, Enhanced Input routing, physical-control interaction abstraction, plugin/dependency policy, common performance/evidence rules.
 
+Locked CORE decisions: `Core FeatureConfig` owns `L2 / Damage / Neural / MovingFuel / ServiceNodes`; FIRST EURO settings include the locked video/audio/subtitle/readability/input persistence envelope.
+
 ### VEHICLE — `CD-748`
 
 FGear/VDS/Vehicle Health/mass/CG/surfaces/Tatra Expression/wallride/magnet/Level2 vehicle integration. Existing vehicle authority remains `CD-729/CD-730/CD-731..740` plus vertical owners.
@@ -114,6 +116,8 @@ FareSession, order/pickup/boarding/trip/dropoff/payment, taximeter, passenger lo
 ### STATE — `CD-750`
 
 EconomyService, Workday/Session, saves/checkpoints/migrations, transaction ledger and future recovery extension boundary.
+
+Locked save foundation: 3 campaign slots; atomic saves after meaningful persistent commits; safe periodic checkpoint every 5 minutes with 3 rolling checkpoints per slot; quit-anywhere preserves logical state and deterministically reconstructs unsafe physical state instead of granting rollback.
 
 ### WORLD — `CD-751`
 

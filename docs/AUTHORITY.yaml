@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 51, calibration: 3, proposed_default: 88, open: 54}
+  status_counts: {locked: 56, calibration: 3, proposed_default: 88, open: 49}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 98.0
-  start90_percent: 50.0
+  numerator_points: 103.0
+  start90_percent: 52.6
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 40.0
-  domain_percent: {core: 60.9, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 37.4
+  domain_percent: {core: 64.5, vehicle: 68.6, taxi: 38.3, state: 38.1, world: 34.4, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 72.4
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 35
+  all_proposed_defaults_accepted_percent: 75.0
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 30
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -126,6 +126,18 @@ runtime_toolchain:
     local_ci_script_parity: scripts/build.ps1_and_shared_smoke
     production_merge_without_canonical_ci: fail_closed
     bootstrap_fallback: explicit_local_evidence_only
+    owner_decision_date: 2026-09-11
+  feature_flags:
+    owner_row: A07
+    status: LOCKED
+    owner: Core_FeatureConfig
+    initial: [L2, Damage, Neural, MovingFuel, ServiceNodes]
+    consumers_read_only: true
+    owner_decision_date: 2026-09-11
+  settings_accessibility:
+    owner_row: A15
+    status: LOCKED
+    required: [resolution_window, vsync_framecap_scalability, fov, camera_shake, mouse_sensitivity, master_music_sfx_voice, subtitles_size_background, ui_scale, hold_toggle_interaction, persistence]
     owner_decision_date: 2026-09-11
   pc_acceptance:
     owner_rows: [A13, A14]
@@ -355,9 +367,9 @@ current_canon:
     owner: CD-750
     terminal_crash_recovery: OPEN_BASE100_I06
     workday_duration_time_semantics: OPEN_BASE100_I08
-    save_slot_model: OPEN_BASE100_I01
-    autosave_checkpoint_policy: OPEN_BASE100_I02
-    quit_anywhere_contract: OPEN_BASE100_I03
+    save_slot_model: 3_campaign_slots_with_bounded_rolling_checkpoint_ring
+    autosave_checkpoint_policy: atomic_after_meaningful_commits_plus_safe_5min_checkpoint_3_rolling_per_slot
+    quit_anywhere_contract: allowed_save_logical_state_and_deterministically_reconstruct_unsafe_physical_state
     quit_reload_during_fare: OPEN_BASE100_I04
     two_real_hour_value: QA_SOAK_TARGET_NOT_LOCKED_WORKDAY_DURATION
 
@@ -436,10 +448,8 @@ current_canon:
     current_first_euro_uninsured_recovery: OPEN_CD-750_BASE100_I06
 
 open_owner_rows:
-  count: 54
+  count: 49
   ids:
-    - A07
-    - A15
     - F04
     - F05
     - F06
@@ -457,9 +467,6 @@ open_owner_rows:
     - G04
     - H04
     - H05
-    - I01
-    - I02
-    - I03
     - I04
     - I06
     - I08

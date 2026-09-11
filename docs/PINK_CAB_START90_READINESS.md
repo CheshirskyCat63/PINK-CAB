@@ -28,24 +28,24 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 
 ## Fresh owner-pack census
 
-- LOCKED: **51**
+- LOCKED: **56**
 - CALIBRATION: **3**
 - PROPOSED DEFAULT: **88**
-- OPEN: **54**
+- OPEN: **49**
 - TOTAL: **196**
 
-Current score: `51 + 3 + 88×0.5 = 98`; `98 / 196 = 50.0%`.
+Current score: `56 + 3 + 88×0.5 = 103`; `103 / 196 = 52.6%`.
 
-**START-90: FAIL. Gap: 40.0 percentage points.**
+**START-90: FAIL. Gap: 37.4 percentage points.**
 
 ## Domain snapshot
 
 | Domain | Pack sections | Rows | Score |
 | --- | --- | ---: | ---: |
-| CORE | A/B/C/Q/R/S | 55 | **60.9%** |
+| CORE | A/B/C/Q/R/S | 55 | **64.5%** |
 | VEHICLE | D/E/M/N | 35 | **68.6%** |
 | TAXI | F/G | 30 | **38.3%** |
-| STATE | H/I | 21 | **23.8%** |
+| STATE | H/I | 21 | **38.1%** |
 | WORLD | J/K/L | 32 | **34.4%** |
 | SERVICE | O/P | 23 | **56.5%** |
 | SCOPE | `CD-753` | separate lock | **100% LOCKED** |
@@ -54,11 +54,11 @@ SCOPE is reported separately so a locked delivery boundary cannot hide weak runt
 
 ## Exact path to START-90
 
-If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `142 / 196 = 72.4%`. Closing at least 35 of the remaining 54 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
+If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `147 / 196 = 75.0%`. Closing at least 30 of the remaining 49 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
 
 ## Current genuine OPEN owner rows
 
-`A07 A15 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
+`F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
 
 Highest structural priority: runtime/version/build/platform (`A`), session/save/recovery (`I`), CityCode/streaming (`J`), traffic/geometry (`K`), rule numerics (`L`), then remaining taxi/service/transit owner rows.
 

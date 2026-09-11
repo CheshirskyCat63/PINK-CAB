@@ -150,7 +150,7 @@ Acceptance: exact commit recorded in Jira; fresh local rebuild demonstrated; ass
 - [ ] Write failing tests for stable ID equality/serialization round-trip, schema-version comparison and explicit invalid-version rejection.
 - [ ] Run only `PinkCab.Core.*`; verify expected FAIL before implementation.
 - [ ] Implement minimal value types with deterministic serialization and no UObject/Actor identity dependency.
-- [ ] Add a feature-config container that can expose named flags but ships with no owner-unapproved production flags enabled.
+- [ ] Add the owner-locked feature-config container for `L2 / Damage / Neural / MovingFuel / ServiceNodes`; modules consume values without owning them.
 - [ ] Run `PinkCab.Core.*`; expected PASS.
 - [ ] Commit: `feat: add PINK CAB core contracts`.
 
@@ -178,7 +178,7 @@ Acceptance: public contracts compile without any vendor plugin include.
 - [ ] Run automation + manual contract-zero interaction acceptance.
 - [ ] Commit: `feat: add semantic cabin interaction foundation`.
 
-Acceptance: no hidden cabin shortcut behavior is invented; `C08` rebinding remains an explicit owner boundary.
+Acceptance: no hidden cabin shortcut behavior is invented; `C08` is LOCKED to semantic KBM rebinding with conflict detection and Restore Defaults while preserving the physical-control model.
 
 ---
 

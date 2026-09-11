@@ -56,13 +56,13 @@ require_text "$registry" "jira_governance: CD-661"
 require_text "$registry" "confluence_ledger: 6553617"
 require_text "$registry" "owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md"
 require_text "$registry" "tracked_rows: 196"
-require_text "$registry" "status_counts: {locked: 51, calibration: 3, proposed_default: 88, open: 54}"
-require_text "$registry" "numerator_points: 98.0"
-require_text "$registry" "start90_percent: 50.0"
+require_text "$registry" "status_counts: {locked: 56, calibration: 3, proposed_default: 88, open: 49}"
+require_text "$registry" "numerator_points: 103.0"
+require_text "$registry" "start90_percent: 52.6"
 require_text "$registry" "start90_gate_passed: false"
-require_text "$registry" "gap_to_start90_percentage_points: 40.0"
-require_text "$registry" "all_proposed_defaults_accepted_percent: 72.4"
-require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 35"
+require_text "$registry" "gap_to_start90_percentage_points: 37.4"
+require_text "$registry" "all_proposed_defaults_accepted_percent: 75.0"
+require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 30"
 require_text "$registry" "crossing_example_percent: 90.31"
 require_text "$registry" "broad_production: HOLD"
 
@@ -107,10 +107,8 @@ require_text "$registry" "base100_code_architecture: 11239425"
 require_text "$registry" "open_decisions: 5832744"
 require_text "$registry" "master_question_register: CD-673"
 
-# Exact current 54-row OPEN owner set.
+# Exact current 49-row OPEN owner set.
 expected_open="$(cat <<'EOF'
-A07
-A15
 F04
 F05
 F06
@@ -128,9 +126,6 @@ G02
 G04
 H04
 H05
-I01
-I02
-I03
 I04
 I06
 I08
@@ -178,9 +173,9 @@ if [ "$actual_open" != "$expected_open" ]; then
   printf '%s\n' "$expected_open" >&2
   echo "Actual OPEN rows:" >&2
   printf '%s\n' "$actual_open" >&2
-  fail "normalized 54-row OPEN owner set drifted"
+  fail "normalized 49-row OPEN owner set drifted"
 fi
-require_text "$registry" "count: 54"
+require_text "$registry" "count: 49"
 require_text "$registry" "production_line: UE_5.8"
 require_text "$registry" "owner_decision: use_Unreal_Engine_5_8"
 require_text "$registry" "owner_row: A09"
@@ -198,6 +193,10 @@ require_text "$registry" "frame_budget_ms: 16.67"
 require_text "$registry" "rebinding_scope: semantic_KBM"
 require_text "$registry" "rebinding_conflict_detection: required"
 require_text "$registry" "rebinding_restore_defaults: required"
+require_text "$registry" "initial: [L2, Damage, Neural, MovingFuel, ServiceNodes]"
+require_text "$registry" "save_slot_model: 3_campaign_slots_with_bounded_rolling_checkpoint_ring"
+require_text "$registry" "autosave_checkpoint_policy: atomic_after_meaningful_commits_plus_safe_5min_checkpoint_3_rolling_per_slot"
+require_text "$registry" "quit_anywhere_contract: allowed_save_logical_state_and_deterministically_reconstruct_unsafe_physical_state"
 require_text "$registry" "production_must_not_invent_unknowns: true"
 require_text "$registry" "proposed_defaults_are_not_locked_until_owner_accepts: true"
 
@@ -222,12 +221,12 @@ done
 
 # Mirror-level current locks.
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
-require_text docs/PINK_CAB_START90_READINESS.md "98 / 196 = 50.0%"
-require_text docs/PINK_CAB_START90_READINESS.md "35 of the remaining 54 OPEN rows"
+require_text docs/PINK_CAB_START90_READINESS.md "103 / 196 = 52.6%"
+require_text docs/PINK_CAB_START90_READINESS.md "30 of the remaining 49 OPEN rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "196 code-facing rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "I06 OPEN"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "I08 OPEN"
-require_text docs/OPEN_DECISIONS.md "54 genuine OPEN owner rows"
+require_text docs/OPEN_DECISIONS.md "49 genuine OPEN owner rows"
 require_text docs/OPEN_DECISIONS.md "Practice Hangar only where Level1 training/acceptance requires it"
 require_text docs/PINK_CAB_DAILY_INSURANCE_CRASH_RECOVERY.md "remains independently owner-open under BASE-100 state/session work"
 require_text docs/VERIFICATION_MATRIX.md "CANON → SPECIFIED → IMPLEMENTED → VERIFIED"

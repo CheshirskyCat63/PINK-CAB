@@ -49,7 +49,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `A04 PROPOSED DEFAULT` — modules consume public contracts only; no private cross-module internals.
 - `A05 PROPOSED DEFAULT` — UE Subsystems over custom global singleton managers.
 - `A06 PROPOSED DEFAULT` — Actors are not universal persistent state owners.
-- `A07 OPEN` — initial feature-flag set and ownership. Proposed flags include L2, Damage, Neural, MovingFuel, ServiceNodes.
+- `A07 LOCKED` - initial flags are `L2 / Damage / Neural / MovingFuel / ServiceNodes`; `Core FeatureConfig` owns them and feature modules only consume the values.
 - `A08 PROPOSED DEFAULT` — debug/test behavior is compile/config gated; Shipping gameplay cannot depend on debug framework.
 - `A09 LOCKED` - canonical clean-checkout build entrypoint is `scripts/build.ps1`; `\.\scripts\build.ps1` is the human/CI build command. The wrapper calls the pinned UE 5.8 native Build.bat/RunUAT.bat toolchain; Visual Studio is an IDE, not build authority. Packaging uses the same wrapper with `-Package`.
 - `A10 LOCKED` - CI is GitHub Actions on a self-hosted Windows Unreal runner; local and CI use the same canonical build/smoke scripts; production merge is fail-closed if canonical CI is unavailable; explicit local evidence is bootstrap fallback only.
@@ -57,7 +57,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `A12 PROPOSED DEFAULT` — one deterministic smoke invocation launches canonical greybox, reports identity/fixtures and exits with machine-readable pass/fail.
 - `A13 LOCKED` - FIRST EURO support matrix is Windows 10/11 x64 + DX12 + Steam only; Linux/macOS/additional storefronts are post-FIRST-EURO.
 - `A14 LOCKED` - acceptance seed: minimum 1080p60 Low on Ryzen 3600/i5-10400 6-core class, 16 GB RAM, SSD, GTX 1660/RX 5600 class; recommended 1440p60 High on Ryzen 5600X/i5-12400 class, 32 GB RAM, SSD, RTX 3060 Ti/RX 6700 XT class; 16.67 ms frame target with ~14 ms GPU and ~8 ms Game Thread budget seeds; hardware equivalence is empirically validated.
-- `A15 OPEN` — minimum FIRST EURO settings/accessibility contract beyond rebinding: required video/audio/subtitle/readability/input options and persistence.
+- `A15 LOCKED` - required settings: resolution/window, VSync/frame cap/scalability, FOV, camera shake, mouse sensitivity, Master/Music/SFX/Voice, subtitles + size/background, UI scale, hold/toggle interaction, with persistence.
 - `A16 LOCKED` — primary optimization direction is 1440p and 60+ FPS; exact frame-time/hardware tiers remain A14.
 
 ## B · Data-driven architecture
@@ -155,9 +155,9 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 ## I · Session / save / workday
 
-- `I01 OPEN` — save-slot model: one campaign slot vs multiple.
-- `I02 OPEN` — autosave/checkpoint policy. Proposed: atomic saves after meaningful commits + bounded safe periodic checkpoint.
-- `I03 OPEN` — exact quit-anywhere contract and unsafe/illegal quit consequence/reconstruction semantics. Current technical proposal: allow with deterministic consequences.
+- `I01 LOCKED` - 3 campaign slots; each owns a bounded rolling autosave/checkpoint ring; no unbounded manual-save exploit set.
+- `I02 LOCKED` - atomic save after fare settlement, service purchase/repair, refuel settlement, repeat-client promotion, Workday end and meaningful persistent world change; safe periodic checkpoint every 5 minutes; 3 rolling checkpoints per slot.
+- `I03 LOCKED` - quit anywhere is allowed; logical state is saved and unsafe physical state is deterministically reconstructed on resume; quit cannot be used as free rollback.
 - `I04 OPEN` — quit/reload during FareSession: exact resume vs cancellation/rollback.
 - `I05 PROPOSED DEFAULT` — reconstruct transient passenger/traffic Actors from logical session state instead of serializing raw actor transforms broadly.
 - `I06 OPEN` — FIRST EURO terminal/immobilizing-Tatra recovery now that insurance is post-year.
@@ -298,33 +298,33 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **51 LOCKED**
+- **56 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **54 OPEN**
+- **49 OPEN**
 
-Readiness points: `51 + 3 + 88×0.5 = 98`.
+Readiness points: `56 + 3 + 88×0.5 = 103`.
 
-Current item-weighted START-90 specification readiness: `98 / 196 = 50.0%`.
+Current item-weighted START-90 specification readiness: `103 / 196 = 52.6%`.
 
 Domain snapshots under the same rubric:
 
-- CORE `A/B/C/Q/R/S`: **60.9%**
+- CORE `A/B/C/Q/R/S`: **64.5%**
 - VEHICLE `D/E/M/N`: **68.6%**
 - TAXI `F/G`: **38.3%**
-- STATE `H/I`: **23.8%**
+- STATE `H/I`: **38.1%**
 - WORLD `J/K/L`: **34.4%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `142/196 = 72.4%`. At least **35 of the 54 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `147/196 = 75.0%`. At least **30 of the 49 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`A07 A15 F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I01 I02 I03 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-Highest structural priority for broad-start readiness: `A07/A15`, `I01-I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
+Highest structural priority for broad-start readiness: `I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
 Everything not OPEN is either already locked, an engineering default awaiting batch acceptance, or calibration inside a locked observable contract. No admin process may silently promote an OPEN or PROPOSED DEFAULT row to LOCKED.
