@@ -1,0 +1,24 @@
+{
+    "FileVersion":  3,
+    "EngineAssociation":  "5.8",
+    "Category":  "",
+    "Description":  "PINK CAB",
+    "Modules":  [
+                    {
+                        "Name":  "PinkCab",
+                        "Type":  "Runtime",
+                        "LoadingPhase":  "Default"
+                    },
+                    {
+                        "Name":  "PinkCabTests",
+                        "Type":  "DeveloperTool",
+                        "LoadingPhase":  "Default"
+                    }
+                ],
+    "Plugins":  [
+                    {
+                        "Name":  "AndroidFileServer",
+                        "Enabled":  false
+                    }
+                ]
+}
