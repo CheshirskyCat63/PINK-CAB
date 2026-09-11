@@ -37,7 +37,7 @@ Neither FGear nor VDS is claimed installed until exact repository/build evidence
 
 ## Development entry
 
-PRE-FGEAR work follows `CD-754` / `CD-755..CD-771`. PF-00 begins only after the dedicated-repository cut-over is closed with evidence. Use short-lived Jira-keyed branches; `main` is canonical integration.
+PRE-FGEAR work follows `CD-754` / `CD-755..CD-771`. Repository cut-over `CD-558` is complete; PF-00 (`CD-755`) is the current execution entry. Use short-lived Jira-keyed branches; `main` is canonical integration.
 
 Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and `docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md` before changing product code or authority.
 

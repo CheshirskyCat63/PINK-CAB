@@ -1,6 +1,6 @@
 # PINK CAB · Dedicated Repository Cut-over Manifest
 
-**Status:** CUT-OVER IN EXECUTION / TARGET ESTABLISHED
+**Status:** COMPLETE / VERIFIED ADMINISTRATIVE CUT-OVER
 **Date:** 2026-09-11
 **Jira product lane:** `CD-519`
 **Cut-over gate:** `CD-558`
@@ -141,6 +141,13 @@ Before DONE record:
 - confirmation that DEADRACE is legacy/migration-source only;
 - confirmation that PF-00 is now permitted in the dedicated repo.
 
-## 10. Current state
+## 10. Closure state
 
-`CheshirskyCat63/PINK-CAB` exists and is being populated from the approved staging SHA. `CD-558` remains open until target verification, closure evidence, and DEADRACE staging freeze are recorded.
+Cut-over completed 2026-09-11.
+
+- target baseline: `a807db88baed881c526f2df63f87d01e913f41ef`;
+- source staging migration SHA: `1a4d7e05f1430a6e558b3f697aee3fbf412785bb`;
+- source staging freeze marker: `bff83382e3b567e17fa01029f698204c7bce7872`;
+- `CD-558`: DONE with Closure Log;
+- `DEADRACE`: legacy/migration-source only;
+- PF-00 may proceed in `PINK-CAB`.

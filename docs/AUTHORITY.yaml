@@ -4,13 +4,15 @@ repository: CheshirskyCat63/PINK-CAB
 repository_status: active-dedicated-pink-cab
 working_branch: main
 clean_repository_target: PINK-CAB
-clean_repository_status: target-established-awaiting-cd558-closure
+clean_repository_status: complete
 snapshot_date: 2026-09-11
 legacy_migration_source: CheshirskyCat63/DEADRACE
 legacy_staging_branch: dev/pinkcab-pre-fgear-20260911
 legacy_staging_sha: 1a4d7e05f1430a6e558b3f697aee3fbf412785bb
 cutover_gate: CD-558
 pre_fgear_program: CD-754
+cutover_baseline_sha: a807db88baed881c526f2df63f87d01e913f41ef
+legacy_freeze_sha: bff83382e3b567e17fa01029f698204c7bce7872
 
 maturity:
   canon: defined

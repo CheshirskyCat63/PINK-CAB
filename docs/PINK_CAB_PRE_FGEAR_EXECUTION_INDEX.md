@@ -1,6 +1,6 @@
 # PINK CAB · PRE-FGEAR Execution Index
 
-**Status:** DEDICATED REPOSITORY ESTABLISHED / CD-558 CLOSURE EVIDENCE PENDING
+**Status:** REPOSITORY CUT-OVER COMPLETE / PF-00 EXECUTION READY
 **Date:** 2026-09-11
 **Game Studio product lane:** Jira `CD-519`
 **Repository cut-over gate:** Jira `CD-558`
@@ -16,7 +16,7 @@
 
 `CheshirskyCat63/PINK-CAB` is the dedicated PINK CAB execution repository. `DEADRACE` is legacy/migration-source only and must not receive new PINK CAB runtime implementation.
 
-PF-00 remains blocked until `CD-558` is closed with exact target-SHA and verification evidence.
+`CD-558` is DONE with exact target-SHA and verification evidence. PF-00 may execute only in this dedicated repository.
 
 Mechanical migration is defined by `docs/PINK_CAB_REPOSITORY_CUTOVER.md`.
 
@@ -82,14 +82,13 @@ FGear is purchased only after PF-15 evidence is green and PF-16 proves that the 
 
 ## Immediate handoff boundary
 
-Repository creation is complete. The remaining `CD-558` closure sequence is:
+Repository cut-over is complete. Next execution owner: `CD-755 / PF-00`.
 
-1. verify this target repository authority and record exact SHA;
-2. freeze the DEADRACE PINK CAB staging branch as migration history;
-3. close `CD-558` with evidence;
-4. then begin PF-00 in this dedicated repository.
-
-The target repository was created by the product owner. No credential extraction or cross-project repository reuse was used.
+1. work only in `CheshirskyCat63/PINK-CAB`;
+2. use branch `feat/CD-755-pf00-bootstrap`;
+3. inventory installed Unreal/MSVC/Windows SDK/Git LFS before creating runtime files;
+4. do not silently decide `A01` or `A09`;
+5. introduce no paid dependency before PF-16.
 
 ## Truth rule
 

@@ -42,6 +42,9 @@ require_text "$registry" "legacy_migration_source: CheshirskyCat63/DEADRACE"
 require_text "$registry" "legacy_staging_sha: 1a4d7e05f1430a6e558b3f697aee3fbf412785bb"
 require_text "$registry" "cutover_gate: CD-558"
 require_text "$registry" "pre_fgear_program: CD-754"
+require_text "$registry" "clean_repository_status: complete"
+require_text "$registry" "cutover_baseline_sha: a807db88baed881c526f2df63f87d01e913f41ef"
+require_text "$registry" "legacy_freeze_sha: bff83382e3b567e17fa01029f698204c7bce7872"
 
 # Dedicated-repository cut-over must not regress to the legacy active-repo state.
 reject_regex "$registry" "repository:[[:space:]]*CheshirskyCat63/DEADRACE" "DEADRACE is falsely presented as the active repository"
