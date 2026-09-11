@@ -29,17 +29,17 @@ Every runtime domain must expose: `PURPOSE → BUY/ENGINE/WRITE → AUTHORITATIV
 
 Prefer proven Unreal features/plugins/assets over custom frameworks. Selected third-party systems sit behind PINK CAB adapters. One authoritative owner per responsibility; no competing production solvers. C++ owns interfaces/state/persistence/invariants; Blueprint remains thin composition/orchestration; DataAssets/DataTables/config own tunable values.
 
-## Current START-90 snapshot — 2026-09-10
+## Current START-90 snapshot — 2026-09-11
 
-Technical Owner Pack 01 contains **196 code-facing rows**: 46 LOCKED, 3 CALIBRATION, 88 PROPOSED DEFAULT, 59 OPEN.
+Technical Owner Pack 01 contains **196 code-facing rows**: 84 LOCKED, 3 CALIBRATION, 87 PROPOSED DEFAULT, 22 OPEN.
 
 Scoring: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
-**Current item-weighted START-90 specification readiness = 47.4%. Gate FAIL. Gap = 42.6 percentage points.**
+**Current item-weighted START-90 specification readiness = 66.6%. Gate FAIL. Gap = 23.4 percentage points.**
 
-Domain snapshot: CORE 51.8%; VEHICLE 68.6%; TAXI 38.3%; STATE 23.8%; WORLD 34.4%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 65.5%; VEHICLE 71.4%; TAXI 85.0%; STATE 81.0%; WORLD 43.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
-If all 88 proposed defaults are accepted, score becomes 69.9%. At least 40 of the remaining 59 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
+If all 87 proposed defaults are accepted, score becomes 174/196 = 88.8%. At least 3 of the remaining 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
 
 Historical ≈59% and 38.2% scores are retired. Broad production remains HOLD; narrow bootstrap/specification/calibration/admin work is allowed.
 
@@ -102,11 +102,11 @@ Level1 residual magnetism is **linear by total mass**: **5.0 s @1657 kg → 4.0 
 
 ## Input / physical controls
 
-Current grammar: mouse steering; Space gaze; `1–4 START`; `LMB ATTENTION`; `RMB GO`; `1 turn signals / 2 horn / 3 gearbox / 4 handbrake`.
+Current grammar: mouse steers by default; hold Space for gaze/free-look and target search; `1–4` quick-recall the saved physical targets for turn signals / horn / gearbox / handbrake without actuating them. RMB brings/retains the right hand on the current target where a grip is required. LMB presses or holds momentary controls (for example a short/long horn press). Mouse wheel moves detents/rotaries/incremental controls where that control supports it. Looking at, quick-recalling or gripping a target never implicitly actuates it.
 
-Steering, throttle, brake, clutch state/release speed and handbrake are continuous. Contextual wheel changes clutch release speed, not instantaneous clutch pressure. No Drift Mode, auto-countersteer, ABS or ESP rescue.
+Steering, throttle, brake, clutch state/release speed and handbrake are continuous. The same wheel is contextual: on clutch adjustment it changes release speed rather than instantaneous clutch pressure; on a targeted cabin control it follows that control's authored incremental/rotary semantics. No Drift Mode, auto-countersteer, ABS or ESP rescue.
 
-Input reaches FGear through the PINK CAB adapter; cockpit controls should publish semantic commands/events rather than directly mutate unrelated subsystem state. FIRST EURO rebinding scope remains owner-open `C08`; abstraction is required regardless.
+Input reaches FGear through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model.
 
 ## Core taxi work
 
@@ -187,4 +187,4 @@ Moving refueling is a first-year gameplay mechanic. It uses the common FuelTank,
 
 Documentation establishes CANON/SPECIFIED only. Vehicle stack requires `CD-738`; handling `CD-657/CD-658`; mass/load/vertical `CD-701`; Fare Zero `CD-724`; world/runtime and other systems require their own exact-build evidence.
 
-Current code-only START-90 score is **47.4%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. Runtime remains **NOT IMPLEMENTED / NOT VERIFIED** until exact-build executable evidence exists.
+Current code-only START-90 score is **66.6%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. PF-00 bootstrap and PF-01 Core Contracts have exact-build executable evidence; later systems remain NOT IMPLEMENTED / NOT VERIFIED until their own evidence exists.

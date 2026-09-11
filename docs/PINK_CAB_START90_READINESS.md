@@ -28,21 +28,21 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 
 ## Fresh owner-pack census
 
-- LOCKED: **83**
+- LOCKED: **84**
 - CALIBRATION: **3**
-- PROPOSED DEFAULT: **88**
+- PROPOSED DEFAULT: **87**
 - OPEN: **22**
 - TOTAL: **196**
 
-Current score: `83 + 3 + 88×0.5 = 130`; `130 / 196 = 66.3%`.
+Current score: `84 + 3 + 87×0.5 = 130.5`; `130.5 / 196 = 66.6%`.
 
-**START-90: FAIL. Gap: 23.7 percentage points.**
+**START-90: FAIL. Gap: 23.4 percentage points.**
 
 ## Domain snapshot
 
 | Domain | Pack sections | Rows | Score |
 | --- | --- | ---: | ---: |
-| CORE | A/B/C/Q/R/S | 55 | **64.5%** |
+| CORE | A/B/C/Q/R/S | 55 | **65.5%** |
 | VEHICLE | D/E/M/N | 35 | **71.4%** |
 | TAXI | F/G | 30 | **85.0%** |
 | STATE | H/I | 21 | **81.0%** |
@@ -54,7 +54,7 @@ SCOPE is reported separately so a locked delivery boundary cannot hide weak runt
 
 ## Exact path to START-90
 
-If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `174 / 196 = 88.8%`. Closing at least 3 of the remaining 22 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
+If all 87 PROPOSED DEFAULT rows are owner-accepted, score becomes `174 / 196 = 88.8%`. Closing at least 3 of the remaining 22 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
 
 ## Current genuine OPEN owner rows
 

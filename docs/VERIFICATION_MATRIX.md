@@ -69,14 +69,14 @@ Locked physical identity: 1450 kg base; 1550 kg full fuel; heroine 58 kg; daught
 | `PC-T-DMG-001` | VDS produces configured persistent deformation | LOCKED / NOT IMPLEMENTED |
 | `PC-T-DMG-002` | only authored hit-zone mappings create Vehicle Health consequences | LOCKED / NOT IMPLEMENTED |
 | `PC-T-DMG-003` | air-cooled oil/head/fan/oil-cooler/airflow thermal model; no generic coolant/radiator system | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-001` | Space transfers mouse steering→gaze→steering cleanly | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-002` | START reach does not activate the target | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-003` | LMB ATTENTION commits/retains hand on valid control | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-004` | RMB GO owns contextual manipulation and mouse where required | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-005` | 1 signals / 2 horn / 3 gearbox / 4 handbrake | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-006` | latest-held quick target wins; release restores older held target | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-007` | hidden continuity never chooses route/lane/gap or brakes/throttles | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-008` | repeated gaze/interaction/focus-loss/recovery cycles leave no stuck state | SPECIFIED / NOT IMPLEMENTED |
+| `PC-T-INP-001` | hold Space transfers mouse steering→gaze/target-search→steering cleanly | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-002` | gaze/target selection and quick recall never actuate the target | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-003` | RMB brings/retains the right hand only on a valid grip-capable current target | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-004` | LMB tap/hold produces momentary press semantics only on controls that declare it; horn proves short/long hold distinction | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-005` | mouse wheel produces signed detent/rotary/incremental input only on controls that declare wheel adjustment | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-006` | 1 signals / 2 horn / 3 gearbox / 4 handbrake quick-recall their saved physical target/hand pose without direct action | LOCKED / NOT IMPLEMENTED |
+| `PC-T-INP-007` | one bounded current interaction target; no world scan and hidden continuity never chooses route/lane/gap or brakes/throttles | SPECIFIED / NOT IMPLEMENTED |
+| `PC-T-INP-008` | repeated gaze/target/grip/press/wheel/focus-loss/recovery cycles leave no stuck hand or input ownership state | SPECIFIED / NOT IMPLEMENTED |
 
 ## P2 · Taxi / FareSession / passenger exchange — `CD-749`
 

@@ -44,7 +44,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 ## A · Runtime / project structure / PC release foundation
 
 - `A01 LOCKED` ? production engine line is Unreal Engine 5.8. Bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186). Stay on the pinned 5.8 production line; changing the production engine line requires an explicit compatibility/migration decision.
-- `A02 PROPOSED DEFAULT` — C++ core + thin Blueprint composition/orchestration.
+- `A02 LOCKED` — use C++ for authoritative gameplay/state/interaction logic as far as practical; Blueprint remains appropriate for thin composition, visual authoring and contextual glue, not the default owner of authoritative state machines.
 - `A03 LOCKED` - runtime modules: `Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction`; optional `Editor / Tests` are non-shipping; do not overfragment.
 - `A04 PROPOSED DEFAULT` — modules consume public contracts only; no private cross-module internals.
 - `A05 PROPOSED DEFAULT` — UE Subsystems over custom global singleton managers.
@@ -78,7 +78,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `C03 LOCKED` — steering/throttle/brake/clutch/handbrake are continuous normalized states/commands.
 - `C04 PROPOSED DEFAULT` — one reusable physical-control interaction interface for cabin switches/levers/controls.
 - `C05 PROPOSED DEFAULT` — physical controls emit semantic commands; they do not reach into unrelated subsystem internals.
-- `C06 LOCKED` — common interaction grammar is `1–4 START -> LMB ATTENTION -> RMB GO`; Space gaze; default mouse steering.
+- `C06 LOCKED` — default mouse steering; hold Space for gaze/free-look and one bounded current target; `1–4` quick-recall saved physical targets/hand poses without actuating them; RMB brings/retains the right hand on a target where grip is required; LMB press/hold owns momentary controls such as horn/buttons; mouse wheel owns detent/rotary/incremental controls when supported. Each physical control declares supported gestures; target selection alone never actuates.
 - `C07 PROPOSED DEFAULT` — bounded interaction trace/current target; no world scan.
 - `C08 LOCKED` - FIRST EURO includes semantic KBM rebinding with conflict detection and Restore Defaults; rebinding cannot change the canonical physical-control model.
 
@@ -298,18 +298,18 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **83 LOCKED**
+- **84 LOCKED**
 - **3 CALIBRATION**
-- **88 PROPOSED DEFAULT**
+- **87 PROPOSED DEFAULT**
 - **22 OPEN**
 
-Readiness points: `83 + 3 + 88×0.5 = 130`.
+Readiness points: `84 + 3 + 87×0.5 = 130.5`.
 
-Current item-weighted START-90 specification readiness: `130 / 196 = 66.3%`.
+Current item-weighted START-90 specification readiness: `130.5 / 196 = 66.6%`.
 
 Domain snapshots under the same rubric:
 
-- CORE `A/B/C/Q/R/S`: **64.5%**
+- CORE `A/B/C/Q/R/S`: **65.5%**
 - VEHICLE `D/E/M/N`: **71.4%**
 - TAXI `F/G`: **85.0%**
 - STATE `H/I`: **81.0%**

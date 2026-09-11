@@ -36,13 +36,13 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 83, calibration: 3, proposed_default: 88, open: 22}
+  status_counts: {locked: 84, calibration: 3, proposed_default: 87, open: 22}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 130.0
-  start90_percent: 66.3
+  numerator_points: 130.5
+  start90_percent: 66.6
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 23.7
-  domain_percent: {core: 64.5, vehicle: 71.4, taxi: 85.0, state: 81.0, world: 43.8, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 23.4
+  domain_percent: {core: 65.5, vehicle: 71.4, taxi: 85.0, state: 81.0, world: 43.8, service: 56.5, scope: 100.0}
   scope_reported_separately: true
   all_proposed_defaults_accepted_percent: 88.8
   open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
@@ -110,6 +110,13 @@ runtime_toolchain:
     toolchain: UE_5.8_native_BuildBat_and_RunUAT_wrapped_by_repo_script
     visual_studio_role: IDE_only_not_canonical_build_authority
     local_ci_parity: same_repository_script
+    owner_decision_date: 2026-09-11
+  implementation_style:
+    owner_row: A02
+    status: LOCKED
+    authoritative_gameplay_state_logic: Cpp_first_maximum_practical
+    blueprint_role: thin_composition_visual_authoring_and_contextual_glue_where_appropriate
+    blueprint_authoritative_state_machine_by_default: false
     owner_decision_date: 2026-09-11
   runtime_modules:
     owner_row: A03
@@ -209,15 +216,21 @@ architecture_doctrine:
 current_canon:
   input:
     steering_default: mouse
-    gaze: Space
-    quick_start: 1-4
-    attention: LMB
-    go: RMB
+    gaze_hold: Space
+    gaze_behavior: mouse_controls_head_and_bounded_current_target_while_held
+    quick_recall: 1-4
+    quick_recall_semantics: restore_saved_physical_target_or_hand_pose_without_actuation
     quick_targets:
       1: turn_signals
       2: horn
       3: gearbox
       4: handbrake
+    right_hand_grip: RMB_brings_or_retains_right_hand_on_current_target_where_grip_is_required
+    momentary_press_hold: LMB_press_or_hold_for_controls_that_support_momentary_actuation
+    contextual_wheel: mouse_wheel_adjusts_detents_rotary_or_incremental_controls_when_supported
+    target_selection_does_not_actuate: true
+    control_declares_supported_gestures: [grip, momentary_press_hold, wheel_incremental]
+    interaction_target_policy: one_bounded_current_target_no_world_scan
     clutch_key: Q
     brake_key: W
     throttle_key: E
@@ -229,7 +242,7 @@ current_canon:
     rebinding_conflict_detection: required
     rebinding_restore_defaults: required
     physical_control_model_changes_from_rebinding: forbidden
-    old_rmb_lmb_semantics: SUPERSEDED
+    old_attention_go_grammar: SUPERSEDED_BY_CONTEXTUAL_PHYSICAL_CONTROL_MODEL_2026_09_11
 
   vehicle_technology:
     owner: CD-730

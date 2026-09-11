@@ -56,11 +56,11 @@ require_text "$registry" "jira_governance: CD-661"
 require_text "$registry" "confluence_ledger: 6553617"
 require_text "$registry" "owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md"
 require_text "$registry" "tracked_rows: 196"
-require_text "$registry" "status_counts: {locked: 83, calibration: 3, proposed_default: 88, open: 22}"
-require_text "$registry" "numerator_points: 130.0"
-require_text "$registry" "start90_percent: 66.3"
+require_text "$registry" "status_counts: {locked: 84, calibration: 3, proposed_default: 87, open: 22}"
+require_text "$registry" "numerator_points: 130.5"
+require_text "$registry" "start90_percent: 66.6"
 require_text "$registry" "start90_gate_passed: false"
-require_text "$registry" "gap_to_start90_percentage_points: 23.7"
+require_text "$registry" "gap_to_start90_percentage_points: 23.4"
 require_text "$registry" "all_proposed_defaults_accepted_percent: 88.8"
 require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 3"
 require_text "$registry" "crossing_example_percent: 90.31"
@@ -80,14 +80,18 @@ require_text "$registry" "- level3_gameplay"
 require_text "$registry" "- daily_insurance_purchase_policy_claim_extra_life"
 
 # Current input contract.
-require_text "$registry" "gaze: Space"
-require_text "$registry" "quick_start: 1-4"
-require_text "$registry" "attention: LMB"
-require_text "$registry" "go: RMB"
+require_text "$registry" "gaze_hold: Space"
+require_text "$registry" "quick_recall: 1-4"
+require_text "$registry" "quick_recall_semantics: restore_saved_physical_target_or_hand_pose_without_actuation"
+require_text "$registry" "right_hand_grip: RMB_brings_or_retains_right_hand_on_current_target_where_grip_is_required"
 require_text "$registry" "1: turn_signals"
 require_text "$registry" "2: horn"
 require_text "$registry" "3: gearbox"
 require_text "$registry" "4: handbrake"
+require_text "$registry" "momentary_press_hold: LMB_press_or_hold_for_controls_that_support_momentary_actuation"
+require_text "$registry" "contextual_wheel: mouse_wheel_adjusts_detents_rotary_or_incremental_controls_when_supported"
+require_text "$registry" "target_selection_does_not_actuate: true"
+require_text "$registry" "interaction_target_policy: one_bounded_current_target_no_world_scan"
 require_text "$registry" "rebinding_first_euro: true"
 
 # Vehicle and residual owner decisions that must not be falsely closed.
@@ -212,7 +216,7 @@ done
 
 # Mirror-level current locks.
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
-require_text docs/PINK_CAB_START90_READINESS.md "130 / 196 = 66.3%"
+require_text docs/PINK_CAB_START90_READINESS.md "130.5 / 196 = 66.6%"
 require_text docs/PINK_CAB_START90_READINESS.md "3 of the remaining 22 OPEN rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "196 code-facing rows"
 require_text docs/OPEN_DECISIONS.md "22 genuine OPEN owner rows"
@@ -239,7 +243,7 @@ active_docs=(
 
 for file in "${active_docs[@]}"; do
   reject_regex "$file" 'quit anywhere is allowed|quit-anywhere is a technical proposal' "superseded unrestricted quit contract remains active"
-  reject_regex "$file" 'LMB[[:space:]]*=[[:space:]]*(press|grab)|RMB[[:space:]]*=[[:space:]]*active manipulation' "superseded mouse-button mapping presented as current"
+  reject_regex "$file" 'LMB[[:space:]]*=[[:space:]]*ATTENTION|RMB[[:space:]]*=[[:space:]]*GO|attention:[[:space:]]*LMB|go:[[:space:]]*RMB' "superseded universal ATTENTION/GO mapping presented as current"
   reject_regex "$file" 'product_root:[[:space:]]*CD-418|Current gameplay authority:.*DEADRACE|active product:[[:space:]]*DEADRACE' "legacy DEADRACE pursuit authority presented as current"
   reject_regex "$file" 'One work shift = 2 real-world hours' "obsolete two-hour Workday hard-lock remains in an active mirror"
 done

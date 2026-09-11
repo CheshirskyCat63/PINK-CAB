@@ -34,15 +34,15 @@ FIRST EURO includes full L1+L2; hero Tatra; taxi/fare/passenger; persistent repe
 
 Post-FIRST-EURO implementation: multiplayer/coop/shared rooms/network stack, including cross-player PassengerIdentity review propagation/community reputation; L3 gameplay; lifestyle ServiceNodes; full Taxi Regulator; daily insurance.
 
-Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **66.3%** from 196 Technical Owner Pack rows.
+Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **66.6%** from 196 Technical Owner Pack rows.
 
 ## `OD-ARCH-BUY-BEFORE-BUILD-001` — LOCKED DIRECTION
 
 - audit Unreal/proven purchased plugins/assets before large custom subsystem work;
 - vendor systems sit behind PINK CAB adapters/interfaces;
 - one production owner per responsibility; no duplicate competing solvers after lock;
-- C++ owns interfaces/state/persistence/invariants/critical orchestration;
-- Blueprint remains thin composition/orchestration;
+- C++ owns authoritative interfaces/state/persistence/invariants/critical orchestration as far as practical;
+- Blueprint remains appropriate for thin composition, visual authoring and contextual glue, not default authoritative state ownership;
 - DataAssets/DataTables/config own gameplay tuning;
 - logical/persistent identity separate from materialized Actor;
 - bounded Tick/queues/pools/caches; no world-wide scans or hot-path sync loads/spawns;
@@ -72,7 +72,7 @@ The Tatra 50-question pack is retired. Low-level plugin constants are CALIBRATIO
 
 ### `OD-L1-MAG-LOAD-001` — LOCKED SPEC
 
-`1657 kg -> 5.0 s`; `2107 kg -> 4.0 s`; lighter legal states cap 5.0 s; interpolation linear by authoritative total mass. Reacquisition/reset semantic remains an owner question in Pack `M05`; detailed force/contact tuning is calibration under `CD-592/CD-701`.
+`1657 kg -> 5.0 s`; `2107 kg -> 4.0 s`; lighter legal states cap 5.0 s; interpolation linear by authoritative total mass. Reacquisition is LOCKED by `M05`: residual reset requires 0.25 s continuous valid wall contact; shorter recontact does not refresh the timer. Detailed force/contact tuning remains calibration under `CD-592/CD-701`.
 
 ## Damage / Vehicle Health
 
@@ -96,11 +96,11 @@ Future premium/deductible/claim settlement/repair-depth/debt questions remain fu
 
 ### `OD-PAX-STOP-001` — LOCKED DIRECTION
 
-Pickup and normal drop-off require deliberate full stop. Group 1–5 boards after eligible stop + physical door opening; rear3→front2; exact passenger masses apply exactly once. Exact stop epsilon/dwell remains OPEN.
+Pickup and normal drop-off require deliberate full stop. Group 1–5 boards after eligible stop + physical door opening; rear3→front2; exact passenger masses apply exactly once. `F04` is LOCKED: FullStop = speed below 0.5 km/h continuously for 0.4 s.
 
-### `OD-METER-BASIS-001` — BASIS LOCKED / SEQUENCE OPEN
+### `OD-METER-BASIS-001` — LOCKED SPEC / BALANCE PROFILE PARTIAL
 
-Taximeter uses distance + elapsed fare time. METERED/OFF_METER are one-system modes. Exact START/STOP/reset/receipt timing and several fare-edge rules remain OPEN in `CD-672/CD-749`.
+Taximeter uses distance + elapsed fare time. METERED/OFF_METER are one-system modes. START/STOP/reset/payment/receipt sequencing is LOCKED by F05/F06/F08/F13/F14/F19; only the `F18` versioned off-meter/legal economy coefficients remain owner-open.
 
 ### `OD-NEURAL-FIRST-EURO-001` — LOCKED SCOPE / DETAILS PARTIAL
 
@@ -108,7 +108,7 @@ Persistent repeat clients + basic Neural are FIRST EURO; broad social/life simul
 
 Procedural PassengerTemplate and persistent PassengerIdentity are distinct. Persistent identity can retain stable ID, trip history, compact relationship/preferences, contact permission, repeat-order eligibility and simple data-driven messages. Repeat orders reuse normal Order/Fare pipeline; identity can exist without Actor.
 
-Still OPEN: promotion rate/scoring and exact compact relationship axes.
+`G02/G04` are LOCKED: repeat pool after two successfully paid fares or one authored relationship event; relationship axes are Trust / Satisfaction / RiskTolerance. Further tuning remains data-driven.
 
 ## Road / City / traffic
 
@@ -158,10 +158,14 @@ Technical Owner Pack 01 priority:
 
 `F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-These are the **22 genuine OPEN owner rows**. The **88 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
+These are the **22 genuine OPEN owner rows**. The **87 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
 
 Batch acceptance/rejection of the remaining `PROPOSED DEFAULT` rows will close many additional code contracts without re-asking already-resolved behavior.
 
 ## Proof rule
 
 Documentation establishes CANON/SPECIFIED only. Exact runtime/plugin/profile/schema versions and executable evidence are required for IMPLEMENTED/VERIFIED claims.
+
+## Owner lock batch · 2026-09-11 · physical interaction refinement
+
+A02 LOCKED: authoritative gameplay/state/interaction code is C++-first as far as practical; Blueprint is used where appropriate for thin composition, visual authoring and contextual glue. C06 remains LOCKED but its older universal LMB ATTENTION / RMB GO wording is superseded: hold Space for gaze/target search; 1–4 quick-recall saved physical targets without actuation; RMB brings/retains the right hand where grip is required; LMB press/hold owns momentary controls; mouse wheel owns detent/rotary/incremental controls where supported. Target selection/recall/grip never implicitly actuates.

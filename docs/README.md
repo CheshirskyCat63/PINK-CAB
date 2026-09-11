@@ -30,15 +30,15 @@ No prose, ticket status or committed config proves runtime behavior by itself.
 
 ## Current START-90 snapshot вЂ” 2026-09-10
 
-Technical Owner Pack 01: **196 rows = 46 LOCKED + 3 CALIBRATION + 88 PROPOSED DEFAULT + 59 OPEN**.
+Technical Owner Pack 01: **196 rows = 84 LOCKED + 3 CALIBRATION + 87 PROPOSED DEFAULT + 22 OPEN**.
 
 Scoring is reproducible: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
-**Current code-only specification readiness = 47.4%. START-90 FAIL. Gap = 42.6 percentage points.**
+**Current code-only specification readiness = 66.6%. START-90 FAIL. Gap = 23.4 percentage points.**
 
-Domain snapshot: CORE 51.8%; VEHICLE 68.6%; TAXI 38.3%; STATE 23.8%; WORLD 34.4%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 65.5%; VEHICLE 71.4%; TAXI 85.0%; STATE 81.0%; WORLD 43.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
-If all 88 proposed defaults are owner-accepted, score becomes 69.9%; at least 40 of the 59 OPEN rows must then close to cross START-90 at 177/196 = 90.31%. Historical в‰€59% and 38.2% scores are retired.
+If all 87 proposed defaults are owner-accepted, score becomes 174/196 = 88.8%; at least 3 of the 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%. Historical в‰€59% and 38.2% scores are retired.
 
 ## FIRST EURO вЂ” locked delivery scope
 

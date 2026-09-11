@@ -21,13 +21,13 @@
 
 The old <=20% / ~59% estimates and previous 240-question/20-question-pack methodology are SUPERSEDED.
 
-Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **47.4% (93/196)** after owner-locking A01 and A09.
+Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **66.6% (130.5/196)** with 84 LOCKED / 3 CALIBRATION / 87 PROPOSED DEFAULT / 22 OPEN.
 
 Administrative/specification work is allowed before START-90. Broad production should not rely on unresolved owner decisions.
 
 ## Runtime status
 
-There is no proven canonical PINK CAB executable yet. `CD-596`/current foundation owners must bootstrap only after exact runtime/plugin compatibility is sufficiently locked. Runtime creation may not silently decide open gameplay rules.
+PF-00 bootstrap is VERIFIED on the canonical UE 5.8.2 build/package path and PF-01 Core Contracts is VERIFIED/merged. Subsequent runtime work must continue to attach exact commit/build/automation evidence and may not silently decide open gameplay rules.
 
 ## Engine / plugin direction
 
@@ -66,16 +66,16 @@ Exact module count/names remain Pack A03. General lock:
 ## Current input contract
 
 - mouse = steering by default;
-- Space = gaze/free-look while held;
-- `1–4 = START` quick reach;
-- `LMB = ATTENTION` focus/retain valid physical interaction;
-- `RMB = GO` contextual manipulation/commit;
-- quick targets: `1 signals / 2 horn / 3 gearbox / 4 handbrake`;
+- hold Space = gaze/free-look and bounded target search;
+- `1–4` = quick recall of saved physical targets/hand poses for `1 signals / 2 horn / 3 gearbox / 4 handbrake`; recall alone never actuates;
+- RMB = bring/retain the right hand on the current target where that control requires a grip;
+- LMB = press/hold momentary controls; e.g. tap horn for a short signal or hold for a long signal;
+- mouse wheel = contextual detent/rotary/incremental adjustment where the current control supports it;
 - Q clutch, W brake, E throttle;
 - clutch wheel semantics adjust release speed, not instantaneous clutch pressure;
-- hidden steering continuity cannot choose route/lane/gap, brake, throttle, overtake or avoid traffic.
+- one bounded current interaction target; no world scan; hidden steering continuity cannot choose route/lane/gap, brake, throttle, overtake or avoid traffic.
 
-Old `RMB grab / LMB manipulate` and old open 1/2/4 assignments are SUPERSEDED.
+The universal `LMB ATTENTION / RMB GO` wording is SUPERSEDED. Interaction is control-type-driven: target/quick-recall, optional grip, then the gesture declared by that physical control.
 
 ## FIRST EURO session direction
 

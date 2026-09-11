@@ -228,11 +228,12 @@ The daughter/conductor/operator may inform, prepare and perform approved service
 Canonical high-level grammar:
 
 - default mouse = steering;
-- hold `Space` = gaze/free-look;
-- `1–4 = START`: reach/hover the saved physical target while mouse can still steer until manipulation ownership changes;
-- `LMB = ATTENTION`: keep the right hand physically on the targeted control;
-- `RMB = GO`: actively manipulate; RMB takes mouse away from steering;
-- release returns according to the current interaction state.
+- hold `Space` = gaze/free-look and search a bounded current physical target;
+- `1–4` = quick recall: bring the interaction context/right-hand pose back to a saved physical target without actuating it;
+- `RMB` = bring/retain the right hand on the current target where that control requires a physical grip;
+- `LMB` = momentary press/hold on controls that declare that gesture, including short/long horn actuation;
+- mouse wheel = detent/rotary/incremental movement on controls that declare wheel adjustment;
+- selection, quick recall and grip do not implicitly actuate the target; release/return follows the current control state.
 
 Current quick targets:
 
@@ -241,7 +242,7 @@ Current quick targets:
 - `3 = gearbox`;
 - `4 = handbrake`.
 
-Older Git/Confluence wording that says `RMB=passive grab`, `LMB=manipulate`, or `1/2 OPEN` is superseded.
+The later universal `LMB=ATTENTION / RMB=GO` wording is superseded by this control-type-driven physical interaction model. `1–4` remain quick physical recalls, not hidden direct-action hotkeys.
 
 ## 15. Verification IDs
 

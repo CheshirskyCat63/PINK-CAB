@@ -48,13 +48,13 @@ Level3 gameplay is POST-FIRST-EURO. The older `T1 < T2 < T3` direction may be pr
 Moving fuel uses the same cabin grammar as the rest of PINK CAB:
 
 - mouse by default = steering;
-- Space = gaze;
-- `1–4 = START` for authored quick targets;
-- `LMB = ATTENTION` — focus/retain the current physical interaction context;
-- `RMB = GO` — execute/commit contextual manipulation;
-- mouse wheel = contextual adjustment only where the active control supports it.
+- hold Space = gaze/free-look and bounded target search;
+- `1–4` may quick-recall authored frequent physical targets but never directly actuate them;
+- RMB brings/retains the right hand on the current target where that endpoint requires a physical grip;
+- LMB presses/holds momentary controls where declared;
+- mouse wheel adjusts detents/rotaries/incremental controls where declared.
 
-The old `RMB grab / LMB manipulate` wording is SUPERSEDED. Moving refuel may not fork its own control framework.
+The universal `LMB ATTENTION / RMB GO` wording is SUPERSEDED. Moving refuel may not fork its own control framework; each endpoint declares which of grip / momentary press-hold / wheel adjustment it supports.
 
 Physical card/terminal interaction is a presentation/interaction endpoint over the authoritative payment state; its visual choreography cannot independently charge or credit fuel.
 
