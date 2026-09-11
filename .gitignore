@@ -72,3 +72,6 @@ worktrees/
 
 # Do not globally ignore *.obj, *.dll, *.lib, *.exe or *.pdb.
 # Those may be legitimate source/vendor assets; generated output is excluded by directories above.
+
+# Canonical local package archive
+Artifacts/
