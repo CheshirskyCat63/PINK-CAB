@@ -70,7 +70,7 @@ Generic `engine/coolant overheating` is SUPERSEDED. Current hero engine has no c
 
 ## 9. Daily insurance — POST-FIRST-EURO future control
 
-Daily insurance is **not implemented in FIRST EURO**. Year one keeps only the generic `RecoveryPolicy/RecoveryHook`; exact terminal/immobilizing recovery remains owner-open `I06` under `CD-750/CD-598`.
+Daily insurance is **not implemented in FIRST EURO**. Year one keeps the generic `RecoveryPolicy/RecoveryHook`; terminal/immobilizing recovery is LOCKED by `I06` under `CD-750/CD-598`: the fare fails, Workday ends, and the still-damaged Tatra returns through Repair next Workday with no free reset.
 
 Future authority is `CD-741..745` / Confluence `10321936`. If promoted after FIRST EURO, the design may use the dedicated stopped-only physical in-car switch, exactly-once policy transactions and the normal `START → ATTENTION → GO` grammar. Those future policy/claim semantics must not be used to infer the year-one recovery rule.
 

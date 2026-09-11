@@ -111,7 +111,7 @@ Owner `CD-750` plus `CD-560/CD-601`.
 
 Deliver one EconomyService/transaction ledger, Workday/Session ownership, versioned save schema/migrations/checkpoints, exact retry semantics, and generic `RecoveryPolicy/RecoveryHook` extension point.
 
-Daily insurance is not implemented here. The FIRST EURO terminal-crash recovery policy remains owner-open `I06` under `CD-750`; this roadmap must not invent it.
+Daily insurance is not implemented here. FIRST EURO terminal recovery is locked by `I06`: fail active fare, end Workday, atomic save, recover the still-damaged Tatra through Repair next Workday, no free reset; `H04/H05` govern insufficient funds.
 
 ## Phase F — Level1 moving road flow
 

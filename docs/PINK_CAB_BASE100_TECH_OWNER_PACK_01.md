@@ -111,7 +111,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `F01 PROPOSED DEFAULT` — one authoritative active FareSession for hero taxi.
 - `F02 PROPOSED DEFAULT` — states: Idle / RouteAssigned / ApproachingPickup / StoppedForPickup / Boarding / Occupied / StoppedForDropoff / AwaitingPayment / Completed|Failed.
 - `F03 LOCKED` — pickup/dropoff eligibility requires deliberate full stop in valid context.
-- `F04 OPEN` — exact full-stop epsilon + dwell. Proposed seed: `<0.5 km/h` for `0.4 s`.
+- `F04 LOCKED` - FullStop = vehicle speed <0.5 km/h continuously for 0.4 s; this technical epsilon/dwell is used for passenger exchange and manual quit eligibility.
 - `F05 OPEN` — meter START timing relative to boarding/seat commit/door close.
 - `F06 OPEN` — meter STOP ownership and exact destination-completion relationship. Manual physical STOP lever is locked; state ordering is not.
 - `F07 PROPOSED DEFAULT` — internal fare accumulator continuous; presentation may round/display discretely.
@@ -147,8 +147,8 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `H01 PROPOSED DEFAULT` — one EconomyService owns money balance/settlement.
 - `H02 PROPOSED DEFAULT` — FareIncome / Tip / FuelPurchase / PartPurchase / Repair / Parking / Fine are typed transactions.
 - `H03 PROPOSED DEFAULT` — persistent/retriable transactions use stable TransactionId + exactly-once semantics.
-- `H04 OPEN` — negative balance/debt allowed in FIRST EURO?
-- `H05 OPEN` — insufficient-funds policy for fuel/repair/parts/parking.
+- `H04 LOCKED` - bounded debt is allowed only for essential recovery, minimum roadworthy repair and mandatory day obligations; tuning and discretionary purchases may not create debt.
+- `H05 LOCKED` - fuel purchase is capped to affordable volume; ordinary parts are denied when unaffordable; Repair may offer minimum roadworthy repair through allowed bounded debt; insufficient funds must not permanently block sleep/next Workday.
 - `H06 PROPOSED DEFAULT` — prices live in data/config profiles.
 - `H07 PROPOSED DEFAULT` — economy owns no UI/animation presentation.
 - `H08 PROPOSED DEFAULT` — tips settle as separate transaction from fare principal.
@@ -157,17 +157,17 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 - `I01 LOCKED` - 3 campaign slots; each owns a bounded rolling autosave/checkpoint ring; no unbounded manual-save exploit set.
 - `I02 LOCKED` - atomic save after fare settlement, service purchase/repair, refuel settlement, repeat-client promotion, Workday end and meaningful persistent world change; safe periodic checkpoint every 5 minutes; 3 rolling checkpoints per slot.
-- `I03 LOCKED` - quit anywhere is allowed; logical state is saved and unsafe physical state is deterministically reconstructed on resume; quit cannot be used as free rollback.
-- `I04 OPEN` — quit/reload during FareSession: exact resume vs cancellation/rollback.
+- `I03 LOCKED` - manual quit/save+exit is allowed only with no active FareSession/passenger and after a full vehicle stop; force-quit/crash anti-exploit remains I13.
+- `I04 LOCKED` - manual quit/reload is unavailable while a FareSession/passenger is active; the order must be completed first; I13 owns force-quit/crash reconstruction anti-exploit.
 - `I05 PROPOSED DEFAULT` — reconstruct transient passenger/traffic Actors from logical session state instead of serializing raw actor transforms broadly.
-- `I06 OPEN` — FIRST EURO terminal/immobilizing-Tatra recovery now that insurance is post-year.
+- `I06 LOCKED` - terminal/immobilizing Tatra fails any active fare, ends the Workday, commits an atomic save and recovers the still-damaged car to Repair for the next Workday; no free reset; fee applies under separate H04/H05 insufficient-funds policy.
 - `I07 PROPOSED DEFAULT` — Workday has stable deterministic/logical ID.
-- `I08 OPEN` — exact Workday duration/time semantics. `2 real-world hours` is currently a QA soak target, not a locked gameplay duration.
-- `I09 OPEN` — exact menu/pause simulation contract, including any exceptional hard-pause screens and ownership of simulation pause state.
+- `I08 LOCKED` - one Workday is 12 in-game hours over 120 real minutes (time scale x6); early in-car sleep/end-day is permitted when eligible.
+- `I09 LOCKED` - ESC/system menu is a hard single-player pause for world, fare and economy time; in-world dashboard/radio UI does not pause; transactions cannot be left mid-commit.
 - `I10 LOCKED` — sleep is the intended diegetic end-of-day/save+exit affordance; detailed eligibility remains separate.
-- `I11 OPEN` — sleep eligibility/location and interaction with active FareSession/ServiceNode/unsafe vehicle state.
-- `I12 OPEN` — minimum FIRST EURO Workday-end verdict/household-expense contract if retained, including authoritative inputs, transaction ordering and next-cycle transition.
-- `I13 OPEN` — safe-spawn/reconstruction/force-quit anti-exploit policy across unsafe exit, crash and partial transaction boundaries.
+- `I11 LOCKED` - sleep/end-day occurs in the car at full stop with no active fare; location is unrestricted, but parking legality/signage and ordinary fines still apply; vehicle state persists as left.
+- `I12 LOCKED` - Workday-end summary owns gross fare income, tips, fines, fuel, repair/service, net result and available money, plus exactly one mandatory household/family transaction for the day before next-cycle transition.
+- `I13 LOCKED` - force quit/crash cannot roll back committed purchases, refuel, fines, fare/payment or damage; resume uses the last committed logical state and safely materializes vehicle/world without free rollback.
 
 ## J · CityCode / generation / streaming
 
@@ -298,33 +298,33 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **56 LOCKED**
+- **66 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **49 OPEN**
+- **39 OPEN**
 
-Readiness points: `56 + 3 + 88×0.5 = 103`.
+Readiness points: `66 + 3 + 88×0.5 = 113`.
 
-Current item-weighted START-90 specification readiness: `103 / 196 = 52.6%`.
+Current item-weighted START-90 specification readiness: `113 / 196 = 57.7%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **64.5%**
 - VEHICLE `D/E/M/N`: **68.6%**
-- TAXI `F/G`: **38.3%**
-- STATE `H/I`: **38.1%**
+- TAXI `F/G`: **41.7%**
+- STATE `H/I`: **81.0%**
 - WORLD `J/K/L`: **34.4%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `147/196 = 75.0%`. At least **30 of the 49 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `157/196 = 80.1%`. At least **20 of the 39 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`F04 F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 H04 H05 I04 I06 I08 I09 I11 I12 I13 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-Highest structural priority for broad-start readiness: `I04/I06/I08/I09/I11-I13`, `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
+Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
 Everything not OPEN is either already locked, an engineering default awaiting batch acceptance, or calibration inside a locked observable contract. No admin process may silently promote an OPEN or PROPOSED DEFAULT row to LOCKED.

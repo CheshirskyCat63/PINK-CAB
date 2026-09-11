@@ -66,7 +66,7 @@ Passenger templates, persistent identities, order state and FareSession state ex
 
 ### Economy and persistence
 
-Economy uses typed, stable-ID transactions and exactly-once semantics. Persistence stores versioned logical state. Save-slot, quit-anywhere, FareSession reload and terminal-recovery OPEN decisions remain boundaries, not assumptions.
+Economy uses typed, stable-ID transactions and exactly-once semantics. Persistence stores versioned logical state. Save-slot, manual quit, active-FareSession exit restriction, Workday timing/pause/sleep, terminal recovery and force-quit anti-exploit are owner-locked; remaining persistence work must implement those contracts rather than invent alternatives.
 
 ### City / traffic
 
@@ -178,10 +178,10 @@ Current OPEN and PROPOSED DEFAULT BASE-100 rows remain unchanged by this corrido
 Examples:
 
 - fare START/STOP ordering may expose state/event boundaries without choosing F05/F06;
-- save persistence may serialize a FareSession without choosing I04 resume/cancel;
+- manual quit is unavailable during an active FareSession/passenger; force-quit/crash recovery follows locked I13 committed-state reconstruction;
 - L1 greybox may prove topology without canonizing K11-K13 dimensions;
 - moving fuel may implement transaction primitives without locking P03/P05/P09/P11;
-- vehicle health may classify terminal state without choosing I06 recovery.
+- vehicle health may classify terminal state and hand off to locked I06 Workday-end/Repair recovery without owning economy settlement.
 
 ## 9. Purchase policy
 

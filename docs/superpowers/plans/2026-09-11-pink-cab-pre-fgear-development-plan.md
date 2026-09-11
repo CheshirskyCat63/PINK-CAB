@@ -278,12 +278,12 @@ Acceptance: no VDS substitute/deformation implementation exists.
 
 **Interfaces:**
 - Consumes logical state snapshots from earlier domains.
-- Produces versioned serialization/migration/failure boundary without choosing save-slot/quit policy.
+- Produces versioned serialization/migration/failure boundary under locked I01-I04/I06/I08/I09/I11-I13 policy, while preserving explicit failure behavior.
 
 - [ ] Test save header contains product/schema/config/world-version identity.
 - [ ] Test compatible synthetic state round-trip for vehicle health, passenger identity and economy ledger.
 - [ ] Test incompatible schema fails explicitly instead of silently guessing.
-- [ ] Leave I01-I04/I06/I08/I09/I11-I13 as policy inputs/interfaces; do not code outcomes.
+- [ ] Implement the locked I01-I04/I06/I08/I09/I11-I13 policy boundaries without inventing any remaining OPEN state rows.
 - [ ] Commit: `feat: add versioned persistence foundation`.
 
 ---

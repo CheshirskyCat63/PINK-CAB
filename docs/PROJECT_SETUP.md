@@ -82,9 +82,9 @@ Old `RMB grab / LMB manipulate` and old open 1/2/4 assignments are SUPERSEDED.
 - direct start into playable Tatra/world;
 - one personal character and deterministic personal CityCode;
 - permanent night/night-shift visual baseline with changing weather;
-- `2 real-world hours` is a QA/endurance soak target only; gameplay Workday duration/time semantics remain owner-open Pack `I08`;
-- sleep = legal diegetic end-day/save+exit direction;
-- quit-anywhere is a technical proposal only; exact permission/consequences/resume/checkpoint/anti-reload behavior remains owner-open `I03/I04/I13` under `CD-560/CD-602`;
+- Workday is LOCKED: 12 in-game hours over 120 real minutes (x6), with eligible early sleep/end-day;
+- sleep/end-day occurs in the car at full stop with no active FareSession; parking legality/signage and fines still apply;
+- manual save+exit is prohibited while a FareSession/passenger is active and otherwise requires a full stop; `I13` still owns force-quit/crash anti-exploit reconstruction;
 - ordinary persistent state must survive through explicit schemas/transactions, not transient Actor snapshots.
 
 ## FIRST EURO world scope
@@ -113,7 +113,7 @@ Mall/food/bar/club/social nodes are POST-FIRST-EURO.
 
 FIRST EURO implements stable `EnforcementEvent` facts and ordinary rules/fines. Full Taxi Regulator is POST-FIRST-EURO.
 
-Daily insurance is POST-FIRST-EURO. FIRST EURO only preserves generic `RecoveryPolicy/RecoveryHook`; exact current terminal-crash recovery remains Pack I06 / `CD-598/CD-750` owner confirmation.
+Daily insurance is POST-FIRST-EURO. FIRST EURO preserves generic `RecoveryPolicy/RecoveryHook`; Pack I06 / `CD-750` locks terminal-crash recovery to Workday end + atomic save + still-damaged Repair recovery next Workday, with no free reset.
 
 ## Hot-path setup rules
 

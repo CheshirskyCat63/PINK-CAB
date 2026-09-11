@@ -52,7 +52,7 @@ Ordinary dents, broken lamps, partial suspension/alignment damage, brake fade, a
 
 ### Uninsured
 
-The first-year terminal-crash recovery rule remains independently owner-open under BASE-100 state/session work (`CD-750` / Pack `I06`). Insurance must not define that FIRST EURO rule merely by being a future feature.
+The FIRST EURO terminal-crash recovery rule is LOCKED under `CD-750` / Pack `I06`: terminal/immobilizing Tatra fails any active fare, ends the Workday, commits an atomic save and recovers the still-damaged car through Repair next Workday with no free reset. Future insurance must extend, not redefine, that base rule.
 
 ### Insured future branch
 

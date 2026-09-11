@@ -25,7 +25,7 @@ BASE-100 scores implementation-facing code/logic/numeric/ownership/data/persiste
 - economy/workday/session/save/migration/config/build/package/QA/evidence architecture;
 - first-person driving/work, keyboard+mouse baseline.
 
-The exact Workday duration/time semantics are **OPEN owner question `I08`**. `I03/I04` own quit-anywhere and FareSession resume/cancel semantics; `I06` owns FIRST EURO terminal-crash recovery after insurance was deferred. A two-real-hour near-final soak is a QA duration target and does not itself define the Workday clock.
+Workday duration is LOCKED by `I08`: 12 in-game hours = 120 real minutes (x6), with eligible early sleep/end-day. `I03/I04` prohibit manual exit while a FareSession/passenger is active and require a full stop after fare completion before save+exit. `I06` owns the locked FIRST EURO terminal-crash Repair recovery path.
 
 ## POST-FIRST-EURO implementation
 

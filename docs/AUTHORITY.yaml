@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 56, calibration: 3, proposed_default: 88, open: 49}
+  status_counts: {locked: 66, calibration: 3, proposed_default: 88, open: 39}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 103.0
-  start90_percent: 52.6
+  numerator_points: 113.0
+  start90_percent: 57.7
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 37.4
-  domain_percent: {core: 64.5, vehicle: 68.6, taxi: 38.3, state: 38.1, world: 34.4, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 32.3
+  domain_percent: {core: 64.5, vehicle: 68.6, taxi: 41.7, state: 81.0, world: 34.4, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 75.0
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 30
+  all_proposed_defaults_accepted_percent: 80.1
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 20
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -346,7 +346,7 @@ current_canon:
     group_size_max: 5
     compressed_simultaneous_boarding_after_stop_and_door_open: true
     seat_order: rear3_then_front2
-    exact_full_stop_epsilon_dwell: OPEN_BASE100_F04
+    exact_full_stop_epsilon_dwell: speed_below_0_5_kmh_continuously_for_0_4_seconds
 
   fare:
     meter_basis: distance_plus_elapsed_fare_time
@@ -363,15 +363,32 @@ current_canon:
     promotion_scoring: OPEN_BASE100_G02
     relationship_axes: OPEN_BASE100_G04
 
+  economy_policy:
+    debt: bounded_essential_only_recovery_minimum_roadworthy_repair_mandatory_day_obligations
+    discretionary_debt: false
+    fuel_insufficient_funds: cap_purchase_to_affordable_volume
+    parts_insufficient_funds: deny_ordinary_purchase
+    repair_insufficient_funds: minimum_roadworthy_repair_may_use_allowed_bounded_debt
+    no_money_sleep_next_workday_deadlock: true
+
   recovery_workday_save:
     owner: CD-750
-    terminal_crash_recovery: OPEN_BASE100_I06
-    workday_duration_time_semantics: OPEN_BASE100_I08
+    terminal_crash_recovery: active_fare_fails_then_workday_ends_atomic_save_next_workday_recovery_to_repair_vehicle_remains_damaged_no_free_reset
+    recovery_fee: required_but_insufficient_funds_policy_remains_H04_H05
+    workday_duration_time_semantics: 12_ingame_hours_equals_120_real_minutes_time_scale_x6
     save_slot_model: 3_campaign_slots_with_bounded_rolling_checkpoint_ring
     autosave_checkpoint_policy: atomic_after_meaningful_commits_plus_safe_5min_checkpoint_3_rolling_per_slot
-    quit_anywhere_contract: allowed_save_logical_state_and_deterministically_reconstruct_unsafe_physical_state
-    quit_reload_during_fare: OPEN_BASE100_I04
-    two_real_hour_value: QA_SOAK_TARGET_NOT_LOCKED_WORKDAY_DURATION
+    manual_quit_contract: forbidden_during_active_fare_or_passenger_and_requires_full_stop_after_fare_completion
+    quit_reload_during_fare: manual_quit_not_available_I13_owns_force_quit_crash_antiexploit
+    pause_contract: esc_system_menu_hard_pause_world_fare_economy_inworld_dashboard_radio_does_not_pause
+    sleep_end_day_contract: in_vehicle_full_stop_no_active_fare_any_location_parking_legality_and_fines_still_apply
+    parked_vehicle_state: preserve_as_left_lights_ignition_engine_and_consumers_can_drain_battery_or_fuel
+    parked_resource_rates: CALIBRATION_NOT_LOCKED_HERE
+    workday_end_summary: gross_fare_tips_fines_fuel_repair_service_net_available_money
+    mandatory_household_transaction: exactly_once_per_workday_before_next_cycle
+    force_quit_crash_contract: preserve_all_committed_purchases_refuel_fines_fare_payment_damage_and_resume_last_committed_logical_state
+    safe_materialization_after_force_quit_crash: required_no_free_rollback
+    old_two_real_hour_qa_only_statement: SUPERSEDED_BY_I08_OWNER_LOCK_2026_09_11
 
   city_world:
     identity: CityCode_plus_GeneratorVersion_plus_ContentSetVersion_plus_persistent_deltas
@@ -445,12 +462,11 @@ current_canon:
     first_euro: false
     delivery: POST_FIRST_EURO
     first_euro_extension_only: generic_RecoveryPolicy_RecoveryHook
-    current_first_euro_uninsured_recovery: OPEN_CD-750_BASE100_I06
+    current_first_euro_uninsured_recovery: LOCKED_BASE100_I06_REPAIR_RECOVERY_NO_FREE_RESET
 
 open_owner_rows:
-  count: 49
+  count: 39
   ids:
-    - F04
     - F05
     - F06
     - F08
@@ -465,15 +481,6 @@ open_owner_rows:
     - F19
     - G02
     - G04
-    - H04
-    - H05
-    - I04
-    - I06
-    - I08
-    - I09
-    - I11
-    - I12
-    - I13
     - J05
     - J07
     - J09
@@ -590,6 +597,6 @@ legacy_rule:
   deadrace_pursuit_combat_requires_explicit_re_adoption: true
   old_fixed_magnet_5s_all_loads: SUPERSEDED
   old_rmb_passive_lmb_manipulate: SUPERSEDED
-  old_two_hour_workday_as_locked_duration: SUPERSEDED_NOT_LOCKED_I08_OPEN
+  old_two_hour_workday_as_locked_duration: READOPTED_BY_I08_AS_12_INGAME_HOURS_120_REAL_MINUTES
   old_three_tier_first_euro: SUPERSEDED_L1_L2_ONLY
   old_damage_depth_open: SUPERSEDED_CD-600_DONE

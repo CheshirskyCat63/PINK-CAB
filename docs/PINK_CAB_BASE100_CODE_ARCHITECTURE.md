@@ -155,7 +155,9 @@ Only locally needed passengers materialize as Actors. Taxi/Fare publishes semant
 
 One `EconomyService` owns balance and settlement. Fare, tip, fuel, parts, repair, parking and fines are typed transactions with stable IDs where persistence/retry matters.
 
-Daily insurance is post-FIRST-EURO. FIRST EURO retains only a generic `RecoveryPolicy/RecoveryHook` interface so a future policy system can react to terminal vehicle/workday outcomes without rewriting Economy, Workday or Vehicle Health. **Exact FIRST EURO terminal-crash recovery remains owner question `I06` until locked.**
+Daily insurance is post-FIRST-EURO. FIRST EURO retains a generic `RecoveryPolicy/RecoveryHook` interface. `I06` is LOCKED: terminal/immobilizing Tatra fails any active fare, ends the Workday, commits an atomic save and enters a no-free-reset Repair recovery path next Workday; fee/debt handling remains subordinate to Economy policy.
+
+Session locks: one Workday is 12 in-game hours over 120 real minutes (x6); ESC/system menu hard-pauses world/fare/economy time while in-world dashboard/radio does not; manual save+exit is unavailable during active FareSession/passenger and otherwise requires full stop; sleep/end-day happens in the car at full stop with no active fare, anywhere subject to ordinary parking legality/fines. Vehicle electrical/engine state persists as left, so active consumers may drain battery or fuel.
 
 ## 10. World / traffic boundary
 

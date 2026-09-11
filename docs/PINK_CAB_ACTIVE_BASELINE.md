@@ -132,7 +132,7 @@ Generic coolant/radiator-overheat wording is SUPERSEDED. Full soft-body structur
 
 Daily insurance mechanics under `CD-741..745` are preserved as future backlog authority but are **not implemented inside the first 12-month FIRST EURO product** and do not reduce its BASE-100/START-90 readiness.
 
-FIRST EURO keeps only a generic `RecoveryPolicy/RecoveryHook` extension boundary connecting terminal vehicle state, Workday/Session and Economy/Persistence. No insurance toggle, premium, claim, policy persistence or extra-life transaction is required in year one. Exact uninsured FIRST EURO terminal recovery remains **OPEN `I06` under CD-750**.
+FIRST EURO keeps only a generic `RecoveryPolicy/RecoveryHook` extension boundary connecting terminal vehicle state, Workday/Session and Economy/Persistence. No insurance toggle, premium, claim, policy persistence or extra-life transaction is required in year one. FIRST EURO terminal recovery is **LOCKED under `I06` / CD-750**: active fare fails, Workday ends, atomic save commits, and the still-damaged Tatra returns through Repair next Workday with no free reset; fee/debt fallback remains under Economy policy.
 
 ## Persistent city / Level 1 / Level 2
 
