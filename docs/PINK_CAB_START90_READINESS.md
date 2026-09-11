@@ -28,15 +28,15 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 
 ## Fresh owner-pack census
 
-- LOCKED: **61**
+- LOCKED: **71**
 - CALIBRATION: **3**
 - PROPOSED DEFAULT: **88**
-- OPEN: **44**
+- OPEN: **34**
 - TOTAL: **196**
 
-Current score: `61 + 3 + 88×0.5 = 108`; `113 / 196 = 57.7%`.
+Current score: `71 + 3 + 88×0.5 = 118`; `118 / 196 = 60.2%`.
 
-**START-90: FAIL. Gap: 32.3 percentage points.**
+**START-90: FAIL. Gap: 29.8 percentage points.**
 
 ## Domain snapshot
 
@@ -44,7 +44,7 @@ Current score: `61 + 3 + 88×0.5 = 108`; `113 / 196 = 57.7%`.
 | --- | --- | ---: | ---: |
 | CORE | A/B/C/Q/R/S | 55 | **64.5%** |
 | VEHICLE | D/E/M/N | 35 | **68.6%** |
-| TAXI | F/G | 30 | **41.7%** |
+| TAXI | F/G | 30 | **58.3%** |
 | STATE | H/I | 21 | **81.0%** |
 | WORLD | J/K/L | 32 | **34.4%** |
 | SERVICE | O/P | 23 | **56.5%** |
@@ -54,11 +54,11 @@ SCOPE is reported separately so a locked delivery boundary cannot hide weak runt
 
 ## Exact path to START-90
 
-If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `157 / 196 = 80.1%`. Closing at least 20 of the remaining 39 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
+If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `162 / 196 = 82.7%`. Closing at least 15 of the remaining 34 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
 
 ## Current genuine OPEN owner rows
 
-`F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
+`F11 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
 
 Highest structural priority: runtime/version/build/platform (`A`), session/save/recovery (`I`), CityCode/streaming (`J`), traffic/geometry (`K`), rule numerics (`L`), then remaining taxi/service/transit owner rows.
 

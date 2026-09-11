@@ -112,15 +112,15 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `F02 PROPOSED DEFAULT` — states: Idle / RouteAssigned / ApproachingPickup / StoppedForPickup / Boarding / Occupied / StoppedForDropoff / AwaitingPayment / Completed|Failed.
 - `F03 LOCKED` — pickup/dropoff eligibility requires deliberate full stop in valid context.
 - `F04 LOCKED` - FullStop = vehicle speed <0.5 km/h continuously for 0.4 s; this technical epsilon/dwell is used for passenger exchange and manual quit eligibility.
-- `F05 OPEN` — meter START timing relative to boarding/seat commit/door close.
-- `F06 OPEN` — meter STOP ownership and exact destination-completion relationship. Manual physical STOP lever is locked; state ordering is not.
+- `F05 LOCKED` - after all passengers are seated and the passenger door is closed/latched, the driver physically presses START; fare distance/time does not accrue before manual START.
+- `F06 LOCKED` - reaching the destination zone does not auto-stop the meter; after destination eligibility + FullStop the driver physically presses STOP, then FareSession enters AwaitingPayment.
 - `F07 PROPOSED DEFAULT` — internal fare accumulator continuous; presentation may round/display discretely.
-- `F08 OPEN` — whether fare time accrues during all stopped time after meter START. Proposed: yes.
+- `F08 LOCKED` - after START, fare time accrues for the whole active trip including ordinary stops/waiting; ESC/system hard-pause time is excluded.
 - `F09 PROPOSED DEFAULT` — distance basis = actual odometer/path traveled, not route-plan distance.
 - `F10 LOCKED` — METERED/OFF_METER are modes of the same fare system, not duplicate fare frameworks.
 - `F11 OPEN` — passenger cancellation/abort rules after boarding.
-- `F12 OPEN` — accepting another order while occupied. Proposed FIRST EURO: no.
-- `F13 OPEN` — meter reset/next-fare cycle after STOP + exactly-one receipt: immediate reusable START vs explicit idle/reset step.
+- `F12 LOCKED` - while the current FareSession is occupied, a second active fare is forbidden; offers may be surfaced/buffered but cannot become another active fare.
+- `F13 LOCKED` - next cycle is STOP -> payment/receipt -> passenger exit -> RESET/Idle -> new START; the next fare cannot begin until the previous fare is closed exactly once.
 - `F14 OPEN` — receipt blocking/removal policy: auto-eject/non-blocking vs physical removal gate before next fare.
 - `F15 OPEN` — post-boarding passenger-door close procedure: always manual driver close vs an approved assisted/automatic close path.
 - `F16 OPEN` — exact hand/animation ownership: right-hand-first physical controls with left steering continuity vs nearest-hand selection exceptions.
@@ -298,32 +298,32 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **66 LOCKED**
+- **71 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **39 OPEN**
+- **34 OPEN**
 
-Readiness points: `66 + 3 + 88×0.5 = 113`.
+Readiness points: `71 + 3 + 88×0.5 = 118`.
 
-Current item-weighted START-90 specification readiness: `113 / 196 = 57.7%`.
+Current item-weighted START-90 specification readiness: `118 / 196 = 60.2%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **64.5%**
 - VEHICLE `D/E/M/N`: **68.6%**
-- TAXI `F/G`: **41.7%**
+- TAXI `F/G`: **58.3%**
 - STATE `H/I`: **81.0%**
 - WORLD `J/K/L`: **34.4%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `157/196 = 80.1%`. At least **20 of the 39 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `162/196 = 82.7%`. At least **15 of the 34 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`F05 F06 F08 F11 F12 F13 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F11 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
 Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 

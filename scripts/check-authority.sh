@@ -56,13 +56,13 @@ require_text "$registry" "jira_governance: CD-661"
 require_text "$registry" "confluence_ledger: 6553617"
 require_text "$registry" "owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md"
 require_text "$registry" "tracked_rows: 196"
-require_text "$registry" "status_counts: {locked: 66, calibration: 3, proposed_default: 88, open: 39}"
-require_text "$registry" "numerator_points: 113.0"
-require_text "$registry" "start90_percent: 57.7"
+require_text "$registry" "status_counts: {locked: 71, calibration: 3, proposed_default: 88, open: 34}"
+require_text "$registry" "numerator_points: 118.0"
+require_text "$registry" "start90_percent: 60.2"
 require_text "$registry" "start90_gate_passed: false"
-require_text "$registry" "gap_to_start90_percentage_points: 32.3"
-require_text "$registry" "all_proposed_defaults_accepted_percent: 80.1"
-require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 20"
+require_text "$registry" "gap_to_start90_percentage_points: 29.8"
+require_text "$registry" "all_proposed_defaults_accepted_percent: 82.7"
+require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 15"
 require_text "$registry" "crossing_example_percent: 90.31"
 require_text "$registry" "broad_production: HOLD"
 
@@ -96,6 +96,9 @@ require_text "$registry" "permanent_body_deformation: Debugging_Delight_Vehicle_
 require_text "$registry" "first_euro: false"
 require_text "$registry" "delivery: POST_FIRST_EURO"
 require_text "$registry" "exact_full_stop_epsilon_dwell: speed_below_0_5_kmh_continuously_for_0_4_seconds"
+require_text "$registry" "meter_start_stop_reset_sequence: boarded_and_door_latched_then_manual_start__destination_eligible_fullstop_then_manual_stop__payment_receipt_passenger_exit_reset_idle_then_new_start"
+require_text "$registry" "fare_time_stopped_policy: accrues_while_active_after_start_including_ordinary_stops_and_waiting_excluding_hard_pause"
+require_text "$registry" "second_active_fare_while_occupied: forbidden_offers_may_buffer_but_cannot_activate"
 require_text "$registry" "debt: bounded_essential_only_recovery_minimum_roadworthy_repair_mandatory_day_obligations"
 require_text "$registry" "workday_duration_time_semantics: 12_ingame_hours_equals_120_real_minutes_time_scale_x6"
 require_text "$registry" "force_quit_crash_contract: preserve_all_committed_purchases_refuel_fines_fare_payment_damage_and_resume_last_committed_logical_state"
@@ -108,14 +111,9 @@ require_text "$registry" "base100_code_architecture: 11239425"
 require_text "$registry" "open_decisions: 5832744"
 require_text "$registry" "master_question_register: CD-673"
 
-# Exact current 39-row OPEN owner set.
+# Exact current 34-row OPEN owner set.
 expected_open="$(cat <<'EOF'
-F05
-F06
-F08
 F11
-F12
-F13
 F14
 F15
 F16
@@ -164,9 +162,9 @@ if [ "$actual_open" != "$expected_open" ]; then
   printf '%s\n' "$expected_open" >&2
   echo "Actual OPEN rows:" >&2
   printf '%s\n' "$actual_open" >&2
-  fail "normalized 49-row OPEN owner set drifted"
+  fail "normalized 34-row OPEN owner set drifted"
 fi
-require_text "$registry" "count: 39"
+require_text "$registry" "count: 34"
 require_text "$registry" "production_line: UE_5.8"
 require_text "$registry" "owner_decision: use_Unreal_Engine_5_8"
 require_text "$registry" "owner_row: A09"
@@ -213,10 +211,10 @@ done
 
 # Mirror-level current locks.
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
-require_text docs/PINK_CAB_START90_READINESS.md "113 / 196 = 57.7%"
-require_text docs/PINK_CAB_START90_READINESS.md "20 of the remaining 39 OPEN rows"
+require_text docs/PINK_CAB_START90_READINESS.md "118 / 196 = 60.2%"
+require_text docs/PINK_CAB_START90_READINESS.md "15 of the remaining 34 OPEN rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "196 code-facing rows"
-require_text docs/OPEN_DECISIONS.md "39 genuine OPEN owner rows"
+require_text docs/OPEN_DECISIONS.md "34 genuine OPEN owner rows"
 require_text docs/OPEN_DECISIONS.md "Practice Hangar only where Level1 training/acceptance requires it"
 require_text docs/VERIFICATION_MATRIX.md "CANON → SPECIFIED → IMPLEMENTED → VERIFIED"
 

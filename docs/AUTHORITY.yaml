@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 66, calibration: 3, proposed_default: 88, open: 39}
+  status_counts: {locked: 71, calibration: 3, proposed_default: 88, open: 34}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 113.0
-  start90_percent: 57.7
+  numerator_points: 118.0
+  start90_percent: 60.2
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 32.3
-  domain_percent: {core: 64.5, vehicle: 68.6, taxi: 41.7, state: 81.0, world: 34.4, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 29.8
+  domain_percent: {core: 64.5, vehicle: 68.6, taxi: 58.3, state: 81.0, world: 34.4, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 80.1
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 20
+  all_proposed_defaults_accepted_percent: 82.7
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 15
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -351,8 +351,10 @@ current_canon:
   fare:
     meter_basis: distance_plus_elapsed_fare_time
     modes: [METERED, OFF_METER]
-    meter_start_stop_reset_sequence: OPEN_BASE100_F05_F06_and_CD-672
-    fare_time_stopped_policy: OPEN_BASE100_F08
+    meter_start_stop_reset_sequence: boarded_and_door_latched_then_manual_start__destination_eligible_fullstop_then_manual_stop__payment_receipt_passenger_exit_reset_idle_then_new_start
+    fare_time_stopped_policy: accrues_while_active_after_start_including_ordinary_stops_and_waiting_excluding_hard_pause
+    second_active_fare_while_occupied: forbidden_offers_may_buffer_but_cannot_activate
+    next_fare_cycle: stop_payment_receipt_passenger_exit_reset_idle_then_new_start_exactly_once
 
   repeat_clients_neural:
     first_euro: true
@@ -465,14 +467,9 @@ current_canon:
     current_first_euro_uninsured_recovery: LOCKED_BASE100_I06_REPAIR_RECOVERY_NO_FREE_RESET
 
 open_owner_rows:
-  count: 39
+  count: 34
   ids:
-    - F05
-    - F06
-    - F08
     - F11
-    - F12
-    - F13
     - F14
     - F15
     - F16
