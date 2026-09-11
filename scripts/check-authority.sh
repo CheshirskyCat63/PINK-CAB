@@ -56,13 +56,13 @@ require_text "$registry" "jira_governance: CD-661"
 require_text "$registry" "confluence_ledger: 6553617"
 require_text "$registry" "owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md"
 require_text "$registry" "tracked_rows: 196"
-require_text "$registry" "status_counts: {locked: 75, calibration: 3, proposed_default: 88, open: 30}"
-require_text "$registry" "numerator_points: 122.0"
-require_text "$registry" "start90_percent: 62.2"
+require_text "$registry" "status_counts: {locked: 79, calibration: 3, proposed_default: 88, open: 26}"
+require_text "$registry" "numerator_points: 126.0"
+require_text "$registry" "start90_percent: 64.3"
 require_text "$registry" "start90_gate_passed: false"
-require_text "$registry" "gap_to_start90_percentage_points: 27.8"
-require_text "$registry" "all_proposed_defaults_accepted_percent: 84.7"
-require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 11"
+require_text "$registry" "gap_to_start90_percentage_points: 25.7"
+require_text "$registry" "all_proposed_defaults_accepted_percent: 86.7"
+require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 7"
 require_text "$registry" "crossing_example_percent: 90.31"
 require_text "$registry" "broad_production: HOLD"
 
@@ -106,6 +106,10 @@ require_text "$registry" "second_active_fare_while_occupied: forbidden_offers_ma
 require_text "$registry" "debt: bounded_essential_only_recovery_minimum_roadworthy_repair_mandatory_day_obligations"
 require_text "$registry" "workday_duration_time_semantics: 12_ingame_hours_equals_120_real_minutes_time_scale_x6"
 require_text "$registry" "force_quit_crash_contract: preserve_all_committed_purchases_refuel_fines_fare_payment_damage_and_resume_last_committed_logical_state"
+require_text "$registry" "persistent_delta_classes: vehiclebuild_owned_service_economy_transactions_passengeridentity_local_reviews_important_active_incidents_explicit_persistent_world_changes"
+require_text "$registry" "incident_persistence: bounded_important_active_only_background_crashes_nearmiss_minor_debris_may_expire_after_reconstruction_window"
+require_text "$registry" "old_generator_save_policy: campaign_retains_generator_and_contentset_versions_explicit_versioned_migration_only_no_silent_regeneration"
+require_text "$registry" "reacquisition_reset_semantics: reset_after_0_25s_continuous_valid_contact_shorter_recontact_does_not_refresh"
 
 # Current durable authority IDs.
 require_text "$registry" "authority_index: 6586369"
@@ -115,16 +119,13 @@ require_text "$registry" "base100_code_architecture: 11239425"
 require_text "$registry" "open_decisions: 5832744"
 require_text "$registry" "master_question_register: CD-673"
 
-# Exact current 30-row OPEN owner set.
+# Exact current 26-row OPEN owner set.
 expected_open="$(cat <<'EOF'
 F14
 F18
 F19
 G02
 G04
-J05
-J07
-J09
 J11
 J12
 K04
@@ -136,7 +137,6 @@ K13
 L05
 L06
 L07
-M05
 N05
 N06
 N07
@@ -162,9 +162,9 @@ if [ "$actual_open" != "$expected_open" ]; then
   printf '%s\n' "$expected_open" >&2
   echo "Actual OPEN rows:" >&2
   printf '%s\n' "$actual_open" >&2
-  fail "normalized 30-row OPEN owner set drifted"
+  fail "normalized 26-row OPEN owner set drifted"
 fi
-require_text "$registry" "count: 30"
+require_text "$registry" "count: 26"
 require_text "$registry" "production_line: UE_5.8"
 require_text "$registry" "owner_decision: use_Unreal_Engine_5_8"
 require_text "$registry" "owner_row: A09"
@@ -211,10 +211,10 @@ done
 
 # Mirror-level current locks.
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
-require_text docs/PINK_CAB_START90_READINESS.md "122 / 196 = 62.2%"
-require_text docs/PINK_CAB_START90_READINESS.md "11 of the remaining 30 OPEN rows"
+require_text docs/PINK_CAB_START90_READINESS.md "126 / 196 = 64.3%"
+require_text docs/PINK_CAB_START90_READINESS.md "7 of the remaining 26 OPEN rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "196 code-facing rows"
-require_text docs/OPEN_DECISIONS.md "30 genuine OPEN owner rows"
+require_text docs/OPEN_DECISIONS.md "26 genuine OPEN owner rows"
 require_text docs/OPEN_DECISIONS.md "Practice Hangar only where Level1 training/acceptance requires it"
 require_text docs/VERIFICATION_MATRIX.md "CANON → SPECIFIED → IMPLEMENTED → VERIFIED"
 

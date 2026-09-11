@@ -175,11 +175,11 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `J02 PROPOSED DEFAULT` — CityCode is immutable for an existing campaign save.
 - `J03 PROPOSED DEFAULT` — generated chunks/modules use deterministic coordinate/ID.
 - `J04 PROPOSED DEFAULT` — persist seed/version + meaningful deltas, not complete generated world serialization.
-- `J05 OPEN` — exact mandatory persistent-delta classes. Proposed core: vehicle/owned/service/economy/passenger identities + selected persistent incidents/world changes.
+- `J05 LOCKED` — mandatory persistent deltas are Tatra/VehicleBuild state, owned/service state, economy/transactions, PassengerIdentity + local reviews, bounded important/active incidents, and explicitly persistent world changes. Ordinary transient traffic is not persisted.
 - `J06 PROPOSED DEFAULT` — ordinary temporary traffic is not persisted when unloaded.
-- `J07 OPEN` — which incidents persist across streaming/save. Proposed: bounded important/active incidents only.
+- `J07 LOCKED` — only bounded important/active incidents persist across streaming/save; ordinary background traffic crashes, near-misses and minor debris may disappear after leaving the reconstruction window.
 - `J08 PROPOSED DEFAULT` — same generator version + inputs reproduce deterministic logical world across supported machines.
-- `J09 OPEN` — old-generator save policy: retain reconstruction version vs migrate world. Proposed: preserve versioned reconstruction; migrate only explicitly.
+- `J09 LOCKED` — each campaign retains its GeneratorVersion + ContentSetVersion for deterministic reconstruction. Migration is explicit and versioned only; silent regeneration under a newer generator is forbidden.
 - `J10 PROPOSED DEFAULT` — UE World Partition/PCG/engine streaming + thin deterministic PINK CAB recipe layer; no bespoke world-streaming engine by default.
 - `J11 OPEN` — exact chunk-length/lookahead/live-recent-reconstructable/cache/recycle numeric envelope required by CityCode streaming tests.
 - `J12 OPEN` — exact world-streaming actor/component/memory/materialization ceilings and reverse-cache budget used by performance acceptance.
@@ -216,7 +216,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `M02 LOCKED` — seven wallride bands are gameplay/data bands; Tatra occupies approximately three.
 - `M03 PROPOSED DEFAULT` — magnet state identity: Detached / Contact / Residual / Expired.
 - `M04 LOCKED` — residual timeout is linear by authoritative mass: 5.0 s @1657 kg -> 4.0 s @2107 kg, lighter legal states cap 5.0 s.
-- `M05 OPEN` — reacquisition reset semantics.
+- `M05 LOCKED` — residual magnetism fully resets only after at least 0.25 s of continuous valid wall contact following reacquisition; briefer contact does not refresh the timer.
 - `M06 PROPOSED DEFAULT` — gap without valid contact consumes residual countdown.
 - `M07 LOCKED` — wallride failure outcome follows physical result/damage/recovery; no special scripted universal fail.
 - `M08 PROPOSED DEFAULT` — freight ceiling traffic uses the common cheaper traffic backend/profile/graph, not hero physics per vehicle.
@@ -298,32 +298,32 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **75 LOCKED**
+- **79 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **30 OPEN**
+- **26 OPEN**
 
-Readiness points: `75 + 3 + 88×0.5 = 122`.
+Readiness points: `79 + 3 + 88×0.5 = 126`.
 
-Current item-weighted START-90 specification readiness: `122 / 196 = 62.2%`.
+Current item-weighted START-90 specification readiness: `126 / 196 = 64.3%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **64.5%**
-- VEHICLE `D/E/M/N`: **68.6%**
+- VEHICLE `D/E/M/N`: **71.4%**
 - TAXI `F/G`: **71.7%**
 - STATE `H/I`: **81.0%**
-- WORLD `J/K/L`: **34.4%**
+- WORLD `J/K/L`: **43.8%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `166/196 = 84.7%`. At least **11 of the 30 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `170/196 = 86.7%`. At least **7 of the 26 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`F14 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F14 F18 F19 G02 G04 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
 Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
