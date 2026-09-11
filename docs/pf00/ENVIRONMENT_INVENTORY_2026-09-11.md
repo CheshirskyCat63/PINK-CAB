@@ -48,13 +48,13 @@ Observed SDKs:
 
 ## PF-00 decision boundary
 
-The machine has multiple plausible Unreal/toolchain combinations. No production choice is made by this inventory.
+Owner lock recorded on 2026-09-11: `A01 LOCKED` to the Unreal Engine 5.8 production line. The selected installed bootstrap build is UE 5.8.2 (`++UE5+Release-5.8`, changelist 56702186). Changing the production engine line requires an explicit compatibility/migration decision.
 
-Before committing `PinkCab.uproject` engine association or declaring a canonical build/package command:
+Before declaring a canonical build/package command or executable bootstrap acceptance:
 
-1. resolve/pin `A01` exact Unreal production-version policy;
+1. keep PF-00 bound to the owner-locked UE 5.8 production line;
 2. resolve `A09` canonical local build/package command;
-3. verify the selected Unreal version against the selected MSVC/Windows SDK combination;
+3. verify UE 5.8.2 against the selected MSVC/Windows SDK combination;
 4. record exact commands and first executable smoke evidence.
 
 No paid dependency was introduced by this inventory.
