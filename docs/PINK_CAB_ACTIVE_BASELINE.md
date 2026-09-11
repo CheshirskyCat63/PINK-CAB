@@ -106,7 +106,7 @@ Current grammar: mouse steers by default; hold Space for gaze/free-look and targ
 
 Steering, throttle, brake, clutch state/release speed and handbrake are continuous. The same wheel is contextual: on clutch adjustment it changes release speed rather than instantaneous clutch pressure; on a targeted cabin control it follows that control's authored incremental/rotary semantics. No Drift Mode, auto-countersteer, ABS or ESP rescue.
 
-Input reaches FGear through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model.
+Input reaches FGear through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model. One C++ semantic router owns raw KBM intake, one bounded target is active, and valid-target feedback is a textless translucent reticle that brightens to a white-matte state. Left/right hand choice is presentation only and may switch automatically; instruments/controls must work before full hand animation fidelity.
 
 ## Core taxi work
 

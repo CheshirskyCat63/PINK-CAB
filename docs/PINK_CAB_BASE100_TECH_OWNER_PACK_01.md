@@ -73,13 +73,13 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 ## C · Input / physical interaction
 
-- `C01 PROPOSED DEFAULT` — one Enhanced Input router/adapter distributes semantic commands.
+- `C01 LOCKED` — one C++ Enhanced Input router/adapter receives physical KBM input and distributes semantic commands/states; feature systems do not read raw keys independently.
 - `C02 LOCKED` — FGear does not consume raw Enhanced Input directly; PINK CAB vehicle adapter sits between.
 - `C03 LOCKED` — steering/throttle/brake/clutch/handbrake are continuous normalized states/commands.
-- `C04 PROPOSED DEFAULT` — one reusable physical-control interaction interface for cabin switches/levers/controls.
-- `C05 PROPOSED DEFAULT` — physical controls emit semantic commands; they do not reach into unrelated subsystem internals.
+- `C04 LOCKED` — one reusable physical-control interaction contract serves cabin switches/levers/buttons/rotaries; each control declares supported Grip / Press-Hold / Wheel gestures instead of inventing its own interaction system.
+- `C05 LOCKED` — physical controls emit semantic events/commands and never reach directly into unrelated Taxi/Economy/Vehicle subsystem internals.
 - `C06 LOCKED` — default mouse steering; hold Space for gaze/free-look and one bounded current target; `1–4` quick-recall saved physical targets/hand poses without actuating them; RMB brings/retains the right hand on a target where grip is required; LMB press/hold owns momentary controls such as horn/buttons; mouse wheel owns detent/rotary/incremental controls when supported. Each physical control declares supported gestures; target selection alone never actuates.
-- `C07 PROPOSED DEFAULT` — bounded interaction trace/current target; no world scan.
+- `C07 LOCKED` — gaze resolves one bounded current interaction target through trace/query; no world-wide or cabin-wide Actor scan in the hot path.
 - `C08 LOCKED` - FIRST EURO includes semantic KBM rebinding with conflict detection and Restore Defaults; rebinding cannot change the canonical physical-control model.
 
 ## D · Vehicle / FGear
@@ -123,7 +123,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `F13 LOCKED` - next cycle is STOP -> payment/receipt -> passenger exit -> RESET/Idle -> new START; the next fare cannot begin until the previous fare is closed exactly once.
 - `F14 LOCKED` - after payment commits, a physical receipt is offered/ejected and the passenger may take it or leave it; receipt collection never blocks FareSession completion or the next order. If left, the already-committed payment may resolve through the existing legal/off-meter economy mode as an off-register pocket/tip outcome; exact monetary coefficients remain F18 profile data.
 - `F15 LOCKED` - passenger-door opening/closing is a deliberate cabin interaction through the physical handle/lever interface while using gaze/head-look; no magical automatic close is authoritative. The door may be opened while the meter is active for passenger errands without ending the FareSession.
-- `F16 LOCKED` - right-hand-first cabin manipulation is authoritative where physically plausible so the left hand can preserve steering continuity; authored exceptions must be explicit, not automatic nearest-hand ambiguity.
+- `F16 LOCKED` — gameplay interaction truth is hand-agnostic. Left/right hand is selected automatically by the presentation/animation layer according to pose and context; hands visualize mouse interaction and never become a second authoritative control scheme.
 - `F17 LOCKED` - no hidden keyboard shortcut path for physical cabin controls such as ignition/lights/wipers/meter/doors/radio. Interaction stays visible and immersive through the cabin interface; convenience may reduce friction through explicit accessibility/assist settings, while a more demanding interaction profile may be opt-in.
 - `F18 OPEN` — versioned curb/off-meter economy profile: tip uplift, pricing/negotiation if retained, complaint/risk eligibility and thresholds.
 - `F19 LOCKED` - fare evasion can occur only before payment commit while money is unresolved and an exit path is open: either a passenger fails to return from an active-meter stopover, or at final AwaitingPayment the passenger exits through an already-open door instead of performing the required hand swipe on the cabin grab-rail reader. A successful reader payment commit prevents ordinary unpaid escape. Exact probability/weight values are data calibration, not a second owner mechanic.
@@ -298,18 +298,18 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **84 LOCKED**
+- **88 LOCKED**
 - **3 CALIBRATION**
-- **87 PROPOSED DEFAULT**
+- **83 PROPOSED DEFAULT**
 - **22 OPEN**
 
-Readiness points: `84 + 3 + 87×0.5 = 130.5`.
+Readiness points: `88 + 3 + 83×0.5 = 132.5`.
 
-Current item-weighted START-90 specification readiness: `130.5 / 196 = 66.6%`.
+Current item-weighted START-90 specification readiness: `132.5 / 196 = 67.6%`.
 
 Domain snapshots under the same rubric:
 
-- CORE `A/B/C/Q/R/S`: **65.5%**
+- CORE `A/B/C/Q/R/S`: **69.1%**
 - VEHICLE `D/E/M/N`: **71.4%**
 - TAXI `F/G`: **85.0%**
 - STATE `H/I`: **81.0%**

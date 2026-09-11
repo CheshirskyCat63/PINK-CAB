@@ -73,7 +73,9 @@ Exact module count/names remain Pack A03. General lock:
 - mouse wheel = contextual detent/rotary/incremental adjustment where the current control supports it;
 - Q clutch, W brake, E throttle;
 - clutch wheel semantics adjust release speed, not instantaneous clutch pressure;
-- one bounded current interaction target; no world scan; hidden steering continuity cannot choose route/lane/gap, brake, throttle, overtake or avoid traffic.
+- one bounded current interaction target; no world scan; hidden steering continuity cannot choose route/lane/gap, brake, throttle, overtake or avoid traffic;
+- target feedback is textless: translucent reticle by default, brighter white-matte/less-transparent on a valid control;
+- left/right hand is selected automatically by presentation context; hand animation visualizes the interaction but never owns gameplay truth.
 
 The universal `LMB ATTENTION / RMB GO` wording is SUPERSEDED. Interaction is control-type-driven: target/quick-recall, optional grip, then the gesture declared by that physical control.
 
