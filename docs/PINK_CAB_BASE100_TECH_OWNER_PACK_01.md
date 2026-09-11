@@ -121,20 +121,20 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `F11 LOCKED` - a passenger-requested trip cancellation after boarding is not a normal convenience path: it represents a serious crash/terminal service failure, the active fare fails, the workday ends, and repair/recovery follows. Temporary passenger errands during an active fare are not cancellation.
 - `F12 LOCKED` - while the current FareSession is occupied, a second active fare is forbidden; offers may be surfaced/buffered but cannot become another active fare.
 - `F13 LOCKED` - next cycle is STOP -> payment/receipt -> passenger exit -> RESET/Idle -> new START; the next fare cannot begin until the previous fare is closed exactly once.
-- `F14 OPEN` — receipt blocking/removal policy: auto-eject/non-blocking vs physical removal gate before next fare.
+- `F14 LOCKED` - after payment commits, a physical receipt is offered/ejected and the passenger may take it or leave it; receipt collection never blocks FareSession completion or the next order. If left, the already-committed payment may resolve through the existing legal/off-meter economy mode as an off-register pocket/tip outcome; exact monetary coefficients remain F18 profile data.
 - `F15 LOCKED` - passenger-door opening/closing is a deliberate cabin interaction through the physical handle/lever interface while using gaze/head-look; no magical automatic close is authoritative. The door may be opened while the meter is active for passenger errands without ending the FareSession.
 - `F16 LOCKED` - right-hand-first cabin manipulation is authoritative where physically plausible so the left hand can preserve steering continuity; authored exceptions must be explicit, not automatic nearest-hand ambiguity.
 - `F17 LOCKED` - no hidden keyboard shortcut path for physical cabin controls such as ignition/lights/wipers/meter/doors/radio. Interaction stays visible and immersive through the cabin interface; convenience may reduce friction through explicit accessibility/assist settings, while a more demanding interaction profile may be opt-in.
 - `F18 OPEN` — versioned curb/off-meter economy profile: tip uplift, pricing/negotiation if retained, complaint/risk eligibility and thresholds.
-- `F19 OPEN` - fare evasion is canon and may occur when a passenger leaves during an active-meter errand/stopover and does not return or pay. Exact eligible PassengerTemplates, probability/trigger model, consequences and exactly-once outcome mapping remain owner-open.
+- `F19 LOCKED` - fare evasion can occur only before payment commit while money is unresolved and an exit path is open: either a passenger fails to return from an active-meter stopover, or at final AwaitingPayment the passenger exits through an already-open door instead of performing the required hand swipe on the cabin grab-rail reader. A successful reader payment commit prevents ordinary unpaid escape. Exact probability/weight values are data calibration, not a second owner mechanic.
 - `F20 CALIBRATION` — passenger-door mechanical envelope after physical/open-close semantics are locked: lever/hinge travel, latch timing, animation duration, reach tolerance and authored damage thresholds through Vehicle Health.
 
 ## G · Passenger / repeat clients / Neural
 
 - `G01 LOCKED` - procedural PassengerTemplate and persistent PassengerIdentity are separate. A materialized passenger exposes a stable public PassengerIdentity profile before service when the driver looks at them near the cab.
-- `G02 OPEN` — promotion frequency/eligibility for persistent repeat clients.
+- `G02 LOCKED` - PassengerIdentity persists from first encounter; promotion into the active repeat-client pool occurs after 2 successfully paid fares or one authored relationship event, after which the existing deterministic-score/seeded selection path governs reappearance.
 - `G03 PROPOSED DEFAULT` — promotion uses deterministic score + seeded randomness, not uncontrolled random roll.
-- `G04 OPEN` — relationship dimensions. Proposed compact axes: Trust / Satisfaction / RiskTolerance.
+- `G04 LOCKED` - compact relationship axes are `Trust / Satisfaction / RiskTolerance`; trip history and authored outcomes modify these axes while player-facing presentation may remain qualitative rather than exposing raw numbers.
 - `G05 PROPOSED DEFAULT` — preferences may influence tip/repeat/acceptance outcomes.
 - `G06 LOCKED` - basic Neural is data-driven contact/history/simple-message layer, not broad dialogue/life simulation. The local player may leave a quick star rating plus short text review on a PassengerIdentity; the schema must preserve review provenance for later shared/community propagation without requiring an online runtime in FIRST EURO.
 - `G07 LOCKED` — repeat order reuses normal Order/FareSession pipeline.
@@ -298,32 +298,32 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **79 LOCKED**
+- **83 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **26 OPEN**
+- **22 OPEN**
 
-Readiness points: `79 + 3 + 88×0.5 = 126`.
+Readiness points: `83 + 3 + 88×0.5 = 130`.
 
-Current item-weighted START-90 specification readiness: `126 / 196 = 64.3%`.
+Current item-weighted START-90 specification readiness: `130 / 196 = 66.3%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **64.5%**
 - VEHICLE `D/E/M/N`: **71.4%**
-- TAXI `F/G`: **71.7%**
+- TAXI `F/G`: **85.0%**
 - STATE `H/I`: **81.0%**
 - WORLD `J/K/L`: **43.8%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `170/196 = 86.7%`. At least **7 of the 26 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `174/196 = 88.8%`. At least **3 of the 22 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`F14 F18 F19 G02 G04 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
 Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 

@@ -28,15 +28,15 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 
 ## Fresh owner-pack census
 
-- LOCKED: **79**
+- LOCKED: **83**
 - CALIBRATION: **3**
 - PROPOSED DEFAULT: **88**
-- OPEN: **26**
+- OPEN: **22**
 - TOTAL: **196**
 
-Current score: `79 + 3 + 88×0.5 = 126`; `126 / 196 = 64.3%`.
+Current score: `83 + 3 + 88×0.5 = 130`; `130 / 196 = 66.3%`.
 
-**START-90: FAIL. Gap: 25.7 percentage points.**
+**START-90: FAIL. Gap: 23.7 percentage points.**
 
 ## Domain snapshot
 
@@ -44,7 +44,7 @@ Current score: `79 + 3 + 88×0.5 = 126`; `126 / 196 = 64.3%`.
 | --- | --- | ---: | ---: |
 | CORE | A/B/C/Q/R/S | 55 | **64.5%** |
 | VEHICLE | D/E/M/N | 35 | **71.4%** |
-| TAXI | F/G | 30 | **71.7%** |
+| TAXI | F/G | 30 | **85.0%** |
 | STATE | H/I | 21 | **81.0%** |
 | WORLD | J/K/L | 32 | **43.8%** |
 | SERVICE | O/P | 23 | **56.5%** |
@@ -54,11 +54,11 @@ SCOPE is reported separately so a locked delivery boundary cannot hide weak runt
 
 ## Exact path to START-90
 
-If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `170 / 196 = 86.7%`. Closing at least 7 of the remaining 26 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
+If all 88 PROPOSED DEFAULT rows are owner-accepted, score becomes `174 / 196 = 88.8%`. Closing at least 3 of the remaining 22 OPEN rows then yields `177 / 196 = 90.31%` and crosses START-90. This is a mathematical minimum, not permission to ignore structural priority.
 
 ## Current genuine OPEN owner rows
 
-`F14 F18 F19 G02 G04 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
+`F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
 
 Highest structural priority: runtime/version/build/platform (`A`), session/save/recovery (`I`), CityCode/streaming (`J`), traffic/geometry (`K`), rule numerics (`L`), then remaining taxi/service/transit owner rows.
 

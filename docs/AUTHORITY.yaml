@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 79, calibration: 3, proposed_default: 88, open: 26}
+  status_counts: {locked: 83, calibration: 3, proposed_default: 88, open: 22}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 126.0
-  start90_percent: 64.3
+  numerator_points: 130.0
+  start90_percent: 66.3
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 25.7
-  domain_percent: {core: 64.5, vehicle: 71.4, taxi: 71.7, state: 81.0, world: 43.8, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 23.7
+  domain_percent: {core: 64.5, vehicle: 71.4, taxi: 85.0, state: 81.0, world: 43.8, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 86.7
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 7
+  all_proposed_defaults_accepted_percent: 88.8
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -362,6 +362,11 @@ current_canon:
     hidden_physical_control_shortcuts: forbidden_explicit_assist_profiles_may_reduce_friction_hardcore_friction_may_be_opt_in
     second_active_fare_while_occupied: forbidden_offers_may_buffer_but_cannot_activate
     next_fare_cycle: stop_payment_receipt_passenger_exit_reset_idle_then_new_start_exactly_once
+    payment_commit_interaction: passenger_hand_swipe_on_cabin_grabrail_reader_before_exit
+    unpaid_escape_eligibility: unresolved_payment_and_open_door_including_final_awaitingpayment_or_active_meter_stopover_no_return
+    payment_commit_blocks_unpaid_escape: true
+    receipt_after_payment: physical_optional_take_or_leave_never_blocks_fare_completion_or_next_order
+    unclaimed_receipt_settlement: committed_payment_may_be_recorded_as_off_register_pocket_tip_outcome_under_existing_metered_off_meter_mode_economy_profile
 
   repeat_clients_neural:
     first_euro: true
@@ -373,9 +378,9 @@ current_canon:
     first_euro_cross_player_review_transport: false
     persistent_passenger_without_actor: true
     repeat_order_reuses_normal_order_fare_pipeline: true
-    fare_evasion_during_active_meter_errand: canon_exact_template_probability_trigger_consequence_mapping_OPEN_BASE100_F19
-    promotion_scoring: OPEN_BASE100_G02
-    relationship_axes: OPEN_BASE100_G04
+    fare_evasion: locked_unresolved_payment_escape_before_reader_commit_at_final_open_door_or_stopover_no_return_exact_probability_weights_are_data_calibration
+    promotion_scoring: repeat_pool_after_2_successfully_paid_fares_or_one_authored_relationship_event_then_score_seeded_selection
+    relationship_axes: [Trust, Satisfaction, RiskTolerance]
 
   economy_policy:
     debt: bounded_essential_only_recovery_minimum_roadworthy_repair_mandatory_day_obligations
@@ -479,13 +484,9 @@ current_canon:
     current_first_euro_uninsured_recovery: LOCKED_BASE100_I06_REPAIR_RECOVERY_NO_FREE_RESET
 
 open_owner_rows:
-  count: 26
+  count: 22
   ids:
-    - F14
     - F18
-    - F19
-    - G02
-    - G04
     - J11
     - J12
     - K04

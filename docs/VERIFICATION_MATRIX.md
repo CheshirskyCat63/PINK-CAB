@@ -90,9 +90,9 @@ Locked physical identity: 1450 kg base; 1550 kg full fuel; heroine 58 kg; daught
 | `PC-T-PAX-SEAT-001` | group 1–5 boards once; rear3→front2; mass applies once | LOCKED DIRECTION / NOT IMPLEMENTED |
 | `PC-T-MTR-001` | METERED fare accumulates distance + elapsed fare time | BASIS LOCKED / NUMERICS OPEN |
 | `PC-T-MTR-002` | OFF_METER never accumulates hidden official-meter fare | LOCKED DIRECTION / NOT IMPLEMENTED |
-| `PC-T-PAY-001` | unresolved payment + opened doors can produce one eligible evasion event | LOCKED DIRECTION / RULE NUMERICS OPEN |
-| `PC-T-PAY-002` | committed payment prevents ordinary unpaid escape | LOCKED DIRECTION / NOT IMPLEMENTED |
-| `PC-T-FARE-001` | fare/passenger/meter/receipt/payment/tip/evasion are save/retry idempotent | SPECIFIED / NOT IMPLEMENTED |
+| `PC-T-PAY-001` | unresolved payment + open exit can produce fare evasion either by stopover no-return or final exit before grab-rail-reader payment commit | LOCKED / NUMERIC WEIGHTS CALIBRATION |
+| `PC-T-PAY-002` | passenger hand swipe on grab-rail reader commits payment exactly once; committed payment prevents ordinary unpaid escape | LOCKED / NOT IMPLEMENTED |
+| `PC-T-FARE-001` | fare/passenger/meter/optional receipt/payment/tip/off-register outcome/evasion are save/retry idempotent | SPECIFIED / NOT IMPLEMENTED |
 | `PC-T-FARE-002` | one authoritative active FareSession rule follows final owner-pack answer | OWNER PACK ACTIVE |
 
 ## P3/P4 · CityCode / road graph / traffic / rules — `CD-751`
@@ -116,7 +116,7 @@ Locked physical identity: 1450 kg base; 1550 kg full fuel; heroine 58 kg; daught
 | Test ID | Required proof | State |
 |---|---|---|
 | `PC-T-NEU-001` | persistent PassengerIdentity survives stream/save/reload without an Actor | SCOPE LOCKED / NOT IMPLEMENTED |
-| `PC-T-NEU-002` | repeat client remembers trip outcomes/preferences/contact permission | SCOPE LOCKED / DETAILS OPEN |
+| `PC-T-NEU-002` | PassengerIdentity persists from first encounter; repeat-pool promotion after 2 paid fares or one authored relationship event; Trust/Satisfaction/RiskTolerance persist | LOCKED / NOT IMPLEMENTED |
 | `PC-T-NEU-003` | repeat order reuses normal Order/Fare pipeline rather than second taxi loop | ARCHITECTURE LOCKED / NOT IMPLEMENTED |
 | `PC-T-NEU-004` | simple data-driven messages/history survive save/version migration | SPECIFIED / OWNER NUMERICS OPEN |
 | `PC-T-NEU-005` | promotion score/probability follows final deterministic/seeded owner contract | OWNER PACK ACTIVE |
