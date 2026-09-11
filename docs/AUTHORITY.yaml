@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 45, calibration: 3, proposed_default: 88, open: 60}
+  status_counts: {locked: 46, calibration: 3, proposed_default: 88, open: 59}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 92.0
-  start90_percent: 46.9
+  numerator_points: 93.0
+  start90_percent: 47.4
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 43.1
-  domain_percent: {core: 50.0, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 42.6
+  domain_percent: {core: 51.8, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 69.4
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 41
+  all_proposed_defaults_accepted_percent: 69.9
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 40
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -101,7 +101,16 @@ runtime_toolchain:
     bootstrap_changelist_observed: 56702186
     version_policy: pinned_5_8_line_change_only_by_explicit_migration_decision
     owner_decision_date: 2026-09-11
-  canonical_build_package_command: OPEN_BASE100_A09
+  canonical_build:
+    owner_row: A09
+    status: LOCKED
+    entrypoint: scripts/build.ps1
+    clean_checkout_command: ".\\scripts\\build.ps1"
+    package_command: ".\\scripts\\build.ps1 -Package"
+    toolchain: UE_5.8_native_BuildBat_and_RunUAT_wrapped_by_repo_script
+    visual_studio_role: IDE_only_not_canonical_build_authority
+    local_ci_parity: same_repository_script
+    owner_decision_date: 2026-09-11
 
 first_euro_scope:
   horizon_months: 12
@@ -394,11 +403,10 @@ current_canon:
     current_first_euro_uninsured_recovery: OPEN_CD-750_BASE100_I06
 
 open_owner_rows:
-  count: 60
+  count: 59
   ids:
     - A03
     - A07
-    - A09
     - A10
     - A13
     - A14

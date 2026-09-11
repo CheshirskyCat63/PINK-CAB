@@ -67,7 +67,7 @@ Content/
     Maps/L_PinkCab_ContractZero.umap
     Greybox/
 Scripts/
-  # exact canonical build/package command remains A09 OPEN; do not invent it before owner lock
+  # exact canonical build/package entrypoint is scripts/build.ps1 under A09 LOCKED
 ```
 
 The generated `PinkCab` module is a bootstrap container, not a decision that A03 is resolved. Domain folders/interfaces are allowed because they do not commit the final UE module split. After A03 is owner-locked, files may be moved into the approved modules with no domain-contract change.
@@ -94,7 +94,7 @@ The generated `PinkCab` module is a bootstrap container, not a decision that A03
 
 **Owner gates before finalizing PF-00:**
 - `A01`: LOCKED to Unreal Engine 5.8 production line; bootstrap install observed at 5.8.2.
-- `A09`: canonical build/package invocation is not chosen by this task.
+- `A09`: canonical build/package entrypoint is owner-locked to `scripts/build.ps1`; local and CI use the same wrapper.
 
 - [ ] **Step 1: Inventory the authorized local Unreal environment**
 
@@ -104,7 +104,7 @@ Expected evidence: a text record attached to PF-00 containing exact versions/pat
 
 - [ ] **Step 2: Bind bootstrap to the owner-locked UE 5.8 production line**
 
-Use the installed UE 5.8 line selected by the owner. Record the exact local build (currently 5.8.2) in bootstrap evidence. Do not change engine line without an explicit migration decision. `A09` remains separately OPEN.
+Use the installed UE 5.8 line selected by the owner. Record the exact local build (currently 5.8.2) in bootstrap evidence. Do not change engine line without an explicit migration decision. `A09` is LOCKED to the repository `scripts/build.ps1` wrapper.
 
 - [ ] **Step 3: Generate the minimal C++ project**
 
@@ -118,7 +118,7 @@ Expected first run: FAIL because project identity provider is absent.
 
 - [ ] **Step 5: Implement the minimal bootstrap identity**
 
-Create `Source/PinkCab/Public/Core/PinkCabBuildIdentity.h` and `Source/PinkCab/Private/Core/PinkCabBuildIdentity.cpp` with a small value type returning product name plus compile/runtime build fields. Do not invent A09 CI/package semantics.
+Create `Source/PinkCab/Public/Core/PinkCabBuildIdentity.h` and `Source/PinkCab/Private/Core/PinkCabBuildIdentity.cpp` with a small value type returning product name plus compile/runtime build fields. Use the owner-locked `scripts/build.ps1` boundary; do not bypass it with IDE-only build steps.
 
 - [ ] **Step 6: Run bootstrap automation and editor launch**
 
@@ -433,7 +433,7 @@ Acceptance: no VDS substitute/deformation implementation exists.
 - Consumes every PF-00..PF-14 artifact.
 - Produces the release-quality evidence bundle for the purchase gate.
 
-- [ ] Run fresh-checkout project generation/build using the owner-approved A09 command if A09 is locked by then; otherwise record A09 as the remaining build-governance blocker without fabricating a command.
+- [ ] Run fresh-checkout project generation/build through the owner-approved `scripts/build.ps1` entrypoint and record exact output/evidence.
 - [ ] Run all `PinkCab.*` automation tests and record zero failures.
 - [ ] Launch canonical contract map and L1 Greybox Zero; record exact commit, engine version, config/schema versions and test seed(s).
 - [ ] Search production source for FGear/VDS/Chaos hero-vehicle includes and verify none are present before purchase.

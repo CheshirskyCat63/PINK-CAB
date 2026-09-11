@@ -31,15 +31,15 @@ Prefer proven Unreal features/plugins/assets over custom frameworks. Selected th
 
 ## Current START-90 snapshot — 2026-09-10
 
-Technical Owner Pack 01 contains **196 code-facing rows**: 45 LOCKED, 3 CALIBRATION, 88 PROPOSED DEFAULT, 60 OPEN.
+Technical Owner Pack 01 contains **196 code-facing rows**: 46 LOCKED, 3 CALIBRATION, 88 PROPOSED DEFAULT, 59 OPEN.
 
 Scoring: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
-**Current item-weighted START-90 specification readiness = 46.9%. Gate FAIL. Gap = 43.1 percentage points.**
+**Current item-weighted START-90 specification readiness = 47.4%. Gate FAIL. Gap = 42.6 percentage points.**
 
-Domain snapshot: CORE 50.0%; VEHICLE 68.6%; TAXI 38.3%; STATE 23.8%; WORLD 34.4%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 51.8%; VEHICLE 68.6%; TAXI 38.3%; STATE 23.8%; WORLD 34.4%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
-If all 88 proposed defaults are accepted, score becomes 69.4%. At least 41 of the remaining 60 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
+If all 88 proposed defaults are accepted, score becomes 69.9%. At least 40 of the remaining 59 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
 
 Historical ≈59% and 38.2% scores are retired. Broad production remains HOLD; narrow bootstrap/specification/calibration/admin work is allowed.
 
@@ -187,4 +187,4 @@ Moving refueling is a first-year gameplay mechanic. It uses the common FuelTank,
 
 Documentation establishes CANON/SPECIFIED only. Vehicle stack requires `CD-738`; handling `CD-657/CD-658`; mass/load/vertical `CD-701`; Fare Zero `CD-724`; world/runtime and other systems require their own exact-build evidence.
 
-Current code-only START-90 score is **46.9%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. Runtime remains **NOT IMPLEMENTED / NOT VERIFIED** until exact-build executable evidence exists.
+Current code-only START-90 score is **47.4%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. Runtime remains **NOT IMPLEMENTED / NOT VERIFIED** until exact-build executable evidence exists.

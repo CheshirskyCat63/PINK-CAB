@@ -21,7 +21,7 @@
 
 The old <=20% / ~59% estimates and previous 240-question/20-question-pack methodology are SUPERSEDED.
 
-Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **46.9% (92/196)** after owner-locking A01.
+Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **47.4% (93/196)** after owner-locking A01 and A09.
 
 Administrative/specification work is allowed before START-90. Broad production should not rely on unresolved owner decisions.
 
