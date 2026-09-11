@@ -1,0 +1,74 @@
+# Unreal Engine generated folders
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Visual Studio / Rider / IDE
+.vs/
+.idea/
+.vscode/
+*.sln
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.sdf
+*.suo
+*.user
+*.userprefs
+*.csproj
+*.sln.DotSettings.user
+
+# Unreal generated project files
+*.xcodeproj
+*.xcworkspace
+*.xcuserdata
+*.code-workspace
+*.slnx
+
+# Build / package output directories
+StagedBuilds/
+Packaged/
+Releases/
+BuildOutput/
+
+# Packaged Unreal payloads are generated output
+*.pak
+
+# Crash / log / cache files
+*.log
+*.tmp
+*.temp
+*.cache
+*.dmp
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python / utility junk
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local worktrees
+.worktrees/
+worktrees/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+*.pfx
+*.p12
+*.pem
+*.key
+*.jks
+*.keystore
+
+# Do not globally ignore *.obj, *.dll, *.lib, *.exe or *.pdb.
+# Those may be legitimate source/vendor assets; generated output is excluded by directories above.

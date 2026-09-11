@@ -1,0 +1,71 @@
+name: PINK CAB Production Task
+description: Create a scoped implementation/content task tied to current Jira/Confluence authority.
+title: "[CD-___] "
+labels: []
+body:
+  - type: input
+    id: jira
+    attributes:
+      label: Jira issue
+      description: Canonical CD issue that owns live acceptance/status.
+      placeholder: CD-___
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope class
+      options:
+        - FIRST EURO 12M
+        - POST-FIRST-EURO
+        - EXPERIMENTAL / NON-AUTHORITY
+    validations:
+      required: true
+  - type: input
+    id: domain
+    attributes:
+      label: Domain / gate
+      placeholder: BASE100-CORE / VEHICLE / TAXI / STATE / WORLD / SERVICE
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What player/runtime/production result changes?
+    validations:
+      required: true
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority
+      description: Relevant Jira owner, Confluence authority and Git implementation contract.
+    validations:
+      required: true
+  - type: textarea
+    id: owner_boundary
+    attributes:
+      label: Authoritative owner / dependency boundary
+      description: Name the system that owns truth and any engine/plugin adapter boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: Exact runtime/test/data/performance evidence needed before closure.
+    validations:
+      required: true
+  - type: checkboxes
+    id: guards
+    attributes:
+      label: Scope and truth guards
+      options:
+        - label: This work does not silently convert an OPEN owner decision into canonical behavior.
+          required: true
+        - label: This work does not introduce a competing production owner/solver for an already locked responsibility.
+          required: true
+        - label: POST-FIRST-EURO systems are not counted as FIRST EURO blockers unless CD-753 is explicitly reopened.
+          required: true
+        - label: Documentation/build success will not be reported as runtime VERIFIED without exact executable evidence.
+          required: true

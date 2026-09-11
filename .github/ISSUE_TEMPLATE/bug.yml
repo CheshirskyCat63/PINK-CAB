@@ -1,0 +1,80 @@
+name: PINK CAB Bug
+description: Record a reproducible PINK CAB runtime/build/data problem and exact evidence.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: input
+    id: jira
+    attributes:
+      label: Jira issue
+      description: Link/create the canonical CD issue if this is production work.
+      placeholder: CD-___
+  - type: input
+    id: build
+    attributes:
+      label: Build / commit
+      placeholder: exact commit SHA or packaged build version
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Engine / plugin / content / schema versions
+      description: Include relevant UE, FGear, VDS, profile, generator/content/save schema versions.
+  - type: input
+    id: seed
+    attributes:
+      label: CityCode / seed / entity IDs
+      description: Required when deterministic world, traffic, passenger, service or fare state is relevant.
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Runtime / build / config
+        - Input / cabin
+        - Vehicle / FGear / VDS / Vehicle Health
+        - Taxi / fare / passenger / Neural
+        - Economy / workday / save
+        - CityCode / streaming / road graph
+        - Traffic / rules / EnforcementEvent
+        - Level 1 vertical / wallride / freight ceiling
+        - Level 2 bus / metro / station
+        - ServiceNode / moving refueling
+        - Rendering / audio / performance
+        - Packaging / release
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, telemetry, screenshot/video, frame-time/memory counters, transaction IDs or crash details.
+  - type: checkboxes
+    id: truth
+    attributes:
+      label: Truth guard
+      options:
+        - label: Reproduction is tied to an exact build/version where possible.
+          required: true
+        - label: A docs/spec mismatch is not reported as a runtime failure unless executable behavior was actually tested.
+          required: true

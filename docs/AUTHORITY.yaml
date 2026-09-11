@@ -1,0 +1,538 @@
+product: PINK CAB
+product_root: CD-519
+repository: CheshirskyCat63/PINK-CAB
+repository_status: active-dedicated-pink-cab
+working_branch: main
+clean_repository_target: PINK-CAB
+clean_repository_status: target-established-awaiting-cd558-closure
+snapshot_date: 2026-09-11
+legacy_migration_source: CheshirskyCat63/DEADRACE
+legacy_staging_branch: dev/pinkcab-pre-fgear-20260911
+legacy_staging_sha: 1a4d7e05f1430a6e558b3f697aee3fbf412785bb
+cutover_gate: CD-558
+pre_fgear_program: CD-754
+
+maturity:
+  canon: defined
+  specification: partial
+  implementation: not_proven
+  verification: not_runtime_verified
+  truth_rule: CANON_to_SPECIFIED_to_IMPLEMENTED_to_VERIFIED
+  documentation_never_equals_runtime_verification: true
+
+source_of_truth:
+  jira: live_priorities_decisions_dependencies_status_evidence
+  confluence: durable_product_world_system_roadmap_acceptance_authority
+  github: implementation_facing_mirrors_owner_packs_code_tests_commits_build_history
+  executable_truth: exact_commit_build_runtime_evidence
+
+readiness:
+  methodology: code_only_first_euro_specification_readiness
+  jira_ledger: CD-660
+  jira_governance: CD-661
+  confluence_ledger: 6553617
+  git_ledger: docs/PINK_CAB_START90_READINESS.md
+  owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
+  tracked_rows: 196
+  status_counts: {locked: 44, calibration: 3, proposed_default: 88, open: 61}
+  scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
+  numerator_points: 91.0
+  start90_percent: 46.4
+  start90_gate_passed: false
+  gap_to_start90_percentage_points: 43.6
+  domain_percent: {core: 48.2, vehicle: 68.6, taxi: 38.3, state: 23.8, world: 34.4, service: 56.5, scope: 100.0}
+  scope_reported_separately: true
+  all_proposed_defaults_accepted_percent: 68.9
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 42
+  crossing_example_percent: 90.31
+  broad_production: HOLD
+  narrow_bootstrap_spec_calibration_admin: ALLOWED
+  historical_scores: {six_domain_approx_59_percent: RETIRED, earlier_53_0_percent_incomplete_census: RETIRED, earlier_38_2_percent: RETIRED}
+
+base100:
+  program: CD-746
+  scope_owner: CD-753
+  confluence_page: 11239425
+  code_architecture_mirror: docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md
+  technical_owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
+  definition: implementation_facing_code_logic_numeric_technical_specification_for_complete_first_12_month_single_player_product
+  start90_definition: architecture_state_data_plugin_persistence_failure_and_test_contracts_allow_broad_start_without_known_structural_rewrite_or_programmer_invented_design
+  base100_definition: all_first_euro_code_facing_contracts_specified
+  visual_art_readiness_in_denominator: false
+  presentation_only_counts_if:
+    - creates_runtime_state_contract
+    - creates_input_output_contract
+    - creates_performance_contract
+    - creates_data_api_dependency
+  mandatory_domain_shape:
+    - PURPOSE
+    - BUY_ENGINE_WRITE
+    - AUTHORITATIVE_OWNER
+    - STATE_MACHINE
+    - INPUTS
+    - OUTPUT_EVENTS
+    - DATA_MODEL
+    - NUMERIC_CONFIG
+    - PERSISTENCE
+    - DEPENDENCIES
+    - FAILURE_MODES
+    - PERFORMANCE_BOUNDS
+    - TEST_FIXTURES
+    - EXTENSION_POINTS
+  domain_tasks:
+    core: CD-747
+    vehicle: CD-748
+    taxi: CD-749
+    state: CD-750
+    world: CD-751
+    service: CD-752
+    scope: CD-753
+
+first_euro_scope:
+  horizon_months: 12
+  platform: PC
+  single_player: true
+  multiplayer: false
+  full_gameplay_tiers: [level1, level2]
+  included:
+    - hero_tatra_fgear_vds_vehicle_health
+    - taxi_fare_passenger_payment_loop
+    - persistent_repeat_clients_basic_neural
+    - citycode_persistence_streaming_road_graph
+    - traffic_incidents_rules_fines
+    - enforcement_event_interface
+    - automotive_servicenodes_parking_garage_parts_repair
+    - practice_hangar_only_where_level1_training_or_acceptance_requires
+    - moving_refueling
+    - economy_workday_session_save_migration
+    - runtime_build_package_config_qa_evidence
+  post_first_euro_implementation:
+    - multiplayer_coop_common_rooms_online_clubs
+    - replication_dedicated_server_matchmaking_voice_chat_anticheat
+    - level3_gameplay
+    - lifestyle_servicenodes_mall_food_bar_club_social
+    - full_taxi_regulator_inspection_gameplay
+    - daily_insurance_purchase_policy_claim_extra_life
+  deferred_system_rule: preserve_only_extension_boundaries_needed_to_avoid_first_euro_core_rewrites
+
+architecture_doctrine:
+  buy_before_build: true
+  preferred_order: ENGINE_FEATURE_then_PROVEN_PURCHASED_PLUGIN_then_THIN_PINK_CAB_ADAPTER_then_CUSTOM_PRODUCT_GAP
+  one_authoritative_production_owner_per_responsibility: true
+  duplicate_competing_production_solvers_after_lock: forbidden
+  bakeoff_before_stack_lock: allowed
+  vendor_api_isolated_behind_adapters: true
+  cpp_owns: [interfaces, authoritative_state, persistence, schema_versioning, invariants, critical_orchestration, vendor_adapters, performance_sensitive_bounded_runtime]
+  blueprint_owns: thin_composition_and_orchestration_only
+  dataassets_datatables_config_own: tunable_gameplay_profiles_and_balance
+  runtime_actor_role: materialized_representation_not_universal_persistent_truth
+  logical_identity_without_actor: allowed_and_preferred_where_possible
+  unbounded_tick: forbidden
+  global_actor_scan_in_hot_path: forbidden
+  sync_asset_load_in_hot_path: forbidden
+  spawn_or_newobject_in_normal_tick: forbidden
+  uncontrolled_runtime_collection_growth: forbidden
+  bounded_pools_queues_caches: required_where_repeated_population_needs_them
+  explicit_schema_config_generator_versions: required
+  silent_incompatible_fallback: forbidden
+  exactly_once_persistent_transactions: required_for_money_fare_fuel_service_and_other_duplicate_sensitive_state
+  shared_qa_runner_family: required
+  build_pass_equals_gameplay_verified: false
+
+current_canon:
+  input:
+    steering_default: mouse
+    gaze: Space
+    quick_start: 1-4
+    attention: LMB
+    go: RMB
+    quick_targets:
+      1: turn_signals
+      2: horn
+      3: gearbox
+      4: handbrake
+    clutch_key: Q
+    brake_key: W
+    throttle_key: E
+    clutch_wheel_semantics: adjusts_release_speed_not_instantaneous_pressure
+    clutch_release_seconds_fast_slow: [0.20, 1.20]
+    clutch_release_addressable_steps_min: 64
+    rebinding_first_euro: OPEN_BASE100_C08
+    old_rmb_lmb_semantics: SUPERSEDED
+
+  vehicle_technology:
+    owner: CD-730
+    confluence_page: 10977288
+    road_dynamics_solver: FGear_Vehicle_Physics
+    permanent_body_deformation: Debugging_Delight_Vehicle_Damage_System
+    parallel_chaos_or_custom_vehicle_solver: forbidden_without_reopen
+    parallel_custom_body_deformation_solver: forbidden_without_reopen
+    pink_cab_adapter_owns: [input_translation, versioned_tatra_profile, tatra_expression_layer, vehicle_health_bridge, persistence_glue, normalized_telemetry]
+    integration_tasks: CD-731_CD-732_CD-733_CD-734_CD-735_CD-736_CD-737_CD-738
+    damage_state_task: CD-740
+    runtime_status: NOT_IMPLEMENTED_NOT_VERIFIED
+
+  tatra:
+    family: early_gen1_tatra_603_family_bespoke
+    propulsion_layout: rear_engine_rwd
+    engine_identity: rear_mounted_air_cooled_v8
+    current_power_hp: 180
+    current_torque_nm: 240
+    terminal_target_kmh: 195
+    abs: false
+    esp: false
+    front_lamps: 3
+    center_headlamp: steering_linked_directional
+    passenger_side_b_pillar: false
+    passenger_aperture: pillarless_continuous_right_side
+    passenger_doors: opposed_open_away_from_center
+    passenger_door_control: physical_in_cabin_lever
+    rear_tail: intentionally_stretched_relative_to_historical_reference
+    reference_static_balance_front_rear: 45_55_at_1657kg
+    historical_chassis_baseline_mm:
+      wheelbase: 2750
+      front_track: 1485
+      rear_track: 1400
+    tire_visual_family: 185R15_like_tall_sidewall
+    steering_inner_lock_deg: 41_plus_minus_2
+    steering_wheel_lock_to_lock_turns: approx_2_5
+    behavioral_reference: BMW_E34_530i_V8_5MT_control_behavior_only
+
+  handling:
+    owner_lock: CD-729
+    implementation_profile: CD-732
+    wet_surface_calibration: CD-734
+    integrated_qa: CD-738
+    useful_sustained_sideslip_deg: 18_40
+    mouse_center_deadzone: none_jitter_filter_only
+    physical_roll_target_deg_at_0_8g: 4.5_5.5
+    expression_roll_gain_default: 1.35
+    brake_bias_seed_front_rear: 60_40
+    differential: mild_LSD
+    handbrake_torque_seed_nm_per_rear_wheel: 1700
+    wet_high_speed_behavior: progressive_rear_combined_grip_saturation_possible_above_roughly_160_kmh_in_rain_with_rapid_lane_change_and_maintained_excess_throttle
+    easing_excess_throttle_recovery: normally_restores_rear_lateral_reserve
+    scripted_drift_threshold: false
+    automatic_countersteer: false
+    low_level_plugin_constants: CALIBRATION_NOT_OWNER_OPEN
+
+  mass_load:
+    base_vehicle_kg: 1450
+    full_fuel_vehicle_kg: 1550
+    heroine_kg: 58
+    heroine_height_m: 1.65
+    daughter_kg: 49
+    daughter_height_m: 1.55
+    female_passenger_range_kg: [55, 70]
+    male_passenger_range_kg: [65, 90]
+    max_passengers: 5
+    reference_service_load_kg: 1657
+    declared_max_passenger_load_kg: 2107
+    runtime_formula: base_vehicle_plus_current_fuel_plus_heroine_plus_daughter_plus_actual_boarded_passenger_masses
+    old_1470kg_reference: SUPERSEDED
+
+  residual_magnetism_level1:
+    old_global_fixed_5s: SUPERSEDED
+    reference_load_kg: 1657
+    reference_seconds: 5.0
+    max_declared_load_kg: 2107
+    max_declared_seconds: 4.0
+    lighter_than_reference_cap_seconds: 5.0
+    interpolation: linear_by_authoritative_total_mass_LOCKED
+    interpolation_formula: timeout_s_equals_5_minus_total_mass_kg_minus_1657_div_450_in_range
+    force_contact_geometry: CALIBRATION_CD-592_CD-701
+    reacquisition_reset_semantics: OPEN_BASE100_M05
+
+  damage:
+    decision: CD-600
+    decision_status: DONE_LOCKED_SPEC
+    deformation_owner: CD-736
+    health_bridge_owner: CD-737
+    save_state_owner: CD-740
+    qa_owner: CD-738
+    first_euro_enabled:
+      - permanent_body_deformation_vds
+      - glass_crack_break
+      - exterior_lamp_damage
+      - passenger_door_jam_latch_failure
+      - tire_wheel_condition_puncture_path
+      - authored_alignment_consequence
+      - authored_suspension_degradation
+      - brake_heat_fade_hydraulic_fluid_health
+      - air_cooled_v8_thermal_health
+      - repair_service
+      - exact_once_persistence
+    coolant_radiator_system: SUPERSEDED_NOT_PRESENT_UNLESS_FUTURE_FICTIONAL_RETROFIT
+
+  heroine_daughter:
+    daughter_role: daughter_to_conductor_service_to_later_operator
+    third_permanent_conductor: false
+    daughter_driving_authority: false
+
+  passenger_exchange:
+    pickup_requires_full_stop: true
+    dropoff_requires_full_stop: true
+    rolling_pickup: SUPERSEDED
+    waiting_contexts: [OFFICIAL_STOP, CURB_PICKUP]
+    group_size_max: 5
+    compressed_simultaneous_boarding_after_stop_and_door_open: true
+    seat_order: rear3_then_front2
+    exact_full_stop_epsilon_dwell: OPEN_BASE100_F04
+
+  fare:
+    meter_basis: distance_plus_elapsed_fare_time
+    modes: [METERED, OFF_METER]
+    meter_start_stop_reset_sequence: OPEN_BASE100_F05_F06_and_CD-672
+    fare_time_stopped_policy: OPEN_BASE100_F08
+
+  repeat_clients_neural:
+    first_euro: true
+    broad_social_life_simulation: false
+    passenger_template_vs_identity: separate
+    persistent_passenger_without_actor: true
+    repeat_order_reuses_normal_order_fare_pipeline: true
+    promotion_scoring: OPEN_BASE100_G02
+    relationship_axes: OPEN_BASE100_G04
+
+  recovery_workday_save:
+    owner: CD-750
+    terminal_crash_recovery: OPEN_BASE100_I06
+    workday_duration_time_semantics: OPEN_BASE100_I08
+    save_slot_model: OPEN_BASE100_I01
+    autosave_checkpoint_policy: OPEN_BASE100_I02
+    quit_anywhere_contract: OPEN_BASE100_I03
+    quit_reload_during_fare: OPEN_BASE100_I04
+    two_real_hour_value: QA_SOAK_TARGET_NOT_LOCKED_WORKDAY_DURATION
+
+  city_world:
+    identity: CityCode_plus_GeneratorVersion_plus_ContentSetVersion_plus_persistent_deltas
+    citycode_immutable_existing_campaign: PROPOSED_DEFAULT_BASE100_J02
+    old_generator_save_policy: OPEN_BASE100_J09
+    persistent_delta_classes: OPEN_BASE100_J05
+    incident_persistence: OPEN_BASE100_J07
+    world_partition_pcg_thin_recipe: PROPOSED_DEFAULT_BASE100_J10
+
+  road_traffic_enforcement:
+    traffic_lights: false
+    systemic_standing_traffic_jams: false
+    playable_gaps_required: true
+    common_road_lane_graph: PROPOSED_DEFAULT_BASE100_K01
+    traffic_physical_materialization: OPEN_BASE100_K04
+    density_representation: OPEN_BASE100_K06
+    incident_bypass: OPEN_BASE100_K08
+    enforcement_event_schema: LOCKED
+    enforcement_event_retention: OPEN_BASE100_L05
+    full_taxi_regulator_first_euro: false
+
+  level1:
+    first_euro_gameplay: true
+    express_lanes: 5
+    ordinary_entry_exit_side: right
+    wallride_bands: 7
+    vehicle_footprint_bands_approx: 3
+    freight_ceiling_lanes: 5
+    freight_direction: always_opposite_lower_road
+    fast_cross_carriageway: ceiling_poplar_window_only
+
+  level2:
+    first_euro_gameplay: true
+    suspended_bus_lane_count: CALIBRATION_OR_PROFILE_AFTER_ARCHITECTURE_LOCK
+    metro_tracks_per_side: 2
+    station_gameplay_function: OPEN_BASE100_N05
+    tatra_on_metro_default: false
+
+  level3:
+    first_euro_gameplay: false
+    delivery: POST_FIRST_EURO
+    first_euro_extension_only: compatible_tier_route_schema_boundary
+
+  servicenodes:
+    base100_service_domain: CD-752
+    first_euro_types: [PARKING_HUB, GARAGE_TUNING, PARTS_SHOP, REPAIR_SERVICE]
+    practice_hangar: FIRST_EURO_ONLY_WHERE_LEVEL1_TRAINING_OR_ACCEPTANCE_REQUIRES
+    post_first_euro_types: [MALL_RETAIL, DINER_CANTEEN, CLUB_BAR_SOCIAL, EVENT_CLASS, SOCIAL_COMMON_LOBBY]
+    transition_implementation_form: OPEN_BASE100_O02
+    parking_save_day_end_checkpoint_role: OPEN_BASE100_O03
+    economy_owner: shared_EconomyService
+    repair_uses_same_vehicle_health: true
+
+  moving_refueling:
+    first_euro: true
+    owner: CD-593
+    base100_service_owner: CD-752
+    owns_only: bounded_MovingRefuelSession_state_machine
+    reuses: [FuelTank, EconomyService, normalized_VehicleTelemetry, RoadGraph, global_persistence_schema_evidence]
+    fuel_credit_only_in_valid_connected_fueling_state: true
+    exactly_once_fuel_money_outcome: true
+    presentation_actor_authority: false
+    queue_active_slot_policy: OPEN_BASE100_P03
+    target_gap_tolerance: OPEN_BASE100_P05_historical_plus_minus_25cm_seed
+    settlement_model: OPEN_BASE100_P09
+    insufficient_funds: OPEN_BASE100_P11_CD-750_CD-601
+
+  daily_insurance:
+    owner: CD-741
+    confluence_page: 10321936
+    first_euro: false
+    delivery: POST_FIRST_EURO
+    first_euro_extension_only: generic_RecoveryPolicy_RecoveryHook
+    current_first_euro_uninsured_recovery: OPEN_CD-750_BASE100_I06
+
+open_owner_rows:
+  count: 61
+  ids:
+    - A01
+    - A03
+    - A07
+    - A09
+    - A10
+    - A13
+    - A14
+    - A15
+    - C08
+    - F04
+    - F05
+    - F06
+    - F08
+    - F11
+    - F12
+    - F13
+    - F14
+    - F15
+    - F16
+    - F17
+    - F18
+    - F19
+    - G02
+    - G04
+    - H04
+    - H05
+    - I01
+    - I02
+    - I03
+    - I04
+    - I06
+    - I08
+    - I09
+    - I11
+    - I12
+    - I13
+    - J05
+    - J07
+    - J09
+    - J11
+    - J12
+    - K04
+    - K06
+    - K08
+    - K11
+    - K12
+    - K13
+    - L05
+    - L06
+    - L07
+    - M05
+    - N05
+    - N06
+    - N07
+    - N09
+    - O02
+    - O03
+    - P03
+    - P05
+    - P09
+    - P11
+  production_must_not_invent_unknowns: true
+  proposed_defaults_are_not_locked_until_owner_accepts: true
+  calibrated_plugin_values_are_not_owner_questions_after_contract_lock: true
+
+confluence_authorities:
+  authority_index: 6586369
+  active_baseline: 5537802
+  readiness_ledger: 6553617
+  base100_code_architecture: 11239425
+  open_decisions: 5832744
+  tatra_cockpit: 6619137
+  vehicle_technology_stack: 10977288
+  tatra_handling: 6225936
+  tatra_handling_qa: 6160435
+  taxi_fare: 5832724
+  city_world: 6258704
+  citycode_persistence: 5931050
+  vertical_transit: 8388609
+  level1_world: 8388630
+  pipe_interchange: 8421388
+  tier2_transit: 5931030
+  servicenode: 9076737
+  moving_refueling: 6062115
+  first_euro_roadmap: 6651945
+  level1_to_level2_roadmap: 8716289
+  qa_evidence: 6750209
+  daily_insurance_post_first_euro: 10321936
+
+jira_authorities:
+  root: CD-519
+  open_decisions: CD-588
+  readiness: CD-660_CD-661
+  master_question_register: CD-673
+  base100_program: CD-746
+  base100_core: CD-747
+  base100_vehicle: CD-748
+  base100_taxi: CD-749
+  base100_state: CD-750
+  base100_world: CD-751
+  base100_service: CD-752
+  base100_scope: CD-753
+  vehicle_technology_stack: CD-730
+  vehicle_stack_integration: CD-731_CD-732_CD-733_CD-734_CD-735_CD-736_CD-737_CD-738
+  damage_state_save_schema: CD-740
+  physical_vehicle_systems: CD-722
+  mass_vertical: CD-592
+  mass_vertical_qa: CD-701
+  fare_exchange: CD-522_CD-720_CD-721_CD-724
+  servicenode_first_euro: CD-576_CD-711_CD-713
+  moving_refueling: CD-540_CD-593
+  taxi_regulator_post_first_euro: CD-723
+  daily_insurance_post_first_euro: CD-741_CD-742_CD-743_CD-744_CD-745
+  level1_delivery_proof: CD-678_CD-679
+  interchange: CD-680_CD-681_CD-704
+  level2: CD-682_CD-683_CD-705_CD-706_CD-707_CD-708_CD-709_CD-710
+
+implementation_mirrors:
+  readiness: docs/PINK_CAB_START90_READINESS.md
+  base100_code_architecture: docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md
+  base100_technical_owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
+  active_baseline: docs/PINK_CAB_ACTIVE_BASELINE.md
+  first_euro_scope: docs/FIRST_EURO_SCOPE.md
+  vehicle_technology_stack: docs/PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md
+  tatra_handling: docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md
+  tatra_mass_load: docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md
+  taxi_work_physicality: docs/PINK_CAB_TAXI_WORK_PHYSICALITY.md
+  servicenode: docs/PINK_CAB_SERVICENODE_TAXONOMY.md
+  moving_refueling: docs/MOVING_REFUELING_SERVICE.md
+  level1_world: docs/PINK_CAB_LEVEL1_WORLD_BIBLE.md
+  vertical_transit: docs/PINK_CAB_VERTICAL_TRANSIT_PARKOUR.md
+  pipe_interchange: docs/PINK_CAB_PIPE_INTERCHANGE_BIBLE.md
+  level1_to_level2_roadmap: docs/PINK_CAB_L1_TO_L2_ROADMAP.md
+  open_decisions: docs/OPEN_DECISIONS.md
+  verification_matrix: docs/VERIFICATION_MATRIX.md
+
+qa_mirrors:
+  vehicle_stack: docs/qa/PINK_CAB_VEHICLE_STACK_ACCEPTANCE.md
+  tatra_handling: docs/qa/PINK_CAB_TATRA_HANDLING_ACCEPTANCE.md
+  tatra_mass_load: docs/qa/PINK_CAB_VEHICLE_MASS_LOAD_ACCEPTANCE.md
+  fare_zero: docs/qa/PINK_CAB_FARE_ZERO.md
+  level1_corridor: docs/qa/PINK_CAB_LEVEL1_CORRIDOR_ZERO.md
+  vertical_transit: docs/qa/VERTICAL_TRANSIT_TESTS.md
+  servicenode_first_euro: docs/qa/PINK_CAB_SERVICENODE_ACCEPTANCE.md
+  pipe_interchange: docs/qa/PINK_CAB_PIPE_INTERCHANGE_ZERO.md
+  level2_transit: docs/qa/PINK_CAB_LEVEL2_TRANSIT_ZERO.md
+  daily_insurance_post_first_euro: docs/qa/PINK_CAB_INSURANCE_ACCEPTANCE.md
+
+legacy_rule:
+  deadrace_pursuit_combat_requires_explicit_re_adoption: true
+  old_fixed_magnet_5s_all_loads: SUPERSEDED
+  old_rmb_passive_lmb_manipulate: SUPERSEDED
+  old_two_hour_workday_as_locked_duration: SUPERSEDED_NOT_LOCKED_I08_OPEN
+  old_three_tier_first_euro: SUPERSEDED_L1_L2_ONLY
+  old_damage_depth_open: SUPERSEDED_CD-600_DONE
