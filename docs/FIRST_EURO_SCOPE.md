@@ -29,7 +29,7 @@ Workday duration is LOCKED by `I08`: 12 in-game hours = 120 real minutes (x6), w
 
 ## POST-FIRST-EURO implementation
 
-- multiplayer/coop/common rooms/online clubs and all networking runtime;
+- multiplayer/coop/common rooms/online clubs and all networking runtime, including cross-player PassengerIdentity review propagation/community reputation and player-drawn mouse doodles/annotations over passenger profile photos;
 - Level 3 gameplay;
 - lifestyle ServiceNodes: mall, food, bar, club/social interiors;
 - full Taxi Regulator / inspection gameplay — FIRST EURO only preserves stable `EnforcementEvent` producers/consumers;

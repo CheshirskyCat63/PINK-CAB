@@ -115,28 +115,28 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `F05 LOCKED` - after all passengers are seated and the passenger door is closed/latched, the driver physically presses START; fare distance/time does not accrue before manual START.
 - `F06 LOCKED` - reaching the destination zone does not auto-stop the meter; after destination eligibility + FullStop the driver physically presses STOP, then FareSession enters AwaitingPayment.
 - `F07 PROPOSED DEFAULT` — internal fare accumulator continuous; presentation may round/display discretely.
-- `F08 LOCKED` - after START, fare time accrues for the whole active trip including ordinary stops/waiting; ESC/system hard-pause time is excluded.
+- `F08 LOCKED` - after START, fare time accrues for the whole active trip including ordinary stops/waiting; ESC/system hard-pause time is excluded. Passenger-requested active-meter stopovers may open the passenger door and let the passenger leave temporarily for a 30-35 second authored errand/thematic beat without ending the FareSession or stopping the meter; return is normal, fare evasion remains governed by F19.
 - `F09 PROPOSED DEFAULT` — distance basis = actual odometer/path traveled, not route-plan distance.
 - `F10 LOCKED` — METERED/OFF_METER are modes of the same fare system, not duplicate fare frameworks.
-- `F11 OPEN` — passenger cancellation/abort rules after boarding.
+- `F11 LOCKED` - a passenger-requested trip cancellation after boarding is not a normal convenience path: it represents a serious crash/terminal service failure, the active fare fails, the workday ends, and repair/recovery follows. Temporary passenger errands during an active fare are not cancellation.
 - `F12 LOCKED` - while the current FareSession is occupied, a second active fare is forbidden; offers may be surfaced/buffered but cannot become another active fare.
 - `F13 LOCKED` - next cycle is STOP -> payment/receipt -> passenger exit -> RESET/Idle -> new START; the next fare cannot begin until the previous fare is closed exactly once.
 - `F14 OPEN` — receipt blocking/removal policy: auto-eject/non-blocking vs physical removal gate before next fare.
-- `F15 OPEN` — post-boarding passenger-door close procedure: always manual driver close vs an approved assisted/automatic close path.
-- `F16 OPEN` — exact hand/animation ownership: right-hand-first physical controls with left steering continuity vs nearest-hand selection exceptions.
-- `F17 OPEN` — non-1–4 hidden shortcut policy for ignition/lights/wipers/meter/doors/radio and other cabin controls.
+- `F15 LOCKED` - passenger-door opening/closing is a deliberate cabin interaction through the physical handle/lever interface while using gaze/head-look; no magical automatic close is authoritative. The door may be opened while the meter is active for passenger errands without ending the FareSession.
+- `F16 LOCKED` - right-hand-first cabin manipulation is authoritative where physically plausible so the left hand can preserve steering continuity; authored exceptions must be explicit, not automatic nearest-hand ambiguity.
+- `F17 LOCKED` - no hidden keyboard shortcut path for physical cabin controls such as ignition/lights/wipers/meter/doors/radio. Interaction stays visible and immersive through the cabin interface; convenience may reduce friction through explicit accessibility/assist settings, while a more demanding interaction profile may be opt-in.
 - `F18 OPEN` — versioned curb/off-meter economy profile: tip uplift, pricing/negotiation if retained, complaint/risk eligibility and thresholds.
-- `F19 OPEN` — fare-evasion profile: eligible passenger templates, probability/trigger model, consequences and exactly-once outcome mapping.
+- `F19 OPEN` - fare evasion is canon and may occur when a passenger leaves during an active-meter errand/stopover and does not return or pay. Exact eligible PassengerTemplates, probability/trigger model, consequences and exactly-once outcome mapping remain owner-open.
 - `F20 CALIBRATION` — passenger-door mechanical envelope after physical/open-close semantics are locked: lever/hinge travel, latch timing, animation duration, reach tolerance and authored damage thresholds through Vehicle Health.
 
 ## G · Passenger / repeat clients / Neural
 
-- `G01 LOCKED` — procedural PassengerTemplate and persistent PassengerIdentity are separate.
+- `G01 LOCKED` - procedural PassengerTemplate and persistent PassengerIdentity are separate. A materialized passenger exposes a stable public PassengerIdentity profile before service when the driver looks at them near the cab.
 - `G02 OPEN` — promotion frequency/eligibility for persistent repeat clients.
 - `G03 PROPOSED DEFAULT` — promotion uses deterministic score + seeded randomness, not uncontrolled random roll.
 - `G04 OPEN` — relationship dimensions. Proposed compact axes: Trust / Satisfaction / RiskTolerance.
 - `G05 PROPOSED DEFAULT` — preferences may influence tip/repeat/acceptance outcomes.
-- `G06 LOCKED` — basic Neural is data-driven contact/history/simple-message layer, not broad dialogue/life simulation.
+- `G06 LOCKED` - basic Neural is data-driven contact/history/simple-message layer, not broad dialogue/life simulation. The local player may leave a quick star rating plus short text review on a PassengerIdentity; the schema must preserve review provenance for later shared/community propagation without requiring an online runtime in FIRST EURO.
 - `G07 LOCKED` — repeat order reuses normal Order/FareSession pipeline.
 - `G08 LOCKED` — persistent passenger can exist logically without Actor.
 - `G09 PROPOSED DEFAULT` — only locally required passenger groups materialize.
@@ -298,32 +298,32 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **71 LOCKED**
+- **75 LOCKED**
 - **3 CALIBRATION**
 - **88 PROPOSED DEFAULT**
-- **34 OPEN**
+- **30 OPEN**
 
-Readiness points: `71 + 3 + 88×0.5 = 118`.
+Readiness points: `75 + 3 + 88×0.5 = 122`.
 
-Current item-weighted START-90 specification readiness: `118 / 196 = 60.2%`.
+Current item-weighted START-90 specification readiness: `122 / 196 = 62.2%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **64.5%**
 - VEHICLE `D/E/M/N`: **68.6%**
-- TAXI `F/G`: **58.3%**
+- TAXI `F/G`: **71.7%**
 - STATE `H/I`: **81.0%**
 - WORLD `J/K/L`: **34.4%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 
-If every PROPOSED DEFAULT is owner-accepted, score becomes `162/196 = 82.7%`. At least **15 of the 34 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
+If every PROPOSED DEFAULT is owner-accepted, score becomes `166/196 = 84.7%`. At least **11 of the 30 OPEN rows** must then close to reach `177/196 = 90.31%` and cross START-90.
 
 ## Current owner-answer priority
 
 All genuine OPEN rows are:
 
-`F11 F14 F15 F16 F17 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F14 F18 F19 G02 G04 J05 J07 J09 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 M05 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
 Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 
