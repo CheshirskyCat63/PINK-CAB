@@ -78,3 +78,21 @@ bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosTemplateChassisAssetTest,
+    "PinkCab.Vehicle.ChaosBaseline.Assets.TemplateChassis",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosTemplateChassisAssetTest::RunTest(const FString& Parameters)
+{
+    const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
+    const USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+    TestNotNull(TEXT("temporary UE template skeletal mesh is assigned"), Mesh->GetSkeletalMeshAsset());
+    TestNotNull(TEXT("temporary UE template physics asset is available"), Mesh->GetPhysicsAsset());
+    return Mesh->GetSkeletalMeshAsset() != nullptr && Mesh->GetPhysicsAsset() != nullptr;
+}
+
+#endif

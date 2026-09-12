@@ -3,9 +3,12 @@
 #include "Camera/CameraComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
+#include "PhysicsEngine/PhysicsAsset.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
@@ -16,8 +19,22 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
     USkeletalMeshComponent* VehicleMesh = GetMesh();
-    VehicleMesh->SetSimulatePhysics(true);
+    static ConstructorHelpers::FObjectFinder<USkeletalMesh> TemplateMesh(
+        TEXT("/Game/SportsCar/SKM_SportsCar.SKM_SportsCar"));
+    static ConstructorHelpers::FObjectFinder<UPhysicsAsset> TemplatePhysicsAsset(
+        TEXT("/Game/SportsCar/PA_SportsCar.PA_SportsCar"));
+
+    if (TemplateMesh.Succeeded())
+    {
+        VehicleMesh->SetSkeletalMesh(TemplateMesh.Object);
+    }
+    if (TemplatePhysicsAsset.Succeeded())
+    {
+        VehicleMesh->SetPhysicsAsset(TemplatePhysicsAsset.Object, false);
+    }
+
     VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
+    VehicleMesh->SetSimulatePhysics(true);
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(VehicleMesh);
