@@ -15,8 +15,8 @@ struct PINKCAB_API FPinkCabBuildIdentity
     FString SchemaVersion = TEXT("bootstrap-v1");
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="PINK CAB|Build")
-    FString BuildChannel = TEXT("pre-fgear");
+    FString BuildChannel = TEXT("core-gameplay-native-chaos");
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="PINK CAB|Build")
-    FString RuntimeVersion = TEXT("0.0.1-pre-fgear");
+    FString RuntimeVersion = TEXT("0.1.0-core-native-chaos");
 };

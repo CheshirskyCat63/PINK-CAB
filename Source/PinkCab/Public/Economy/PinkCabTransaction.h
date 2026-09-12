@@ -1,17 +1,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/PinkCabStableId.h"
 
 struct FPinkCabTransactionId
 {
     FPinkCabTransactionId() = default;
-    explicit FPinkCabTransactionId(const FString& InValue) : Value(InValue) {}
+    explicit FPinkCabTransactionId(const FString& InValue)
+    {
+        FPinkCabStableId Parsed;
+        if (FPinkCabStableId::TryParse(InValue, Parsed))
+        {
+            StableId = Parsed;
+        }
+    }
 
-    bool IsValid() const { return !Value.TrimStartAndEnd().IsEmpty(); }
-    const FString& GetValue() const { return Value; }
+    bool IsValid() const { return StableId.IsValid(); }
+    const FString& GetValue() const { return StableId.Serialize(); }
 
 private:
-    FString Value;
+    FPinkCabStableId StableId;
 };
 
 enum class EPinkCabTransactionType : uint8
