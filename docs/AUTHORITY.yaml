@@ -256,6 +256,16 @@ current_canon:
     pre_fgear_blocker: false
     dependency_rule: preserve_visual_extension_boundary_only_no_network_or_ar_framework_required_year_one
 
+  procurement_policy:
+    pre_purchase_spend: zero
+    paid_plugins_before_purchase_gate: forbidden
+    allowed_pre_gate_sources: [official_free_demo, official_example_project, official_documentation, engine_builtins, owned_free_content]
+    demo_binary_is_not_production_dependency: true
+    unofficial_pirated_asset_mirrors: forbidden
+    purchase_trigger: only_when_specific_paid_plugin_is_verified_next_blocker
+    purchase_requires_owner_approval: true
+    post_purchase_install_path: Fab_library_or_official_vendor_delivery
+
   vehicle_technology:
     owner: CD-730
     confluence_page: 10977288
