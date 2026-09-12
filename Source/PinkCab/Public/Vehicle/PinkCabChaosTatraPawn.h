@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabCockpitState.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -9,6 +10,7 @@
 class UChaosWheeledVehicleMovementComponent;
 class UCameraComponent;
 class USpringArmComponent;
+struct FPinkCabInteractionEvent;
 
 UCLASS()
 class PINKCAB_API APinkCabChaosTatraPawn : public AWheeledVehiclePawn
@@ -23,6 +25,8 @@ public:
 
     UChaosWheeledVehicleMovementComponent* GetChaosMovement() const;
     IPinkCabVehicleDynamicsProvider& GetPinkCabDynamicsProvider() { return DynamicsProvider; }
+    const FPinkCabCockpitState& GetCockpitState() const { return CockpitState; }
+    bool ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event);
 
     static float IntegrateMouseSteering(
         float CurrentSteering,
@@ -40,8 +44,11 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Camera")
     TObjectPtr<UCameraComponent> ChaseCamera;
 
+    void SyncCockpitToChaos();
+
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
     FPinkCabVehicleControlState ControlState;
+    FPinkCabCockpitState CockpitState;
     FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
 
     float SteeringCommand = 0.0f;

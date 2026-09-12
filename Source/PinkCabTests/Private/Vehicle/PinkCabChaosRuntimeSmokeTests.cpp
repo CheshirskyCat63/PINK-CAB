@@ -5,6 +5,7 @@
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "Interaction/PinkCabInteractionModel.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabChaosWeaveCourse.h"
 
@@ -14,6 +15,7 @@ struct FPinkCabChaosRuntimeState
     TWeakObjectPtr<APinkCabChaosWeaveCourse> Course;
     FVector StartLocation = FVector::ZeroVector;
     FRotator StartRotation = FRotator::ZeroRotator;
+    bool bCockpitPrimed = false;
 };
 
 class FPinkCabDrivePhaseCommand final : public IAutomationLatentCommand
@@ -59,6 +61,27 @@ public:
         if (!Pawn)
         {
             return false;
+        }
+
+        if (!State->bCockpitPrimed)
+        {
+            UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+            Test->TestNotNull(TEXT("live cockpit has Chaos movement"), Movement);
+            if (Movement)
+            {
+                Test->TestFalse(TEXT("live cockpit begins with engine off"), Movement->bMechanicalSimEnabled);
+                Test->TestTrue(TEXT("live cockpit begins with handbrake engaged"), Movement->GetHandbrakeInput());
+            }
+            Test->TestTrue(TEXT("ignition interaction reaches live Chaos pawn"),
+                Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+            Test->TestTrue(TEXT("handbrake interaction reaches live Chaos pawn"),
+                Pawn->ApplyCockpitInteraction({FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 1}));
+            if (Movement)
+            {
+                Test->TestTrue(TEXT("ignition enables live mechanical simulation"), Movement->bMechanicalSimEnabled);
+                Test->TestFalse(TEXT("handbrake release reaches live Chaos"), Movement->GetHandbrakeInput());
+            }
+            State->bCockpitPrimed = true;
         }
 
         if (PhaseStartSeconds < 0.0)

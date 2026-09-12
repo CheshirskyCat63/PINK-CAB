@@ -4,6 +4,8 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
@@ -108,6 +110,35 @@ bool FPinkCabChaosTemplateChassisAssetTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("front-left Chaos wheel bone exists"), RefSkeleton.FindBoneIndex(TEXT("Phys_Wheel_FL")) != INDEX_NONE);
     TestTrue(TEXT("rear-right Chaos wheel bone exists"), RefSkeleton.FindBoneIndex(TEXT("Phys_Wheel_BR")) != INDEX_NONE);
     return SkeletalMesh->GetSkeleton() != nullptr && Mesh->GetPhysicsAsset() != nullptr;
+}
+
+#endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosCockpitBridgeTest,
+    "PinkCab.Vehicle.ChaosBaseline.Pawn.CockpitBridge",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
+{
+    UChaosWheeledVehicleMovementComponent* Movement = NewObject<UChaosWheeledVehicleMovementComponent>();
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    FPinkCabVehicleControlState Controls;
+    FPinkCabCockpitState Cockpit;
+
+    TestTrue(TEXT("default cockpit applies to Chaos"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
+    TestFalse(TEXT("engine off disables mechanical simulation"), Movement->bMechanicalSimEnabled);
+    TestTrue(TEXT("default handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+
+    Cockpit.StartEngine();
+    Cockpit.SetHandbrakeEngaged(false);
+    TestTrue(TEXT("running cockpit reapplies to Chaos"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
+    TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
+    TestFalse(TEXT("released handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    return true;
 }
 
 #endif

@@ -7,11 +7,14 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
+#include "Interaction/PinkCabInteractionModel.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
@@ -72,6 +75,25 @@ void APinkCabChaosTatraPawn::BeginPlay()
 {
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
+    SyncCockpitToChaos();
+}
+
+bool APinkCabChaosTatraPawn::ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event)
+{
+    if (!FPinkCabCockpitInteractionRouter::Apply(Event, CockpitState))
+    {
+        return false;
+    }
+    SyncCockpitToChaos();
+    return true;
+}
+
+void APinkCabChaosTatraPawn::SyncCockpitToChaos()
+{
+    if (UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
+    {
+        FPinkCabChaosCockpitBridge::Apply(CockpitState, *Movement, ControlState, DynamicsProvider);
+    }
 }
 
 float APinkCabChaosTatraPawn::IntegrateMouseSteering(
@@ -121,7 +143,9 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     CameraBoom->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
 
-    ControlState = InputFrame.ToControlState(SteeringCommand, 0.0f);
+    ControlState = InputFrame.ToControlState(
+        SteeringCommand,
+        CockpitState.IsHandbrakeEngaged() ? 1.0f : 0.0f);
     DynamicsProvider.ApplyControls(ControlState);
 
     if (PC->WasInputKeyJustPressed(EKeys::R))
