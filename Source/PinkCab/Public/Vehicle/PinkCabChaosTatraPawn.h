@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
@@ -21,6 +21,7 @@ public:
     virtual void Tick(float DeltaSeconds) override;
 
     UChaosWheeledVehicleMovementComponent* GetChaosMovement() const;
+    IPinkCabVehicleDynamicsProvider& GetPinkCabDynamicsProvider() { return DynamicsProvider; }
 
     static float IntegrateMouseSteering(
         float CurrentSteering,
@@ -46,3 +47,4 @@ private:
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
 };
+

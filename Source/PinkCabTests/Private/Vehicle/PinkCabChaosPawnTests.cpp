@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
@@ -29,6 +30,10 @@ bool FPinkCabChaosPawnBaselineConfigTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("torque arcade control off"), Movement->TorqueControl.Enabled);
     TestFalse(TEXT("target rotation arcade control off"), Movement->TargetRotationControl.Enabled);
     TestFalse(TEXT("stabilize arcade control off"), Movement->StabilizeControl.Enabled);
+    float TorqueMin = 0.0f;
+    float TorqueMax = 0.0f;
+    Movement->EngineSetup.TorqueCurve.GetRichCurveConst()->GetValueRange(TorqueMin, TorqueMax);
+    TestTrue(TEXT("engine torque curve has positive output"), TorqueMax > 0.0f);
     return true;
 }
 
@@ -90,9 +95,19 @@ bool FPinkCabChaosTemplateChassisAssetTest::RunTest(const FString& Parameters)
 {
     const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
     const USkeletalMeshComponent* Mesh = Pawn->GetMesh();
-    TestNotNull(TEXT("temporary UE template skeletal mesh is assigned"), Mesh->GetSkeletalMeshAsset());
+    USkeletalMesh* SkeletalMesh = Mesh->GetSkeletalMeshAsset();
+    TestNotNull(TEXT("temporary UE template skeletal mesh is assigned"), SkeletalMesh);
     TestNotNull(TEXT("temporary UE template physics asset is available"), Mesh->GetPhysicsAsset());
-    return Mesh->GetSkeletalMeshAsset() != nullptr && Mesh->GetPhysicsAsset() != nullptr;
+    if (!SkeletalMesh)
+    {
+        return false;
+    }
+
+    TestNotNull(TEXT("template skeleton reference resolves"), SkeletalMesh->GetSkeleton());
+    const FReferenceSkeleton& RefSkeleton = SkeletalMesh->GetRefSkeleton();
+    TestTrue(TEXT("front-left Chaos wheel bone exists"), RefSkeleton.FindBoneIndex(TEXT("Phys_Wheel_FL")) != INDEX_NONE);
+    TestTrue(TEXT("rear-right Chaos wheel bone exists"), RefSkeleton.FindBoneIndex(TEXT("Phys_Wheel_BR")) != INDEX_NONE);
+    return SkeletalMesh->GetSkeleton() != nullptr && Mesh->GetPhysicsAsset() != nullptr;
 }
 
 #endif

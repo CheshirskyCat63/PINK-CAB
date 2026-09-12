@@ -20,9 +20,9 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     USkeletalMeshComponent* VehicleMesh = GetMesh();
     static ConstructorHelpers::FObjectFinder<USkeletalMesh> TemplateMesh(
-        TEXT("/Game/SportsCar/SKM_SportsCar.SKM_SportsCar"));
+        TEXT("/Game/Vehicles/SportsCar/SKM_SportsCar.SKM_SportsCar"));
     static ConstructorHelpers::FObjectFinder<UPhysicsAsset> TemplatePhysicsAsset(
-        TEXT("/Game/SportsCar/PA_SportsCar.PA_SportsCar"));
+        TEXT("/Game/Vehicles/SportsCar/PA_SportsCar.PA_SportsCar"));
 
     if (TemplateMesh.Succeeded())
     {
@@ -74,6 +74,16 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->EngineSetup.MaxRPM = 6000.0f;
     Movement->EngineSetup.EngineIdleRPM = 750.0f;
     Movement->EngineSetup.EngineBrakeEffect = 0.15f;
+
+    // CALIBRATION seed: stock Chaos requires a non-empty torque curve. CD-787 owns final Tatra tuning.
+    FRichCurve* TorqueCurve = Movement->EngineSetup.TorqueCurve.GetRichCurve();
+    TorqueCurve->Reset();
+    TorqueCurve->AddKey(0.0f, 0.65f);
+    TorqueCurve->AddKey(800.0f, 0.72f);
+    TorqueCurve->AddKey(2000.0f, 0.90f);
+    TorqueCurve->AddKey(3500.0f, 1.00f);
+    TorqueCurve->AddKey(5000.0f, 0.85f);
+    TorqueCurve->AddKey(6000.0f, 0.65f);
     Movement->TransmissionSetup.bUseAutomaticGears = true;
     Movement->TransmissionSetup.bUseAutoReverse = true;
     Movement->TransmissionSetup.FinalRatio = 3.2f;
