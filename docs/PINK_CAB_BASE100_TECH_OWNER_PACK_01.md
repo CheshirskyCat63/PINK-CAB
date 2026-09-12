@@ -190,10 +190,10 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 ## K · Road graph / routing / traffic / gameplay geometry
 
 - `K01 PROPOSED DEFAULT` — one road/lane graph feeds generation, routing, traffic and rule lookup.
-- `K02 PROPOSED DEFAULT` — lane is graph/data identity, not Actor-per-lane.
-- `K03 PROPOSED DEFAULT` — no full hero-level physics for every traffic car.
+- `K02 LOCKED` - lane is graph/data identity, never Actor-per-lane; physical actors are only bounded presentation/materialization where required.
+- `K03 LOCKED` - ordinary traffic never runs full hero-level vehicle physics for every car; expensive physical simulation is reserved for bounded gameplay-relevant materialization.
 - `K04 OPEN` — exact physical-materialization radius/rules for traffic collision relevance.
-- `K05 PROPOSED DEFAULT` — non-materialized traffic uses bounded graph/kinematic simulation.
+- `K05 LOCKED` - non-materialized traffic uses bounded graph/kinematic logical simulation and does not require spawned vehicle Actors.
 - `K06 OPEN` — density control representation. Proposed: density profile + headway distribution.
 - `K07 LOCKED` — ordinary flow must preserve playable traffic gaps by design.
 - `K08 OPEN` — incident bypass behavior. Proposed: bounded moving bypass rather than systemic jam.
@@ -301,14 +301,14 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 
 This normalized pack contains **196 code-facing rows**:
 
-- **99 LOCKED**
+- **102 LOCKED**
 - **3 CALIBRATION**
-- **72 PROPOSED DEFAULT**
+- **69 PROPOSED DEFAULT**
 - **22 OPEN**
 
-Readiness points: `99 + 3 + 72*0.5 = 138.0`.
+Readiness points: `102 + 3 + 69*0.5 = 139.5`.
 
-Current item-weighted START-90 specification readiness: `138.0 / 196 = 70.4%`.
+Current item-weighted START-90 specification readiness: `139.5 / 196 = 71.2%`.
 
 Domain snapshots under the same rubric:
 

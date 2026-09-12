@@ -36,13 +36,13 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 99, calibration: 3, proposed_default: 72, open: 22}
+  status_counts: {locked: 102, calibration: 3, proposed_default: 69, open: 22}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 138.0
-  start90_percent: 70.4
+  numerator_points: 139.5
+  start90_percent: 71.2
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 19.6
-  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 53.1, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 18.8
+  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 57.8, service: 56.5, scope: 100.0}
   scope_reported_separately: true
   all_proposed_defaults_accepted_percent: 88.8
   open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
@@ -463,6 +463,9 @@ current_canon:
     systemic_standing_traffic_jams: false
     playable_gaps_required: true
     common_road_lane_graph: PROPOSED_DEFAULT_BASE100_K01
+    lane_identity: LOCKED_BASE100_K02_graph_data_not_actor_per_lane
+    ordinary_traffic_full_hero_physics: false_LOCKED_BASE100_K03
+    non_materialized_traffic: LOCKED_BASE100_K05_bounded_graph_kinematic_no_actor_required
     traffic_physical_materialization: OPEN_BASE100_K04
     density_representation: OPEN_BASE100_K06
     incident_bypass: OPEN_BASE100_K08
