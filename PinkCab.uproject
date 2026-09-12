@@ -1,24 +1,28 @@
 {
-    "FileVersion":  3,
-    "EngineAssociation":  "5.8",
-    "Category":  "",
-    "Description":  "PINK CAB",
-    "Modules":  [
-                    {
-                        "Name":  "PinkCab",
-                        "Type":  "Runtime",
-                        "LoadingPhase":  "Default"
-                    },
-                    {
-                        "Name":  "PinkCabTests",
-                        "Type":  "Editor",
-                        "LoadingPhase":  "Default"
-                    }
-                ],
-    "Plugins":  [
-                    {
-                        "Name":  "AndroidFileServer",
-                        "Enabled":  false
-                    }
-                ]
+    "FileVersion": 3,
+    "EngineAssociation": "5.8",
+    "Category": "",
+    "Description": "PINK CAB",
+    "Modules": [
+        {
+            "Name": "PinkCab",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabTests",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        }
+    ],
+    "Plugins": [
+        {
+            "Name": "AndroidFileServer",
+            "Enabled": false
+        },
+        {
+            "Name": "ChaosVehiclesPlugin",
+            "Enabled": true
+        }
+    ]
 }
