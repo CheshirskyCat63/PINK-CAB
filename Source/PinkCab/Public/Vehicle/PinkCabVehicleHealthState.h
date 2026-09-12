@@ -51,6 +51,17 @@ struct FPinkCabVehicleHealthState
         return true;
     }
 
+    bool RestoreFunctionalHealthTo(EPinkCabVehicleHealthChannel Channel, float TargetHealth01)
+    {
+        const int32 Index = static_cast<int32>(Channel);
+        if (Index < 0 || Index >= static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)) return false;
+        const float Target = FMath::Clamp(TargetHealth01, 0.0f, 1.0f);
+        if (Target <= Health[Index] + KINDA_SMALL_NUMBER) return false;
+        Health[Index] = Target;
+        ++FunctionalDamageSerial;
+        return true;
+    }
+
 private:
     float Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Count)] = {};
     uint32 FunctionalDamageSerial = 0;
