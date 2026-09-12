@@ -1,7 +1,7 @@
 # PINK CAB · PRE-FGEAR Execution Index
 
-**Status:** REPOSITORY CUT-OVER COMPLETE / PF-00 EXECUTION READY
-**Date:** 2026-09-11
+**Status:** PF-00..PF-15 COMPLETE / 100% PRE-FGEAR / PF-16 ENTRY GATE READY
+**Date:** 2026-09-12
 **Game Studio product lane:** Jira `CD-519`
 **Repository cut-over gate:** Jira `CD-558`
 **Target production repository:** `CheshirskyCat63/PINK-CAB`
@@ -82,14 +82,14 @@ FGear is purchased only after PF-15 evidence is green and PF-16 proves that the 
 
 ## Immediate handoff boundary
 
-Repository cut-over is complete. Next execution owner: `CD-755 / PF-00`.
+PRE-FGEAR implementation is certified complete. Next execution owner: `CD-771 / PF-16`, whose job is to prove the approved FGear provider is the sole remaining production road-dynamics blocker and then stop for official evaluation/purchase approval.
 
 1. work only in `CheshirskyCat63/PINK-CAB`;
-2. use branch `feat/CD-755-pf00-bootstrap`;
-3. inventory installed Unreal/MSVC/Windows SDK/Git LFS before creating runtime files;
-4. use the owner-locked UE 5.8 production line (`A01`) and do not silently decide `A09`;
-5. introduce no paid dependency before PF-16.
+2. execute PF-16 as an evaluation/purchase gate, not as substitute-physics implementation;
+3. keep the production provider slot empty until an official evaluation build or owner-approved purchase is available;
+4. use the owner-locked UE 5.8 production line and require an official demo/example/docs compatibility report before spending;
+5. do not introduce VDS until permanent deformation becomes the separately verified next blocker.
 
 ## Truth rule
 
-This index certifies planning/execution administration only. It does not mark the repository cut-over or PF-00 implemented, does not change the current BASE-100 score, and does not convert any OPEN owner row to LOCKED.
+This index records executable administration. PF-00..PF-15 are complete at the certified PF-15 evidence gate. PF-16 remains a purchase/evaluation gate and does not imply FGear or VDS is installed. OPEN owner rows remain OPEN unless separately owner-locked.
