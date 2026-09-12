@@ -209,9 +209,9 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 - `L02 PROPOSED DEFAULT` — fields: EventId / Type / Timestamp / CityLocationId / VehicleId / optional PassengerId / Severity / EvidenceFlags / Context.
 - `L03 PROPOSED DEFAULT` — FIRST EURO ordinary cameras/rules may convert events into fines/ordinary consequences.
 - `L04 LOCKED` — future Taxi Regulator subscribes to same producer contract without producer rewrites.
-- `L05 OPEN` — event retention/history lifetime. Proposed: bounded recent ledger + aggregated persistent reputation/consequence state.
-- `L06 OPEN` — FIRST EURO speed/camera/lane/stopping/parking/bus-or-magnetic/toll/fine numeric profile and escalation/tolerance rules.
-- `L07 OPEN` — city reputation/social-credit event weights, thresholds, visibility/downstream effects and any decay/recovery profile retained in FIRST EURO.
+- `L05 LOCKED` — event retention/history is a bounded recent ledger plus aggregated persistent reputation/consequence state.
+- `L06 LOCKED` — FIRST EURO enforcement uses one data-driven rule/fine profile for speed/camera/lane/stopping/parking/bus-or-magnetic/toll events; exact amounts, tolerances and escalation values remain calibration.
+- `L07 LOCKED` — city reputation keeps numeric aggregate state internally but presents qualitative bands to the player by default; exact weights, thresholds, downstream effects and decay/recovery values remain calibration.
 
 ## M · Level 1 traversal
 
@@ -326,7 +326,7 @@ If every PROPOSED DEFAULT is owner-accepted, score becomes `174/196 = 88.8%`. At
 
 All genuine OPEN rows are:
 
-`F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F18 J11 J12 K04 K06 K08 K11 K12 K13 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
 Highest structural priority for broad-start readiness: `J05/J07/J09/J11/J12`, `K04/K06/K08/K11-K13`, `L05-L07`, then the remaining taxi/service/transit owner rows.
 

@@ -36,16 +36,16 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 102, calibration: 3, proposed_default: 69, open: 22}
+  status_counts: {locked: 105, calibration: 3, proposed_default: 69, open: 19}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 139.5
-  start90_percent: 71.2
+  numerator_points: 142.5
+  start90_percent: 72.7
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 18.8
-  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 57.8, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 17.3
+  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 67.2, service: 56.5, scope: 100.0}
   scope_reported_separately: true
-  all_proposed_defaults_accepted_percent: 88.8
-  open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
+  all_proposed_defaults_accepted_percent: 90.31
+  open_rows_needed_after_all_defaults_accepted_to_cross_90: 0
   crossing_example_percent: 90.31
   broad_production: HOLD
   narrow_bootstrap_spec_calibration_admin: ALLOWED
@@ -264,6 +264,9 @@ current_canon:
     unofficial_pirated_asset_mirrors: forbidden
     purchase_trigger: only_when_specific_paid_plugin_is_verified_next_blocker
     purchase_requires_owner_approval: true
+    pre_purchase_compatibility_report_required: true
+    compatibility_report_sources: [official_demo, official_example_project, official_documentation]
+    purchase_sequence: FGear_first_then_VDS_only_if_permanent_deformation_is_verified_next_blocker
     post_purchase_install_path: Fab_library_or_official_vendor_delivery
 
   vehicle_technology:
@@ -480,7 +483,9 @@ current_canon:
     density_representation: OPEN_BASE100_K06
     incident_bypass: OPEN_BASE100_K08
     enforcement_event_schema: LOCKED
-    enforcement_event_retention: OPEN_BASE100_L05
+    enforcement_event_retention: LOCKED_BASE100_L05_bounded_recent_ledger_plus_persistent_aggregates
+    enforcement_rule_profile: LOCKED_BASE100_L06_single_data_driven_profile_exact_amounts_tolerances_escalation_are_calibration
+    city_reputation_presentation: LOCKED_BASE100_L07_internal_numeric_aggregate_player_facing_qualitative_bands_exact_weights_thresholds_decay_are_calibration
     full_taxi_regulator_first_euro: false
 
   level1:
@@ -538,7 +543,7 @@ current_canon:
     current_first_euro_uninsured_recovery: LOCKED_BASE100_I06_REPAIR_RECOVERY_NO_FREE_RESET
 
 open_owner_rows:
-  count: 22
+  count: 19
   ids:
     - F18
     - J11
@@ -549,9 +554,6 @@ open_owner_rows:
     - K11
     - K12
     - K13
-    - L05
-    - L06
-    - L07
     - N05
     - N06
     - N07

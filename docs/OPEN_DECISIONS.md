@@ -156,9 +156,9 @@ Owner accepted `A03`, `A10`, `A13`, `A14`, `C08`. Locked outcomes: eight shippin
 
 Technical Owner Pack 01 priority:
 
-`F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
+`F18 J11 J12 K04 K06 K08 K11 K12 K13 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-These are the **22 genuine OPEN owner rows**. The **69 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
+These are the **19 genuine OPEN owner rows**. The **69 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
 
 Batch acceptance/rejection of the remaining `PROPOSED DEFAULT` rows will close many additional code contracts without re-asking already-resolved behavior.
 

@@ -46,7 +46,7 @@ FIRST EURO = **first 12 months / PC / single-player / full L1 + L2**.
 
 Included: FGear+VDS hero Tatra, taxi/fare/passenger loop, repeat clients + basic Neural, deterministic CityCode/world/road/traffic/rules, automotive ServiceNodes `Parking/Garage-Tuning/Parts/Repair-Service` plus Practice Hangar where Level1 training/acceptance requires it, moving refueling, economy/session/save/config/build/QA foundations.
 
-PRE-PURCHASE PROCUREMENT: zero spend until the verified purchase gate; use only official free demos/example projects/docs and built-in or already-owned free content. Paid plugins enter only when they are the proven next blocker and the owner approves purchase.
+PRE-PURCHASE PROCUREMENT: zero spend until the verified purchase gate; use only official free demos/example projects/docs and built-in or already-owned free content. Paid plugins enter only when they are the proven next blocker and the owner approves purchase. Before any paid purchase, complete an official demo/example/docs compatibility report. Purchase FGear first; defer VDS until permanent deformation itself is the verified next blocker.
 
 POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle ServiceNodes, full Taxi Regulator and daily insurance. Only minimal extension boundaries are preserved in year one.
 

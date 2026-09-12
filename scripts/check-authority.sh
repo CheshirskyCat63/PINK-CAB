@@ -56,13 +56,13 @@ require_text "$registry" "jira_governance: CD-661"
 require_text "$registry" "confluence_ledger: 6553617"
 require_text "$registry" "owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md"
 require_text "$registry" "tracked_rows: 196"
-require_text "$registry" "status_counts: {locked: 102, calibration: 3, proposed_default: 69, open: 22}"
-require_text "$registry" "numerator_points: 139.5"
-require_text "$registry" "start90_percent: 71.2"
+require_text "$registry" "status_counts: {locked: 105, calibration: 3, proposed_default: 69, open: 19}"
+require_text "$registry" "numerator_points: 142.5"
+require_text "$registry" "start90_percent: 72.7"
 require_text "$registry" "start90_gate_passed: false"
-require_text "$registry" "gap_to_start90_percentage_points: 18.8"
-require_text "$registry" "all_proposed_defaults_accepted_percent: 88.8"
-require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 3"
+require_text "$registry" "gap_to_start90_percentage_points: 17.3"
+require_text "$registry" "all_proposed_defaults_accepted_percent: 90.31"
+require_text "$registry" "open_rows_needed_after_all_defaults_accepted_to_cross_90: 0"
 require_text "$registry" "crossing_example_percent: 90.31"
 require_text "$registry" "broad_production: HOLD"
 
@@ -138,7 +138,7 @@ require_text "$registry" "base100_code_architecture: 11239425"
 require_text "$registry" "open_decisions: 5832744"
 require_text "$registry" "master_question_register: CD-673"
 
-# Exact current 22-row OPEN owner set.
+# Exact current 19-row OPEN owner set.
 expected_open="$(cat <<'EOF'
 F18
 J11
@@ -149,9 +149,6 @@ K08
 K11
 K12
 K13
-L05
-L06
-L07
 N05
 N06
 N07
@@ -177,9 +174,9 @@ if [ "$actual_open" != "$expected_open" ]; then
   printf '%s\n' "$expected_open" >&2
   echo "Actual OPEN rows:" >&2
   printf '%s\n' "$actual_open" >&2
-  fail "normalized 22-row OPEN owner set drifted"
+  fail "normalized 19-row OPEN owner set drifted"
 fi
-require_text "$registry" "count: 22"
+require_text "$registry" "count: 19"
 require_text "$registry" "payment_commit_interaction: passenger_hand_swipe_on_cabin_grabrail_reader_before_exit"
 require_text "$registry" "payment_commit_blocks_unpaid_escape: true"
 require_text "$registry" "receipt_after_payment: physical_optional_take_or_leave_never_blocks_fare_completion_or_next_order"
@@ -231,10 +228,10 @@ done
 
 # Mirror-level current locks.
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
-require_text docs/PINK_CAB_START90_READINESS.md "139.5 / 196 = 71.2%"
-require_text docs/PINK_CAB_START90_READINESS.md "3 of the remaining 22 OPEN rows"
+require_text docs/PINK_CAB_START90_READINESS.md "142.5 / 196 = 72.7%"
+require_text docs/PINK_CAB_START90_READINESS.md "without consuming any of the remaining 19 OPEN rows"
 require_text docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md "196 code-facing rows"
-require_text docs/OPEN_DECISIONS.md "22 genuine OPEN owner rows"
+require_text docs/OPEN_DECISIONS.md "19 genuine OPEN owner rows"
 require_text docs/OPEN_DECISIONS.md "Practice Hangar only where Level1 training/acceptance requires it"
 require_text docs/VERIFICATION_MATRIX.md "CANON → SPECIFIED → IMPLEMENTED → VERIFIED"
 
