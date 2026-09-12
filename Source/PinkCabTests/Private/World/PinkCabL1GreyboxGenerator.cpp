@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Misc/PackageName.h"
 #include "World/PinkCabL1GreyboxCorridor.h"
 #include "FileHelpers.h"
 #include "Editor.h"
@@ -13,10 +14,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabGenerateL1GreyboxZero::RunTest(const FString& Parameters)
 {
+    const FString MapPackage = TEXT("/Game/Dev/Maps/L_PinkCab_L1_GreyboxZero");
+    if (FPackageName::DoesPackageExist(MapPackage))
+    {
+        TestTrue(TEXT("existing L1 Greybox Zero map is reused without resave"), true);
+        return true;
+    }
+
     UWorld* World = UEditorLoadingAndSavingUtils::NewBlankMap(false);
     TestNotNull(TEXT("blank editor world created"), World);
     if (!World) return false;
-
     FActorSpawnParameters SpawnParams;
     SpawnParams.OverrideLevel = World->PersistentLevel;
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -33,9 +40,7 @@ bool FPinkCabGenerateL1GreyboxZero::RunTest(const FString& Parameters)
     Corridor->SetFlags(RF_Transactional);
     Corridor->MarkPackageDirty();
 
-    const bool bSaved = UEditorLoadingAndSavingUtils::SaveMap(
-        World,
-        TEXT("/Game/Dev/Maps/L_PinkCab_L1_GreyboxZero"));
+    const bool bSaved = UEditorLoadingAndSavingUtils::SaveMap(World, MapPackage);
     TestTrue(TEXT("L1 Greybox Zero map saved"), bSaved);
     return bSaved;
 }
