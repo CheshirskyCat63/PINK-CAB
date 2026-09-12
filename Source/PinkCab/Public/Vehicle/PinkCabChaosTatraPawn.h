@@ -1,7 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
 
@@ -41,6 +42,7 @@ private:
 
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
     FPinkCabVehicleControlState ControlState;
+    FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
 
     float SteeringCommand = 0.0f;
     float MouseSteeringGain = 0.025f;

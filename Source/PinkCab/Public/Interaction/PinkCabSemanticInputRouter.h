@@ -36,6 +36,18 @@ struct FPinkCabSemanticInputRouter
         }
         return EPinkCabSemanticAction::None;
     }
+    FKey GetKeyForAction(EPinkCabSemanticAction Action) const
+    {
+        for (const TPair<FKey, EPinkCabSemanticAction>& Pair : Bindings)
+        {
+            if (Pair.Value == Action)
+            {
+                return Pair.Key;
+            }
+        }
+        return FKey();
+    }
+
     bool TryRebind(EPinkCabSemanticAction Action, const FKey& NewKey)
     {
         if (Action == EPinkCabSemanticAction::None || !NewKey.IsValid())

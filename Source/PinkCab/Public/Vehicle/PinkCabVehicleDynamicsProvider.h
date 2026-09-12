@@ -9,12 +9,22 @@ enum class EPinkCabVehicleDynamicsProviderState : uint8
     Ready
 };
 
+enum class EPinkCabMechanicalClutchCapability : uint8
+{
+    Unsupported,
+    Native
+};
+
 class IPinkCabVehicleDynamicsProvider
 {
 public:
     virtual ~IPinkCabVehicleDynamicsProvider() = default;
     virtual bool ApplyControls(const FPinkCabVehicleControlState& Controls) = 0;
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const = 0;
+    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const
+    {
+        return EPinkCabMechanicalClutchCapability::Unsupported;
+    }
 };
 
 class FPinkCabVehicleDynamicsProviderHandle

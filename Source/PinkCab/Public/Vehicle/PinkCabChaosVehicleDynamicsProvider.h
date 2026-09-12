@@ -12,6 +12,10 @@ public:
 
     virtual bool ApplyControls(const FPinkCabVehicleControlState& Controls) override;
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const override;
+    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override
+    {
+        return EPinkCabMechanicalClutchCapability::Unsupported;
+    }
 
     UChaosWheeledVehicleMovementComponent* GetMovement() const { return Movement; }
 

@@ -11,6 +11,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
+#include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
@@ -127,7 +128,10 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     float MouseX = 0.0f;
     float MouseY = 0.0f;
     PC->GetInputMouseDelta(MouseX, MouseY);
-    const bool bGazeHeld = PC->IsInputKeyDown(EKeys::SpaceBar);
+    const FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
+        InputRouter,
+        [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
+    const bool bGazeHeld = InputFrame.bGazeHeld;
     ApplyMouseSteeringDelta(MouseX, bGazeHeld);
 
     if (bGazeHeld)
@@ -143,9 +147,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     CameraBoom->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
 
-    ControlState.SetThrottle(PC->IsInputKeyDown(EKeys::W) ? 1.0f : 0.0f);
-    ControlState.SetBrake(PC->IsInputKeyDown(EKeys::S) ? 1.0f : 0.0f);
-    ControlState.SetHandbrake(PC->IsInputKeyDown(EKeys::LeftShift) ? 1.0f : 0.0f);
+    ControlState = InputFrame.ToControlState(SteeringCommand, 0.0f);
     DynamicsProvider.ApplyControls(ControlState);
 
     if (PC->WasInputKeyJustPressed(EKeys::R))
