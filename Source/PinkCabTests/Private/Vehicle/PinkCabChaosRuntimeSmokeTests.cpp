@@ -129,6 +129,23 @@ public:
         Test->TestFalse(TEXT("target rotation arcade control stays off"), Movement->TargetRotationControl.Enabled);
         Test->TestFalse(TEXT("stabilize arcade control stays off"), Movement->StabilizeControl.Enabled);
 
+        FPinkCabVehicleTelemetry Telemetry;
+        Test->TestTrue(TEXT("provider returns live PIE telemetry"),
+            Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry));
+        Test->TestEqual(TEXT("telemetry mirrors live current gear"), Telemetry.CurrentGear, Movement->GetCurrentGear());
+        Test->TestTrue(TEXT("telemetry exposes running engine rpm"), Telemetry.EngineRpm > 750.0f);
+        Test->TestEqual(TEXT("telemetry exposes four wheel slots"), Telemetry.Wheels.Num(), 4);
+        int32 ContactCount = 0;
+        for (const FPinkCabWheelTelemetry& Wheel : Telemetry.Wheels)
+        {
+            ContactCount += Wheel.bInContact ? 1 : 0;
+            Test->TestTrue(TEXT("wheel suspension telemetry is finite"), FMath::IsFinite(Wheel.NormalizedSuspensionLength));
+            Test->TestTrue(TEXT("wheel spring telemetry is finite"), FMath::IsFinite(Wheel.SpringForce));
+            Test->TestTrue(TEXT("wheel slip telemetry is finite"), FMath::IsFinite(Wheel.SlipMagnitude));
+            Test->TestTrue(TEXT("wheel torque telemetry is finite"), FMath::IsFinite(Wheel.DriveTorque));
+        }
+        Test->TestTrue(TEXT("at least two wheels remain in road contact"), ContactCount >= 2);
+
         FPinkCabVehicleControlState StopControls;
         StopControls.SetBrake(1.0f);
         Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);

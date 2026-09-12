@@ -32,6 +32,8 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("telemetry echoes throttle command"), Telemetry.NormalizedThrottle, 0.72f);
     TestEqual(TEXT("telemetry preserves clutch command without claiming Chaos clutch actuation"), Telemetry.NormalizedClutch, 0.64f);
     TestEqual(TEXT("telemetry echoes handbrake command"), Telemetry.NormalizedHandbrake, 0.80f);
+    TestEqual(TEXT("telemetry mirrors current Chaos gear"), Telemetry.CurrentGear, Movement->GetCurrentGear());
+    TestEqual(TEXT("telemetry wheel slot count mirrors Chaos"), Telemetry.Wheels.Num(), Movement->GetNumWheels());
     return true;
 }
 
