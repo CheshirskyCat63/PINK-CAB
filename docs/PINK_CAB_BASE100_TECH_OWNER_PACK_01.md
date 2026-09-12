@@ -144,14 +144,14 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 ## H · Economy / transaction ledger
 
-- `H01 PROPOSED DEFAULT` — one EconomyService owns money balance/settlement.
-- `H02 PROPOSED DEFAULT` — FareIncome / Tip / FuelPurchase / PartPurchase / Repair / Parking / Fine are typed transactions.
-- `H03 PROPOSED DEFAULT` — persistent/retriable transactions use stable TransactionId + exactly-once semantics.
+- `H01 LOCKED` - one EconomyService/Ledger is the sole authoritative owner of money balance and settlement; Taxi/Fuel/Repair/Fines/Service systems submit typed transaction requests and do not mutate balance directly.
+- `H02 LOCKED` - FareIncome / Tip / FuelPurchase / PartPurchase / Repair / Parking / Fine are the initial typed transaction vocabulary; later additions require versioned schema extension/migration rather than ad-hoc balance mutation.
+- `H03 LOCKED` - every persistent/retriable money operation uses a stable TransactionId and exactly-once semantics; replay/retry of the same committed TransactionId never mutates balance twice.
 - `H04 LOCKED` - bounded debt is allowed only for essential recovery, minimum roadworthy repair and mandatory day obligations; tuning and discretionary purchases may not create debt.
 - `H05 LOCKED` - fuel purchase is capped to affordable volume; ordinary parts are denied when unaffordable; Repair may offer minimum roadworthy repair through allowed bounded debt; insufficient funds must not permanently block sleep/next Workday.
 - `H06 PROPOSED DEFAULT` — prices live in data/config profiles.
-- `H07 PROPOSED DEFAULT` — economy owns no UI/animation presentation.
-- `H08 PROPOSED DEFAULT` — tips settle as separate transaction from fare principal.
+- `H07 LOCKED` - Economy owns no UI, receipt, taximeter, hand, animation or presentation state; it accepts logical settlement requests and returns deterministic settlement results.
+- `H08 LOCKED` - tips settle as a distinct transaction from fare principal even when presentation combines them; this preserves independent history/retry/off-register outcomes.
 
 ## I · Session / save / workday
 
@@ -298,21 +298,21 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **88 LOCKED**
+- **93 LOCKED**
 - **3 CALIBRATION**
-- **83 PROPOSED DEFAULT**
+- **78 PROPOSED DEFAULT**
 - **22 OPEN**
 
-Readiness points: `88 + 3 + 83×0.5 = 132.5`.
+Readiness points: `93 + 3 + 78*0.5 = 135.0`.
 
-Current item-weighted START-90 specification readiness: `132.5 / 196 = 67.6%`.
+Current item-weighted START-90 specification readiness: `135.0 / 196 = 68.9%`.
 
 Domain snapshots under the same rubric:
 
 - CORE `A/B/C/Q/R/S`: **69.1%**
 - VEHICLE `D/E/M/N`: **71.4%**
 - TAXI `F/G`: **85.0%**
-- STATE `H/I`: **81.0%**
+- STATE `H/I`: **92.9%**
 - WORLD `J/K/L`: **43.8%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.

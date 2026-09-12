@@ -36,13 +36,13 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 88, calibration: 3, proposed_default: 83, open: 22}
+  status_counts: {locked: 93, calibration: 3, proposed_default: 78, open: 22}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 132.5
-  start90_percent: 67.6
+  numerator_points: 135.0
+  start90_percent: 68.9
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 22.4
-  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 81.0, world: 43.8, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 21.1
+  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 43.8, service: 56.5, scope: 100.0}
   scope_reported_separately: true
   all_proposed_defaults_accepted_percent: 88.8
   open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
@@ -406,6 +406,14 @@ current_canon:
     fare_evasion: locked_unresolved_payment_escape_before_reader_commit_at_final_open_door_or_stopover_no_return_exact_probability_weights_are_data_calibration
     promotion_scoring: repeat_pool_after_2_successfully_paid_fares_or_one_authored_relationship_event_then_score_seeded_selection
     relationship_axes: [Trust, Satisfaction, RiskTolerance]
+
+  economy_contract:
+    authoritative_owner: one_EconomyService_Ledger
+    typed_transactions: [FareIncome, Tip, FuelPurchase, PartPurchase, Repair, Parking, Fine]
+    stable_transaction_id_exactly_once: required_replay_never_double_mutates_balance
+    tip_separate_from_fare_principal: true
+    presentation_ownership: none_UI_receipt_taximeter_hands_animation_are_external
+    settlement_result_contract: deterministic_logical_result_only
 
   economy_policy:
     debt: bounded_essential_only_recovery_minimum_roadworthy_repair_mandatory_day_obligations

@@ -37,7 +37,7 @@ Scoring: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
 **Current item-weighted START-90 specification readiness = 66.6%. Gate FAIL. Gap = 23.4 percentage points.**
 
-Domain snapshot: CORE 65.5%; VEHICLE 71.4%; TAXI 85.0%; STATE 81.0%; WORLD 43.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 43.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
 If all 87 proposed defaults are accepted, score becomes 174/196 = 88.8%. At least 3 of the remaining 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
 
