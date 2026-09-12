@@ -64,6 +64,18 @@ A purchase request is raised only when:
 
 After approval, acquire FGear through the official channel, install it for the pinned UE line, implement the thin adapter, then rerun build, complete `PinkCab.*` automation, package, Tatra fixtures and canonical map acceptance before merging.
 
+## Current official evaluation evidence · 2026-09-12
+
+Canonical report: `docs/qa/PINK_CAB_FGEAR_EVALUATION_LICENSE_REPORT.md`.
+
+- Official Fab listing exposes packaged demos, documentation and an Example Project as the public zero-cost evaluation surface.
+- No public seller/Fab source reviewed advertises an installable trial/evaluation plugin binary or temporary plugin license.
+- Vendor-posted release evidence confirms FGear v1.8.4 with Unreal Engine 5.7 support.
+- Unreal Engine 5.8 compatibility is `UNKNOWN / NOT PUBLICLY CONFIRMED` and must not be inferred from 5.7.
+- A vendor request for an official trial/evaluation path and UE 5.8 confirmation has been prepared as an unsent Gmail draft.
+- Fab code-plugin licensing is treated as per-seat at purchase time; current terms must be rechecked before `CD-782` approval.
+- `CD-777` remains IN PROGRESS pending vendor confirmation or an explicit decision to close on documented no-public-trial evidence.
+
 ## Evidence rule
 
 Every task closes with exact source URLs/artifact versions, engine version, Git SHA, commands/tests run and pass/fail evidence. Unknown vendor API or calibration values remain explicit unknowns until verified; they are never promoted to canon by implementation convenience.
