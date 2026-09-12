@@ -11,8 +11,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
-#include "Vehicle/PinkCabTatraProfile.h"
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 {
@@ -52,13 +52,9 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     check(Movement);
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(Movement);
 
-    const FPinkCabTatraProfile Profile = FPinkCabTatraProfile::Canonical();
-    Movement->Mass = Profile.GetReferenceCrewMassKg();
-    Movement->DifferentialSetup.DifferentialType = EVehicleDifferential::RearWheelDrive;
-
-    Movement->TorqueControl.Enabled = false;
-    Movement->TargetRotationControl.Enabled = false;
-    Movement->StabilizeControl.Enabled = false;
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    Profile.ApplyToMovement(*Movement);
 
     Movement->WheelSetups.SetNum(4);
     Movement->WheelSetups[0].WheelClass = UPinkCabChaosWheelFront::StaticClass();
@@ -70,28 +66,6 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = TEXT("Phys_Wheel_BR");
 
-    // CALIBRATION seeds for the first stock-Chaos drive only.
-    Movement->EngineSetup.MaxTorque = 240.0f;
-    Movement->EngineSetup.MaxRPM = 6000.0f;
-    Movement->EngineSetup.EngineIdleRPM = 750.0f;
-    Movement->EngineSetup.EngineBrakeEffect = 0.15f;
-
-    // CALIBRATION seed: stock Chaos requires a non-empty torque curve. CD-787 owns final Tatra tuning.
-    FRichCurve* TorqueCurve = Movement->EngineSetup.TorqueCurve.GetRichCurve();
-    TorqueCurve->Reset();
-    TorqueCurve->AddKey(0.0f, 0.65f);
-    TorqueCurve->AddKey(800.0f, 0.72f);
-    TorqueCurve->AddKey(2000.0f, 0.90f);
-    TorqueCurve->AddKey(3500.0f, 1.00f);
-    TorqueCurve->AddKey(5000.0f, 0.85f);
-    TorqueCurve->AddKey(6000.0f, 0.65f);
-    Movement->TransmissionSetup.bUseAutomaticGears = true;
-    Movement->TransmissionSetup.bUseAutoReverse = true;
-    Movement->TransmissionSetup.FinalRatio = 3.2f;
-    Movement->TransmissionSetup.ForwardGearRatios = {3.8f, 2.2f, 1.5f, 1.1f, 0.85f};
-    Movement->TransmissionSetup.ReverseGearRatios = {3.5f};
-    Movement->SteeringSetup.SteeringType = ESteeringType::Ackermann;
-    Movement->SteeringSetup.AngleRatio = 0.72f;
 }
 
 void APinkCabChaosTatraPawn::BeginPlay()
