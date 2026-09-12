@@ -26,6 +26,7 @@ Mechanical migration is defined by `docs/PINK_CAB_REPOSITORY_CUTOVER.md`.
 - Implementation plan: `docs/superpowers/plans/2026-09-11-pink-cab-pre-fgear-development-plan.md`
 - Execution index: `docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md`
 - Repository cut-over manifest: `docs/PINK_CAB_REPOSITORY_CUTOVER.md`
+- Post-gate FGear plan: `docs/qa/PINK_CAB_FGEAR_EVALUATION_INTEGRATION_PLAN.md`
 
 ## Jira map
 
@@ -82,10 +83,10 @@ FGear is purchased only after PF-15 evidence is green and PF-16 proves that the 
 
 ## Immediate handoff boundary
 
-PRE-FGEAR implementation and PF-16 entry gate are complete. The next production action is owner-approved acquisition/install of FGear; implementation must remain stopped at the empty provider slot until that approval.
+PRE-FGEAR implementation and PF-16 entry gate are complete. The active handoff is `CD-784 · FGear Evaluation & Integration Program`: exhaust the legal zero-cost evaluation path and prepare the adapter/calibration package before any owner-approved purchase.
 
 1. work only in `CheshirskyCat63/PINK-CAB`;
-2. execute PF-16 as an evaluation/purchase gate, not as substitute-physics implementation;
+2. execute `CD-784` / `CD-777..CD-783` under `docs/qa/PINK_CAB_FGEAR_EVALUATION_INTEGRATION_PLAN.md`;
 3. keep the production provider slot empty until an official evaluation build or owner-approved purchase is available;
 4. use the owner-locked UE 5.8 production line and require an official demo/example/docs compatibility report before spending;
 5. do not introduce VDS until permanent deformation becomes the separately verified next blocker.
