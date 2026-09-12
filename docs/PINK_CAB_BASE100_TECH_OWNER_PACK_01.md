@@ -171,18 +171,21 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 ## J · CityCode / generation / streaming
 
-- `J01 PROPOSED DEFAULT` — world identity = CityCode + GeneratorVersion + ContentSetVersion.
-- `J02 PROPOSED DEFAULT` — CityCode is immutable for an existing campaign save.
-- `J03 PROPOSED DEFAULT` — generated chunks/modules use deterministic coordinate/ID.
-- `J04 PROPOSED DEFAULT` — persist seed/version + meaningful deltas, not complete generated world serialization.
+- `J01 LOCKED` - world identity = CityCode + GeneratorVersion + ContentSetVersion; CityCode identifies the city/seed while generator and content versions remain explicit reconstruction inputs.
+- `J02 LOCKED` - CityCode is immutable for an existing campaign save; a different CityCode means a different campaign/world, never a silent mutation of the current campaign.
+- `J03 LOCKED` - generated chunk/module/road/lane identities are deterministic from world identity plus logical coordinate/path data, never spawn-time Actor GUID ownership.
+- `J04 LOCKED` - persist CityCode/versions plus meaningful persistent deltas rather than serializing the complete generated city.
 - `J05 LOCKED` — mandatory persistent deltas are Tatra/VehicleBuild state, owned/service state, economy/transactions, PassengerIdentity + local reviews, bounded important/active incidents, and explicitly persistent world changes. Ordinary transient traffic is not persisted.
-- `J06 PROPOSED DEFAULT` — ordinary temporary traffic is not persisted when unloaded.
+- `J06 LOCKED` - ordinary temporary traffic is not persisted when unloaded; it is reconstructed from deterministic logical state/profiles within bounded streaming windows.
 - `J07 LOCKED` — only bounded important/active incidents persist across streaming/save; ordinary background traffic crashes, near-misses and minor debris may disappear after leaving the reconstruction window.
-- `J08 PROPOSED DEFAULT` — same generator version + inputs reproduce deterministic logical world across supported machines.
+- `J08 LOCKED` - identical CityCode + GeneratorVersion + ContentSetVersion + logical inputs reproduce identical gameplay topology and stable logical IDs on supported PCs; pixel-identical decorative noise is not required.
 - `J09 LOCKED` — each campaign retains its GeneratorVersion + ContentSetVersion for deterministic reconstruction. Migration is explicit and versioned only; silent regeneration under a newer generator is forbidden.
 - `J10 PROPOSED DEFAULT` — UE World Partition/PCG/engine streaming + thin deterministic PINK CAB recipe layer; no bespoke world-streaming engine by default.
 - `J11 OPEN` — exact chunk-length/lookahead/live-recent-reconstructable/cache/recycle numeric envelope required by CityCode streaming tests.
 - `J12 OPEN` — exact world-streaming actor/component/memory/materialization ceilings and reverse-cache budget used by performance acceptance.
+
+Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100 row): predictive streaming prioritizes the player-forward travel window; visible Level1 should feel dense with low-poly vehicles, pedestrians and event dressing while logical simulation/materialization remain bounded. Exact lookahead, actor/component, memory and materialization ceilings remain J11/J12 owner-open/calibration work.
+
 
 ## K · Road graph / routing / traffic / gameplay geometry
 
@@ -298,14 +301,14 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 
 This normalized pack contains **196 code-facing rows**:
 
-- **93 LOCKED**
+- **99 LOCKED**
 - **3 CALIBRATION**
-- **78 PROPOSED DEFAULT**
+- **72 PROPOSED DEFAULT**
 - **22 OPEN**
 
-Readiness points: `93 + 3 + 78*0.5 = 135.0`.
+Readiness points: `99 + 3 + 72*0.5 = 138.0`.
 
-Current item-weighted START-90 specification readiness: `135.0 / 196 = 68.9%`.
+Current item-weighted START-90 specification readiness: `138.0 / 196 = 70.4%`.
 
 Domain snapshots under the same rubric:
 
@@ -313,7 +316,7 @@ Domain snapshots under the same rubric:
 - VEHICLE `D/E/M/N`: **71.4%**
 - TAXI `F/G`: **85.0%**
 - STATE `H/I`: **92.9%**
-- WORLD `J/K/L`: **43.8%**
+- WORLD `J/K/L`: **53.1%**
 - SERVICE `O/P`: **56.5%**
 - SCOPE `CD-753`: **100% LOCKED**, reported separately and not allowed to hide weak technical domains.
 

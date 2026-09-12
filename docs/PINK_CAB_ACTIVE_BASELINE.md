@@ -29,17 +29,17 @@ Every runtime domain must expose: `PURPOSE → BUY/ENGINE/WRITE → AUTHORITATIV
 
 Prefer proven Unreal features/plugins/assets over custom frameworks. Selected third-party systems sit behind PINK CAB adapters. One authoritative owner per responsibility; no competing production solvers. C++ owns interfaces/state/persistence/invariants; Blueprint remains thin composition/orchestration; DataAssets/DataTables/config own tunable values.
 
-## Current START-90 snapshot — 2026-09-11
+## Current START-90 snapshot — 2026-09-12
 
-Technical Owner Pack 01 contains **196 code-facing rows**: 84 LOCKED, 3 CALIBRATION, 87 PROPOSED DEFAULT, 22 OPEN.
+Technical Owner Pack 01 contains **196 code-facing rows**: 99 LOCKED, 3 CALIBRATION, 72 PROPOSED DEFAULT, 22 OPEN.
 
 Scoring: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
-**Current item-weighted START-90 specification readiness = 66.6%. Gate FAIL. Gap = 23.4 percentage points.**
+**Current item-weighted START-90 specification readiness = 70.4%. Gate FAIL. Gap = 19.6 percentage points.**
 
-Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 43.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 53.1%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
-If all 87 proposed defaults are accepted, score becomes 174/196 = 88.8%. At least 3 of the remaining 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
+If all 72 proposed defaults are accepted, score becomes 174/196 = 88.8%. At least 3 of the remaining 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
 
 Historical ≈59% and 38.2% scores are retired. Broad production remains HOLD; narrow bootstrap/specification/calibration/admin work is allowed.
 

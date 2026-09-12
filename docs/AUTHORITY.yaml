@@ -36,13 +36,13 @@ readiness:
   git_ledger: docs/PINK_CAB_START90_READINESS.md
   owner_pack: docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md
   tracked_rows: 196
-  status_counts: {locked: 93, calibration: 3, proposed_default: 78, open: 22}
+  status_counts: {locked: 99, calibration: 3, proposed_default: 72, open: 22}
   scoring: {locked: 1.0, calibration: 1.0, proposed_default: 0.5, open: 0.0}
-  numerator_points: 135.0
-  start90_percent: 68.9
+  numerator_points: 138.0
+  start90_percent: 70.4
   start90_gate_passed: false
-  gap_to_start90_percentage_points: 21.1
-  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 43.8, service: 56.5, scope: 100.0}
+  gap_to_start90_percentage_points: 19.6
+  domain_percent: {core: 69.1, vehicle: 71.4, taxi: 85.0, state: 92.9, world: 53.1, service: 56.5, scope: 100.0}
   scope_reported_separately: true
   all_proposed_defaults_accepted_percent: 88.8
   open_rows_needed_after_all_defaults_accepted_to_cross_90: 3
@@ -444,7 +444,15 @@ current_canon:
 
   city_world:
     identity: CityCode_plus_GeneratorVersion_plus_ContentSetVersion_plus_persistent_deltas
-    citycode_immutable_existing_campaign: PROPOSED_DEFAULT_BASE100_J02
+    identity_contract: LOCKED_BASE100_J01
+    deterministic_logical_ids: LOCKED_BASE100_J03_world_identity_plus_coordinate_or_logical_path
+    persistence_model: LOCKED_BASE100_J04_seed_versions_plus_meaningful_deltas_not_full_city_serialization
+    transient_traffic_unloaded: LOCKED_BASE100_J06_not_persisted
+    deterministic_reproduction: LOCKED_BASE100_J08_same_identity_versions_inputs_same_gameplay_topology_and_ids
+    streaming_directionality: predictive_player_forward_priority
+    streaming_density_intent: dense_low_poly_vehicles_pedestrians_and_events_with_bounded_logical_simulation_and_materialization
+    streaming_numeric_budgets: OPEN_BASE100_J11_J12
+    citycode_immutable_existing_campaign: LOCKED_BASE100_J02
     old_generator_save_policy: campaign_retains_generator_and_contentset_versions_explicit_versioned_migration_only_no_silent_regeneration
     persistent_delta_classes: vehiclebuild_owned_service_economy_transactions_passengeridentity_local_reviews_important_active_incidents_explicit_persistent_world_changes
     incident_persistence: bounded_important_active_only_background_crashes_nearmiss_minor_debris_may_expire_after_reconstruction_window

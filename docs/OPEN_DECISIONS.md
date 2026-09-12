@@ -34,7 +34,7 @@ FIRST EURO includes full L1+L2; hero Tatra; taxi/fare/passenger; persistent repe
 
 Post-FIRST-EURO implementation: multiplayer/coop/shared rooms/network stack, including cross-player PassengerIdentity review propagation/community reputation; L3 gameplay; lifestyle ServiceNodes; full Taxi Regulator; daily insurance.
 
-Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **68.9%** from 196 Technical Owner Pack rows.
+Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **70.4%** from 196 Technical Owner Pack rows.
 
 ## `OD-ARCH-BUY-BEFORE-BUILD-001` — LOCKED DIRECTION
 
@@ -158,7 +158,7 @@ Technical Owner Pack 01 priority:
 
 `F18 J11 J12 K04 K06 K08 K11 K12 K13 L05 L06 L07 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`.
 
-These are the **22 genuine OPEN owner rows**. The **78 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
+These are the **22 genuine OPEN owner rows**. The **72 PROPOSED DEFAULT** rows remain engineering proposals awaiting owner acceptance/rejection and are not hidden canon.
 
 Batch acceptance/rejection of the remaining `PROPOSED DEFAULT` rows will close many additional code contracts without re-asking already-resolved behavior.
 
@@ -173,3 +173,5 @@ Documentation establishes CANON/SPECIFIED only. Exact runtime/plugin/profile/sch
 ## Owner lock batch · 2026-09-11 · physical interaction refinement
 
 A02 LOCKED: authoritative gameplay/state/interaction code is C++-first as far as practical; Blueprint is used where appropriate for thin composition, visual authoring and contextual glue. C06 remains LOCKED but its older universal LMB ATTENTION / RMB GO wording is superseded: hold Space for gaze/target search; 1–4 quick-recall saved physical targets without actuation; RMB brings/retains the right hand where grip is required; LMB press/hold owns momentary controls; mouse wheel owns detent/rotary/incremental controls where supported. Target selection/recall/grip never implicitly actuates.
+
+Owner world-streaming direction locked 2026-09-12: prioritize predictive materialization ahead of player travel and a visually saturated Level1 with low-poly vehicles, pedestrians and event dressing. CPU safety comes from bounded logical simulation/materialization, pooling and no world-wide scans; J11/J12 still own exact lookahead, actor/component, memory and materialization ceilings.
