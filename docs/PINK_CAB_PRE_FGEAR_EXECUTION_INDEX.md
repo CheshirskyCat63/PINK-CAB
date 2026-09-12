@@ -1,6 +1,6 @@
 # PINK CAB · PRE-FGEAR Execution Index
 
-**Status:** PF-00..PF-15 COMPLETE / 100% PRE-FGEAR / PF-16 ENTRY GATE READY
+**Status:** PF-00..PF-16 COMPLETE / READY_FOR_OWNER_FGEAR_PURCHASE
 **Date:** 2026-09-12
 **Game Studio product lane:** Jira `CD-519`
 **Repository cut-over gate:** Jira `CD-558`
@@ -82,7 +82,7 @@ FGear is purchased only after PF-15 evidence is green and PF-16 proves that the 
 
 ## Immediate handoff boundary
 
-PRE-FGEAR implementation is certified complete. Next execution owner: `CD-771 / PF-16`, whose job is to prove the approved FGear provider is the sole remaining production road-dynamics blocker and then stop for official evaluation/purchase approval.
+PRE-FGEAR implementation and PF-16 entry gate are complete. The next production action is owner-approved acquisition/install of FGear; implementation must remain stopped at the empty provider slot until that approval.
 
 1. work only in `CheshirskyCat63/PINK-CAB`;
 2. execute PF-16 as an evaluation/purchase gate, not as substitute-physics implementation;
@@ -92,4 +92,4 @@ PRE-FGEAR implementation is certified complete. Next execution owner: `CD-771 / 
 
 ## Truth rule
 
-This index records executable administration. PF-00..PF-15 are complete at the certified PF-15 evidence gate. PF-16 remains a purchase/evaluation gate and does not imply FGear or VDS is installed. OPEN owner rows remain OPEN unless separately owner-locked.
+This index records executable administration. PF-00..PF-16 are complete through the purchase gate. FGear and VDS remain uninstalled and unpurchased. The repository is READY_FOR_OWNER_FGEAR_PURCHASE; OPEN owner rows remain OPEN unless separately owner-locked.
