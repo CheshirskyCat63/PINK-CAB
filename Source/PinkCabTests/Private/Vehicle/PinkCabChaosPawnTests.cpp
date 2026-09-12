@@ -53,3 +53,28 @@ bool FPinkCabChaosWheelRolesTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosMouseSteeringContractTest,
+    "PinkCab.Vehicle.ChaosBaseline.Input.MouseSteering",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
+{
+    const float First = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.0f, 10.0f, false);
+    TestEqual(TEXT("mouse delta changes steering continuously"), First, 0.25f);
+
+    const float Tiny = APinkCabChaosTatraPawn::IntegrateMouseSteering(First, -0.1f, false);
+    TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"), Tiny < First);
+
+    const float GazeHeld = APinkCabChaosTatraPawn::IntegrateMouseSteering(Tiny, 50.0f, true);
+    TestEqual(TEXT("Space gaze hold preserves steering command"), GazeHeld, Tiny);
+
+    const float Clamped = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.95f, 20.0f, false);
+    TestEqual(TEXT("steering command clamps at full lock"), Clamped, 1.0f);
+    return true;
+}
+
+#endif

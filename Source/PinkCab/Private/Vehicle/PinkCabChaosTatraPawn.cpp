@@ -3,13 +3,18 @@
 #include "Camera/CameraComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "InputCoreTypes.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 {
+    PrimaryActorTick.bCanEverTick = true;
+    AutoPossessPlayer = EAutoReceiveInput::Player0;
+
     USkeletalMeshComponent* VehicleMesh = GetMesh();
     VehicleMesh->SetSimulatePhysics(true);
     VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
@@ -18,6 +23,7 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     CameraBoom->SetupAttachment(VehicleMesh);
     CameraBoom->TargetArmLength = 520.0f;
     CameraBoom->SocketOffset = FVector(0.0f, 0.0f, 150.0f);
+    CameraBoom->bDoCollisionTest = false;
     CameraBoom->bInheritPitch = false;
     CameraBoom->bInheritRoll = false;
 
@@ -26,6 +32,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
     check(Movement);
+    DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(Movement);
+
     const FPinkCabTatraProfile Profile = FPinkCabTatraProfile::Canonical();
     Movement->Mass = Profile.GetReferenceCrewMassKg();
     Movement->DifferentialSetup.DifferentialType = EVehicleDifferential::RearWheelDrive;
@@ -56,6 +64,71 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->TransmissionSetup.ReverseGearRatios = {3.5f};
     Movement->SteeringSetup.SteeringType = ESteeringType::Ackermann;
     Movement->SteeringSetup.AngleRatio = 0.72f;
+}
+
+void APinkCabChaosTatraPawn::BeginPlay()
+{
+    Super::BeginPlay();
+    DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
+}
+
+float APinkCabChaosTatraPawn::IntegrateMouseSteering(
+    const float CurrentSteering,
+    const float DeltaX,
+    const bool bGazeHeld,
+    const float Gain)
+{
+    return bGazeHeld ? CurrentSteering : FMath::Clamp(CurrentSteering + DeltaX * Gain, -1.0f, 1.0f);
+}
+
+void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(const float DeltaX, const bool bGazeHeld)
+{
+    SteeringCommand = IntegrateMouseSteering(SteeringCommand, DeltaX, bGazeHeld, MouseSteeringGain);
+    ControlState.SetSteering(SteeringCommand);
+}
+
+void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        return;
+    }
+
+    float MouseX = 0.0f;
+    float MouseY = 0.0f;
+    PC->GetInputMouseDelta(MouseX, MouseY);
+    const bool bGazeHeld = PC->IsInputKeyDown(EKeys::SpaceBar);
+    ApplyMouseSteeringDelta(MouseX, bGazeHeld);
+
+    if (bGazeHeld)
+    {
+        LookYaw = FMath::Clamp(LookYaw + MouseX * 0.45f, -110.0f, 110.0f);
+        LookPitch = FMath::Clamp(LookPitch - MouseY * 0.35f, -45.0f, 35.0f);
+    }
+    else
+    {
+        LookYaw = FMath::FInterpTo(LookYaw, 0.0f, DeltaSeconds, 4.0f);
+        LookPitch = FMath::FInterpTo(LookPitch, 0.0f, DeltaSeconds, 4.0f);
+    }
+
+    CameraBoom->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
+
+    ControlState.SetThrottle(PC->IsInputKeyDown(EKeys::W) ? 1.0f : 0.0f);
+    ControlState.SetBrake(PC->IsInputKeyDown(EKeys::S) ? 1.0f : 0.0f);
+    ControlState.SetHandbrake(PC->IsInputKeyDown(EKeys::LeftShift) ? 1.0f : 0.0f);
+    DynamicsProvider.ApplyControls(ControlState);
+
+    if (PC->WasInputKeyJustPressed(EKeys::R))
+    {
+        const FVector ResetLocation = GetActorLocation() + FVector(0.0f, 0.0f, 80.0f);
+        const FRotator ResetRotation(0.0f, GetActorRotation().Yaw, 0.0f);
+        SetActorTransform(FTransform(ResetRotation, ResetLocation), false, nullptr, ETeleportType::TeleportPhysics);
+        GetMesh()->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    }
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const
