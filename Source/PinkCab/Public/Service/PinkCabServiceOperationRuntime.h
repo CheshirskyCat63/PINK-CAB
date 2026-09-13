@@ -8,18 +8,24 @@
 #include "Service/PinkCabServiceInventory.h"
 #include "Service/PinkCabVehicleBuild.h"
 
+class FPinkCabServiceSnapshotCodec;
+
 enum class EPinkCabServiceOperationResult : uint8
 {
     Applied,
     Duplicate,
     Invalid,
     SettlementRejected,
-    OwnerRejected
+    OwnerRejected,
+    CapacityExceeded
 };
 
 class FPinkCabServiceOperationRuntime
 {
 public:
+    explicit FPinkCabServiceOperationRuntime(int32 InMaxReplayJournalEntries = 4096)
+        : MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries)) {}
+
     EPinkCabServiceOperationResult ChargeParking(
         FPinkCabEconomyLedger& Ledger,
         const FPinkCabStableId& OperationId,
@@ -27,6 +33,7 @@ public:
     {
         if (!OperationId.IsValid() || AmountMinor <= 0) return EPinkCabServiceOperationResult::Invalid;
         if (IsCompleted(OperationId)) return EPinkCabServiceOperationResult::Duplicate;
+        if (CompletedOperationIds.Num() >= MaxReplayJournalEntries) return EPinkCabServiceOperationResult::CapacityExceeded;
 
         const FPinkCabEconomyTransaction Tx = FPinkCabEconomyTransaction::Debit(
             FPinkCabTransactionId(OperationId.Serialize()),
@@ -48,6 +55,7 @@ public:
     {
         if (!OperationId.IsValid() || !Definition.IsValid()) return EPinkCabServiceOperationResult::Invalid;
         if (IsCompleted(OperationId)) return EPinkCabServiceOperationResult::Duplicate;
+        if (CompletedOperationIds.Num() >= MaxReplayJournalEntries) return EPinkCabServiceOperationResult::CapacityExceeded;
         if (!Inventory.CanAddOwnedPart()) return EPinkCabServiceOperationResult::OwnerRejected;
 
         const FPinkCabEconomyTransaction Tx = FPinkCabEconomyTransaction::Debit(
@@ -74,6 +82,7 @@ public:
     {
         if (!OperationId.IsValid() || !Definition.IsValid()) return EPinkCabServiceOperationResult::Invalid;
         if (IsCompleted(OperationId)) return EPinkCabServiceOperationResult::Duplicate;
+        if (CompletedOperationIds.Num() >= MaxReplayJournalEntries) return EPinkCabServiceOperationResult::CapacityExceeded;
         if (Inventory.GetQuantity(Definition.PartId) <= 0) return EPinkCabServiceOperationResult::OwnerRejected;
         if (VehicleCompatibilityTag.IsNone() || VehicleCompatibilityTag != Definition.CompatibilityTag)
             return EPinkCabServiceOperationResult::OwnerRejected;
@@ -100,6 +109,8 @@ public:
     {
         if (!OperationId.IsValid() || IsCompleted(OperationId))
             return IsCompleted(OperationId) ? EPinkCabServiceOperationResult::Duplicate : EPinkCabServiceOperationResult::Invalid;
+        if (CompletedOperationIds.Num() >= MaxReplayJournalEntries)
+            return EPinkCabServiceOperationResult::CapacityExceeded;
 
         FPinkCabRepairRequest Request;
         if (!FPinkCabRepairService::BuildRequest(
@@ -122,12 +133,16 @@ public:
     }
 
     int32 GetCompletedOperationCount() const { return CompletedOperationIds.Num(); }
+    int32 GetMaxReplayJournalEntries() const { return MaxReplayJournalEntries; }
 
 private:
+    friend class FPinkCabServiceSnapshotCodec;
+
     void MarkCompleted(const FPinkCabStableId& OperationId)
     {
         CompletedOperationIds.Add(OperationId.Serialize());
     }
 
+    int32 MaxReplayJournalEntries = 4096;
     TSet<FString> CompletedOperationIds;
 };

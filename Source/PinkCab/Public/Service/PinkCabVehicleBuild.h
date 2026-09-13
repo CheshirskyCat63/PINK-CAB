@@ -4,19 +4,26 @@
 #include "Core/PinkCabStableId.h"
 #include "Service/PinkCabPartCatalog.h"
 
+class FPinkCabServiceSnapshotCodec;
+
 enum class EPinkCabPartInstallResult : uint8
 {
     Applied,
     Duplicate,
     InvalidDefinition,
-    Incompatible
+    Incompatible,
+    CapacityExceeded
 };
 
 class FPinkCabVehicleBuild
 {
 public:
-    int32 GetSchemaVersion() const { return SchemaVersion; }
+    explicit FPinkCabVehicleBuild(int32 InMaxReplayJournalEntries = 4096)
+        : MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
+    {
+    }
 
+    int32 GetSchemaVersion() const { return SchemaVersion; }
     bool InstallPart(FName SlotId, const FString& StablePartId)
     {
         const FString Trimmed = StablePartId.TrimStartAndEnd();
@@ -36,6 +43,8 @@ public:
         if (AppliedInstallOperationIds.Contains(OpKey)) return EPinkCabPartInstallResult::Duplicate;
         if (VehicleCompatibilityTag.IsNone() || VehicleCompatibilityTag != Definition.CompatibilityTag)
             return EPinkCabPartInstallResult::Incompatible;
+        if (AppliedInstallOperationIds.Num() >= MaxReplayJournalEntries)
+            return EPinkCabPartInstallResult::CapacityExceeded;
         if (!InstallPart(Definition.SlotId, Definition.PartId))
             return EPinkCabPartInstallResult::InvalidDefinition;
         AppliedInstallOperationIds.Add(OpKey);
@@ -49,9 +58,13 @@ public:
     }
 
     int32 GetAppliedInstallCount() const { return AppliedInstallOperationIds.Num(); }
+    int32 GetMaxReplayJournalEntries() const { return MaxReplayJournalEntries; }
 
 private:
+    friend class FPinkCabServiceSnapshotCodec;
+
     int32 SchemaVersion = 1;
+    int32 MaxReplayJournalEntries = 4096;
     TMap<FName, FString> InstalledParts;
     TSet<FString> AppliedInstallOperationIds;
 };

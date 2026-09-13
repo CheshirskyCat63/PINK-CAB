@@ -9,15 +9,17 @@ enum class EPinkCabFuelCreditResult : uint8
     Duplicate,
     InvalidState,
     SettlementNotCommitted,
-    InvalidCredit
+    InvalidCredit,
+    JournalFull
 };
 
 class FPinkCabFuelTank
 {
 public:
-    FPinkCabFuelTank(float InCapacityLiters, float InCurrentLiters)
+    FPinkCabFuelTank(float InCapacityLiters, float InCurrentLiters, int32 InMaxReplayJournalEntries = 4096)
         : CapacityLiters(FMath::Max(0.0f, InCapacityLiters))
         , CurrentLiters(FMath::Clamp(InCurrentLiters, 0.0f, CapacityLiters))
+        , MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
     {
     }
 
@@ -36,6 +38,11 @@ public:
             return EPinkCabFuelCreditResult::Duplicate;
         }
 
+        if (CreditedTransactionIds.Num() >= MaxReplayJournalEntries)
+        {
+            return EPinkCabFuelCreditResult::JournalFull;
+        }
+
         const float Credited = FMath::Min(RequestedLiters, GetFreeCapacityLiters());
         if (Credited <= 0.0f)
         {
@@ -47,7 +54,10 @@ public:
     }
 
 private:
+    friend class FPinkCabServiceSnapshotCodec;
+
     float CapacityLiters = 0.0f;
     float CurrentLiters = 0.0f;
+    int32 MaxReplayJournalEntries = 4096;
     TSet<FString> CreditedTransactionIds;
 };

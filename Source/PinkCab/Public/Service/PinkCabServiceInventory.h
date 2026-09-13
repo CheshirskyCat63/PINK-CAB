@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Core/PinkCabStableId.h"
 
+class FPinkCabServiceSnapshotCodec;
+
 enum class EPinkCabInventoryMutationResult : uint8
 {
     Applied,
@@ -15,9 +17,13 @@ enum class EPinkCabInventoryMutationResult : uint8
 class FPinkCabServiceInventory
 {
 public:
-    explicit FPinkCabServiceInventory(int32 InMaxItems = 64)
-        : MaxItems(FMath::Max(1, InMaxItems)) {}
-
+    explicit FPinkCabServiceInventory(
+        int32 InMaxItems = 64,
+        int32 InMaxReplayJournalEntries = 4096)
+        : MaxItems(FMath::Max(1, InMaxItems))
+        , MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
+    {
+    }
     EPinkCabInventoryMutationResult AddOwnedPartOnce(
         const FPinkCabStableId& OperationId,
         const FString& StablePartId)
@@ -26,7 +32,9 @@ public:
         if (!OperationId.IsValid() || PartId.IsEmpty()) return EPinkCabInventoryMutationResult::Invalid;
         const FString OpKey = OperationId.Serialize();
         if (AppliedOperationIds.Contains(OpKey)) return EPinkCabInventoryMutationResult::Duplicate;
-        if (GetTotalQuantity() >= MaxItems) return EPinkCabInventoryMutationResult::CapacityExceeded;
+        if (AppliedOperationIds.Num() >= MaxReplayJournalEntries
+            || GetTotalQuantity() >= MaxItems)
+            return EPinkCabInventoryMutationResult::CapacityExceeded;
         ++Quantities.FindOrAdd(PartId);
         AppliedOperationIds.Add(OpKey);
         return EPinkCabInventoryMutationResult::Applied;
@@ -42,6 +50,8 @@ public:
         if (AppliedOperationIds.Contains(OpKey)) return EPinkCabInventoryMutationResult::Duplicate;
         int32* Quantity = Quantities.Find(PartId);
         if (!Quantity || *Quantity <= 0) return EPinkCabInventoryMutationResult::NotOwned;
+        if (AppliedOperationIds.Num() >= MaxReplayJournalEntries)
+            return EPinkCabInventoryMutationResult::CapacityExceeded;
         --(*Quantity);
         if (*Quantity == 0) Quantities.Remove(PartId);
         AppliedOperationIds.Add(OpKey);
@@ -61,12 +71,20 @@ public:
         return Total;
     }
 
-    bool CanAddOwnedPart() const { return GetTotalQuantity() < MaxItems; }
+    bool CanAddOwnedPart() const
+    {
+        return GetTotalQuantity() < MaxItems
+            && AppliedOperationIds.Num() < MaxReplayJournalEntries;
+    }
     int32 GetMaxItems() const { return MaxItems; }
+    int32 GetMaxReplayJournalEntries() const { return MaxReplayJournalEntries; }
     int32 GetOperationCount() const { return AppliedOperationIds.Num(); }
 
 private:
+    friend class FPinkCabServiceSnapshotCodec;
+
     int32 MaxItems = 64;
+    int32 MaxReplayJournalEntries = 4096;
     TMap<FString, int32> Quantities;
     TSet<FString> AppliedOperationIds;
 };

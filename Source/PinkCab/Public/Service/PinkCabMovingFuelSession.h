@@ -6,6 +6,8 @@
 #include "Vehicle/PinkCabVehicleTelemetry.h"
 #include "World/PinkCabRoadGraph.h"
 
+class FPinkCabServiceSnapshotCodec;
+
 enum class EPinkCabMovingFuelState : uint8
 {
     Disconnected,
@@ -143,6 +145,8 @@ public:
     }
 
 private:
+    friend class FPinkCabServiceSnapshotCodec;
+
     bool AbortWithReason(EPinkCabMovingFuelAbortReason Reason)
     {
         if (State != EPinkCabMovingFuelState::Connected
