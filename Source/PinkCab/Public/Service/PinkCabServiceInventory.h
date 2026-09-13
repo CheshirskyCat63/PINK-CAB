@@ -1,0 +1,70 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Core/PinkCabStableId.h"
+
+enum class EPinkCabInventoryMutationResult : uint8
+{
+    Applied,
+    Duplicate,
+    Invalid,
+    CapacityExceeded,
+    NotOwned
+};
+
+class FPinkCabServiceInventory
+{
+public:
+    explicit FPinkCabServiceInventory(int32 InMaxItems = 64)
+        : MaxItems(FMath::Max(1, InMaxItems)) {}
+
+    EPinkCabInventoryMutationResult AddOwnedPartOnce(
+        const FPinkCabStableId& OperationId,
+        const FString& StablePartId)
+    {
+        const FString PartId = StablePartId.TrimStartAndEnd();
+        if (!OperationId.IsValid() || PartId.IsEmpty()) return EPinkCabInventoryMutationResult::Invalid;
+        const FString OpKey = OperationId.Serialize();
+        if (AppliedOperationIds.Contains(OpKey)) return EPinkCabInventoryMutationResult::Duplicate;
+        if (GetTotalQuantity() >= MaxItems) return EPinkCabInventoryMutationResult::CapacityExceeded;
+        ++Quantities.FindOrAdd(PartId);
+        AppliedOperationIds.Add(OpKey);
+        return EPinkCabInventoryMutationResult::Applied;
+    }
+
+    EPinkCabInventoryMutationResult ConsumeOwnedPartOnce(
+        const FPinkCabStableId& OperationId,
+        const FString& StablePartId)
+    {
+        const FString PartId = StablePartId.TrimStartAndEnd();
+        if (!OperationId.IsValid() || PartId.IsEmpty()) return EPinkCabInventoryMutationResult::Invalid;
+        const FString OpKey = OperationId.Serialize();
+        if (AppliedOperationIds.Contains(OpKey)) return EPinkCabInventoryMutationResult::Duplicate;
+        int32* Quantity = Quantities.Find(PartId);
+        if (!Quantity || *Quantity <= 0) return EPinkCabInventoryMutationResult::NotOwned;
+        --(*Quantity);
+        if (*Quantity == 0) Quantities.Remove(PartId);
+        AppliedOperationIds.Add(OpKey);
+        return EPinkCabInventoryMutationResult::Applied;
+    }
+
+    int32 GetQuantity(const FString& StablePartId) const
+    {
+        const int32* Found = Quantities.Find(StablePartId.TrimStartAndEnd());
+        return Found ? *Found : 0;
+    }
+
+    int32 GetTotalQuantity() const
+    {
+        int32 Total = 0;
+        for (const TPair<FString, int32>& Pair : Quantities) Total += Pair.Value;
+        return Total;
+    }
+
+    int32 GetOperationCount() const { return AppliedOperationIds.Num(); }
+
+private:
+    int32 MaxItems = 64;
+    TMap<FString, int32> Quantities;
+    TSet<FString> AppliedOperationIds;
+};
