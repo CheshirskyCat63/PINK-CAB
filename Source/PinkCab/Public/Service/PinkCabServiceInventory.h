@@ -61,6 +61,8 @@ public:
         return Total;
     }
 
+    bool CanAddOwnedPart() const { return GetTotalQuantity() < MaxItems; }
+    int32 GetMaxItems() const { return MaxItems; }
     int32 GetOperationCount() const { return AppliedOperationIds.Num(); }
 
 private:
