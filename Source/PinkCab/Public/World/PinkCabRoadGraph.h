@@ -24,11 +24,14 @@ struct FPinkCabLaneId
 private:
     FString Value;
 };
+
 struct FPinkCabLogicalLane
 {
     FPinkCabLaneId LaneId;
     FPinkCabRoadNodeId FromNode;
     FPinkCabRoadNodeId ToNode;
+    double LengthCm = 1.0;
+    int32 Layer = 0;
 };
 
 class FPinkCabRoadGraph
@@ -44,6 +47,7 @@ public:
             *City.GetStableKey(), *Chunk.Serialize(), LocalNodeIndex);
         return FPinkCabRoadNodeId(PinkCabWorldId::StableToken(TEXT("node:"), Payload));
     }
+
     static FPinkCabLaneId MakeLaneId(
         const FPinkCabCityIdentity& City,
         const FPinkCabChunkId& Chunk,
@@ -58,7 +62,8 @@ public:
 
     bool AddLane(const FPinkCabLogicalLane& Lane)
     {
-        if (!Lane.LaneId.IsValid() || !Lane.FromNode.IsValid() || !Lane.ToNode.IsValid())
+        if (!Lane.LaneId.IsValid() || !Lane.FromNode.IsValid() || !Lane.ToNode.IsValid()
+            || !FMath::IsFinite(Lane.LengthCm) || Lane.LengthCm <= 0.0 || Lane.Layer < 0)
         {
             return false;
         }
@@ -71,6 +76,12 @@ public:
         OutgoingByNode.FindOrAdd(Lane.FromNode.Serialize()).Add(Key);
         return true;
     }
+
+    const FPinkCabLogicalLane* FindLane(const FPinkCabLaneId& LaneId) const
+    {
+        return Lanes.Find(LaneId.Serialize());
+    }
+
     TArray<FPinkCabLaneId> GetNextLanes(const FPinkCabLaneId& CurrentLane) const
     {
         TArray<FPinkCabLaneId> Result;
@@ -84,8 +95,24 @@ public:
         {
             return Result;
         }
-        Result.Reserve(NextKeys->Num());
-        for (const FString& Key : *NextKeys)
+        TArray<FString> SortedKeys = *NextKeys;
+        SortedKeys.Sort();
+        Result.Reserve(SortedKeys.Num());
+        for (const FString& Key : SortedKeys)
+        {
+            Result.Add(FPinkCabLaneId(Key));
+        }
+        return Result;
+    }
+
+    TArray<FPinkCabLaneId> GetLaneIds() const
+    {
+        TArray<FString> Keys;
+        Lanes.GetKeys(Keys);
+        Keys.Sort();
+        TArray<FPinkCabLaneId> Result;
+        Result.Reserve(Keys.Num());
+        for (const FString& Key : Keys)
         {
             Result.Add(FPinkCabLaneId(Key));
         }
@@ -106,7 +133,8 @@ public:
             Payload += Lane.FromNode.Serialize();
             Payload += TEXT("|");
             Payload += Lane.ToNode.Serialize();
-            Payload += TEXT(";");
+            Payload += TEXT("|");
+            Payload += FString::Printf(TEXT("%.3f|%d;"), Lane.LengthCm, Lane.Layer);
         }
         return PinkCabWorldId::StableToken(TEXT("topology:"), Payload);
     }
