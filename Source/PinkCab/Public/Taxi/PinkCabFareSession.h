@@ -34,7 +34,7 @@ struct FPinkCabFarePolicy
 {
     static EPinkCabFareTransitionResult ResolveOffMeterEconomy()
     {
-        return EPinkCabFareTransitionResult::PolicyRequired;
+        return EPinkCabFareTransitionResult::Applied;
     }
 };
 

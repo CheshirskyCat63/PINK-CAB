@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+﻿#if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
 #include "Taxi/PinkCabFareSession.h"
@@ -151,7 +151,7 @@ bool FPinkCabFareSlotAndPolicyBoundaryTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("full stop at 0.49 kmh after 0.4 sec"), FPinkCabFullStopGate::IsSatisfied(0.49f, 0.4f));
     TestFalse(TEXT("0.5 kmh is not full stop"), FPinkCabFullStopGate::IsSatisfied(0.5f, 0.4f));
     TestFalse(TEXT("dwell below 0.4 sec rejected"), FPinkCabFullStopGate::IsSatisfied(0.1f, 0.39f));
-    TestEqual(TEXT("F18 remains explicit policy boundary"), FPinkCabFarePolicy::ResolveOffMeterEconomy(), EPinkCabFareTransitionResult::PolicyRequired);
+    TestEqual(TEXT("explicit agreed off-meter policy is resolved"), FPinkCabFarePolicy::ResolveOffMeterEconomy(), EPinkCabFareTransitionResult::Applied);
     return true;
 }
 
@@ -163,7 +163,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabPassengerProfileReviewTest::RunTest(const FString& Parameters)
 {
     FPinkCabPassengerIdentity Identity(FPinkCabStableId(TEXT("pax-profile")), FName(TEXT("Commuter")));
-    TestTrue(TEXT("valid local review accepted"), Identity.AddLocalReview(1, TEXT("Лживая воровка")));
+    TestTrue(TEXT("valid local review accepted"), Identity.AddLocalReview(1, TEXT("Р›Р¶РёРІР°СЏ РІРѕСЂРѕРІРєР°")));
     TestFalse(TEXT("zero-star review rejected"), Identity.AddLocalReview(0, TEXT("invalid")));
     const FPinkCabPassengerPublicProfile Profile = Identity.BuildPublicProfile();
     TestTrue(TEXT("profile exposes stable identity before materialization"), Profile.IdentityId.IsValid());
