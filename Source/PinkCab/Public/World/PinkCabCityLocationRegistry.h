@@ -76,6 +76,20 @@ public:
         return Anchors.Num();
     }
 
+    TArray<FPinkCabCityLocationAnchor> GetAnchorsSorted() const
+    {
+        TArray<FString> Keys;
+        Anchors.GetKeys(Keys);
+        Keys.Sort();
+        TArray<FPinkCabCityLocationAnchor> Result;
+        Result.Reserve(Keys.Num());
+        for (const FString& Key : Keys)
+        {
+            Result.Add(Anchors[Key]);
+        }
+        return Result;
+    }
+
     FString GetReconstructionSignature() const
     {
         TArray<FString> Keys;
