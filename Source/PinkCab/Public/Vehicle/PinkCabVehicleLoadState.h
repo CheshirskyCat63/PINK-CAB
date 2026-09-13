@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/PinkCabStableId.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 
 struct FPinkCabVehicleLoadItem
@@ -35,10 +36,46 @@ struct FPinkCabVehicleLoadState
         Passengers.Add(Item);
     }
 
+    bool TrySetFarePassengerGroup(
+        const FPinkCabStableId& GroupId,
+        TConstArrayView<FPinkCabVehicleLoadItem> Items)
+    {
+        if (bFarePassengerGroupActive || !GroupId.IsValid() || Items.IsEmpty() || Items.Num() > 5)
+        {
+            return false;
+        }
+        FarePassengerGroupId = GroupId;
+        FarePassengers.Reset(Items.Num());
+        FarePassengers.Append(Items.GetData(), Items.Num());
+        bFarePassengerGroupActive = true;
+        return true;
+    }
+
+    bool RemoveFarePassengerGroup(const FPinkCabStableId& GroupId)
+    {
+        if (!bFarePassengerGroupActive || GroupId != FarePassengerGroupId)
+        {
+            return false;
+        }
+        FarePassengers.Reset();
+        FarePassengerGroupId = FPinkCabStableId();
+        bFarePassengerGroupActive = false;
+        return true;
+    }
+
+    bool HasFarePassengerGroup(const FPinkCabStableId& GroupId) const
+    {
+        return bFarePassengerGroupActive && GroupId == FarePassengerGroupId;
+    }
+
     float GetTotalMassKg(const FPinkCabTatraProfile& Profile) const
     {
         float Total = Profile.BaseVehicleMassKg + FuelMassKg + HeroineMassKg + DaughterMassKg;
         for (const FPinkCabVehicleLoadItem& Item : Passengers)
+        {
+            Total += Item.MassKg;
+        }
+        for (const FPinkCabVehicleLoadItem& Item : FarePassengers)
         {
             Total += Item.MassKg;
         }
@@ -58,6 +95,10 @@ struct FPinkCabVehicleLoadState
         {
             WeightedCmKg += Item.MassKg * Item.LongitudinalCm;
         }
+        for (const FPinkCabVehicleLoadItem& Item : FarePassengers)
+        {
+            WeightedCmKg += Item.MassKg * Item.LongitudinalCm;
+        }
         return WeightedCmKg / TotalMassKg;
     }
 
@@ -67,4 +108,7 @@ private:
     float HeroineMassKg = 0.0f;
     float DaughterMassKg = 0.0f;
     TArray<FPinkCabVehicleLoadItem> Passengers;
+    TArray<FPinkCabVehicleLoadItem, TInlineAllocator<5>> FarePassengers;
+    FPinkCabStableId FarePassengerGroupId;
+    bool bFarePassengerGroupActive = false;
 };
