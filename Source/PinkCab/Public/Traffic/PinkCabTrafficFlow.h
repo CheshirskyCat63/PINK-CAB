@@ -10,7 +10,8 @@ struct FPinkCabTrafficFlowConstraints
 
     bool IsValid() const
     {
-        return MaxLogicalEntities > 0 && MinPlayableGapCm > 0.0 && FMath::IsFinite(MinPlayableGapCm);
+        return MaxLogicalEntities > 0 && MinPlayableGapCm > 0.0
+            && FMath::IsFinite(MinPlayableGapCm);
     }
 };
 
@@ -24,7 +25,8 @@ public:
 
     bool TryAddOrdinary(const FPinkCabTrafficEntity& Entity)
     {
-        if (!Constraints.IsValid() || !Entity.IsValidLogical() || Entity.GetSpeedCmPerSec() <= 0.0)
+        if (!Constraints.IsValid() || !Entity.IsValidLogical()
+            || Entity.GetSpeedCmPerSec() <= 0.0)
         {
             return false;
         }
@@ -40,7 +42,8 @@ public:
             }
             if (Existing.GetLaneId() == Entity.GetLaneId())
             {
-                const double Gap = FMath::Abs(Existing.GetLongitudinalCm() - Entity.GetLongitudinalCm());
+                const double Gap = FMath::Abs(
+                    Existing.GetLongitudinalCm() - Entity.GetLongitudinalCm());
                 if (Gap < Constraints.MinPlayableGapCm)
                 {
                     return false;
@@ -57,6 +60,35 @@ public:
         {
             Entity.Advance(DeltaSeconds);
         }
+    }
+
+    bool AdvanceAllAlongRoutes(const FPinkCabRoadGraph& Graph, double DeltaSeconds)
+    {
+        if (DeltaSeconds <= 0.0 || !FMath::IsFinite(DeltaSeconds))
+        {
+            return false;
+        }
+        for (FPinkCabTrafficEntity& Entity : Entities)
+        {
+            if (!Entity.AdvanceAlongRoute(Graph, DeltaSeconds))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool TryGetEntity(const FString& TrafficId, FPinkCabTrafficEntity& OutEntity) const
+    {
+        for (const FPinkCabTrafficEntity& Entity : Entities)
+        {
+            if (Entity.GetTrafficId() == TrafficId)
+            {
+                OutEntity = Entity;
+                return true;
+            }
+        }
+        return false;
     }
 
     int32 Num() const { return Entities.Num(); }
