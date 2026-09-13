@@ -3,6 +3,8 @@
 #include "Misc/AutomationTest.h"
 #include "Taxi/PinkCabTaximeter.h"
 #include "Taxi/PinkCabFarePassengerManifest.h"
+#include "Economy/PinkCabEconomyLedger.h"
+#include "Economy/PinkCabFareSettlementService.h"
 #include "Vehicle/PinkCabVehicleLoadState.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 
@@ -96,6 +98,51 @@ bool FPinkCabFarePassengerManifestBoardExitTest::RunTest(const FString& Paramete
     TestTrue(TEXT("full stop plus open door exits once"), Manifest.TryExit(true, true, Load));
     TestEqual(TEXT("exit removes fare group mass"), Load.GetTotalMassKg(Profile), BeforeKg);
     TestFalse(TEXT("duplicate exit rejected"), Manifest.TryExit(true, true, Load));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabFareSettlementPaidReplayTest,
+    "PinkCab.Taxi.FareLoop.Settlement.PaidTipReplay",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabFareSettlementPaidReplayTest::RunTest(const FString& Parameters)
+{
+    FPinkCabEconomyLedger Ledger(1000, 0);
+    FPinkCabFareSettlementService Service;
+    const FPinkCabStableId FareId(TEXT("fare-settle"));
+    const FPinkCabFareSettlementResult First = Service.CommitPaid(FareId, 1250, 250, Ledger);
+    TestEqual(TEXT("first settlement commits"), First.Disposition, EPinkCabFareSettlementDisposition::Committed);
+    TestEqual(TEXT("fare income commits"), First.FareResult, EPinkCabSettlementResult::Committed);
+    TestEqual(TEXT("tip commits separately"), First.TipResult, EPinkCabSettlementResult::Committed);
+    TestEqual(TEXT("fare and tip credit once"), Ledger.GetBalanceMinor(), int64(2500));
+
+    const FPinkCabFareSettlementResult Replay = Service.CommitPaid(FareId, 1250, 250, Ledger);
+    TestEqual(TEXT("same paid fare replays"), Replay.Disposition, EPinkCabFareSettlementDisposition::Replayed);
+    TestEqual(TEXT("replay does not credit twice"), Ledger.GetBalanceMinor(), int64(2500));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabFareSettlementEvasionConflictTest,
+    "PinkCab.Taxi.FareLoop.Settlement.EvasionConflict",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabFareSettlementEvasionConflictTest::RunTest(const FString& Parameters)
+{
+    FPinkCabEconomyLedger Ledger(900, 0);
+    FPinkCabFareSettlementService Service;
+    const FPinkCabStableId FareId(TEXT("fare-evaded"));
+    const FPinkCabFareSettlementResult Evasion = Service.RecordEvasion(FareId);
+    TestEqual(TEXT("evasion is recorded"), Evasion.Disposition, EPinkCabFareSettlementDisposition::Committed);
+    TestTrue(TEXT("evasion consequence id is stable"), Evasion.ConsequenceId.IsValid());
+    TestEqual(TEXT("evasion creates no money"), Ledger.GetBalanceMinor(), int64(900));
+    TestEqual(TEXT("evasion replay is idempotent"), Service.RecordEvasion(FareId).Disposition, EPinkCabFareSettlementDisposition::Replayed);
+
+    const FPinkCabFareSettlementResult Conflict = Service.CommitPaid(FareId, 500, 0, Ledger);
+    TestEqual(TEXT("evaded fare cannot later become paid"), Conflict.Disposition, EPinkCabFareSettlementDisposition::Conflict);
+    TestEqual(TEXT("conflict still creates no money"), Ledger.GetBalanceMinor(), int64(900));
     return true;
 }
 
