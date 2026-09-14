@@ -63,6 +63,8 @@ struct FPinkCabVehicleHealthState
     }
 
 private:
+    friend class FPinkCabVehicleSnapshotCodec;
+
     float Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Count)] = {};
     uint32 FunctionalDamageSerial = 0;
 };
