@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Core/PinkCabStableId.h"
@@ -9,7 +9,8 @@ enum class EPinkCabFareSettlementDisposition : uint8
     Committed,
     Replayed,
     Conflict,
-    Invalid
+    Invalid,
+    CapacityExceeded
 };
 
 enum class EPinkCabFareSettlementKind : uint8
@@ -29,6 +30,11 @@ struct FPinkCabFareSettlementResult
 class FPinkCabFareSettlementService
 {
 public:
+    explicit FPinkCabFareSettlementService(int32 InMaxResolvedFares = 512)
+        : MaxResolvedFares(FMath::Max(1, InMaxResolvedFares))
+    {
+    }
+
     FPinkCabFareSettlementResult CommitPaid(
         const FPinkCabStableId& FareId,
         const int64 FareMinor,
@@ -48,8 +54,27 @@ public:
             }
             return Existing->ToReplayResult();
         }
+        if (Records.Num() >= MaxResolvedFares)
+        {
+            return {EPinkCabFareSettlementDisposition::CapacityExceeded};
+        }
 
-        const FPinkCabTransactionId FareTxId(FareId.Serialize() + TEXT(".fare"));
+        const FString FareTxKey = FareId.Serialize() + TEXT(".fare");
+        const FString TipTxKey = FareId.Serialize() + TEXT(".tip");
+        TArray<FString, TInlineAllocator<2>> RequiredReplayIds;
+        RequiredReplayIds.Add(FareTxKey);
+        if (TipMinor > 0)
+        {
+            RequiredReplayIds.Add(TipTxKey);
+        }
+        if (!Ledger.CanRecordTransactionIds(RequiredReplayIds))
+        {
+            return {EPinkCabFareSettlementDisposition::CapacityExceeded,
+                EPinkCabSettlementResult::CapacityExceeded,
+                EPinkCabSettlementResult::CapacityExceeded};
+        }
+
+        const FPinkCabTransactionId FareTxId(FareTxKey);
         const EPinkCabSettlementResult FareResult = Ledger.Commit(
             FPinkCabEconomyTransaction::Credit(FareTxId, EPinkCabTransactionType::FareIncome, FareMinor));
 
@@ -62,7 +87,7 @@ public:
         EPinkCabSettlementResult TipResult = EPinkCabSettlementResult::Committed;
         if (TipMinor > 0)
         {
-            const FPinkCabTransactionId TipTxId(FareId.Serialize() + TEXT(".tip"));
+            const FPinkCabTransactionId TipTxId(TipTxKey);
             TipResult = Ledger.Commit(
                 FPinkCabEconomyTransaction::Credit(TipTxId, EPinkCabTransactionType::Tip, TipMinor));
             if (TipResult != EPinkCabSettlementResult::Committed
@@ -99,6 +124,10 @@ public:
             }
             return Existing->ToReplayResult();
         }
+        if (Records.Num() >= MaxResolvedFares)
+        {
+            return {EPinkCabFareSettlementDisposition::CapacityExceeded};
+        }
 
         FPinkCabFareSettlementRecord Record;
         Record.Kind = EPinkCabFareSettlementKind::Evaded;
@@ -131,6 +160,9 @@ private:
         }
     };
 
+    friend class FPinkCabEconomySnapshotCodec;
+
+    int32 MaxResolvedFares = 512;
     TMap<FString, FPinkCabFareSettlementRecord> Records;
 };
 

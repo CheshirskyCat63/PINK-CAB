@@ -9,15 +9,17 @@ enum class EPinkCabSettlementResult : uint8
     Duplicate,
     InvalidTransaction,
     InsufficientFunds,
-    PolicyRequired
+    PolicyRequired,
+    CapacityExceeded
 };
 
 class FPinkCabEconomyLedger
 {
 public:
-    FPinkCabEconomyLedger(int64 InInitialBalanceMinor, int64 InDebtLimitMinor)
+    FPinkCabEconomyLedger(int64 InInitialBalanceMinor, int64 InDebtLimitMinor, int32 InMaxReplayJournalEntries = 512)
         : BalanceMinor(InInitialBalanceMinor)
         , DebtLimitMinor(FMath::Max<int64>(0, InDebtLimitMinor))
+        , MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
     {
     }
 
@@ -42,6 +44,10 @@ public:
         if (CommittedIds.Contains(Transaction.Id.GetValue()))
         {
             return EPinkCabSettlementResult::Duplicate;
+        }
+        if (CommittedIds.Num() >= MaxReplayJournalEntries)
+        {
+            return EPinkCabSettlementResult::CapacityExceeded;
         }
 
         const bool bTypeIsCredit = IsCreditType(Transaction.Type);
@@ -94,7 +100,26 @@ private:
         }
     }
 
+    bool CanRecordTransactionIds(TConstArrayView<FString> Ids) const
+    {
+        int32 Needed = 0;
+        TSet<FString> NewIds;
+        for (const FString& Id : Ids)
+        {
+            if (!CommittedIds.Contains(Id) && !NewIds.Contains(Id))
+            {
+                NewIds.Add(Id);
+                ++Needed;
+            }
+        }
+        return CommittedIds.Num() + Needed <= MaxReplayJournalEntries;
+    }
+
+    friend class FPinkCabEconomySnapshotCodec;
+    friend class FPinkCabFareSettlementService;
+
     int64 BalanceMinor = 0;
     int64 DebtLimitMinor = 0;
+    int32 MaxReplayJournalEntries = 512;
     TSet<FString> CommittedIds;
 };
