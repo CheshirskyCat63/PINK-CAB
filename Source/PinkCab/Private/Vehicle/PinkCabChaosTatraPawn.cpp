@@ -180,6 +180,21 @@ void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(const float DeltaX, const b
     ControlState.SetSteering(SteeringCommand);
 }
 
+void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
+    const FPinkCabVehicleInputFrame& InputFrame,
+    const float MouseDeltaX)
+{
+    if (CockpitInteraction)
+    {
+        CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
+    }
+    ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld);
+    ControlState = InputFrame.ToControlState(
+        SteeringCommand,
+        CockpitState.GetHandbrakeAmount());
+    DynamicsProvider.ApplyControls(ControlState);
+}
+
 void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
@@ -229,8 +244,8 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         ApplyCockpitInteraction(InteractionEvent);
     }
 
+    ApplyVehicleInputFrame(InputFrame, MouseX);
     const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
-    ApplyMouseSteeringDelta(MouseX, bGazeHeld);
 
     if (bGazeHeld)
     {
@@ -244,11 +259,6 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     }
 
     DriverHeadRoot->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
-
-    ControlState = InputFrame.ToControlState(
-        SteeringCommand,
-        CockpitState.GetHandbrakeAmount());
-    DynamicsProvider.ApplyControls(ControlState);
 
     FPinkCabCockpitPresentationState Presentation;
     Presentation.Steering = ControlState.Steering;

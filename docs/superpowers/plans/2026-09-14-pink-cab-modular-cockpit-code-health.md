@@ -163,13 +163,13 @@
 **Interfaces:**
 - Test observes real possessed pawn, active driver camera, live dynamics and measurable displacement.
 
-- [ ] Write the runtime test first and verify it fails on missing cockpit/camera/canonical-input assertions before implementation is complete.
-- [ ] Prime ignition and release handbrake through the same physical cockpit command path used by the player; no hidden keyboard control path.
-- [ ] Apply non-zero throttle through the canonical `E`/vehicle-input path for a bounded duration and assert forward displacement plus valid telemetry.
-- [ ] Exercise Space gaze→steering return and transient input cleanup during the live drive; camera and steering ownership must remain valid.
-- [ ] Assert no player-facing free-reset/teleport shortcut exists. Terminal recovery remains owned by the authoritative RecoveryPolicy/Workday/Repair flow and is not faked by this movement test.
-- [ ] Run `PinkCab.Cockpit.Playable.Runtime`, exact `PC-T-INP-001..008` acceptance and existing `PinkCab.Core.CodeComplete.Runtime`; verify GREEN.
-- [ ] Commit `test(CD-828): prove canonical playable cockpit taxi movement`.
+- [x] Write the runtime test first and verify it fails on missing cockpit/camera/canonical-input assertions before implementation is complete.
+- [x] Prime ignition and release handbrake through the same physical cockpit command path used by the player; no hidden keyboard control path.
+- [x] Apply non-zero throttle through the canonical `E`/vehicle-input path for a bounded duration and assert forward displacement plus valid telemetry.
+- [x] Exercise Space gaze→steering return and transient input cleanup during the live drive; camera and steering ownership must remain valid.
+- [x] Assert no player-facing free-reset/teleport shortcut exists. Terminal recovery remains owned by the authoritative RecoveryPolicy/Workday/Repair flow and is not faked by this movement test.
+- [x] Run `PinkCab.Cockpit.Playable.Runtime`, exact `PC-T-INP-001..008` acceptance and existing `PinkCab.Core.CodeComplete.Runtime`; verify GREEN.
+- [x] Commit `test(CD-828): prove canonical playable cockpit taxi movement`.
 
 ### Task 9: Final analyzer, clean build and package
 

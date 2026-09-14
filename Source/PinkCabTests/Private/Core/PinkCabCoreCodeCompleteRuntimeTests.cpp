@@ -67,7 +67,7 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
                 EPinkCabInteractionGesture::PressHold, 1}));
         Test->TestTrue(TEXT("handbrake release reaches native Tatra"),
             Pawn->ApplyCockpitInteraction({FName(TEXT("Handbrake")),
-                EPinkCabInteractionGesture::PressHold, 1}));
+                EPinkCabInteractionGesture::WheelIncrement, -64}));
         Test->TestTrue(TEXT("mechanical simulation enabled"), Movement->bMechanicalSimEnabled);
         Test->TestFalse(TEXT("handbrake released"), Movement->GetHandbrakeInput());
         State->bCockpitPrimed = true;

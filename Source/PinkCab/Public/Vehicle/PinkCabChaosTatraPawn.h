@@ -17,6 +17,7 @@ class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
 struct FPinkCabInteractionEvent;
+struct FPinkCabVehicleInputFrame;
 class FPinkCabTaximeter;
 
 UCLASS()
@@ -49,6 +50,7 @@ public:
         float Gain = 0.025f);
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld);
+    void ApplyVehicleInputFrame(const FPinkCabVehicleInputFrame& InputFrame, float MouseDeltaX);
     float GetSteeringCommand() const { return SteeringCommand; }
     void ResetTransientCockpitInput();
 
