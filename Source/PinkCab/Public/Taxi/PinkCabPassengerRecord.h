@@ -11,7 +11,15 @@ enum class EPinkCabPassengerMutationResult : uint8
     Applied,
     Duplicate,
     CapacityExceeded,
+    PermissionDenied,
+    Blocked,
     Invalid
+};
+
+struct FPinkCabPassengerNeuralMessage
+{
+    FPinkCabStableId MessageId;
+    FString Text;
 };
 
 struct FPinkCabPassengerRideMemory
@@ -77,6 +85,35 @@ struct FPinkCabPassengerRecord
     const TArray<FPinkCabPassengerRideMemory>& GetRideMemories() const { return RideMemories; }
     const TArray<FString>& GetAppliedSocialEventIds() const { return AppliedSocialEventIds; }
 
+    void SetNeuralPermission(bool bGranted) { bNeuralPermissionGranted = bGranted; }
+    bool HasNeuralPermission() const { return bNeuralPermissionGranted; }
+    void SetNeuralBlocked(bool bBlocked) { bNeuralBlocked = bBlocked; }
+    bool IsNeuralBlocked() const { return bNeuralBlocked; }
+
+    EPinkCabPassengerMutationResult AddMessageOnce(
+        const FPinkCabStableId& MessageId,
+        const FString& Text)
+    {
+        const FString Normalized = Text.TrimStartAndEnd();
+        if (!IdentityId.IsValid() || !MessageId.IsValid() || Normalized.IsEmpty())
+            return EPinkCabPassengerMutationResult::Invalid;
+        if (!bNeuralPermissionGranted) return EPinkCabPassengerMutationResult::PermissionDenied;
+        if (bNeuralBlocked) return EPinkCabPassengerMutationResult::Blocked;
+
+        const FString Key = MessageId.Serialize();
+        if (AppliedNeuralMessageIds.Contains(Key)) return EPinkCabPassengerMutationResult::Duplicate;
+        if (AppliedNeuralMessageIds.Num() >= MaxNeuralReplayJournalEntries)
+            return EPinkCabPassengerMutationResult::CapacityExceeded;
+
+        AppliedNeuralMessageIds.Add(Key);
+        if (NeuralMessages.Num() >= MaxNeuralMessages) NeuralMessages.RemoveAt(0);
+        NeuralMessages.Add({MessageId, Normalized});
+        return EPinkCabPassengerMutationResult::Applied;
+    }
+
+    const TArray<FPinkCabPassengerNeuralMessage>& GetNeuralMessages() const { return NeuralMessages; }
+    const TArray<FString>& GetAppliedNeuralMessageIds() const { return AppliedNeuralMessageIds; }
+
 private:
     static bool IsRelationshipFinite(const FPinkCabPassengerRelationship& Value)
     {
@@ -117,6 +154,12 @@ private:
     bool bRepeatEligible = false;
     TArray<FPinkCabPassengerRideMemory> RideMemories;
     TArray<FString> AppliedSocialEventIds;
+    int32 MaxNeuralMessages = 64;
+    int32 MaxNeuralReplayJournalEntries = 256;
+    bool bNeuralPermissionGranted = false;
+    bool bNeuralBlocked = false;
+    TArray<FPinkCabPassengerNeuralMessage> NeuralMessages;
+    TArray<FString> AppliedNeuralMessageIds;
 
     friend class FPinkCabPassengerRegistry;
     friend class FPinkCabPassengerSnapshotCodec;
@@ -142,11 +185,15 @@ public:
         int32 InMaxRecords = 256,
         int32 InMaxPreferences = 8,
         int32 InMaxRideMemories = 32,
-        int32 InMaxReplayJournalEntries = 512)
+        int32 InMaxReplayJournalEntries = 512,
+        int32 InMaxNeuralMessages = 64,
+        int32 InMaxNeuralReplayJournalEntries = 256)
         : MaxRecords(FMath::Max(1, InMaxRecords))
         , MaxPreferences(FMath::Max(0, InMaxPreferences))
         , MaxRideMemories(FMath::Max(1, InMaxRideMemories))
         , MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
+        , MaxNeuralMessages(FMath::Max(1, InMaxNeuralMessages))
+        , MaxNeuralReplayJournalEntries(FMath::Max(1, InMaxNeuralReplayJournalEntries))
     {
     }
 
@@ -205,6 +252,8 @@ public:
         Record.PreferenceTags = MoveTemp(CleanPreferences);
         Record.MaxRideMemories = MaxRideMemories;
         Record.MaxReplayJournalEntries = MaxReplayJournalEntries;
+        Record.MaxNeuralMessages = MaxNeuralMessages;
+        Record.MaxNeuralReplayJournalEntries = MaxNeuralReplayJournalEntries;
         if (!PinkCabPassengerRecordIsValid(Record)) return false;
 
         Records.Add(Key, MoveTemp(Record));
@@ -251,6 +300,15 @@ public:
             Payload += TEXT("|");
             for (const FString& EventId : Record.AppliedSocialEventIds)
                 Payload += EventId + TEXT(",");
+            Payload += FString::Printf(TEXT("|neural:%d:%d|"),
+                Record.bNeuralPermissionGranted ? 1 : 0,
+                Record.bNeuralBlocked ? 1 : 0);
+            for (const FPinkCabPassengerNeuralMessage& Message : Record.NeuralMessages)
+                Payload += Message.MessageId.Serialize() + TEXT(":")
+                    + FString::Printf(TEXT("%llu,"), FPinkCabDeterministicSeed::FromText(Message.Text));
+            Payload += TEXT("|");
+            for (const FString& MessageId : Record.AppliedNeuralMessageIds)
+                Payload += MessageId + TEXT(",");
             Payload += TEXT(";");
         }
         return FPinkCabDeterministicSeed::FromText(Payload);
@@ -261,6 +319,8 @@ private:
     int32 MaxPreferences = 8;
     int32 MaxRideMemories = 32;
     int32 MaxReplayJournalEntries = 512;
+    int32 MaxNeuralMessages = 64;
+    int32 MaxNeuralReplayJournalEntries = 256;
     TMap<FString, FPinkCabPassengerRecord> Records;
 
     friend class FPinkCabPassengerSnapshotCodec;
