@@ -50,3 +50,12 @@ Every extraction is followed by the owning regression suite before commit. After
 After the final split, the touched-subsystem exact-branch regression completed with no failed automation results and process exit `0` for: `PinkCab.Persistence`, `PinkCab.Taxi`, `PinkCab.Service`, `PinkCab.World`, `PinkCab.Vertical`, `PinkCab.Core.CodeComplete`, and `PinkCab.Core`.
 
 Task 7 therefore closes with every baseline `split now` hotspot separated by responsibility while all baseline `retain — cohesive` units remain intact.
+
+## Task 9 final analyzer
+
+Final exact-branch analyzer command:
+`Build.bat PinkCabEditor Win64 Development <PinkCab.uproject> -WaitMutex -NoHotReloadFromIDE -StaticAnalyzer=VisualCpp -StaticAnalyzerProjectOnly`
+
+Result: **Succeeded**, **19 analyzer actions**, **0 project `warning C####` / `error C####` diagnostics**. Raw local evidence: `Artifacts/Analysis/final-visualcpp.txt`.
+
+The final analyzer finding set is therefore clean; no project defect or accepted-with-reason diagnostic remains open for this gate.

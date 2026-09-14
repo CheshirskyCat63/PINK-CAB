@@ -177,15 +177,15 @@
 - Update: `docs/verification/CD-827-code-health.md`
 - No speculative production changes after verification begins.
 
-- [ ] Run `git diff --check` and verify clean whitespace.
-- [ ] Run final UBT VisualCpp project-only static analysis and save `Artifacts/Analysis/final-visualcpp.txt`.
-- [ ] Resolve any new actionable project diagnostic, then repeat the analyzer until the project finding set is clean/accepted-with-reason.
-- [ ] Force a clean `PinkCabEditor Win64 Development` build.
-- [ ] Run `PinkCab.Cockpit`, `PinkCab.Interaction`, `PinkCab.Vehicle`, `PinkCab.Taxi`, `PinkCab.Persistence`, `PinkCab.Core.CodeComplete` and any subsystem suites touched by monolith splits.
-- [ ] Run `scripts/build.ps1 -Package`; require `BUILD SUCCESSFUL` and ExitCode 0.
-- [ ] Launch the packaged executable against the intended playable map, keep it alive long enough for map load/engine init, and reject any fatal/assert/crash.
-- [ ] Update desktop shortcut `PinkCab.lnk` only after the accepted package exists and target verification succeeds.
-- [ ] Commit `chore(CD-828): close playable cockpit build evidence`.
+- [x] Run `git diff --check` and verify clean whitespace.
+- [x] Run final UBT VisualCpp project-only static analysis and save `Artifacts/Analysis/final-visualcpp.txt`.
+- [x] Resolve any new actionable project diagnostic, then repeat the analyzer until the project finding set is clean/accepted-with-reason.
+- [x] Force a clean `PinkCabEditor Win64 Development` build.
+- [x] Run `PinkCab.Cockpit`, `PinkCab.Interaction`, `PinkCab.Vehicle`, `PinkCab.Taxi`, `PinkCab.Persistence`, `PinkCab.Core.CodeComplete` and any subsystem suites touched by monolith splits.
+- [x] Run `scripts/build.ps1 -Package`; require `BUILD SUCCESSFUL` and ExitCode 0.
+- [x] Launch the packaged executable against the intended playable map, keep it alive long enough for map load/engine init, and reject any fatal/assert/crash.
+- [x] Update desktop shortcut `PinkCab.lnk` only after the accepted package exists and target verification succeeds.
+- [x] Commit `chore(CD-828): close playable cockpit build evidence`.
 
 ### Task 10: Synchronize Jira, Confluence and Git closure evidence
 
