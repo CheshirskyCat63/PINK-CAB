@@ -346,9 +346,10 @@ inline uint64 BuildSignature(
     const FFixture& F, const FCoreCodeCompleteResult& R)
 {
     const FString Payload = FString::Printf(
-        TEXT("%lld|%llu|%s|%s|%s|%s|%d|%d"),
+        TEXT("%lld|%llu|%llu|%s|%s|%s|%s|%d|%d"),
         static_cast<long long>(F.Economy.GetBalanceMinor()),
         F.Passengers.GetReconstructionSignature(),
+        F.Kernel.GetRootSeed(),
         *R.FineTransactionId, *R.EvasionConsequenceId,
         *R.PassengerIdentityId, *F.Workday.GetWorkdayId().Serialize(),
         F.Workday.GetOrdinal(), static_cast<int32>(F.Fare.GetState()));
