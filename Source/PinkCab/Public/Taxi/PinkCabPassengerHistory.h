@@ -6,6 +6,7 @@
 #include "Core/PinkCabStableId.h"
 #include "Taxi/PinkCabOrder.h"
 #include "Taxi/PinkCabPassengerIdentity.h"
+#include "Taxi/PinkCabPassengerRecord.h"
 
 struct FPinkCabPassengerHistory
 {
@@ -103,15 +104,39 @@ struct FPinkCabRepeatOrderFactory
         const FPinkCabStableId& OrderId,
         const FPinkCabStableId& PickupId,
         const FPinkCabStableId& DestinationId,
+        const FPinkCabPassengerRecord& Record,
+        EPinkCabFareMode FareMode)
+    {
+        return CreateForIdentity(OrderId, PickupId, DestinationId,
+            Record.IdentityId, Record.IsRepeatEligible(), FareMode);
+    }
+
+    static FPinkCabOrder Create(
+        const FPinkCabStableId& OrderId,
+        const FPinkCabStableId& PickupId,
+        const FPinkCabStableId& DestinationId,
         const FPinkCabPassengerHistory& History,
         EPinkCabFareMode FareMode)
     {
+        return CreateForIdentity(OrderId, PickupId, DestinationId,
+            History.IdentityId, History.IsRepeatEligible(), FareMode);
+    }
+
+private:
+    static FPinkCabOrder CreateForIdentity(
+        const FPinkCabStableId& OrderId,
+        const FPinkCabStableId& PickupId,
+        const FPinkCabStableId& DestinationId,
+        const FPinkCabStableId& PassengerId,
+        const bool bRepeatEligible,
+        EPinkCabFareMode FareMode)
+    {
         FPinkCabOrder Order;
-        if (!History.IsRepeatEligible() || !History.IdentityId.IsValid()) return Order;
+        if (!bRepeatEligible || !PassengerId.IsValid()) return Order;
         Order.OrderId = OrderId;
         Order.PickupId = PickupId;
         Order.DestinationId = DestinationId;
-        Order.PassengerIdentityIds.Add(History.IdentityId);
+        Order.PassengerIdentityIds.Add(PassengerId);
         Order.FareMode = FareMode;
         return Order;
     }
