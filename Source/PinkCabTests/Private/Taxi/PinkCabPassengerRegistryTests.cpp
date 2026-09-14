@@ -113,4 +113,23 @@ bool FPinkCabPassengerRegistryPreferenceCapTest::RunTest(const FString& Paramete
     TestEqual(TEXT("failed create does not mutate registry"), Registry.Num(), 0);
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPassengerRegistryAppearancePersistenceTest,
+    "PinkCab.Taxi.PassengerRegistry.AppearancePersistence",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPassengerRegistryAppearancePersistenceTest::RunTest(const FString& Parameters)
+{
+    FPinkCabPassengerRegistry A(4, 4), B(4, 4);
+    FPinkCabPassengerRecord* RA = nullptr; FPinkCabPassengerRecord* RB = nullptr;
+    const FPinkCabStableId Id(TEXT("p:appearance:1"));
+    TestTrue(TEXT("A create"), A.TryCreate(Id, MakeCommuterTemplate(), TEXT("district:appearance"), {}, RA));
+    TestTrue(TEXT("B recreate"), B.TryCreate(Id, MakeCommuterTemplate(), TEXT("district:appearance"), {}, RB));
+    TestTrue(TEXT("appearance seed stable"), RA->AppearanceSeed != 0 && RA->AppearanceSeed == RB->AppearanceSeed);
+    TestEqual(TEXT("appearance profile stable"), RA->AppearanceProfileId, RB->AppearanceProfileId);
+    TestEqual(TEXT("appearance traits stable"), RA->AppearanceTraitIds, RB->AppearanceTraitIds);
+    TestTrue(TEXT("appearance traits present"), RA->AppearanceTraitIds.Num() >= 3);
+    return true;
+}
 #endif

@@ -12,17 +12,23 @@ struct FPinkCabPassengerRecord
     FName TemplateId = NAME_None;
     FString ContextKey;
     uint64 IdentitySeed = 0;
+    uint64 AppearanceSeed = 0;
+    FName AppearanceProfileId = NAME_None;
+    TArray<FName> AppearanceTraitIds;
     float ResolvedMassKg = 0.0f;
     TArray<FName> PreferenceTags;
     FPinkCabPassengerRelationship Relationship;
 };
 
-bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
+inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
 {
     return Record.IdentityId.IsValid()
         && !Record.TemplateId.IsNone()
         && !Record.ContextKey.IsEmpty()
         && Record.IdentitySeed != 0
+        && Record.AppearanceSeed != 0
+        && !Record.AppearanceProfileId.IsNone()
+        && Record.AppearanceTraitIds.Num() >= 3
         && FMath::IsFinite(Record.ResolvedMassKg)
         && Record.ResolvedMassKg > 0.0f;
 }
@@ -45,8 +51,7 @@ public:
         const TArray<FName>& PreferenceTags,
         FPinkCabPassengerRecord*& OutRecord)
     {
-        OutRecord = nullptr;
-        const FString CleanContext = ContextKey.TrimStartAndEnd();
+        OutRecord = nullptr;        const FString CleanContext = ContextKey.TrimStartAndEnd();
         if (!IdentityId.IsValid() || Template.TemplateId.IsNone()
             || !FMath::IsFinite(Template.DefaultMassKg) || Template.DefaultMassKg <= 0.0f
             || CleanContext.IsEmpty() || Records.Num() >= MaxRecords)
@@ -74,9 +79,18 @@ public:
         Record.TemplateId = Template.TemplateId;
         Record.ContextKey = CleanContext;
         const uint64 Root = FPinkCabDeterministicSeed::FromText(
-            CleanContext + TEXT(":") + Template.TemplateId.ToString());
-        Record.IdentitySeed = FPinkCabDeterministicSeed::Derive(
+            CleanContext + TEXT(":") + Template.TemplateId.ToString());        Record.IdentitySeed = FPinkCabDeterministicSeed::Derive(
             Root, IdentityId, TEXT("passenger-record"));
+        Record.AppearanceSeed = FPinkCabDeterministicSeed::Derive(
+            Record.IdentitySeed, IdentityId, TEXT("passenger-appearance"));
+        Record.AppearanceProfileId = FName(*FString::Printf(
+            TEXT("profile.%s.%02llu"), *Template.TemplateId.ToString(),
+            Record.AppearanceSeed % 16ull));
+        Record.AppearanceTraitIds = {
+            FName(*FString::Printf(TEXT("body.%02llu"), (Record.AppearanceSeed >> 8) % 16ull)),
+            FName(*FString::Printf(TEXT("face.%02llu"), (Record.AppearanceSeed >> 16) % 32ull)),
+            FName(*FString::Printf(TEXT("hair.%02llu"), (Record.AppearanceSeed >> 24) % 32ull)),
+            FName(*FString::Printf(TEXT("palette.%02llu"), (Record.AppearanceSeed >> 32) % 16ull))};
         Record.ResolvedMassKg = Template.DefaultMassKg;
         Record.PreferenceTags = MoveTemp(CleanPreferences);
         if (!PinkCabPassengerRecordIsValid(Record)) return false;
@@ -92,8 +106,7 @@ public:
     }
 
     const FPinkCabPassengerRecord* Find(const FPinkCabStableId& IdentityId) const
-    {
-        return IdentityId.IsValid() ? Records.Find(IdentityId.Serialize()) : nullptr;
+    {        return IdentityId.IsValid() ? Records.Find(IdentityId.Serialize()) : nullptr;
     }
 
     uint64 GetReconstructionSignature() const
@@ -107,7 +120,12 @@ public:
             const FPinkCabPassengerRecord& Record = Records.FindChecked(Key);
             Payload += Key + TEXT("|") + Record.TemplateId.ToString()
                 + TEXT("|") + Record.ContextKey
-                + FString::Printf(TEXT("|%llu|%.3f|"), Record.IdentitySeed, Record.ResolvedMassKg);
+                + FString::Printf(TEXT("|%llu|%llu|%s|%.3f|"),
+                    Record.IdentitySeed, Record.AppearanceSeed,
+                    *Record.AppearanceProfileId.ToString(), Record.ResolvedMassKg);
+            for (const FName Trait : Record.AppearanceTraitIds)
+                Payload += Trait.ToString() + TEXT(",");
+            Payload += TEXT("|");
             for (const FName Tag : Record.PreferenceTags)
                 Payload += Tag.ToString() + TEXT(",");
             Payload += TEXT(";");
