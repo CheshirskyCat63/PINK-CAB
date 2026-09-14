@@ -102,6 +102,29 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
     {
         Meter->SetVisibility(State.bMeterAvailable, true);
     }
+    if (USceneComponent* Door = Assembly.GetSlotComponent(EPinkCabCockpitSlot::PassengerDoor))
+    {
+        Door->SetVisibility(State.bPassengerDoorAvailable, true);
+    }
+    if (USceneComponent* Navigation = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Navigation))
+    {
+        Navigation->SetVisibility(State.bRouteAvailable, true);
+    }
+    if (USceneComponent* Radio = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Radio))
+    {
+        Radio->SetVisibility(State.bRadioAvailable, true);
+    }
+    const EPinkCabCockpitSlot MirrorSlots[] = {
+        EPinkCabCockpitSlot::RearViewMirror,
+        EPinkCabCockpitSlot::LeftMirror,
+        EPinkCabCockpitSlot::RightMirror};
+    for (const EPinkCabCockpitSlot MirrorSlot : MirrorSlots)
+    {
+        if (USceneComponent* Mirror = Assembly.GetSlotComponent(MirrorSlot))
+        {
+            Mirror->SetVisibility(State.bMirrorsAvailable, true);
+        }
+    }
     if (USceneComponent* Warnings = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Warnings))
     {
         Warnings->SetVisibility(State.bIgnitionRunning || State.bMeterRunning || State.bPassengerDoorOpen, true);

@@ -17,6 +17,7 @@ class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
 struct FPinkCabInteractionEvent;
+class FPinkCabTaximeter;
 
 UCLASS()
 class PINKCAB_API APinkCabChaosTatraPawn : public AWheeledVehiclePawn
@@ -48,6 +49,11 @@ public:
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld);
     float GetSteeringCommand() const { return SteeringCommand; }
+
+    void SetCockpitTaximeterSource(const FPinkCabTaximeter* InTaximeter) { CockpitTaximeterSource = InTaximeter; }
+    void SetCockpitRouteProgress(TOptional<float> InRouteProgress01) { CockpitRouteProgress01 = InRouteProgress01; }
+    void SetCockpitRadioAvailable(bool bAvailable) { bCockpitRadioAvailable = bAvailable; }
+    void SetCockpitMirrorsAvailable(bool bAvailable) { bCockpitMirrorsAvailable = bAvailable; }
 
 private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
@@ -82,6 +88,10 @@ private:
     FPinkCabVehicleControlState ControlState;
     FPinkCabCockpitState CockpitState;
     FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
+    const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
+    TOptional<float> CockpitRouteProgress01;
+    bool bCockpitRadioAvailable = false;
+    bool bCockpitMirrorsAvailable = true;
 
     float SteeringCommand = 0.0f;
     float MouseSteeringGain = 0.025f;

@@ -5,6 +5,7 @@
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
+#include "Cockpit/PinkCabCockpitServiceBridge.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -228,9 +229,14 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     Presentation.SelectedGear = CockpitState.GetSelectedGear();
     Presentation.bIgnitionRunning = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
     Presentation.bHandbrakeEngaged = CockpitState.IsHandbrakeEngaged();
-    Presentation.bPassengerDoorOpen = CockpitState.IsPassengerDoorOpen();
-    Presentation.bMeterAvailable = true;
-    Presentation.bMeterRunning = CockpitState.GetMeterState() == EPinkCabMeterState::Running;
+    FPinkCabCockpitServiceSources ServiceSources;
+    ServiceSources.Taximeter = CockpitTaximeterSource;
+    ServiceSources.CockpitState = &CockpitState;
+    ServiceSources.RouteProgress01 = CockpitRouteProgress01;
+    ServiceSources.bRadioAvailable = bCockpitRadioAvailable;
+    ServiceSources.bMirrorsAvailable = bCockpitMirrorsAvailable;
+    FPinkCabCockpitServiceBridge::ApplyToPresentation(
+        FPinkCabCockpitServiceBridge::Read(ServiceSources), Presentation);
     Presentation.bTurnSignalLeft = CockpitState.GetTurnSignalDirection() < 0;
     Presentation.bTurnSignalRight = CockpitState.GetTurnSignalDirection() > 0;
     Presentation.bHornActive = CockpitState.IsHornActive();

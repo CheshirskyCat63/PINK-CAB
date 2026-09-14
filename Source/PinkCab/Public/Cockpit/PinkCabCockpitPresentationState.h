@@ -14,9 +14,20 @@ struct FPinkCabCockpitPresentationState
 
     bool bIgnitionRunning = false;
     bool bHandbrakeEngaged = true;
+    bool bPassengerDoorAvailable = false;
     bool bPassengerDoorOpen = false;
+
     bool bMeterAvailable = false;
     bool bMeterRunning = false;
+    int64 FareMinor = 0;
+    double MeterDistanceKm = 0.0;
+    double MeterFareSeconds = 0.0;
+
+    bool bRouteAvailable = false;
+    float RouteProgress01 = 0.0f;
+    bool bRadioAvailable = false;
+    bool bMirrorsAvailable = false;
+
     bool bTurnSignalLeft = false;
     bool bTurnSignalRight = false;
     bool bHornActive = false;
