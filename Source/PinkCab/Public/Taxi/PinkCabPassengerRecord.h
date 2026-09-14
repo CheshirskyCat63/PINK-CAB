@@ -6,6 +6,21 @@
 #include "Taxi/PinkCabPassengerIdentity.h"
 #include "Taxi/PinkCabPassengerTemplate.h"
 
+enum class EPinkCabPassengerMutationResult : uint8
+{
+    Applied,
+    Duplicate,
+    CapacityExceeded,
+    Invalid
+};
+
+struct FPinkCabPassengerRideMemory
+{
+    FPinkCabStableId MemoryId;
+    FPinkCabStableId FareId;
+    FName OutcomeTag = NAME_None;
+};
+
 struct FPinkCabPassengerRecord
 {
     FPinkCabStableId IdentityId;
@@ -18,6 +33,93 @@ struct FPinkCabPassengerRecord
     float ResolvedMassKg = 0.0f;
     TArray<FName> PreferenceTags;
     FPinkCabPassengerRelationship Relationship;
+
+    EPinkCabPassengerMutationResult RegisterPaidFareOnce(
+        const FPinkCabStableId& EventId,
+        const FPinkCabPassengerRelationship& Delta)
+    {
+        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(EventId, Delta);
+        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
+        ++PaidFareCount;
+        ApplyRelationshipDelta(Delta);
+        if (PaidFareCount >= 2) bRepeatEligible = true;
+        return EPinkCabPassengerMutationResult::Applied;
+    }
+
+    EPinkCabPassengerMutationResult RegisterAuthoredEventOnce(
+        const FPinkCabStableId& EventId,
+        const FPinkCabPassengerRelationship& Delta)
+    {
+        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(EventId, Delta);
+        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
+        ++AuthoredEventCount;
+        ApplyRelationshipDelta(Delta);
+        bRepeatEligible = true;
+        return EPinkCabPassengerMutationResult::Applied;
+    }
+    EPinkCabPassengerMutationResult AddRideMemoryOnce(
+        const FPinkCabStableId& MemoryId,
+        const FPinkCabStableId& FareId,
+        const FName OutcomeTag)
+    {
+        if (!MemoryId.IsValid() || !FareId.IsValid() || OutcomeTag.IsNone())
+            return EPinkCabPassengerMutationResult::Invalid;
+        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(MemoryId);
+        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
+        if (RideMemories.Num() >= MaxRideMemories) RideMemories.RemoveAt(0);
+        RideMemories.Add({MemoryId, FareId, OutcomeTag});
+        return EPinkCabPassengerMutationResult::Applied;
+    }
+
+    int32 GetPaidFareCount() const { return PaidFareCount; }
+    int32 GetAuthoredEventCount() const { return AuthoredEventCount; }
+    bool IsRepeatEligible() const { return bRepeatEligible; }
+    const TArray<FPinkCabPassengerRideMemory>& GetRideMemories() const { return RideMemories; }
+    const TArray<FString>& GetAppliedSocialEventIds() const { return AppliedSocialEventIds; }
+
+private:
+    static bool IsRelationshipFinite(const FPinkCabPassengerRelationship& Value)
+    {
+        return FMath::IsFinite(Value.Trust)
+            && FMath::IsFinite(Value.Satisfaction)
+            && FMath::IsFinite(Value.RiskTolerance);
+    }
+    EPinkCabPassengerMutationResult TryBeginSocialEvent(const FPinkCabStableId& EventId)
+    {
+        if (!EventId.IsValid()) return EPinkCabPassengerMutationResult::Invalid;
+        const FString Key = EventId.Serialize();
+        if (AppliedSocialEventIds.Contains(Key)) return EPinkCabPassengerMutationResult::Duplicate;
+        if (AppliedSocialEventIds.Num() >= MaxReplayJournalEntries)
+            return EPinkCabPassengerMutationResult::CapacityExceeded;
+        AppliedSocialEventIds.Add(Key);
+        return EPinkCabPassengerMutationResult::Applied;
+    }
+
+    EPinkCabPassengerMutationResult TryBeginSocialEvent(
+        const FPinkCabStableId& EventId,
+        const FPinkCabPassengerRelationship& Delta)
+    {
+        if (!IsRelationshipFinite(Delta)) return EPinkCabPassengerMutationResult::Invalid;
+        return TryBeginSocialEvent(EventId);
+    }
+
+    void ApplyRelationshipDelta(const FPinkCabPassengerRelationship& Delta)
+    {
+        Relationship.Trust = FMath::Clamp(Relationship.Trust + Delta.Trust, -1.0f, 1.0f);
+        Relationship.Satisfaction = FMath::Clamp(Relationship.Satisfaction + Delta.Satisfaction, -1.0f, 1.0f);
+        Relationship.RiskTolerance = FMath::Clamp(Relationship.RiskTolerance + Delta.RiskTolerance, -1.0f, 1.0f);
+    }
+
+    int32 MaxRideMemories = 32;
+    int32 MaxReplayJournalEntries = 512;
+    int32 PaidFareCount = 0;
+    int32 AuthoredEventCount = 0;
+    bool bRepeatEligible = false;
+    TArray<FPinkCabPassengerRideMemory> RideMemories;
+    TArray<FString> AppliedSocialEventIds;
+
+    friend class FPinkCabPassengerRegistry;
+    friend class FPinkCabPassengerSnapshotCodec;
 };
 
 inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
@@ -36,9 +138,15 @@ inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
 class FPinkCabPassengerRegistry
 {
 public:
-    explicit FPinkCabPassengerRegistry(int32 InMaxRecords = 256, int32 InMaxPreferences = 8)
+    explicit FPinkCabPassengerRegistry(
+        int32 InMaxRecords = 256,
+        int32 InMaxPreferences = 8,
+        int32 InMaxRideMemories = 32,
+        int32 InMaxReplayJournalEntries = 512)
         : MaxRecords(FMath::Max(1, InMaxRecords))
         , MaxPreferences(FMath::Max(0, InMaxPreferences))
+        , MaxRideMemories(FMath::Max(1, InMaxRideMemories))
+        , MaxReplayJournalEntries(FMath::Max(1, InMaxReplayJournalEntries))
     {
     }
 
@@ -51,7 +159,8 @@ public:
         const TArray<FName>& PreferenceTags,
         FPinkCabPassengerRecord*& OutRecord)
     {
-        OutRecord = nullptr;        const FString CleanContext = ContextKey.TrimStartAndEnd();
+        OutRecord = nullptr;
+        const FString CleanContext = ContextKey.TrimStartAndEnd();
         if (!IdentityId.IsValid() || Template.TemplateId.IsNone()
             || !FMath::IsFinite(Template.DefaultMassKg) || Template.DefaultMassKg <= 0.0f
             || CleanContext.IsEmpty() || Records.Num() >= MaxRecords)
@@ -79,7 +188,8 @@ public:
         Record.TemplateId = Template.TemplateId;
         Record.ContextKey = CleanContext;
         const uint64 Root = FPinkCabDeterministicSeed::FromText(
-            CleanContext + TEXT(":") + Template.TemplateId.ToString());        Record.IdentitySeed = FPinkCabDeterministicSeed::Derive(
+            CleanContext + TEXT(":") + Template.TemplateId.ToString());
+        Record.IdentitySeed = FPinkCabDeterministicSeed::Derive(
             Root, IdentityId, TEXT("passenger-record"));
         Record.AppearanceSeed = FPinkCabDeterministicSeed::Derive(
             Record.IdentitySeed, IdentityId, TEXT("passenger-appearance"));
@@ -93,6 +203,8 @@ public:
             FName(*FString::Printf(TEXT("palette.%02llu"), (Record.AppearanceSeed >> 32) % 16ull))};
         Record.ResolvedMassKg = Template.DefaultMassKg;
         Record.PreferenceTags = MoveTemp(CleanPreferences);
+        Record.MaxRideMemories = MaxRideMemories;
+        Record.MaxReplayJournalEntries = MaxReplayJournalEntries;
         if (!PinkCabPassengerRecordIsValid(Record)) return false;
 
         Records.Add(Key, MoveTemp(Record));
@@ -106,7 +218,8 @@ public:
     }
 
     const FPinkCabPassengerRecord* Find(const FPinkCabStableId& IdentityId) const
-    {        return IdentityId.IsValid() ? Records.Find(IdentityId.Serialize()) : nullptr;
+    {
+        return IdentityId.IsValid() ? Records.Find(IdentityId.Serialize()) : nullptr;
     }
 
     uint64 GetReconstructionSignature() const
@@ -120,14 +233,24 @@ public:
             const FPinkCabPassengerRecord& Record = Records.FindChecked(Key);
             Payload += Key + TEXT("|") + Record.TemplateId.ToString()
                 + TEXT("|") + Record.ContextKey
-                + FString::Printf(TEXT("|%llu|%llu|%s|%.3f|"),
+                + FString::Printf(TEXT("|%llu|%llu|%s|%.3f|%.3f|%.3f|%.3f|%d|%d|%d|"),
                     Record.IdentitySeed, Record.AppearanceSeed,
-                    *Record.AppearanceProfileId.ToString(), Record.ResolvedMassKg);
+                    *Record.AppearanceProfileId.ToString(), Record.ResolvedMassKg,
+                    Record.Relationship.Trust, Record.Relationship.Satisfaction,
+                    Record.Relationship.RiskTolerance, Record.PaidFareCount,
+                    Record.AuthoredEventCount, Record.bRepeatEligible ? 1 : 0);
             for (const FName Trait : Record.AppearanceTraitIds)
                 Payload += Trait.ToString() + TEXT(",");
             Payload += TEXT("|");
             for (const FName Tag : Record.PreferenceTags)
                 Payload += Tag.ToString() + TEXT(",");
+            Payload += TEXT("|");
+            for (const FPinkCabPassengerRideMemory& Memory : Record.RideMemories)
+                Payload += Memory.MemoryId.Serialize() + TEXT(":")
+                    + Memory.FareId.Serialize() + TEXT(":") + Memory.OutcomeTag.ToString() + TEXT(",");
+            Payload += TEXT("|");
+            for (const FString& EventId : Record.AppliedSocialEventIds)
+                Payload += EventId + TEXT(",");
             Payload += TEXT(";");
         }
         return FPinkCabDeterministicSeed::FromText(Payload);
@@ -136,5 +259,9 @@ public:
 private:
     int32 MaxRecords = 256;
     int32 MaxPreferences = 8;
+    int32 MaxRideMemories = 32;
+    int32 MaxReplayJournalEntries = 512;
     TMap<FString, FPinkCabPassengerRecord> Records;
+
+    friend class FPinkCabPassengerSnapshotCodec;
 };
