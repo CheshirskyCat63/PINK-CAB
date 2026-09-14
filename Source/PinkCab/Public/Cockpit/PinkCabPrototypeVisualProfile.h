@@ -38,7 +38,7 @@ struct FPinkCabPrototypeVisualProfile
         Result.PhysicsAssetPath = FSoftObjectPath(
             TEXT("/Game/Vehicles/SportsCar/PA_SportsCar.PA_SportsCar"));
         Result.DriverMeshPath = FSoftObjectPath(
-            TEXT("/Game/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"));
+            TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"));
         Result.CockpitRootTransform = FTransform::Identity;
         Result.DriverTransform = FTransform(
             FRotator(0.0f, 0.0f, 0.0f),

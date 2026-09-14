@@ -17,7 +17,7 @@ bool FPinkCabPrototypeVisualProfileDefaultsTest::RunTest(const FString& Paramete
     TestEqual(TEXT("vehicle mesh stays replaceable"), Profile.VehicleMeshPath.ToString(),
         FString(TEXT("/Game/Vehicles/SportsCar/SKM_SportsCar.SKM_SportsCar")));
     TestEqual(TEXT("driver mesh stays replaceable"), Profile.DriverMeshPath.ToString(),
-        FString(TEXT("/Game/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple")));
+        FString(TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple")));
     TestEqual(TEXT("front-left wheel bone"), Profile.WheelBones[0], FName(TEXT("Phys_Wheel_FL")));
     TestEqual(TEXT("front-right wheel bone"), Profile.WheelBones[1], FName(TEXT("Phys_Wheel_FR")));
     TestEqual(TEXT("rear-left wheel bone"), Profile.WheelBones[2], FName(TEXT("Phys_Wheel_BL")));
