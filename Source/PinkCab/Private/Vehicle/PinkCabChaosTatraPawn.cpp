@@ -2,6 +2,8 @@
 
 #include "Camera/CameraComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Cockpit/PinkCabCockpitAssemblyComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/PlayerController.h"
@@ -39,6 +41,21 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
     VehicleMesh->SetSimulatePhysics(true);
+    VehicleMesh->SetOwnerNoSee(true);
+
+    CockpitAssembly = CreateDefaultSubobject<UPinkCabCockpitAssemblyComponent>(TEXT("CockpitAssembly"));
+    CockpitAssembly->SetupAttachment(VehicleMesh);
+
+    DriverHeadRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DriverHeadRoot"));
+    DriverHeadRoot->SetupAttachment(CockpitAssembly);
+    DriverHeadRoot->SetRelativeLocation(FVector(-15.0f, -38.0f, 128.0f));
+
+    DriverCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DriverCamera"));
+    DriverCamera->SetupAttachment(DriverHeadRoot);
+    DriverCamera->SetFieldOfView(86.0f);
+    DriverCamera->bUsePawnControlRotation = false;
+    DriverCamera->SetAutoActivate(true);
+    CockpitAssembly->RegisterExternalSlot(EPinkCabCockpitSlot::DriverCamera, DriverCamera);
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(VehicleMesh);
@@ -50,6 +67,7 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     ChaseCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ChaseCamera"));
     ChaseCamera->SetupAttachment(CameraBoom);
+    ChaseCamera->SetAutoActivate(false);
 
     UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
     check(Movement);
@@ -68,13 +86,14 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->WheelSetups[2].BoneName = TEXT("Phys_Wheel_BL");
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = TEXT("Phys_Wheel_BR");
-
 }
 
 void APinkCabChaosTatraPawn::BeginPlay()
 {
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
+    DriverCamera->SetActive(true);
+    ChaseCamera->SetActive(false);
     SyncCockpitToChaos();
 }
 
@@ -141,7 +160,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         LookPitch = FMath::FInterpTo(LookPitch, 0.0f, DeltaSeconds, 4.0f);
     }
 
-    CameraBoom->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
+    DriverHeadRoot->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
 
     ControlState = InputFrame.ToControlState(
         SteeringCommand,

@@ -142,3 +142,32 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "Camera/CameraComponent.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabDriverCockpitCameraContractTest,
+    "PinkCab.Cockpit.Contract.DriverCamera",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabDriverCockpitCameraContractTest::RunTest(const FString& Parameters)
+{
+    const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
+    TInlineComponentArray<UCameraComponent*> Cameras(Pawn);
+    const UCameraComponent* DriverCamera = nullptr;
+    for (const UCameraComponent* Camera : Cameras)
+    {
+        if (Camera && Camera->GetFName() == FName(TEXT("DriverCamera")))
+        {
+            DriverCamera = Camera;
+            break;
+        }
+    }
+
+    TestNotNull(TEXT("Tatra pawn exposes a dedicated DriverCamera component"), DriverCamera);
+    return DriverCamera != nullptr;
+}
+
+#endif

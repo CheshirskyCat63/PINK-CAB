@@ -9,7 +9,9 @@
 
 class UChaosWheeledVehicleMovementComponent;
 class UCameraComponent;
+class USceneComponent;
 class USpringArmComponent;
+class UPinkCabCockpitAssemblyComponent;
 struct FPinkCabInteractionEvent;
 
 UCLASS()
@@ -28,6 +30,9 @@ public:
     const FPinkCabCockpitState& GetCockpitState() const { return CockpitState; }
     bool ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event);
 
+    UPinkCabCockpitAssemblyComponent* GetCockpitAssembly() const { return CockpitAssembly; }
+    UCameraComponent* GetDriverCamera() const { return DriverCamera; }
+
     static float IntegrateMouseSteering(
         float CurrentSteering,
         float DeltaX,
@@ -38,6 +43,15 @@ public:
     float GetSteeringCommand() const { return SteeringCommand; }
 
 private:
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
+    TObjectPtr<UPinkCabCockpitAssemblyComponent> CockpitAssembly;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
+    TObjectPtr<USceneComponent> DriverHeadRoot;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
+    TObjectPtr<UCameraComponent> DriverCamera;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -56,4 +70,3 @@ private:
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
 };
-
