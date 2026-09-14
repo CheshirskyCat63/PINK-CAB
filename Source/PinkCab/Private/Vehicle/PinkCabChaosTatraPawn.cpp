@@ -28,18 +28,13 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
     USkeletalMeshComponent* VehicleMesh = GetMesh();
-    static ConstructorHelpers::FObjectFinder<USkeletalMesh> TemplateMesh(
-        TEXT("/Game/Vehicles/SportsCar/SKM_SportsCar.SKM_SportsCar"));
-    static ConstructorHelpers::FObjectFinder<UPhysicsAsset> TemplatePhysicsAsset(
-        TEXT("/Game/Vehicles/SportsCar/PA_SportsCar.PA_SportsCar"));
-
-    if (TemplateMesh.Succeeded())
+    if (USkeletalMesh* VehicleAsset = Cast<USkeletalMesh>(PrototypeVisualProfile.VehicleMeshPath.TryLoad()))
     {
-        VehicleMesh->SetSkeletalMesh(TemplateMesh.Object);
+        VehicleMesh->SetSkeletalMesh(VehicleAsset);
     }
-    if (TemplatePhysicsAsset.Succeeded())
+    if (UPhysicsAsset* PhysicsAsset = Cast<UPhysicsAsset>(PrototypeVisualProfile.PhysicsAssetPath.TryLoad()))
     {
-        VehicleMesh->SetPhysicsAsset(TemplatePhysicsAsset.Object, false);
+        VehicleMesh->SetPhysicsAsset(PhysicsAsset, false);
     }
 
     VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
@@ -48,9 +43,22 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     CockpitAssembly = CreateDefaultSubobject<UPinkCabCockpitAssemblyComponent>(TEXT("CockpitAssembly"));
     CockpitAssembly->SetupAttachment(VehicleMesh);
+    CockpitAssembly->SetRelativeTransform(PrototypeVisualProfile.CockpitRootTransform);
 
     CockpitInteraction = CreateDefaultSubobject<UPinkCabCockpitInteractionComponent>(TEXT("CockpitInteraction"));
     CockpitVisualDriver = CreateDefaultSubobject<UPinkCabCockpitVisualDriverComponent>(TEXT("CockpitVisualDriver"));
+
+    PrototypeDriverVisual = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PrototypeDriverVisual"));
+    PrototypeDriverVisual->SetupAttachment(VehicleMesh);
+    PrototypeDriverVisual->SetRelativeTransform(PrototypeVisualProfile.DriverTransform);
+    PrototypeDriverVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    PrototypeDriverVisual->SetGenerateOverlapEvents(false);
+    PrototypeDriverVisual->SetCastShadow(false);
+    PrototypeDriverVisual->SetOwnerNoSee(true);
+    if (USkeletalMesh* DriverAsset = Cast<USkeletalMesh>(PrototypeVisualProfile.DriverMeshPath.TryLoad()))
+    {
+        PrototypeDriverVisual->SetSkeletalMesh(DriverAsset);
+    }
 
     DriverHeadRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DriverHeadRoot"));
     DriverHeadRoot->SetupAttachment(CockpitAssembly);
@@ -85,13 +93,13 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     Movement->WheelSetups.SetNum(4);
     Movement->WheelSetups[0].WheelClass = UPinkCabChaosWheelFront::StaticClass();
-    Movement->WheelSetups[0].BoneName = TEXT("Phys_Wheel_FL");
+    Movement->WheelSetups[0].BoneName = PrototypeVisualProfile.WheelBones[0];
     Movement->WheelSetups[1].WheelClass = UPinkCabChaosWheelFront::StaticClass();
-    Movement->WheelSetups[1].BoneName = TEXT("Phys_Wheel_FR");
+    Movement->WheelSetups[1].BoneName = PrototypeVisualProfile.WheelBones[1];
     Movement->WheelSetups[2].WheelClass = UPinkCabChaosWheelRear::StaticClass();
-    Movement->WheelSetups[2].BoneName = TEXT("Phys_Wheel_BL");
+    Movement->WheelSetups[2].BoneName = PrototypeVisualProfile.WheelBones[2];
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
-    Movement->WheelSetups[3].BoneName = TEXT("Phys_Wheel_BR");
+    Movement->WheelSetups[3].BoneName = PrototypeVisualProfile.WheelBones[3];
 }
 
 void APinkCabChaosTatraPawn::BeginPlay()

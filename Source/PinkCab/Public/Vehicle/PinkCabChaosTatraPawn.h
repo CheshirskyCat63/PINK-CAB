@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Cockpit/PinkCabPrototypeVisualProfile.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
@@ -10,6 +11,7 @@
 class UChaosWheeledVehicleMovementComponent;
 class UCameraComponent;
 class USceneComponent;
+class USkeletalMeshComponent;
 class USpringArmComponent;
 class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
@@ -34,6 +36,8 @@ public:
     UPinkCabCockpitAssemblyComponent* GetCockpitAssembly() const { return CockpitAssembly; }
     UPinkCabCockpitInteractionComponent* GetCockpitInteraction() const { return CockpitInteraction; }
     UPinkCabCockpitVisualDriverComponent* GetCockpitVisualDriver() const { return CockpitVisualDriver; }
+    FName GetPrototypeVisualProfileId() const { return PrototypeVisualProfile.ProfileId; }
+    USkeletalMeshComponent* GetPrototypeDriverVisual() const { return PrototypeDriverVisual; }
     UCameraComponent* GetDriverCamera() const { return DriverCamera; }
 
     static float IntegrateMouseSteering(
@@ -54,6 +58,10 @@ private:
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UPinkCabCockpitVisualDriverComponent> CockpitVisualDriver;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|PrototypeVisual")
+    TObjectPtr<USkeletalMeshComponent> PrototypeDriverVisual;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<USceneComponent> DriverHeadRoot;
 
@@ -68,6 +76,8 @@ private:
 
     void SyncCockpitToChaos();
 
+    FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
+        FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
     FPinkCabVehicleControlState ControlState;
     FPinkCabCockpitState CockpitState;
