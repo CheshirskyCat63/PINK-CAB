@@ -20,9 +20,9 @@ float UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(const float Value
     return FMath::Clamp(Value, 0.0f, 1.0f) * 18.0f;
 }
 
-float UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(const bool bEngaged)
+float UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(const float Amount)
 {
-    return bEngaged ? -32.0f : 0.0f;
+    return FMath::Clamp(Amount, 0.0f, 1.0f) * -32.0f;
 }
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffset(const int32 Gear)
 {
@@ -92,7 +92,7 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
         FRotator(PedalTravelDegrees(State.Throttle), 0.0f, 0.0f));
     SetLocOffset(EPinkCabCockpitSlot::Gearbox, GearLeverOffset(State.SelectedGear));
     SetRotOffset(EPinkCabCockpitSlot::Handbrake,
-        FRotator(0.0f, HandbrakeAngleDegrees(State.bHandbrakeEngaged), 0.0f));
+        FRotator(0.0f, HandbrakeAngleDegrees(State.Handbrake), 0.0f));
     SetRotOffset(EPinkCabCockpitSlot::Ignition,
         FRotator(0.0f, State.bIgnitionRunning ? 42.0f : 0.0f, 0.0f));
     SetRotOffset(EPinkCabCockpitSlot::PassengerDoor,

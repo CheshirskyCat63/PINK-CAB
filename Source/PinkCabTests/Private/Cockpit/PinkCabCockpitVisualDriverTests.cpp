@@ -18,8 +18,10 @@ bool FPinkCabCockpitVisualMappingTest::RunTest(const FString& Parameters)
         UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), 450.0f);
     TestEqual(TEXT("full pedal travel is bounded"),
         UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(1.0f), 18.0f);
-    TestEqual(TEXT("engaged handbrake gets visible lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(true), -32.0f);
+    TestEqual(TEXT("half handbrake gets proportional lever angle"),
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -16.0f);
+    TestEqual(TEXT("full handbrake gets bounded lever angle"),
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -32.0f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -61,10 +63,12 @@ bool FPinkCabCockpitPresentationFlagsTest::RunTest(const FString& Parameters)
     State.bMeterAvailable = true;
     State.bMeterRunning = true;
     State.bPassengerDoorOpen = true;
+    State.Handbrake = 0.42f;
     TestTrue(TEXT("ignition presentation can be active"), State.bIgnitionRunning);
     TestTrue(TEXT("meter presentation can be available"), State.bMeterAvailable);
     TestTrue(TEXT("meter running presentation is explicit"), State.bMeterRunning);
     TestTrue(TEXT("door-open presentation is explicit"), State.bPassengerDoorOpen);
+    TestEqual(TEXT("analog handbrake presentation is preserved"), State.Handbrake, 0.42f);
     return true;
 }
 

@@ -16,14 +16,19 @@ This gate does not produce final interior art, hands/IK, finger animation, final
 
 ## Locked input grammar
 
-- Mouse steers whenever mouse ownership is not diverted.
-- Hold `Space` for GAZE; mouse then controls view instead of steering.
-- `1–4 = START / quick reach`: `1 signals`, `2 horn`, `3 gearbox`, `4 handbrake`.
-- `LMB = ATTENTION`: commit/retain right hand on a valid physical target.
-- `RMB = GO`: perform contextual manipulation/action and own mouse where required.
-- `Q = clutch`, `W = brake`, `E = throttle`; W+E may coexist.
+This section is subordinate to `docs/PROJECT_SETUP.md`, `docs/VERIFICATION_MATRIX.md` (`PC-T-INP-001..008`) and `docs/PINK_CAB_TATRA_DAUGHTER_CONDUCTOR_CANON.md`. Where an older cockpit-gate draft differs, those current authority documents win.
 
-Earlier temporary RMB-grab/LMB-manipulate behavior is not authoritative and must not be reintroduced.
+- Mouse steers by default.
+- Hold `Space` for GAZE/free-look and bounded physical-target search; releasing Space returns mouse ownership to steering cleanly.
+- `1–4` are quick recall only: `1 signals`, `2 horn`, `3 gearbox`, `4 handbrake`. Recall selects/restores the saved physical target/hand pose and never actuates it.
+- `RMB` brings/retains the right hand only when the current target declares grip support. Grip never actuates the control by itself.
+- `LMB` is momentary press/hold only when the current target declares momentary support; horn must distinguish a short tap from a long hold by duration/state, not by a hidden shortcut.
+- Mouse wheel emits signed detent/rotary/incremental input only when the current target declares wheel adjustment.
+- `Q = clutch`, `W = brake`, `E = throttle`; W+E may coexist.
+- Exactly one bounded current interaction target is allowed. No world scan or hidden autopilot/route/lane/gap/brake/throttle selection is permitted.
+- Focus-loss/recovery must clear transient gaze/grip/momentary/wheel ownership so no hand/input state can remain stuck.
+
+The universal `LMB=ATTENTION / RMB=GO` wording is SUPERSEDED and must not exist in production bindings, tests or Jira/Confluence acceptance text.
 
 ## Core architecture
 
@@ -35,7 +40,7 @@ Gameplay truth remains in vehicle/taxi/world state. Cockpit presentation is a co
 ## Cockpit units
 
 1. `UPinkCabCockpitAssemblyComponent` owns semantic attachment slots, primitive fallback visuals, camera/head roots and replaceable asset bindings.
-2. `UPinkCabCockpitInteractionComponent` owns START/ATTENTION/GO target selection and command emission. It does not own vehicle/taxi state.
+2. `UPinkCabCockpitInteractionComponent` owns bounded current-target selection, quick recall, optional grip, momentary press/hold, wheel command emission and transient input ownership cleanup. It does not own vehicle/taxi state.
 3. `FPinkCabCockpitPresentationState` is a read-only projection of vehicle telemetry, cockpit state and taxi state used to drive visuals.
 4. `UPinkCabCockpitVisualDriverComponent` maps presentation values to local transforms/visibility/material parameters for replaceable slots.
 5. Existing vehicle input/dynamics, fare/taximeter, persistence and world/navigation services remain authoritative.
@@ -52,7 +57,7 @@ The primitive shell provides floor, dash, windshield frame/A-pillars, roof heade
 
 ## Functional cabin scope
 
-The first accepted cockpit exposes steering, clutch/brake/throttle, gearbox, handbrake, ignition, turn signals, horn, lights, wipers/washer, speed/RPM/gear/engine/handbrake indicators, selected warning indicators, taximeter, passenger-door lever, mirror contract, navigation surface, radio surface and recovery/reset.
+The first accepted cockpit exposes steering, clutch/brake/throttle, gearbox, handbrake, ignition, turn signals, horn, lights, wipers/washer, speed/RPM/gear/engine/handbrake indicators, selected warning indicators, taximeter, passenger-door lever, mirror contract, navigation surface and radio surface. There is no player-facing free-reset key or hidden keyboard shortcut for physical cabin controls. FIRST EURO terminal recovery follows the authoritative RecoveryPolicy/Workday/Repair path and is not implemented as pawn teleport/reset.
 
 Taxi meter presentation reads the authoritative fare/taximeter runtime. Passenger-door presentation reads authoritative cockpit/taxi state. Navigation and radio surfaces are adapters to their service contracts; they must not create duplicate route/media truth.
 

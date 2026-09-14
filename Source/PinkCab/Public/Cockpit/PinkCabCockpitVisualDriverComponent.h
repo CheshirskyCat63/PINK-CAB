@@ -16,7 +16,7 @@ public:
 
     static float SteeringAngleDegrees(float Steering);
     static float PedalTravelDegrees(float Value);
-    static float HandbrakeAngleDegrees(bool bEngaged);
+    static float HandbrakeAngleDegrees(float Amount);
     static FVector GearLeverOffset(int32 Gear);
 
     void Apply(UPinkCabCockpitAssemblyComponent& Assembly,

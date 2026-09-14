@@ -1,7 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interaction/PinkCabInteractionModel.h"
+#include "PinkCabCockpitSlot.generated.h"
 
+class UMaterialInterface;
+class UStaticMesh;
+
+UENUM(BlueprintType)
 enum class EPinkCabCockpitSlot : uint8
 {
     DriverCamera,
@@ -58,26 +64,67 @@ inline FName PinkCabCockpitSlotId(const EPinkCabCockpitSlot Slot)
     }
 }
 
-struct FPinkCabCockpitSlotDefinition
+USTRUCT(BlueprintType)
+struct PINKCAB_API FPinkCabCockpitSlotDefinition
 {
+    GENERATED_BODY()
+
     FPinkCabCockpitSlotDefinition() = default;
-    FPinkCabCockpitSlotDefinition(EPinkCabCockpitSlot InSlot, FName InStableId)
+    FPinkCabCockpitSlotDefinition(const EPinkCabCockpitSlot InSlot, const FName InStableId)
         : Slot(InSlot), StableId(InStableId) {}
+
+    FPinkCabInteractionControlSpec ToInteractionSpec() const
+    {
+        return {StableId, bSupportsGrip, bSupportsMomentary, bSupportsWheel};
+    }
 
     static bool ValidateUnique(const TArray<FPinkCabCockpitSlotDefinition>& Definitions)
     {
         TSet<FName> SeenIds;
+        TSet<uint8> SeenSlots;
         for (const FPinkCabCockpitSlotDefinition& Definition : Definitions)
         {
-            if (Definition.StableId.IsNone() || SeenIds.Contains(Definition.StableId))
+            const uint8 RawSlot = static_cast<uint8>(Definition.Slot);
+            if (Definition.StableId.IsNone() || SeenIds.Contains(Definition.StableId) || SeenSlots.Contains(RawSlot))
             {
                 return false;
             }
             SeenIds.Add(Definition.StableId);
+            SeenSlots.Add(RawSlot);
         }
         return true;
     }
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit")
     EPinkCabCockpitSlot Slot = EPinkCabCockpitSlot::DriverCamera;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit")
     FName StableId = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit")
+    FTransform LocalTransform = FTransform::Identity;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Assets")
+    TSoftObjectPtr<UStaticMesh> MeshOverride;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Assets")
+    TSoftObjectPtr<UMaterialInterface> MaterialOverride;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Motion")
+    FVector MotionAxis = FVector::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Motion")
+    FVector MotionPivot = FVector::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Motion")
+    FVector2D MotionRange = FVector2D::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Interaction")
+    bool bSupportsGrip = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Interaction")
+    bool bSupportsMomentary = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit|Interaction")
+    bool bSupportsWheel = false;
 };

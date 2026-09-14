@@ -15,6 +15,6 @@ bool FPinkCabChaosCockpitBridge::Apply(
         Cockpit.GetIgnitionState() == EPinkCabIgnitionState::Running;
     Movement.EnableMechanicalSim(bEngineRunning);
 
-    Controls.SetHandbrake(Cockpit.IsHandbrakeEngaged() ? 1.0f : 0.0f);
+    Controls.SetHandbrake(Cockpit.GetHandbrakeAmount());
     return Provider.ApplyControls(Controls);
 }

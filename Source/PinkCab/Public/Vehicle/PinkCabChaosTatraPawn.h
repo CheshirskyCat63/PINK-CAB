@@ -28,6 +28,7 @@ public:
     APinkCabChaosTatraPawn();
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void Tick(float DeltaSeconds) override;
     UChaosWheeledVehicleMovementComponent* GetChaosMovement() const;
     IPinkCabVehicleDynamicsProvider& GetPinkCabDynamicsProvider() { return DynamicsProvider; }
@@ -49,6 +50,7 @@ public:
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld);
     float GetSteeringCommand() const { return SteeringCommand; }
+    void ResetTransientCockpitInput();
 
     void SetCockpitTaximeterSource(const FPinkCabTaximeter* InTaximeter) { CockpitTaximeterSource = InTaximeter; }
     void SetCockpitRouteProgress(TOptional<float> InRouteProgress01) { CockpitRouteProgress01 = InRouteProgress01; }
@@ -81,6 +83,7 @@ private:
     TObjectPtr<UCameraComponent> ChaseCamera;
 
     void SyncCockpitToChaos();
+    void HandleApplicationWillDeactivate();
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
@@ -97,4 +100,5 @@ private:
     float MouseSteeringGain = 0.025f;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
+    FDelegateHandle ApplicationWillDeactivateHandle;
 };

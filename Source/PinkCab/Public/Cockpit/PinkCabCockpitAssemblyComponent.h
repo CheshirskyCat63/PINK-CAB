@@ -15,15 +15,23 @@ class PINKCAB_API UPinkCabCockpitAssemblyComponent : public USceneComponent
 
 public:
     UPinkCabCockpitAssemblyComponent();
-
     virtual void BeginPlay() override;
 
     USceneComponent* GetSlotComponent(EPinkCabCockpitSlot Slot) const;
+    const FPinkCabCockpitSlotDefinition* GetSlotDefinition(EPinkCabCockpitSlot Slot) const;
+    void ConfigureSlotDefinition(const FPinkCabCockpitSlotDefinition& Definition);
     void RegisterExternalSlot(EPinkCabCockpitSlot Slot, USceneComponent* Component);
     int32 GetRegisteredSlotCount() const { return SlotComponents.Num(); }
 
+    FName ResolveGazeTarget(
+        const FVector& WorldOrigin,
+        const FVector& WorldForward,
+        float MaxDistanceCm,
+        int32 MaxCandidates) const;
+
 private:
     void BuildPrimitiveShell();
+    void IndexConfiguredSlots();
     UStaticMeshComponent* AddPrimitive(
         FName Name,
         UStaticMesh* Mesh,
@@ -32,6 +40,9 @@ private:
         const FVector& Scale,
         EPinkCabCockpitSlot Slot,
         bool bRegisterSlot = true);
+
+    UPROPERTY(EditAnywhere, Category="Cockpit|Slots")
+    TArray<FPinkCabCockpitSlotDefinition> SlotConfiguration;
 
     UPROPERTY()
     TObjectPtr<UStaticMesh> CubeMesh;
@@ -42,5 +53,6 @@ private:
     UPROPERTY(Transient)
     TMap<uint8, TObjectPtr<USceneComponent>> SlotComponents;
 
+    TMap<uint8, FPinkCabCockpitSlotDefinition> SlotDefinitions;
     bool bBuilt = false;
 };

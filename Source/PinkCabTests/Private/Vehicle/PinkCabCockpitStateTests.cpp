@@ -97,23 +97,34 @@ bool FPinkCabCockpitInteractionRouterTest::RunTest(const FString& Parameters)
             {FName(TEXT("Gearbox")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
     TestEqual(TEXT("gearbox event selects first"), State.GetSelectedGear(), 1);
 
-    TestTrue(TEXT("handbrake press is consumed"),
+    TestFalse(TEXT("handbrake rejects momentary toggle semantics"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 1}, State));
-    TestFalse(TEXT("handbrake press toggles release"), State.IsHandbrakeEngaged());
-    TestFalse(TEXT("handbrake release does not toggle again"),
+    TestTrue(TEXT("handbrake wheel decrement is consumed"),
         FPinkCabCockpitInteractionRouter::Apply(
-            {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 0}, State));
+            {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, -1}, State));
+    TestEqual(TEXT("handbrake wheel moves one calibration step"), State.GetHandbrakeAmount(), 63.0f / 64.0f);
+    TestTrue(TEXT("handbrake wheel increment restores full command"),
+        FPinkCabCockpitInteractionRouter::Apply(
+            {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
+    TestEqual(TEXT("handbrake returns to full"), State.GetHandbrakeAmount(), 1.0f);
 
     TestTrue(TEXT("ignition press starts engine"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}, State));
     TestEqual(TEXT("ignition event reaches running"), State.GetIgnitionState(), EPinkCabIgnitionState::Running);
 
-    TestTrue(TEXT("passenger door press toggles door"),
+    TestFalse(TEXT("passenger door rejects button semantics"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("PassengerDoor")), EPinkCabInteractionGesture::PressHold, 1}, State));
+    TestTrue(TEXT("passenger door lever opens with positive travel"),
+        FPinkCabCockpitInteractionRouter::Apply(
+            {FName(TEXT("PassengerDoor")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
     TestTrue(TEXT("passenger door is open"), State.IsPassengerDoorOpen());
+    TestTrue(TEXT("passenger door lever closes with negative travel"),
+        FPinkCabCockpitInteractionRouter::Apply(
+            {FName(TEXT("PassengerDoor")), EPinkCabInteractionGesture::WheelIncrement, -1}, State));
+    TestFalse(TEXT("passenger door is closed"), State.IsPassengerDoorOpen());
 
     TestTrue(TEXT("meter press starts fare"),
         FPinkCabCockpitInteractionRouter::Apply(

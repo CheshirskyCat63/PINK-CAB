@@ -20,7 +20,8 @@ struct FPinkCabCockpitState
 {
     EPinkCabIgnitionState GetIgnitionState() const { return IgnitionState; }
     int32 GetSelectedGear() const { return SelectedGear; }
-    bool IsHandbrakeEngaged() const { return bHandbrakeEngaged; }
+    float GetHandbrakeAmount() const { return HandbrakeAmount; }
+    bool IsHandbrakeEngaged() const { return HandbrakeAmount > KINDA_SMALL_NUMBER; }
     bool IsPassengerDoorOpen() const { return bPassengerDoorOpen; }
     EPinkCabMeterState GetMeterState() const { return MeterState; }
     int32 GetTurnSignalDirection() const { return TurnSignalDirection; }
@@ -55,7 +56,8 @@ struct FPinkCabCockpitState
         return SelectedGear;
     }
 
-    void SetHandbrakeEngaged(bool bEngaged) { bHandbrakeEngaged = bEngaged; }
+    void SetHandbrakeAmount(float Amount) { HandbrakeAmount = FMath::Clamp(Amount, 0.0f, 1.0f); }
+    void SetHandbrakeEngaged(bool bEngaged) { SetHandbrakeAmount(bEngaged ? 1.0f : 0.0f); }
     void SetPassengerDoorOpen(bool bOpen) { bPassengerDoorOpen = bOpen; }
     void SetTurnSignalDirection(int32 Direction) { TurnSignalDirection = FMath::Clamp(Direction, -1, 1); }
     void SetHornActive(bool bActive) { bHornActive = bActive; }
@@ -88,7 +90,7 @@ struct FPinkCabCockpitState
 private:
     EPinkCabIgnitionState IgnitionState = EPinkCabIgnitionState::Off;
     int32 SelectedGear = 0;
-    bool bHandbrakeEngaged = true;
+    float HandbrakeAmount = 1.0f;
     bool bPassengerDoorOpen = false;
     EPinkCabMeterState MeterState = EPinkCabMeterState::Off;
     int32 TurnSignalDirection = 0;

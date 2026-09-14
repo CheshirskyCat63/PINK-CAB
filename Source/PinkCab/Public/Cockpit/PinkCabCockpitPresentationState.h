@@ -13,6 +13,7 @@ struct FPinkCabCockpitPresentationState
     int32 SelectedGear = 0;
 
     bool bIgnitionRunning = false;
+    float Handbrake = 1.0f;
     bool bHandbrakeEngaged = true;
     bool bPassengerDoorAvailable = false;
     bool bPassengerDoorOpen = false;

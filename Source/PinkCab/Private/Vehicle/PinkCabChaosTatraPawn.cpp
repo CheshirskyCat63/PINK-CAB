@@ -13,6 +13,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "Misc/CoreDelegates.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "UObject/ConstructorHelpers.h"
@@ -26,6 +28,7 @@
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 {
     PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bTickEvenWhenPaused = true;
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
     USkeletalMeshComponent* VehicleMesh = GetMesh();
@@ -110,6 +113,38 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncCockpitToChaos();
+    ApplicationWillDeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
+        this, &APinkCabChaosTatraPawn::HandleApplicationWillDeactivate);
+}
+
+void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (ApplicationWillDeactivateHandle.IsValid())
+    {
+        FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(ApplicationWillDeactivateHandle);
+        ApplicationWillDeactivateHandle.Reset();
+    }
+    ResetTransientCockpitInput();
+    Super::EndPlay(EndPlayReason);
+}
+
+void APinkCabChaosTatraPawn::HandleApplicationWillDeactivate()
+{
+    ResetTransientCockpitInput();
+}
+
+void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
+{
+    if (!CockpitInteraction)
+    {
+        return;
+    }
+    TArray<FPinkCabInteractionEvent> ReleaseEvents;
+    CockpitInteraction->ResetTransientInputState(&ReleaseEvents);
+    for (const FPinkCabInteractionEvent& ReleaseEvent : ReleaseEvents)
+    {
+        ApplyCockpitInteraction(ReleaseEvent);
+    }
 }
 
 bool APinkCabChaosTatraPawn::ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event)
@@ -150,8 +185,9 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     Super::Tick(DeltaSeconds);
 
     APlayerController* PC = Cast<APlayerController>(GetController());
-    if (!PC)
+    if (!PC || UGameplayStatics::IsGamePaused(this))
     {
+        ResetTransientCockpitInput();
         return;
     }
 
@@ -162,40 +198,33 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
 
-    CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
-    const EPinkCabSemanticAction QuickActions[] = {
-        EPinkCabSemanticAction::QuickRecall1,
-        EPinkCabSemanticAction::QuickRecall2,
-        EPinkCabSemanticAction::QuickRecall3,
-        EPinkCabSemanticAction::QuickRecall4};
-    for (int32 Index = 0; Index < UE_ARRAY_COUNT(QuickActions); ++Index)
+    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
     {
-        const FKey Key = InputRouter.GetKeyForAction(QuickActions[Index]);
-        CockpitInteraction->SetQuickSlotHeld(Index + 1, Key.IsValid() && PC->IsInputKeyDown(Key));
-    }
-    CockpitInteraction->SetCandidateTarget(CockpitInteraction->GetCurrentQuickTargetId());
-
-    const FKey AttentionKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Attention);
-    if (AttentionKey.IsValid() && PC->WasInputKeyJustPressed(AttentionKey))
-    {
-        CockpitInteraction->CommitAttention();
-    }
-
-    const FKey GoKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Go);
-    FPinkCabInteractionEvent InteractionEvent;
-    if (GoKey.IsValid() && PC->WasInputKeyJustPressed(GoKey) && CockpitInteraction->BeginGo(InteractionEvent))
-    {
-        ApplyCockpitInteraction(InteractionEvent);
-    }
-    if (GoKey.IsValid() && PC->WasInputKeyJustReleased(GoKey) && CockpitInteraction->EndGo(InteractionEvent))
-    {
-        ApplyCockpitInteraction(InteractionEvent);
-    }
-
+        const FKey Key = InputRouter.GetKeyForAction(Action);
+        return Key.IsValid() && PC->IsInputKeyDown(Key);
+    };
     const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
     const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
-    const int32 WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
-    if (CockpitInteraction->BuildWheelEvent(WheelSteps, InteractionEvent))
+
+    FPinkCabCockpitInteractionFrame InteractionFrame;
+    InteractionFrame.bGazeHeld = InputFrame.bGazeHeld;
+    InteractionFrame.bQuickRecall1Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall1);
+    InteractionFrame.bQuickRecall2Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall2);
+    InteractionFrame.bQuickRecall3Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall3);
+    InteractionFrame.bQuickRecall4Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall4);
+    InteractionFrame.bGripHeld = IsActionHeld(EPinkCabSemanticAction::Grip);
+    InteractionFrame.bMomentaryHeld = IsActionHeld(EPinkCabSemanticAction::MomentaryPress);
+    InteractionFrame.WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    InteractionFrame.NowSeconds = FPlatformTime::Seconds();
+    if (DriverCamera)
+    {
+        InteractionFrame.GazeOrigin = DriverCamera->GetComponentLocation();
+        InteractionFrame.GazeForward = DriverCamera->GetForwardVector();
+    }
+
+    TArray<FPinkCabInteractionEvent> InteractionEvents;
+    CockpitInteraction->ProcessFrame(InteractionFrame, CockpitAssembly, InteractionEvents);
+    for (const FPinkCabInteractionEvent& InteractionEvent : InteractionEvents)
     {
         ApplyCockpitInteraction(InteractionEvent);
     }
@@ -218,7 +247,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     ControlState = InputFrame.ToControlState(
         SteeringCommand,
-        CockpitState.IsHandbrakeEngaged() ? 1.0f : 0.0f);
+        CockpitState.GetHandbrakeAmount());
     DynamicsProvider.ApplyControls(ControlState);
 
     FPinkCabCockpitPresentationState Presentation;
@@ -228,6 +257,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     Presentation.Throttle = ControlState.Throttle;
     Presentation.SelectedGear = CockpitState.GetSelectedGear();
     Presentation.bIgnitionRunning = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    Presentation.Handbrake = CockpitState.GetHandbrakeAmount();
     Presentation.bHandbrakeEngaged = CockpitState.IsHandbrakeEngaged();
     FPinkCabCockpitServiceSources ServiceSources;
     ServiceSources.Taximeter = CockpitTaximeterSource;
@@ -251,14 +281,6 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     }
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
 
-    if (PC->WasInputKeyJustPressed(EKeys::R))
-    {
-        const FVector ResetLocation = GetActorLocation() + FVector(0.0f, 0.0f, 80.0f);
-        const FRotator ResetRotation(0.0f, GetActorRotation().Yaw, 0.0f);
-        SetActorTransform(FTransform(ResetRotation, ResetLocation), false, nullptr, ETeleportType::TeleportPhysics);
-        GetMesh()->SetPhysicsLinearVelocity(FVector::ZeroVector);
-        GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-    }
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const

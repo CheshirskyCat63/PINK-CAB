@@ -74,8 +74,8 @@ public:
             }
             Test->TestTrue(TEXT("ignition interaction reaches live Chaos pawn"),
                 Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
-            Test->TestTrue(TEXT("handbrake interaction reaches live Chaos pawn"),
-                Pawn->ApplyCockpitInteraction({FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 1}));
+            Test->TestTrue(TEXT("analog handbrake interaction reaches live Chaos pawn"),
+                Pawn->ApplyCockpitInteraction({FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, -64}));
             if (Movement)
             {
                 Test->TestTrue(TEXT("ignition enables live mechanical simulation"), Movement->bMechanicalSimEnabled);

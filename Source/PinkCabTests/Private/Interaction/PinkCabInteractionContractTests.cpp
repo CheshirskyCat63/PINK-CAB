@@ -111,8 +111,8 @@ bool FPinkCabSemanticInputRouterTest::RunTest(const FString& Parameters)
     FPinkCabSemanticInputRouter Router = FPinkCabSemanticInputRouter::CreateDefaults();
     TestEqual(TEXT("Space resolves to gaze"), Router.Resolve(EKeys::SpaceBar), EPinkCabSemanticAction::GazeHold);
     TestEqual(TEXT("1 resolves to quick recall 1"), Router.Resolve(EKeys::One), EPinkCabSemanticAction::QuickRecall1);
-    TestEqual(TEXT("RMB resolves to GO"), Router.Resolve(EKeys::RightMouseButton), EPinkCabSemanticAction::Go);
-    TestEqual(TEXT("LMB resolves to ATTENTION"), Router.Resolve(EKeys::LeftMouseButton), EPinkCabSemanticAction::Attention);
+    TestEqual(TEXT("RMB resolves to grip"), Router.Resolve(EKeys::RightMouseButton), EPinkCabSemanticAction::Grip);
+    TestEqual(TEXT("LMB resolves to momentary press"), Router.Resolve(EKeys::LeftMouseButton), EPinkCabSemanticAction::MomentaryPress);
 
     TestFalse(TEXT("conflicting rebind is rejected"), Router.TryRebind(EPinkCabSemanticAction::QuickRecall1, EKeys::SpaceBar));
     TestTrue(TEXT("free key can be rebound"), Router.TryRebind(EPinkCabSemanticAction::QuickRecall1, EKeys::F1));

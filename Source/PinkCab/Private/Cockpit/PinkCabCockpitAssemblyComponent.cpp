@@ -3,12 +3,24 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
+#include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+void ApplyDefaultInteractionMetadata(FPinkCabCockpitSlotDefinition& Definition)
+{
+    const FPinkCabInteractionControlSpec Spec = PinkCabInteractionSpecForTargetId(Definition.StableId);
+    Definition.bSupportsGrip = Spec.bSupportsGrip;
+    Definition.bSupportsMomentary = Spec.bSupportsMomentary;
+    Definition.bSupportsWheel = Spec.bSupportsWheel;
+}
+}
+
 
 UPinkCabCockpitAssemblyComponent::UPinkCabCockpitAssemblyComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
-
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
     CubeMesh = CubeFinder.Succeeded() ? CubeFinder.Object : nullptr;
@@ -18,7 +30,21 @@ UPinkCabCockpitAssemblyComponent::UPinkCabCockpitAssemblyComponent()
 void UPinkCabCockpitAssemblyComponent::BeginPlay()
 {
     Super::BeginPlay();
+    IndexConfiguredSlots();
     BuildPrimitiveShell();
+}
+
+void UPinkCabCockpitAssemblyComponent::IndexConfiguredSlots()
+{
+    SlotDefinitions.Reset();
+    for (FPinkCabCockpitSlotDefinition& Definition : SlotConfiguration)
+    {
+        if (Definition.StableId.IsNone())
+        {
+            Definition.StableId = PinkCabCockpitSlotId(Definition.Slot);
+        }
+        SlotDefinitions.Add(static_cast<uint8>(Definition.Slot), Definition);
+    }
 }
 
 USceneComponent* UPinkCabCockpitAssemblyComponent::GetSlotComponent(const EPinkCabCockpitSlot Slot) const
@@ -30,12 +56,75 @@ USceneComponent* UPinkCabCockpitAssemblyComponent::GetSlotComponent(const EPinkC
     return nullptr;
 }
 
+const FPinkCabCockpitSlotDefinition* UPinkCabCockpitAssemblyComponent::GetSlotDefinition(const EPinkCabCockpitSlot Slot) const
+{
+    return SlotDefinitions.Find(static_cast<uint8>(Slot));
+}
+
+void UPinkCabCockpitAssemblyComponent::ConfigureSlotDefinition(const FPinkCabCockpitSlotDefinition& InDefinition)
+{
+    FPinkCabCockpitSlotDefinition Definition = InDefinition;
+    if (Definition.StableId.IsNone())
+    {
+        Definition.StableId = PinkCabCockpitSlotId(Definition.Slot);
+    }
+    const uint8 Key = static_cast<uint8>(Definition.Slot);
+    SlotDefinitions.Add(Key, Definition);
+    const int32 Existing = SlotConfiguration.IndexOfByPredicate([Key](const FPinkCabCockpitSlotDefinition& Item)
+    {
+        return static_cast<uint8>(Item.Slot) == Key;
+    });
+    if (Existing == INDEX_NONE) SlotConfiguration.Add(Definition);
+    else SlotConfiguration[Existing] = Definition;
+
+    if (USceneComponent* Component = GetSlotComponent(Definition.Slot))
+    {
+        Component->SetRelativeTransform(Definition.LocalTransform);
+    }
+}
+
 void UPinkCabCockpitAssemblyComponent::RegisterExternalSlot(const EPinkCabCockpitSlot Slot, USceneComponent* Component)
 {
-    if (Component)
+    if (!Component) return;
+    const uint8 Key = static_cast<uint8>(Slot);
+    SlotComponents.Add(Key, Component);
+    if (!SlotDefinitions.Contains(Key))
     {
-        SlotComponents.Add(static_cast<uint8>(Slot), Component);
+        FPinkCabCockpitSlotDefinition Definition(Slot, PinkCabCockpitSlotId(Slot));
+        Definition.LocalTransform = Component->GetRelativeTransform();
+        ApplyDefaultInteractionMetadata(Definition);
+        SlotDefinitions.Add(Key, Definition);
     }
+}
+
+FName UPinkCabCockpitAssemblyComponent::ResolveGazeTarget(
+    const FVector& WorldOrigin,
+    const FVector& WorldForward,
+    const float MaxDistanceCm,
+    const int32 MaxCandidates) const
+{
+    if (MaxCandidates <= 0 || MaxDistanceCm <= 0.0f) return NAME_None;
+    const FVector Forward = WorldForward.GetSafeNormal();
+    if (Forward.IsNearlyZero()) return NAME_None;
+
+    TArray<FPinkCabInteractionCandidate> Candidates;
+    Candidates.Reserve(FMath::Min(MaxCandidates, 22));
+    for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::RightMirror) && Candidates.Num() < MaxCandidates; ++Raw)
+    {
+        const EPinkCabCockpitSlot Slot = static_cast<EPinkCabCockpitSlot>(Raw);
+        const USceneComponent* Component = GetSlotComponent(Slot);
+        const FPinkCabCockpitSlotDefinition* Definition = GetSlotDefinition(Slot);
+        if (!Component || !Definition) continue;
+        if (!Definition->bSupportsGrip && !Definition->bSupportsMomentary && !Definition->bSupportsWheel) continue;
+
+        const FVector ToTarget = Component->GetComponentLocation() - WorldOrigin;
+        const float DistanceCm = ToTarget.Size();
+        if (DistanceCm <= KINDA_SMALL_NUMBER || DistanceCm > MaxDistanceCm) continue;
+        const float Facing = FVector::DotProduct(Forward, ToTarget / DistanceCm);
+        if (Facing <= 0.0f) continue;
+        Candidates.Emplace(Definition->StableId, DistanceCm, 1.0f - Facing, true);
+    }
+    return FPinkCabInteractionTargetSelector::SelectCurrentTarget(Candidates, Candidates.Num(), MaxDistanceCm);
 }
 
 UStaticMeshComponent* UPinkCabCockpitAssemblyComponent::AddPrimitive(
@@ -48,27 +137,37 @@ UStaticMeshComponent* UPinkCabCockpitAssemblyComponent::AddPrimitive(
     const bool bRegisterSlot)
 {
     AActor* Owner = GetOwner();
-    if (!Owner || !Mesh)
+    if (!Owner || !Mesh) return nullptr;
+
+    FPinkCabCockpitSlotDefinition Effective(Slot, PinkCabCockpitSlotId(Slot));
+    Effective.LocalTransform = FTransform(Rotation, Location, Scale);
+    if (bRegisterSlot)
     {
-        return nullptr;
+        if (const FPinkCabCockpitSlotDefinition* Configured = GetSlotDefinition(Slot))
+        {
+            Effective = *Configured;
+        }
+        else
+        {
+            ApplyDefaultInteractionMetadata(Effective);
+            SlotDefinitions.Add(static_cast<uint8>(Slot), Effective);
+        }
     }
 
+    UStaticMesh* EffectiveMesh = Mesh;
+    if (bRegisterSlot && Effective.MeshOverride.IsValid()) EffectiveMesh = Effective.MeshOverride.Get();
     UStaticMeshComponent* Component = NewObject<UStaticMeshComponent>(Owner, Name);
     Owner->AddInstanceComponent(Component);
     Component->SetupAttachment(this);
-    Component->SetStaticMesh(Mesh);
-    Component->SetRelativeLocation(Location);
-    Component->SetRelativeRotation(Rotation);
-    Component->SetRelativeScale3D(Scale);
+    Component->SetStaticMesh(EffectiveMesh);
+    Component->SetRelativeTransform(Effective.LocalTransform);
+    if (bRegisterSlot && Effective.MaterialOverride.IsValid()) Component->SetMaterial(0, Effective.MaterialOverride.Get());
     Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Component->SetGenerateOverlapEvents(false);
     Component->SetCastShadow(false);
     Component->RegisterComponent();
 
-    if (bRegisterSlot)
-    {
-        SlotComponents.Add(static_cast<uint8>(Slot), Component);
-    }
+    if (bRegisterSlot) SlotComponents.Add(static_cast<uint8>(Slot), Component);
     return Component;
 }
 

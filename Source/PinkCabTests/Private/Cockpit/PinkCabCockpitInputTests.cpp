@@ -1,138 +1,266 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "InputCoreTypes.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
+#include "Interaction/PinkCabSemanticInputRouter.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
+#include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitQuickPriorityTest,
-    "PinkCab.Cockpit.Input.QuickPriority",
+    FPinkCabCanonicalBindingComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.Bindings",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabCockpitQuickPriorityTest::RunTest(const FString& Parameters)
+bool FPinkCabCanonicalBindingComplianceTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSemanticInputRouter Router = FPinkCabSemanticInputRouter::CreateDefaults();
+    TestEqual(TEXT("Space owns gaze"), Router.Resolve(EKeys::SpaceBar), EPinkCabSemanticAction::GazeHold);
+    TestEqual(TEXT("RMB owns grip"), Router.Resolve(EKeys::RightMouseButton), EPinkCabSemanticAction::Grip);
+    TestEqual(TEXT("LMB owns momentary press"), Router.Resolve(EKeys::LeftMouseButton), EPinkCabSemanticAction::MomentaryPress);
+    TestEqual(TEXT("wheel owns contextual adjustment"), Router.Resolve(EKeys::MouseWheelAxis), EPinkCabSemanticAction::Wheel);
+    TestEqual(TEXT("R is not a cockpit semantic shortcut"), Router.Resolve(EKeys::R), EPinkCabSemanticAction::None);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGazeOwnershipComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_001",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGazeOwnershipComplianceTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    Interaction->SetGazeHeld(false);
+    const float Steered = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.2f, 10.0f, false, 0.025f);
+    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.2f);
+
+    Interaction->SetGazeHeld(true);
+    const float Preserved = APinkCabChaosTatraPawn::IntegrateMouseSteering(Steered, 20.0f, true, 0.025f);
+    TestEqual(TEXT("Space gaze preserves steering command"), Preserved, Steered);
+    Interaction->SetGazeHeld(false);
+    const float Returned = APinkCabChaosTatraPawn::IntegrateMouseSteering(Preserved, -4.0f, false, 0.025f);
+    TestTrue(TEXT("Space release returns mouse to steering"), Returned < Preserved);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabQuickRecallComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_002_006",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabQuickRecallComplianceTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    const uint32 Before = Interaction->GetActuationSerial();
     Interaction->SetQuickSlotHeld(1, true);
-    TestEqual(TEXT("slot 1 selects turn signals"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("TurnSignals")));
+    TestEqual(TEXT("1 recalls signals"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("TurnSignals")));
     Interaction->SetQuickSlotHeld(3, true);
     TestEqual(TEXT("latest held quick key wins"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("Gearbox")));
+    TestEqual(TEXT("quick recall never actuates"), Interaction->GetActuationSerial(), Before);
     Interaction->SetQuickSlotHeld(3, false);
     TestEqual(TEXT("release falls back to older held quick key"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("TurnSignals")));
     Interaction->SetQuickSlotHeld(1, false);
-    TestTrue(TEXT("releasing all quick keys clears quick target"), Interaction->GetCurrentQuickTargetId().IsNone());
+    TestTrue(TEXT("all released clears quick target"), Interaction->GetCurrentQuickTargetId().IsNone());
+    TestEqual(TEXT("release still does not actuate"), Interaction->GetActuationSerial(), Before);
     return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitGazeAndAttentionTest,
-    "PinkCab.Cockpit.Input.GazeAttention",
+    FPinkCabGripComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_003",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabCockpitGazeAndAttentionTest::RunTest(const FString& Parameters)
+bool FPinkCabGripComplianceTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
+    FPinkCabInteractionEvent Event;
+    TestFalse(TEXT("RMB rejects target without grip capability"), Interaction->BeginGrip(Event));
+
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
+    const uint32 Before = Interaction->GetActuationSerial();
+    TestTrue(TEXT("RMB grips grip-capable target"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("grip state is retained"), Interaction->IsGripActive());
+    TestEqual(TEXT("grip alone never actuates"), Interaction->GetActuationSerial(), Before);
+    TestTrue(TEXT("RMB release ends grip"), Interaction->EndGrip(Event));
+    TestFalse(TEXT("grip release clears hand ownership"), Interaction->IsGripActive());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabMomentaryComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_004",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabMomentaryComplianceTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabInteractionEvent Event;
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
+    TestFalse(TEXT("LMB rejects non-momentary target"), Interaction->BeginMomentary(10.0, Event));
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
+    const uint32 Before = Interaction->GetActuationSerial();
+    TestTrue(TEXT("LMB begins authored momentary control"), Interaction->BeginMomentary(10.0, Event));
+    TestTrue(TEXT("momentary state remains held"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("LMB release ends momentary control"), Interaction->EndMomentary(10.18, Event));
+    TestFalse(TEXT("release clears momentary state"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("momentary actuation increments serial"), Interaction->GetActuationSerial() > Before);
+    TestTrue(TEXT("horn hold duration is observable"), FMath::IsNearlyEqual(Interaction->GetLastMomentaryHoldSeconds(), 0.18, 1.0e-6));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabWheelComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_005",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabWheelComplianceTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabInteractionEvent Event;
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
+    TestFalse(TEXT("wheel rejects control without wheel capability"), Interaction->BuildWheelEvent(1, Event));
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
+    TestFalse(TEXT("wheel cannot move a grip-required control before RMB grip"), Interaction->BuildWheelEvent(-1, Event));
+    TestTrue(TEXT("RMB establishes grip for gearbox"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("wheel emits after authored grip"), Interaction->BuildWheelEvent(-1, Event));
+    TestEqual(TEXT("wheel keeps signed step"), Event.SignedValue, -1);
+    return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabBoundedTargetComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_007",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabBoundedTargetComplianceTest::RunTest(const FString& Parameters)
+{
+    TArray<FPinkCabInteractionCandidate> Candidates;
+    Candidates.Emplace(TEXT("Far"), 900.0f, 0.01f, true);
+    Candidates.Emplace(TEXT("Horn"), 120.0f, 0.10f, true);
+    Candidates.Emplace(TEXT("Gearbox"), 95.0f, 0.20f, true);
+    Candidates.Emplace(TEXT("OutOfBudget"), 20.0f, 0.001f, true);
+    TestEqual(TEXT("bounded selector ignores distance and candidate budget overflow"),
+        FPinkCabInteractionTargetSelector::SelectCurrentTarget(Candidates, 3, 250.0f),
+        FName(TEXT("Horn")));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabTransientCleanupComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PC_T_INP_008",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabTransientCleanupComplianceTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabInteractionEvent Event;
     Interaction->SetGazeHeld(true);
-    const float Preserved = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.42f, 30.0f, Interaction->IsGazeHeld());
-    TestEqual(TEXT("Space gaze ownership preserves steering command"), Preserved, 0.42f);
-
-    Interaction->SetCandidateTarget(FName(TEXT("Horn")));
-    TestTrue(TEXT("ATTENTION commits a valid target"), Interaction->CommitAttention());
-    Interaction->SetCandidateTarget(NAME_None);
-    TestEqual(TEXT("ATTENTION retains committed target"), Interaction->GetAttentionTargetId(), FName(TEXT("Horn")));
+    Interaction->SetQuickSlotHeld(2, true);
+    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
+    TestTrue(TEXT("precondition horn press begins"), Interaction->BeginMomentary(10.0, Event));
+    FPinkCabCockpitState CockpitState;
+    TestTrue(TEXT("horn press reaches authoritative cockpit state"), FPinkCabCockpitInteractionRouter::Apply(Event, CockpitState));
+    TestTrue(TEXT("horn is active before cleanup"), CockpitState.IsHornActive());
+    TArray<FPinkCabInteractionEvent> ReleaseEvents;
+    Interaction->ResetTransientInputState(&ReleaseEvents);
+    for (const FPinkCabInteractionEvent& ReleaseEvent : ReleaseEvents)
+    {
+        FPinkCabCockpitInteractionRouter::Apply(ReleaseEvent, CockpitState);
+    }
+    TestFalse(TEXT("cleanup releases gaze"), Interaction->IsGazeHeld());
+    TestFalse(TEXT("cleanup releases grip"), Interaction->IsGripActive());
+    TestFalse(TEXT("cleanup releases momentary state"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("cleanup releases quick target ownership"), Interaction->GetCurrentQuickTargetId().IsNone());
+    TestFalse(TEXT("cleanup emits release so horn cannot stick"), CockpitState.IsHornActive());
     return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitGoAndPedalCoexistenceTest,
-    "PinkCab.Cockpit.Input.GoAndPedals",
+    FPinkCabInteractionFrameProcessorTest,
+    "PinkCab.Cockpit.Input.Compliance.FrameProcessor",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabCockpitGoAndPedalCoexistenceTest::RunTest(const FString& Parameters)
+bool FPinkCabInteractionFrameProcessorTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
-    Interaction->SetCandidateTarget(FName(TEXT("Horn")));
-    TestTrue(TEXT("ATTENTION commits horn"), Interaction->CommitAttention());
+    FPinkCabCockpitInteractionFrame Frame;
+    Frame.bQuickRecall2Held = true;
+    Frame.bMomentaryHeld = true;
+    Frame.NowSeconds = 10.0;
+    TArray<FPinkCabInteractionEvent> Events;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("frame processor emits horn press"), Events.Num(), 1);
+    TestEqual(TEXT("frame processor targets recalled horn"), Events[0].TargetId, FName(TEXT("Horn")));
 
-    FPinkCabInteractionEvent Press;
-    TestTrue(TEXT("RMB GO emits press command"), Interaction->BeginGo(Press));
-    TestEqual(TEXT("GO targets ATTENTION target"), Press.TargetId, FName(TEXT("Horn")));
-    TestEqual(TEXT("GO uses press-hold gesture"), Press.Gesture, EPinkCabInteractionGesture::PressHold);
-    TestEqual(TEXT("GO press is positive"), Press.SignedValue, 1);
-
-    FPinkCabInteractionEvent Release;
-    TestTrue(TEXT("RMB GO release emits release command"), Interaction->EndGo(Release));
-    TestEqual(TEXT("GO release targets same control"), Release.TargetId, FName(TEXT("Horn")));
-    TestEqual(TEXT("GO release is negative"), Release.SignedValue, -1);
-
-    const FPinkCabVehicleInputFrame Frame = FPinkCabVehicleInputFrame::FromDigital(false, false, true, true);
-    const FPinkCabVehicleControlState Controls = Frame.ToControlState(0.0f, 0.0f);
-    TestEqual(TEXT("W brake remains live"), Controls.Brake, 1.0f);
-    TestEqual(TEXT("E throttle may coexist with W brake"), Controls.Throttle, 1.0f);
+    Frame.bMomentaryHeld = false;
+    Frame.NowSeconds = 10.2;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("frame processor emits horn release"), Events.Num(), 1);
+    TestEqual(TEXT("release keeps horn target"), Events[0].TargetId, FName(TEXT("Horn")));
     return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitAuxiliaryRouterTest,
-    "PinkCab.Cockpit.Input.AuxiliaryRouter",
+    FPinkCabPhysicalFareControlCapabilitiesTest,
+    "PinkCab.Cockpit.Input.Compliance.PhysicalFareControls",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabCockpitAuxiliaryRouterTest::RunTest(const FString& Parameters)
+bool FPinkCabPhysicalFareControlCapabilitiesTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabInteractionControlSpec Door = PinkCabInteractionSpecForTargetId(TEXT("PassengerDoor"));
+    TestTrue(TEXT("passenger door lever requires grip"), Door.bSupportsGrip);
+    TestTrue(TEXT("passenger door lever moves incrementally"), Door.bSupportsWheel);
+    TestFalse(TEXT("passenger door is not a hidden momentary button"), Door.bSupportsMomentary);
+
+    const FPinkCabInteractionControlSpec Meter = PinkCabInteractionSpecForTargetId(TEXT("Taximeter"));
+    TestFalse(TEXT("taximeter button does not require grip"), Meter.bSupportsGrip);
+    TestTrue(TEXT("taximeter START STOP RESET is a physical momentary control"), Meter.bSupportsMomentary);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContinuousHandbrakeComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.ContinuousHandbrake",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabContinuousHandbrakeComplianceTest::RunTest(const FString& Parameters)
 {
     FPinkCabCockpitState State;
-    TestTrue(TEXT("turn signal wheel command applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("TurnSignals"), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("positive turn signal command selects right"), State.GetTurnSignalDirection(), 1);
-
-    TestTrue(TEXT("horn press applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Horn"), EPinkCabInteractionGesture::PressHold, 1}, State));
-    TestTrue(TEXT("horn state becomes active"), State.IsHornActive());
-    TestTrue(TEXT("horn release applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Horn"), EPinkCabInteractionGesture::PressHold, -1}, State));
-    TestFalse(TEXT("horn state clears on release"), State.IsHornActive());
-    TestTrue(TEXT("lights detent applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Lights"), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("lights advance to first active detent"), State.GetLightMode(), 1);
-
-    TestTrue(TEXT("wipers detent applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Wipers"), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("wipers advance to low speed"), State.GetWiperMode(), 1);
-
-    TestTrue(TEXT("washer press applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Washer"), EPinkCabInteractionGesture::PressHold, 1}, State));
-    TestTrue(TEXT("washer is active while GO held"), State.IsWasherActive());
-    TestTrue(TEXT("washer release applies"), FPinkCabCockpitInteractionRouter::Apply({TEXT("Washer"), EPinkCabInteractionGesture::PressHold, -1}, State));
-    TestFalse(TEXT("washer clears on GO release"), State.IsWasherActive());
+    State.SetHandbrakeAmount(0.37f);
+    TestEqual(TEXT("handbrake preserves intermediate analog command"), State.GetHandbrakeAmount(), 0.37f);
+    State.SetHandbrakeAmount(2.0f);
+    TestEqual(TEXT("handbrake clamps high"), State.GetHandbrakeAmount(), 1.0f);
+    State.SetHandbrakeAmount(-1.0f);
+    TestEqual(TEXT("handbrake clamps low"), State.GetHandbrakeAmount(), 0.0f);
     return true;
 }
 
-#endif
 
-#if WITH_DEV_AUTOMATION_TESTS
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitPawnInteractionCompositionTest,
-    "PinkCab.Cockpit.Input.PawnComposition",
+    FPinkCabPawnTransientCleanupComplianceTest,
+    "PinkCab.Cockpit.Input.Compliance.PawnTransientCleanup",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabCockpitPawnInteractionCompositionTest::RunTest(const FString& Parameters)
+bool FPinkCabPawnTransientCleanupComplianceTest::RunTest(const FString& Parameters)
 {
-    const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
-    TestNotNull(TEXT("Tatra pawn owns focused cockpit interaction component"), Pawn->GetCockpitInteraction());
-    return Pawn->GetCockpitInteraction() != nullptr;
-}
-#endif
-
-#if WITH_DEV_AUTOMATION_TESTS
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitWheelCommandTest,
-    "PinkCab.Cockpit.Input.WheelCommand",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabCockpitWheelCommandTest::RunTest(const FString& Parameters)
-{
-    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
-    Interaction->SetQuickSlotHeld(3, true);
+    APinkCabChaosTatraPawn* Pawn = GetMutableDefault<APinkCabChaosTatraPawn>();
+    UPinkCabCockpitInteractionComponent* Interaction = Pawn->GetCockpitInteraction();
+    TestNotNull(TEXT("pawn owns interaction component"), Interaction);
+    if (!Interaction) return false;
     FPinkCabInteractionEvent Event;
-    TestTrue(TEXT("wheel command emits for current quick target"), Interaction->BuildWheelEvent(1, Event));
-    TestEqual(TEXT("wheel command targets gearbox"), Event.TargetId, FName(TEXT("Gearbox")));
-    TestEqual(TEXT("wheel command uses detent gesture"), Event.Gesture, EPinkCabInteractionGesture::WheelIncrement);
-    TestEqual(TEXT("wheel command preserves signed step"), Event.SignedValue, 1);
+    Interaction->SetGazeHeld(true);
+    Interaction->SetQuickSlotHeld(3, true);
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("Gearbox")));
+    TestTrue(TEXT("precondition grip begins"), Interaction->BeginGrip(Event));
+    Pawn->ResetTransientCockpitInput();
+    TestFalse(TEXT("pawn cleanup releases gaze"), Interaction->IsGazeHeld());
+    TestFalse(TEXT("pawn cleanup releases grip"), Interaction->IsGripActive());
+    TestTrue(TEXT("pawn cleanup releases quick recall"), Interaction->GetCurrentQuickTargetId().IsNone());
     return true;
 }
+
 #endif

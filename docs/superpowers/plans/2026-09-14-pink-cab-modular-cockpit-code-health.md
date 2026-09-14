@@ -85,16 +85,23 @@
 - Test: `Source/PinkCabTests/Private/Cockpit/PinkCabCockpitInputTests.cpp`
 
 **Interfaces:**
-- Interaction component tracks held START keys, ATTENTION target and contextual GO ownership only; command application stays in existing state/router paths.
+- `docs/PROJECT_SETUP.md`, `docs/PINK_CAB_TATRA_DAUGHTER_CONDUCTOR_CANON.md` and `docs/VERIFICATION_MATRIX.md` `PC-T-INP-001..008` are the authority for this task.
+- Interaction component owns one bounded current target, quick recall, optional grip, momentary press/hold, wheel command emission and transient ownership cleanup only; command application stays in existing state/router paths.
 - Existing `FPinkCabVehicleInputFrame` remains the continuous pedal/control source.
 
-- [ ] Write failing tests for latest-held quick-key priority, release fallback, Space gaze stealing mouse from steering, LMB ATTENTION retention, RMB GO command emission, and W+E coexistence.
-- [ ] Verify RED before any routing changes.
-- [ ] Correct semantic bindings to authority: 1 signals, 2 horn, 3 gearbox, 4 handbrake; LMB ATTENTION; RMB GO; Space GAZE.
-- [ ] Extend cockpit state/router with minimal authoritative auxiliary states for signals, horn actuation, lights, wipers and washer while preserving ignition/gear/handbrake/door/meter behavior.
-- [ ] Refactor pawn tick so it gathers raw input and delegates gaze/interaction/continuous-control work instead of containing interaction policy inline.
-- [ ] Run `PinkCab.Cockpit.Input`, `PinkCab.Interaction` and `PinkCab.Vehicle`; verify GREEN.
-- [ ] Commit `feat(CD-825): wire canonical cabin controls`.
+- [x] Write failing compliance tests for all `PC-T-INP-001..008`, including focus-loss cleanup and absence of unauthorized shortcuts.
+- [x] Verify RED before routing changes.
+- [x] Bind `Space=GAZE`, `1..4=quick recall`, `RMB=grip`, `LMB=momentary press/hold`, wheel=contextual signed adjustment, `Q/W/E=clutch/brake/throttle`; remove `ATTENTION/GO` production semantics.
+- [x] Implement bounded gaze target selection from registered cockpit interaction slots only; no world Actor scan.
+- [x] Add per-target interaction metadata (`supports grip`, `supports momentary`, `supports wheel`) and reject unsupported gestures before command emission.
+- [x] Quick recall selects/restores target/hand pose only and never actuates.
+- [x] Implement grip begin/end without implicit actuation and LMB press/release with correct momentary semantics; horn must expose short/long hold duration/state.
+- [x] Implement focus-loss/input-recovery cleanup so gaze/grip/momentary/wheel ownership cannot remain stuck.
+- [x] Remove all direct player-facing physical-control shortcuts not listed in authority, including the `R` pawn-reset path.
+- [x] Extend cockpit state/router with minimal authoritative auxiliary states for signals, horn actuation, lights, wipers and washer while preserving ignition/gear/handbrake/door/meter behavior.
+- [x] Refactor pawn tick so it gathers raw input and delegates target search/interaction/continuous-control work instead of containing interaction policy inline.
+- [x] Run `PinkCab.Cockpit.Input`, `PinkCab.Interaction`, `PinkCab.Vehicle` and exact `PC-T-INP-001..008` acceptance; verify GREEN.
+- [x] Commit `fix(CD-825): conform cockpit input to canonical authority`.
 ### Task 5: Drive cockpit visuals from authoritative telemetry/state
 
 **Files:**
@@ -156,12 +163,13 @@
 **Interfaces:**
 - Test observes real possessed pawn, active driver camera, live dynamics and measurable displacement.
 
-- [ ] Write the runtime test first and verify it fails on missing cockpit/camera assertions before implementation is complete.
-- [ ] Prime ignition and release handbrake through the same cockpit command path used by the player.
-- [ ] Apply non-zero throttle through live vehicle dynamics for a bounded duration and assert forward displacement plus valid telemetry.
-- [ ] Assert recovery/reset leaves pawn controllable and camera still valid.
-- [ ] Run `PinkCab.Cockpit.Playable.Runtime` and existing `PinkCab.Core.CodeComplete.Runtime`; verify GREEN.
-- [ ] Commit `test(CD-828): prove playable cockpit taxi movement`.
+- [ ] Write the runtime test first and verify it fails on missing cockpit/camera/canonical-input assertions before implementation is complete.
+- [ ] Prime ignition and release handbrake through the same physical cockpit command path used by the player; no hidden keyboard control path.
+- [ ] Apply non-zero throttle through the canonical `E`/vehicle-input path for a bounded duration and assert forward displacement plus valid telemetry.
+- [ ] Exercise Space gaze→steering return and transient input cleanup during the live drive; camera and steering ownership must remain valid.
+- [ ] Assert no player-facing free-reset/teleport shortcut exists. Terminal recovery remains owned by the authoritative RecoveryPolicy/Workday/Repair flow and is not faked by this movement test.
+- [ ] Run `PinkCab.Cockpit.Playable.Runtime`, exact `PC-T-INP-001..008` acceptance and existing `PinkCab.Core.CodeComplete.Runtime`; verify GREEN.
+- [ ] Commit `test(CD-828): prove canonical playable cockpit taxi movement`.
 
 ### Task 9: Final analyzer, clean build and package
 

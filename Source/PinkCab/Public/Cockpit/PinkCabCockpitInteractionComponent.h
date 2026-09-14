@@ -2,9 +2,27 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Interaction/PinkCabInteractionModel.h"
 #include "PinkCabCockpitInteractionComponent.generated.h"
 
-struct FPinkCabInteractionEvent;
+class UPinkCabCockpitAssemblyComponent;
+
+struct FPinkCabCockpitInteractionFrame
+{
+    bool bGazeHeld = false;
+    bool bQuickRecall1Held = false;
+    bool bQuickRecall2Held = false;
+    bool bQuickRecall3Held = false;
+    bool bQuickRecall4Held = false;
+    bool bGripHeld = false;
+    bool bMomentaryHeld = false;
+    int32 WheelSteps = 0;
+    double NowSeconds = 0.0;
+    FVector GazeOrigin = FVector::ZeroVector;
+    FVector GazeForward = FVector::ForwardVector;
+    float GazeMaxDistanceCm = 250.0f;
+    int32 GazeCandidateBudget = 22;
+};
 
 UCLASS(ClassGroup=(PinkCab), meta=(BlueprintSpawnableComponent))
 class PINKCAB_API UPinkCabCockpitInteractionComponent : public UActorComponent
@@ -16,31 +34,45 @@ public:
 
     void SetQuickSlotHeld(int32 Slot, bool bHeld);
     FName GetCurrentQuickTargetId() const;
-
     void SetGazeHeld(bool bHeld) { bGazeHeld = bHeld; }
     bool IsGazeHeld() const { return bGazeHeld; }
 
-    void SetCandidateTarget(FName TargetId) { CandidateTargetId = TargetId; }
-    bool CommitAttention();
-    FName GetAttentionTargetId() const { return AttentionTargetId; }
+    void SetCurrentTarget(const FPinkCabInteractionControlSpec& Spec);
+    FName GetCurrentTargetId() const;
+    uint32 GetActuationSerial() const { return ActuationSerial; }
 
-    bool BeginGo(FPinkCabInteractionEvent& OutEvent);
-    bool EndGo(FPinkCabInteractionEvent& OutEvent);
-    bool BuildWheelEvent(int32 SignedSteps, FPinkCabInteractionEvent& OutEvent) const;
+    bool BeginGrip(FPinkCabInteractionEvent& OutEvent);
+    bool EndGrip(FPinkCabInteractionEvent& OutEvent);
+    bool IsGripActive() const { return bGripActive; }
+
+    bool BeginMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
+    bool EndMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
+    bool IsMomentaryActive() const { return bMomentaryActive; }
+    double GetLastMomentaryHoldSeconds() const { return LastMomentaryHoldSeconds; }
+
+    bool BuildWheelEvent(int32 SignedSteps, FPinkCabInteractionEvent& OutEvent);
+    void ProcessFrame(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        const UPinkCabCockpitAssemblyComponent* Assembly,
+        TArray<FPinkCabInteractionEvent>& OutActuationEvents);
+    void ResetTransientInputState(TArray<FPinkCabInteractionEvent>* OutReleaseEvents = nullptr);
+
+    static FPinkCabInteractionControlSpec SpecForTargetId(FName TargetId);
 
 private:
-    struct FQuickSlotState
-    {
-        bool bHeld = false;
-        uint32 PressSerial = 0;
-    };
-
+    struct FQuickSlotState { bool bHeld = false; uint32 PressSerial = 0; };
     static FName TargetForQuickSlot(int32 Slot);
+    FPinkCabInteractionControlSpec ResolveActiveSpec() const;
 
     TArray<FQuickSlotState> QuickSlots;
     uint32 NextPressSerial = 1;
-    FName CandidateTargetId = NAME_None;
-    FName AttentionTargetId = NAME_None;
-    FName ActiveGoTargetId = NAME_None;
+    uint32 ActuationSerial = 0;
+    FPinkCabInteractionControlSpec CurrentTarget;
+    FName ActiveGripTargetId = NAME_None;
+    FName ActiveMomentaryTargetId = NAME_None;
+    double MomentaryStartSeconds = 0.0;
+    double LastMomentaryHoldSeconds = 0.0;
     bool bGazeHeld = false;
+    bool bGripActive = false;
+    bool bMomentaryActive = false;
 };

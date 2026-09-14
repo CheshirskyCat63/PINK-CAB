@@ -41,6 +41,20 @@ struct FPinkCabInteractionControlSpec
     bool bSupportsWheel = false;
 };
 
+inline FPinkCabInteractionControlSpec PinkCabInteractionSpecForTargetId(const FName TargetId)
+{
+    if (TargetId == TEXT("TurnSignals")) return {TargetId, false, false, true};
+    if (TargetId == TEXT("Horn")) return {TargetId, false, true, false};
+    if (TargetId == TEXT("Gearbox")) return {TargetId, true, false, true};
+    if (TargetId == TEXT("Handbrake")) return {TargetId, true, false, true};
+    if (TargetId == TEXT("Ignition")) return {TargetId, false, true, false};
+    if (TargetId == TEXT("PassengerDoor")) return {TargetId, true, false, true};
+    if (TargetId == TEXT("Meter") || TargetId == TEXT("Taximeter")) return {TargetId, false, true, false};
+    if (TargetId == TEXT("Lights") || TargetId == TEXT("Wipers")) return {TargetId, false, false, true};
+    if (TargetId == TEXT("Washer")) return {TargetId, false, true, false};
+    return {TargetId, false, false, false};
+}
+
 struct FPinkCabInteractionCandidate
 {
     FPinkCabInteractionCandidate() = default;
@@ -123,7 +137,7 @@ struct FPinkCabInteractionState
         case 4: Target = FName(TEXT("Handbrake")); break;
         default: return false;
         }
-        CurrentTarget = FPinkCabInteractionControlSpec(Target, false, false, false);
+        CurrentTarget = PinkCabInteractionSpecForTargetId(Target);
         bGripActive = false;
         bMomentaryHeld = false;
         return true;
@@ -153,6 +167,10 @@ struct FPinkCabInteractionState
     int32 ApplyWheelSteps(int32 SignedSteps)
     {
         if (!CurrentTarget.bSupportsWheel || CurrentTarget.Id.IsNone() || SignedSteps == 0)
+        {
+            return 0;
+        }
+        if (CurrentTarget.bSupportsGrip && !bGripActive)
         {
             return 0;
         }

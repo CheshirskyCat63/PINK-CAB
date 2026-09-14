@@ -1,6 +1,5 @@
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
-
-#include "Interaction/PinkCabInteractionModel.h"
+#include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 
 UPinkCabCockpitInteractionComponent::UPinkCabCockpitInteractionComponent()
 {
@@ -20,17 +19,16 @@ FName UPinkCabCockpitInteractionComponent::TargetForQuickSlot(const int32 Slot)
     }
 }
 
+FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::SpecForTargetId(const FName TargetId)
+{
+    return PinkCabInteractionSpecForTargetId(TargetId);
+}
+
 void UPinkCabCockpitInteractionComponent::SetQuickSlotHeld(const int32 Slot, const bool bHeld)
 {
-    if (Slot < 1 || Slot > QuickSlots.Num())
-    {
-        return;
-    }
+    if (Slot < 1 || Slot > QuickSlots.Num()) return;
     FQuickSlotState& State = QuickSlots[Slot - 1];
-    if (bHeld && !State.bHeld)
-    {
-        State.PressSerial = NextPressSerial++;
-    }
+    if (bHeld && !State.bHeld) State.PressSerial = NextPressSerial++;
     State.bHeld = bHeld;
 }
 
@@ -50,54 +48,149 @@ FName UPinkCabCockpitInteractionComponent::GetCurrentQuickTargetId() const
     return BestIndex == INDEX_NONE ? NAME_None : TargetForQuickSlot(BestIndex + 1);
 }
 
-bool UPinkCabCockpitInteractionComponent::CommitAttention()
+void UPinkCabCockpitInteractionComponent::SetCurrentTarget(const FPinkCabInteractionControlSpec& Spec)
 {
-    if (CandidateTargetId.IsNone())
+    CurrentTarget = Spec;
+}
+
+FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiveSpec() const
+{
+    if (bMomentaryActive && !ActiveMomentaryTargetId.IsNone())
     {
-        return false;
+        return SpecForTargetId(ActiveMomentaryTargetId);
     }
-    AttentionTargetId = CandidateTargetId;
+    if (bGripActive && !ActiveGripTargetId.IsNone())
+    {
+        return SpecForTargetId(ActiveGripTargetId);
+    }
+    const FName QuickTarget = GetCurrentQuickTargetId();
+    return QuickTarget.IsNone() ? CurrentTarget : SpecForTargetId(QuickTarget);
+}
+
+FName UPinkCabCockpitInteractionComponent::GetCurrentTargetId() const
+{
+    return ResolveActiveSpec().Id;
+}
+
+bool UPinkCabCockpitInteractionComponent::BeginGrip(FPinkCabInteractionEvent& OutEvent)
+{
+    const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
+    if (Spec.Id.IsNone() || !Spec.bSupportsGrip) return false;
+    bGripActive = true;
+    ActiveGripTargetId = Spec.Id;
+    OutEvent = {Spec.Id, EPinkCabInteractionGesture::GripBegin, 1};
     return true;
 }
 
-bool UPinkCabCockpitInteractionComponent::BeginGo(FPinkCabInteractionEvent& OutEvent)
+bool UPinkCabCockpitInteractionComponent::EndGrip(FPinkCabInteractionEvent& OutEvent)
 {
-    const FName Target = !AttentionTargetId.IsNone() ? AttentionTargetId : GetCurrentQuickTargetId();
-    if (Target.IsNone())
-    {
-        return false;
-    }
-
-    ActiveGoTargetId = Target;
-    OutEvent = {Target, EPinkCabInteractionGesture::PressHold, 1};
+    if (!bGripActive || ActiveGripTargetId.IsNone()) return false;
+    OutEvent = {ActiveGripTargetId, EPinkCabInteractionGesture::GripBegin, -1};
+    bGripActive = false;
+    ActiveGripTargetId = NAME_None;
     return true;
 }
 
-bool UPinkCabCockpitInteractionComponent::EndGo(FPinkCabInteractionEvent& OutEvent)
+bool UPinkCabCockpitInteractionComponent::BeginMomentary(const double NowSeconds, FPinkCabInteractionEvent& OutEvent)
 {
-    if (ActiveGoTargetId.IsNone())
-    {
-        return false;
-    }
-
-    OutEvent = {ActiveGoTargetId, EPinkCabInteractionGesture::PressHold, -1};
-    ActiveGoTargetId = NAME_None;
+    const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
+    if (Spec.Id.IsNone() || !Spec.bSupportsMomentary) return false;
+    bMomentaryActive = true;
+    ActiveMomentaryTargetId = Spec.Id;
+    MomentaryStartSeconds = NowSeconds;
+    ++ActuationSerial;
+    OutEvent = {Spec.Id, EPinkCabInteractionGesture::PressHold, 1};
     return true;
 }
 
-bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(
-    const int32 SignedSteps,
-    FPinkCabInteractionEvent& OutEvent) const
+bool UPinkCabCockpitInteractionComponent::EndMomentary(const double NowSeconds, FPinkCabInteractionEvent& OutEvent)
 {
-    if (SignedSteps == 0)
-    {
-        return false;
-    }
-    const FName Target = !AttentionTargetId.IsNone() ? AttentionTargetId : GetCurrentQuickTargetId();
-    if (Target.IsNone())
-    {
-        return false;
-    }
-    OutEvent = {Target, EPinkCabInteractionGesture::WheelIncrement, SignedSteps};
+    if (!bMomentaryActive || ActiveMomentaryTargetId.IsNone()) return false;
+    LastMomentaryHoldSeconds = FMath::Max(0.0, NowSeconds - MomentaryStartSeconds);
+    ++ActuationSerial;
+    OutEvent = {ActiveMomentaryTargetId, EPinkCabInteractionGesture::PressHold, -1};
+    bMomentaryActive = false;
+    ActiveMomentaryTargetId = NAME_None;
     return true;
+}
+
+bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(const int32 SignedSteps, FPinkCabInteractionEvent& OutEvent)
+{
+    const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
+    if (SignedSteps == 0 || Spec.Id.IsNone() || !Spec.bSupportsWheel) return false;
+    if (Spec.bSupportsGrip && (!bGripActive || ActiveGripTargetId != Spec.Id)) return false;
+    ++ActuationSerial;
+    OutEvent = {Spec.Id, EPinkCabInteractionGesture::WheelIncrement, SignedSteps};
+    return true;
+}
+
+void UPinkCabCockpitInteractionComponent::ProcessFrame(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const UPinkCabCockpitAssemblyComponent* Assembly,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    SetGazeHeld(Frame.bGazeHeld);
+    SetQuickSlotHeld(1, Frame.bQuickRecall1Held);
+    SetQuickSlotHeld(2, Frame.bQuickRecall2Held);
+    SetQuickSlotHeld(3, Frame.bQuickRecall3Held);
+    SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
+
+    if (Frame.bGazeHeld && Assembly && !bGripActive && !bMomentaryActive)
+    {
+        const FName GazeTarget = Assembly->ResolveGazeTarget(
+            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+        SetCurrentTarget(SpecForTargetId(GazeTarget));
+    }
+    else if (!Frame.bGazeHeld && GetCurrentQuickTargetId().IsNone() && !bGripActive && !bMomentaryActive)
+    {
+        SetCurrentTarget({});
+    }
+
+    FPinkCabInteractionEvent Event;
+    if (Frame.bGripHeld && !bGripActive)
+    {
+        BeginGrip(Event);
+    }
+    else if (!Frame.bGripHeld && bGripActive)
+    {
+        EndGrip(Event);
+    }
+
+    if (Frame.bMomentaryHeld && !bMomentaryActive)
+    {
+        if (BeginMomentary(Frame.NowSeconds, Event))
+        {
+            OutActuationEvents.Add(Event);
+        }
+    }
+    else if (!Frame.bMomentaryHeld && bMomentaryActive)
+    {
+        if (EndMomentary(Frame.NowSeconds, Event))
+        {
+            OutActuationEvents.Add(Event);
+        }
+    }
+
+    if (BuildWheelEvent(Frame.WheelSteps, Event))
+    {
+        OutActuationEvents.Add(Event);
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
+    TArray<FPinkCabInteractionEvent>* OutReleaseEvents)
+{
+    if (bMomentaryActive && !ActiveMomentaryTargetId.IsNone() && OutReleaseEvents)
+    {
+        OutReleaseEvents->Add({ActiveMomentaryTargetId, EPinkCabInteractionGesture::PressHold, -1});
+        ++ActuationSerial;
+    }
+    bGazeHeld = false;
+    for (FQuickSlotState& Slot : QuickSlots) Slot.bHeld = false;
+    CurrentTarget = {};
+    bGripActive = false;
+    ActiveGripTargetId = NAME_None;
+    bMomentaryActive = false;
+    ActiveMomentaryTargetId = NAME_None;
+    MomentaryStartSeconds = 0.0;
 }

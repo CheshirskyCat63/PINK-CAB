@@ -5,6 +5,8 @@
 
 struct FPinkCabCockpitInteractionRouter
 {
+    static constexpr float HandbrakeWheelStep = 1.0f / 64.0f;
+
     static bool Apply(const FPinkCabInteractionEvent& Event, FPinkCabCockpitState& State)
     {
         if (Event.TargetId == FName(TEXT("Gearbox")))
@@ -67,15 +69,29 @@ struct FPinkCabCockpitInteractionRouter
             return true;
         }
 
+        if (Event.TargetId == FName(TEXT("Handbrake")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetHandbrakeAmount(State.GetHandbrakeAmount() + Event.SignedValue * HandbrakeWheelStep);
+            return true;
+        }
+
+        if (Event.TargetId == FName(TEXT("PassengerDoor")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetPassengerDoorOpen(Event.SignedValue > 0);
+            return true;
+        }
+
         if (Event.Gesture != EPinkCabInteractionGesture::PressHold || Event.SignedValue <= 0)
         {
             return false;
-        }
-
-        if (Event.TargetId == FName(TEXT("Handbrake")))
-        {
-            State.SetHandbrakeEngaged(!State.IsHandbrakeEngaged());
-            return true;
         }
 
         if (Event.TargetId == FName(TEXT("Ignition")))
@@ -88,12 +104,6 @@ struct FPinkCabCockpitInteractionRouter
             {
                 State.StartEngine();
             }
-            return true;
-        }
-
-        if (Event.TargetId == FName(TEXT("PassengerDoor")))
-        {
-            State.SetPassengerDoorOpen(!State.IsPassengerDoorOpen());
             return true;
         }
 
