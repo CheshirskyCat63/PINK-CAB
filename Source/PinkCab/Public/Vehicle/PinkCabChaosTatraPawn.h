@@ -12,6 +12,7 @@ class UCameraComponent;
 class USceneComponent;
 class USpringArmComponent;
 class UPinkCabCockpitAssemblyComponent;
+class UPinkCabCockpitInteractionComponent;
 struct FPinkCabInteractionEvent;
 
 UCLASS()
@@ -31,6 +32,7 @@ public:
     bool ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event);
 
     UPinkCabCockpitAssemblyComponent* GetCockpitAssembly() const { return CockpitAssembly; }
+    UPinkCabCockpitInteractionComponent* GetCockpitInteraction() const { return CockpitInteraction; }
     UCameraComponent* GetDriverCamera() const { return DriverCamera; }
 
     static float IntegrateMouseSteering(
@@ -45,6 +47,9 @@ public:
 private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UPinkCabCockpitAssemblyComponent> CockpitAssembly;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
+    TObjectPtr<UPinkCabCockpitInteractionComponent> CockpitInteraction;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<USceneComponent> DriverHeadRoot;

@@ -23,6 +23,11 @@ struct FPinkCabCockpitState
     bool IsHandbrakeEngaged() const { return bHandbrakeEngaged; }
     bool IsPassengerDoorOpen() const { return bPassengerDoorOpen; }
     EPinkCabMeterState GetMeterState() const { return MeterState; }
+    int32 GetTurnSignalDirection() const { return TurnSignalDirection; }
+    bool IsHornActive() const { return bHornActive; }
+    int32 GetLightMode() const { return LightMode; }
+    int32 GetWiperMode() const { return WiperMode; }
+    bool IsWasherActive() const { return bWasherActive; }
 
     bool StartEngine()
     {
@@ -34,10 +39,7 @@ struct FPinkCabCockpitState
         return true;
     }
 
-    void StopEngine()
-    {
-        IgnitionState = EPinkCabIgnitionState::Off;
-    }
+    void StopEngine() { IgnitionState = EPinkCabIgnitionState::Off; }
 
     void StallEngine()
     {
@@ -53,15 +55,14 @@ struct FPinkCabCockpitState
         return SelectedGear;
     }
 
-    void SetHandbrakeEngaged(bool bEngaged)
-    {
-        bHandbrakeEngaged = bEngaged;
-    }
+    void SetHandbrakeEngaged(bool bEngaged) { bHandbrakeEngaged = bEngaged; }
+    void SetPassengerDoorOpen(bool bOpen) { bPassengerDoorOpen = bOpen; }
+    void SetTurnSignalDirection(int32 Direction) { TurnSignalDirection = FMath::Clamp(Direction, -1, 1); }
+    void SetHornActive(bool bActive) { bHornActive = bActive; }
+    void SetLightMode(int32 Mode) { LightMode = FMath::Clamp(Mode, 0, 2); }
+    void SetWiperMode(int32 Mode) { WiperMode = FMath::Clamp(Mode, 0, 2); }
+    void SetWasherActive(bool bActive) { bWasherActive = bActive; }
 
-    void SetPassengerDoorOpen(bool bOpen)
-    {
-        bPassengerDoorOpen = bOpen;
-    }
     bool StartMeter()
     {
         if (MeterState == EPinkCabMeterState::Running)
@@ -82,10 +83,7 @@ struct FPinkCabCockpitState
         return true;
     }
 
-    void ResetMeter()
-    {
-        MeterState = EPinkCabMeterState::Off;
-    }
+    void ResetMeter() { MeterState = EPinkCabMeterState::Off; }
 
 private:
     EPinkCabIgnitionState IgnitionState = EPinkCabIgnitionState::Off;
@@ -93,4 +91,9 @@ private:
     bool bHandbrakeEngaged = true;
     bool bPassengerDoorOpen = false;
     EPinkCabMeterState MeterState = EPinkCabMeterState::Off;
+    int32 TurnSignalDirection = 0;
+    bool bHornActive = false;
+    int32 LightMode = 0;
+    int32 WiperMode = 0;
+    bool bWasherActive = false;
 };

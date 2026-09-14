@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
+#include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -45,6 +46,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 
     CockpitAssembly = CreateDefaultSubobject<UPinkCabCockpitAssemblyComponent>(TEXT("CockpitAssembly"));
     CockpitAssembly->SetupAttachment(VehicleMesh);
+
+    CockpitInteraction = CreateDefaultSubobject<UPinkCabCockpitInteractionComponent>(TEXT("CockpitInteraction"));
 
     DriverHeadRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DriverHeadRoot"));
     DriverHeadRoot->SetupAttachment(CockpitAssembly);
@@ -146,7 +149,46 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     const FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
-    const bool bGazeHeld = InputFrame.bGazeHeld;
+
+    CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
+    const EPinkCabSemanticAction QuickActions[] = {
+        EPinkCabSemanticAction::QuickRecall1,
+        EPinkCabSemanticAction::QuickRecall2,
+        EPinkCabSemanticAction::QuickRecall3,
+        EPinkCabSemanticAction::QuickRecall4};
+    for (int32 Index = 0; Index < UE_ARRAY_COUNT(QuickActions); ++Index)
+    {
+        const FKey Key = InputRouter.GetKeyForAction(QuickActions[Index]);
+        CockpitInteraction->SetQuickSlotHeld(Index + 1, Key.IsValid() && PC->IsInputKeyDown(Key));
+    }
+    CockpitInteraction->SetCandidateTarget(CockpitInteraction->GetCurrentQuickTargetId());
+
+    const FKey AttentionKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Attention);
+    if (AttentionKey.IsValid() && PC->WasInputKeyJustPressed(AttentionKey))
+    {
+        CockpitInteraction->CommitAttention();
+    }
+
+    const FKey GoKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Go);
+    FPinkCabInteractionEvent InteractionEvent;
+    if (GoKey.IsValid() && PC->WasInputKeyJustPressed(GoKey) && CockpitInteraction->BeginGo(InteractionEvent))
+    {
+        ApplyCockpitInteraction(InteractionEvent);
+    }
+    if (GoKey.IsValid() && PC->WasInputKeyJustReleased(GoKey) && CockpitInteraction->EndGo(InteractionEvent))
+    {
+        ApplyCockpitInteraction(InteractionEvent);
+    }
+
+    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
+    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
+    const int32 WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    if (CockpitInteraction->BuildWheelEvent(WheelSteps, InteractionEvent))
+    {
+        ApplyCockpitInteraction(InteractionEvent);
+    }
+
+    const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
     ApplyMouseSteeringDelta(MouseX, bGazeHeld);
 
     if (bGazeHeld)

@@ -11,8 +11,8 @@ enum class EPinkCabSemanticAction : uint8
     QuickRecall2,
     QuickRecall3,
     QuickRecall4,
-    Grip,
-    PressHold,
+    Attention,
+    Go,
     Wheel,
     Clutch,
     Brake,
@@ -87,8 +87,8 @@ struct FPinkCabSemanticInputRouter
         Bindings.Add(EKeys::Two, EPinkCabSemanticAction::QuickRecall2);
         Bindings.Add(EKeys::Three, EPinkCabSemanticAction::QuickRecall3);
         Bindings.Add(EKeys::Four, EPinkCabSemanticAction::QuickRecall4);
-        Bindings.Add(EKeys::RightMouseButton, EPinkCabSemanticAction::Grip);
-        Bindings.Add(EKeys::LeftMouseButton, EPinkCabSemanticAction::PressHold);
+        Bindings.Add(EKeys::RightMouseButton, EPinkCabSemanticAction::Go);
+        Bindings.Add(EKeys::LeftMouseButton, EPinkCabSemanticAction::Attention);
         Bindings.Add(EKeys::MouseWheelAxis, EPinkCabSemanticAction::Wheel);
         Bindings.Add(EKeys::Q, EPinkCabSemanticAction::Clutch);
         Bindings.Add(EKeys::W, EPinkCabSemanticAction::Brake);

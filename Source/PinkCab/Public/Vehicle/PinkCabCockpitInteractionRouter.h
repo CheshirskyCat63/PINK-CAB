@@ -17,6 +17,56 @@ struct FPinkCabCockpitInteractionRouter
             return true;
         }
 
+        if (Event.TargetId == FName(TEXT("TurnSignals")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetTurnSignalDirection(FMath::Clamp(Event.SignedValue, -1, 1));
+            return true;
+        }
+
+        if (Event.TargetId == FName(TEXT("Lights")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetLightMode(State.GetLightMode() + Event.SignedValue);
+            return true;
+        }
+
+        if (Event.TargetId == FName(TEXT("Wipers")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetWiperMode(State.GetWiperMode() + Event.SignedValue);
+            return true;
+        }
+
+        if (Event.TargetId == FName(TEXT("Horn")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::PressHold || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetHornActive(Event.SignedValue > 0);
+            return true;
+        }
+
+        if (Event.TargetId == FName(TEXT("Washer")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::PressHold || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.SetWasherActive(Event.SignedValue > 0);
+            return true;
+        }
+
         if (Event.Gesture != EPinkCabInteractionGesture::PressHold || Event.SignedValue <= 0)
         {
             return false;
@@ -47,7 +97,7 @@ struct FPinkCabCockpitInteractionRouter
             return true;
         }
 
-        if (Event.TargetId == FName(TEXT("Meter")))
+        if (Event.TargetId == FName(TEXT("Meter")) || Event.TargetId == FName(TEXT("Taximeter")))
         {
             if (State.GetMeterState() == EPinkCabMeterState::Off)
             {
