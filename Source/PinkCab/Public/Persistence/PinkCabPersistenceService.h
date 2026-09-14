@@ -7,6 +7,7 @@
 #include "Persistence/PinkCabMigrationRegistry.h"
 #include "Persistence/PinkCabPersistedLogicalState.h"
 #include "Persistence/PinkCabGameSnapshotArchive.h"
+#include "Persistence/PinkCabGamePersistenceCoordinator.h"
 
 enum class EPinkCabLoadResult : uint8
 {
@@ -131,6 +132,27 @@ public:
             return EPinkCabLoadResult::CorruptPayload;
         }
         OutState = MoveTemp(Restored);
+        return EPinkCabLoadResult::Success;
+    }
+    static EPinkCabLoadResult DeserializeInto(
+        const TArray<uint8>& Bytes,
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
+        FPinkCabCityIdentity& OutCityIdentity,
+        FPinkCabGamePersistenceOwners& Owners)
+    {
+        FPinkCabGameSnapshot Snapshot;
+        const EPinkCabLoadResult Result = Deserialize(Bytes, ExpectedHeader, Registry, Snapshot);
+        if (Result != EPinkCabLoadResult::Success)
+        {
+            return Result;
+        }
+        FPinkCabCityIdentity RestoredCity;
+        if (!FPinkCabGamePersistenceCoordinator::Restore(Snapshot, RestoredCity, Owners))
+        {
+            return EPinkCabLoadResult::CorruptPayload;
+        }
+        OutCityIdentity = MoveTemp(RestoredCity);
         return EPinkCabLoadResult::Success;
     }
     static bool Serialize(
@@ -282,6 +304,33 @@ public:
         return true;
     }
 
+    EPinkCabLoadResult RecoverLastCommittedInto(
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
+        FPinkCabCityIdentity& OutCityIdentity,
+        FPinkCabGamePersistenceOwners& Owners) const
+    {
+        if (LastCommittedBytes.Num() == 0)
+        {
+            return EPinkCabLoadResult::NoCommittedSnapshot;
+        }
+        return DeserializeInto(LastCommittedBytes, ExpectedHeader, Registry, OutCityIdentity, Owners);
+    }
+
+    EPinkCabLoadResult RecoverCheckpointInto(
+        int32 NewestOffset,
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
+        FPinkCabCityIdentity& OutCityIdentity,
+        FPinkCabGamePersistenceOwners& Owners) const
+    {
+        const TArray<uint8>* Bytes = Checkpoints.GetFromNewestOffset(NewestOffset);
+        if (!Bytes)
+        {
+            return EPinkCabLoadResult::NoCommittedSnapshot;
+        }
+        return DeserializeInto(*Bytes, ExpectedHeader, Registry, OutCityIdentity, Owners);
+    }
     EPinkCabLoadResult RecoverLastCommitted(
         const FPinkCabSaveHeader& ExpectedHeader,
         const FPinkCabMigrationRegistry& Registry,
