@@ -17,7 +17,8 @@ enum class EPinkCabFareLoopState : uint8
     Paid,
     Evaded,
     Complete,
-    Declined
+    Declined,
+    Failed
 };
 
 class FPinkCabFareLoopCoordinator
@@ -206,6 +207,32 @@ public:
         return true;
     }
 
+    bool FailForTerminalRecovery(FPinkCabVehicleLoadState& LoadState)
+    {
+        if (!bInitialized
+            || (State != EPinkCabFareLoopState::Active
+                && State != EPinkCabFareLoopState::AwaitingPayment)
+            || !FareSession.IsSet() || !Taximeter.IsSet() || !Manifest.IsSet()
+            || !Manifest->IsBoarded() || Manifest->HasExited()
+            || !LoadState.HasFarePassengerGroup(FareId))
+        {
+            return false;
+        }
+        if (FareSession->FailForSeriousCrash() != EPinkCabFareTransitionResult::Applied)
+        {
+            return false;
+        }
+        if (Taximeter->IsRunning() && !Taximeter->Stop())
+        {
+            return false;
+        }
+        if (!Manifest->TryTerminalRecoveryExit(LoadState))
+        {
+            return false;
+        }
+        State = EPinkCabFareLoopState::Failed;
+        return true;
+    }
     bool CanAcceptNextFare() const
     {
         return State == EPinkCabFareLoopState::Complete || State == EPinkCabFareLoopState::Declined;

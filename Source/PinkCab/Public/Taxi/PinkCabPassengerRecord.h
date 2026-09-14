@@ -163,6 +163,7 @@ private:
 
     friend class FPinkCabPassengerRegistry;
     friend class FPinkCabPassengerSnapshotCodec;
+    friend class FPinkCabGameSnapshotArchive;
 };
 
 inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
@@ -324,4 +325,5 @@ private:
     TMap<FString, FPinkCabPassengerRecord> Records;
 
     friend class FPinkCabPassengerSnapshotCodec;
+    friend class FPinkCabGameSnapshotArchive;
 };

@@ -132,6 +132,22 @@ public:
         return true;
     }
 
+    bool TryTerminalRecoveryExit(FPinkCabVehicleLoadState& LoadState)
+    {
+        if (!bBoarded || bExited || !FareId.IsValid()
+            || !LoadState.HasFarePassengerGroup(FareId))
+        {
+            return false;
+        }
+        if (!LoadState.RemoveFarePassengerGroup(FareId))
+        {
+            return false;
+        }
+        bBoarded = false;
+        bExited = true;
+        return true;
+    }
+
 private:
     friend class FPinkCabFareRuntimeSnapshotCodec;
 

@@ -5,6 +5,8 @@
 #include "Serialization/MemoryWriter.h"
 #include "Persistence/PinkCabSaveHeader.h"
 #include "Persistence/PinkCabMigrationRegistry.h"
+#include "Persistence/PinkCabPersistedLogicalState.h"
+#include "Persistence/PinkCabGameSnapshotArchive.h"
 
 enum class EPinkCabLoadResult : uint8
 {
@@ -28,45 +30,6 @@ enum class EPinkCabPersistenceCommitReason : uint8
     PersistentWorldChange,
     PeriodicCheckpoint,
     TerminalRecovery
-};
-
-struct FPinkCabPersistedVehicleHealth
-{
-    TArray<float> ChannelHealth;
-    uint32 FunctionalDamageSerial = 0;
-};
-
-struct FPinkCabPersistedPassengerIdentity
-{
-    FString IdentityId;
-    FString TemplateId;
-    uint64 IdentitySeed = 0;
-    uint64 AppearanceSeed = 0;
-    FString AppearanceProfileId;
-    int32 PaidFareCount = 0;
-    int32 AuthoredEventCount = 0;
-    bool bRepeatEligible = false;
-    bool bNeuralPermissionGranted = false;
-    bool bNeuralBlocked = false;
-    float Trust = 0.0f;
-    float Satisfaction = 0.0f;
-    float RiskTolerance = 0.0f;
-    TArray<int32> ReviewStars;
-    TArray<FString> ReviewTexts;
-};
-
-struct FPinkCabPersistedEconomyState
-{
-    int64 BalanceMinor = 0;
-    int64 DebtLimitMinor = 0;
-    TArray<FString> CommittedTransactionIds;
-};
-
-struct FPinkCabLogicalSaveState
-{
-    FPinkCabPersistedVehicleHealth VehicleHealth;
-    FPinkCabPersistedPassengerIdentity Passenger;
-    FPinkCabPersistedEconomyState Economy;
 };
 
 class FPinkCabCheckpointRing
@@ -93,6 +56,14 @@ public:
         return Checkpoints.Last();
     }
 
+    const TArray<uint8>* GetFromNewestOffset(int32 Offset) const
+    {
+        if (Offset < 0 || Offset >= Checkpoints.Num())
+        {
+            return nullptr;
+        }
+        return &Checkpoints[Checkpoints.Num() - 1 - Offset];
+    }
 private:
     TArray<TArray<uint8>> Checkpoints;
 };
@@ -100,6 +71,68 @@ private:
 class FPinkCabPersistenceService
 {
 public:
+    static bool Serialize(
+        const FPinkCabSaveHeader& Header,
+        const FPinkCabGameSnapshot& State,
+        TArray<uint8>& OutBytes)
+    {
+        OutBytes.Reset();
+        FMemoryWriter Writer(OutBytes, true);
+        uint32 Magic = AggregatePayloadMagic;
+        Writer << Magic;
+        FPinkCabSaveHeader MutableHeader = Header;
+        Writer << MutableHeader.ProductName;
+        Writer << MutableHeader.SchemaVersion;
+        Writer << MutableHeader.ConfigVersion;
+        Writer << MutableHeader.GeneratorVersion;
+        Writer << MutableHeader.ContentSetVersion;
+        FPinkCabGameSnapshot MutableState = State;
+        if (!FPinkCabGameSnapshotArchive::Serialize(Writer, MutableState))
+        {
+            return false;
+        }
+        Writer.Close();
+        return !Writer.IsError() && OutBytes.Num() > 0;
+    }
+
+    static EPinkCabLoadResult Deserialize(
+        const TArray<uint8>& Bytes,
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
+        FPinkCabGameSnapshot& OutState)
+    {
+        if (Bytes.Num() == 0)
+        {
+            return EPinkCabLoadResult::CorruptPayload;
+        }
+        FMemoryReader Reader(Bytes, true);
+        uint32 Magic = 0;
+        Reader << Magic;
+        if (Magic != AggregatePayloadMagic)
+        {
+            return EPinkCabLoadResult::CorruptPayload;
+        }
+        FPinkCabSaveHeader SavedHeader;
+        Reader << SavedHeader.ProductName;
+        Reader << SavedHeader.SchemaVersion;
+        Reader << SavedHeader.ConfigVersion;
+        Reader << SavedHeader.GeneratorVersion;
+        Reader << SavedHeader.ContentSetVersion;
+        const EPinkCabLoadResult Compatibility = CheckCompatibility(
+            SavedHeader, ExpectedHeader, Registry);
+        if (Compatibility != EPinkCabLoadResult::Success)
+        {
+            return Compatibility;
+        }
+        FPinkCabGameSnapshot Restored;
+        if (!FPinkCabGameSnapshotArchive::Serialize(Reader, Restored)
+            || Reader.IsError() || Reader.Tell() != Reader.TotalSize())
+        {
+            return EPinkCabLoadResult::CorruptPayload;
+        }
+        OutState = MoveTemp(Restored);
+        return EPinkCabLoadResult::Success;
+    }
     static bool Serialize(
         const FPinkCabSaveHeader& Header,
         const FPinkCabLogicalSaveState& State,
@@ -220,6 +253,21 @@ public:
 
     bool CommitSnapshot(
         const FPinkCabSaveHeader& Header,
+        const FPinkCabGameSnapshot& State,
+        EPinkCabPersistenceCommitReason Reason)
+    {
+        TArray<uint8> Bytes;
+        if (!Serialize(Header, State, Bytes))
+        {
+            return false;
+        }
+        LastCommittedBytes = MoveTemp(Bytes);
+        LastCommitReason = Reason;
+        Checkpoints.Push(LastCommittedBytes);
+        return true;
+    }
+    bool CommitSnapshot(
+        const FPinkCabSaveHeader& Header,
         const FPinkCabLogicalSaveState& State,
         EPinkCabPersistenceCommitReason Reason)
     {
@@ -237,6 +285,31 @@ public:
     EPinkCabLoadResult RecoverLastCommitted(
         const FPinkCabSaveHeader& ExpectedHeader,
         const FPinkCabMigrationRegistry& Registry,
+        FPinkCabGameSnapshot& OutState) const
+    {
+        if (LastCommittedBytes.Num() == 0)
+        {
+            return EPinkCabLoadResult::NoCommittedSnapshot;
+        }
+        return Deserialize(LastCommittedBytes, ExpectedHeader, Registry, OutState);
+    }
+
+    EPinkCabLoadResult RecoverCheckpoint(
+        int32 NewestOffset,
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
+        FPinkCabGameSnapshot& OutState) const
+    {
+        const TArray<uint8>* Bytes = Checkpoints.GetFromNewestOffset(NewestOffset);
+        if (!Bytes)
+        {
+            return EPinkCabLoadResult::NoCommittedSnapshot;
+        }
+        return Deserialize(*Bytes, ExpectedHeader, Registry, OutState);
+    }
+    EPinkCabLoadResult RecoverLastCommitted(
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry,
         FPinkCabLogicalSaveState& OutState) const
     {
         if (LastCommittedBytes.Num() == 0)
@@ -250,6 +323,28 @@ public:
     const FPinkCabCheckpointRing& GetCheckpointRing() const { return Checkpoints; }
 
 private:
+    static EPinkCabLoadResult CheckCompatibility(
+        const FPinkCabSaveHeader& SavedHeader,
+        const FPinkCabSaveHeader& ExpectedHeader,
+        const FPinkCabMigrationRegistry& Registry)
+    {
+        if (SavedHeader.ProductName != ExpectedHeader.ProductName)
+            return EPinkCabLoadResult::IncompatibleProduct;
+        if (SavedHeader.SchemaVersion != ExpectedHeader.SchemaVersion)
+        {
+            return Registry.HasBoundary(SavedHeader.SchemaVersion, ExpectedHeader.SchemaVersion)
+                ? EPinkCabLoadResult::MigrationRequired
+                : EPinkCabLoadResult::IncompatibleSchema;
+        }
+        if (SavedHeader.ConfigVersion != ExpectedHeader.ConfigVersion)
+            return EPinkCabLoadResult::IncompatibleConfig;
+        if (SavedHeader.GeneratorVersion != ExpectedHeader.GeneratorVersion
+            || SavedHeader.ContentSetVersion != ExpectedHeader.ContentSetVersion)
+            return EPinkCabLoadResult::IncompatibleWorldVersion;
+        return EPinkCabLoadResult::Success;
+    }
+
+    static constexpr uint32 AggregatePayloadMagic = 0x50434147u;
     static constexpr uint32 PayloadMagic = 0x50434C47u;
     TArray<uint8> LastCommittedBytes;
     FPinkCabCheckpointRing Checkpoints;

@@ -263,9 +263,15 @@ private:
         case EPinkCabFareLoopState::Evaded:
             return Snapshot.Session.State == EPinkCabFareState::Evaded
                 && !Snapshot.Session.bPaymentCommitted
-                && bStarted && !bRunning && bBoarded && !bExited;        case EPinkCabFareLoopState::Complete:
+                && bStarted && !bRunning && bBoarded && !bExited;
+        case EPinkCabFareLoopState::Complete:
             return (Snapshot.Session.State == EPinkCabFareState::Idle
                     || Snapshot.Session.State == EPinkCabFareState::Evaded)
+                && bStarted && !bRunning && !bBoarded && bExited;
+        case EPinkCabFareLoopState::Failed:
+            return Snapshot.Session.State == EPinkCabFareState::Failed
+                && Snapshot.Session.bRequiresWorkdayEnd
+                && Snapshot.Session.bRequiresRepairRecovery
                 && bStarted && !bRunning && !bBoarded && bExited;
         default:
             return false;
@@ -277,7 +283,7 @@ private:
         if (Snapshot.SchemaVersion != FPinkCabFareRuntimeSnapshot::CurrentSchemaVersion
             || !Snapshot.bInitialized
             || !IsValidId(Snapshot.FareId)
-            || static_cast<uint8>(Snapshot.LoopState) > static_cast<uint8>(EPinkCabFareLoopState::Declined)
+            || static_cast<uint8>(Snapshot.LoopState) > static_cast<uint8>(EPinkCabFareLoopState::Failed)
             || Snapshot.Session.FareId != Snapshot.FareId
             || Snapshot.Manifest.FareId != Snapshot.FareId
             || !ValidateSession(Snapshot.Session)

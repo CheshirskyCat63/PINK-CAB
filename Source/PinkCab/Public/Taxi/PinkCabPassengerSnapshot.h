@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Persistence/PinkCabPersistenceService.h"
+#include "Persistence/PinkCabPersistedLogicalState.h"
 #include "Taxi/PinkCabPassengerRecord.h"
 
 struct FPinkCabPassengerSnapshot
