@@ -4,6 +4,8 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
+#include "Cockpit/PinkCabCockpitPresentationState.h"
+#include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -48,6 +50,7 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     CockpitAssembly->SetupAttachment(VehicleMesh);
 
     CockpitInteraction = CreateDefaultSubobject<UPinkCabCockpitInteractionComponent>(TEXT("CockpitInteraction"));
+    CockpitVisualDriver = CreateDefaultSubobject<UPinkCabCockpitVisualDriverComponent>(TEXT("CockpitVisualDriver"));
 
     DriverHeadRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DriverHeadRoot"));
     DriverHeadRoot->SetupAttachment(CockpitAssembly);
@@ -208,6 +211,31 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         SteeringCommand,
         CockpitState.IsHandbrakeEngaged() ? 1.0f : 0.0f);
     DynamicsProvider.ApplyControls(ControlState);
+
+    FPinkCabCockpitPresentationState Presentation;
+    Presentation.Steering = ControlState.Steering;
+    Presentation.Clutch = ControlState.Clutch;
+    Presentation.Brake = ControlState.Brake;
+    Presentation.Throttle = ControlState.Throttle;
+    Presentation.SelectedGear = CockpitState.GetSelectedGear();
+    Presentation.bIgnitionRunning = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    Presentation.bHandbrakeEngaged = CockpitState.IsHandbrakeEngaged();
+    Presentation.bPassengerDoorOpen = CockpitState.IsPassengerDoorOpen();
+    Presentation.bMeterAvailable = true;
+    Presentation.bMeterRunning = CockpitState.GetMeterState() == EPinkCabMeterState::Running;
+    Presentation.bTurnSignalLeft = CockpitState.GetTurnSignalDirection() < 0;
+    Presentation.bTurnSignalRight = CockpitState.GetTurnSignalDirection() > 0;
+    Presentation.bHornActive = CockpitState.IsHornActive();
+    Presentation.bLightsOn = CockpitState.GetLightMode() > 0;
+    Presentation.bWipersOn = CockpitState.GetWiperMode() > 0;
+    Presentation.bWasherActive = CockpitState.IsWasherActive();
+    FPinkCabVehicleTelemetry Telemetry;
+    if (DynamicsProvider.ReadTelemetry(Telemetry))
+    {
+        Presentation.SpeedKmh = Telemetry.SpeedKmh;
+        Presentation.EngineRpm = Telemetry.EngineRpm;
+    }
+    CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
 
     if (PC->WasInputKeyJustPressed(EKeys::R))
     {

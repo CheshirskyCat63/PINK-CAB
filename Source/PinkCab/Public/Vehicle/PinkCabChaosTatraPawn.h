@@ -13,6 +13,7 @@ class USceneComponent;
 class USpringArmComponent;
 class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
+class UPinkCabCockpitVisualDriverComponent;
 struct FPinkCabInteractionEvent;
 
 UCLASS()
@@ -25,7 +26,6 @@ public:
 
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
-
     UChaosWheeledVehicleMovementComponent* GetChaosMovement() const;
     IPinkCabVehicleDynamicsProvider& GetPinkCabDynamicsProvider() { return DynamicsProvider; }
     const FPinkCabCockpitState& GetCockpitState() const { return CockpitState; }
@@ -33,6 +33,7 @@ public:
 
     UPinkCabCockpitAssemblyComponent* GetCockpitAssembly() const { return CockpitAssembly; }
     UPinkCabCockpitInteractionComponent* GetCockpitInteraction() const { return CockpitInteraction; }
+    UPinkCabCockpitVisualDriverComponent* GetCockpitVisualDriver() const { return CockpitVisualDriver; }
     UCameraComponent* GetDriverCamera() const { return DriverCamera; }
 
     static float IntegrateMouseSteering(
@@ -51,6 +52,8 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UPinkCabCockpitInteractionComponent> CockpitInteraction;
 
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
+    TObjectPtr<UPinkCabCockpitVisualDriverComponent> CockpitVisualDriver;
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<USceneComponent> DriverHeadRoot;
 
