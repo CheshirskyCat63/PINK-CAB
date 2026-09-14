@@ -99,6 +99,8 @@ public:
     }
 
 private:
+    friend class FPinkCabWorldSessionSnapshotCodec;
+
     static FString KindToken(EPinkCabCityDeltaKind Kind)
     {
         switch (Kind)

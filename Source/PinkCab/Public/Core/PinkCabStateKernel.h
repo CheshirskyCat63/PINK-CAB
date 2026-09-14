@@ -32,6 +32,8 @@ public:
     }
 
 private:
+    friend class FPinkCabWorldSessionSnapshotCodec;
+
     uint64 RootSeed = 0;
     uint64 Sequence = 0;
 };
