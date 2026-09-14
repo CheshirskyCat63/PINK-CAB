@@ -40,6 +40,14 @@ struct FPinkCabPersistedPassengerIdentity
 {
     FString IdentityId;
     FString TemplateId;
+    uint64 IdentitySeed = 0;
+    uint64 AppearanceSeed = 0;
+    FString AppearanceProfileId;
+    int32 PaidFareCount = 0;
+    int32 AuthoredEventCount = 0;
+    bool bRepeatEligible = false;
+    bool bNeuralPermissionGranted = false;
+    bool bNeuralBlocked = false;
     float Trust = 0.0f;
     float Satisfaction = 0.0f;
     float RiskTolerance = 0.0f;
@@ -114,6 +122,14 @@ public:
         Writer << MutableState.VehicleHealth.FunctionalDamageSerial;
         Writer << MutableState.Passenger.IdentityId;
         Writer << MutableState.Passenger.TemplateId;
+        Writer << MutableState.Passenger.IdentitySeed;
+        Writer << MutableState.Passenger.AppearanceSeed;
+        Writer << MutableState.Passenger.AppearanceProfileId;
+        Writer << MutableState.Passenger.PaidFareCount;
+        Writer << MutableState.Passenger.AuthoredEventCount;
+        Writer << MutableState.Passenger.bRepeatEligible;
+        Writer << MutableState.Passenger.bNeuralPermissionGranted;
+        Writer << MutableState.Passenger.bNeuralBlocked;
         Writer << MutableState.Passenger.Trust;
         Writer << MutableState.Passenger.Satisfaction;
         Writer << MutableState.Passenger.RiskTolerance;
@@ -177,6 +193,14 @@ public:
         Reader << Restored.VehicleHealth.FunctionalDamageSerial;
         Reader << Restored.Passenger.IdentityId;
         Reader << Restored.Passenger.TemplateId;
+        Reader << Restored.Passenger.IdentitySeed;
+        Reader << Restored.Passenger.AppearanceSeed;
+        Reader << Restored.Passenger.AppearanceProfileId;
+        Reader << Restored.Passenger.PaidFareCount;
+        Reader << Restored.Passenger.AuthoredEventCount;
+        Reader << Restored.Passenger.bRepeatEligible;
+        Reader << Restored.Passenger.bNeuralPermissionGranted;
+        Reader << Restored.Passenger.bNeuralBlocked;
         Reader << Restored.Passenger.Trust;
         Reader << Restored.Passenger.Satisfaction;
         Reader << Restored.Passenger.RiskTolerance;

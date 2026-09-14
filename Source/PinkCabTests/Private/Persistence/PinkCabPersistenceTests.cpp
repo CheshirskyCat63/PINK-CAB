@@ -53,6 +53,14 @@ bool FPinkCabPersistenceRoundTripTest::RunTest(const FString& Parameters)
     State.VehicleHealth.FunctionalDamageSerial = 7;
     State.Passenger.IdentityId = TEXT("passenger-42");
     State.Passenger.TemplateId = TEXT("shopper-risky");
+    State.Passenger.IdentitySeed = 123456u;
+    State.Passenger.AppearanceSeed = 654321u;
+    State.Passenger.AppearanceProfileId = TEXT("profile.shopper-risky.01");
+    State.Passenger.PaidFareCount = 2;
+    State.Passenger.AuthoredEventCount = 1;
+    State.Passenger.bRepeatEligible = true;
+    State.Passenger.bNeuralPermissionGranted = true;
+    State.Passenger.bNeuralBlocked = false;
     State.Passenger.Trust = 0.25f;
     State.Passenger.Satisfaction = -0.5f;
     State.Passenger.RiskTolerance = 0.8f;
@@ -72,6 +80,14 @@ bool FPinkCabPersistenceRoundTripTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("vehicle health round-trip"), Restored.VehicleHealth.ChannelHealth[1], 0.75f);
     TestEqual(TEXT("damage serial round-trip"), Restored.VehicleHealth.FunctionalDamageSerial, uint32(7));
     TestEqual(TEXT("passenger id round-trip"), Restored.Passenger.IdentityId, FString(TEXT("passenger-42")));
+    TestEqual(TEXT("appearance seed round-trip"), Restored.Passenger.AppearanceSeed, uint64(654321));
+    TestEqual(TEXT("appearance profile round-trip"), Restored.Passenger.AppearanceProfileId,
+        FString(TEXT("profile.shopper-risky.01")));
+    TestEqual(TEXT("paid fare count round-trip"), Restored.Passenger.PaidFareCount, 2);
+    TestEqual(TEXT("authored count round-trip"), Restored.Passenger.AuthoredEventCount, 1);
+    TestTrue(TEXT("repeat eligibility round-trip"), Restored.Passenger.bRepeatEligible);
+    TestTrue(TEXT("neural permission round-trip"), Restored.Passenger.bNeuralPermissionGranted);
+    TestFalse(TEXT("neural block round-trip"), Restored.Passenger.bNeuralBlocked);
     TestEqual(TEXT("review round-trip"), Restored.Passenger.ReviewTexts[1], FString(TEXT("returned")));
     TestEqual(TEXT("economy balance round-trip"), Restored.Economy.BalanceMinor, int64(12345));
     TestEqual(TEXT("transaction ids round-trip"), Restored.Economy.CommittedTransactionIds.Num(), 2);
