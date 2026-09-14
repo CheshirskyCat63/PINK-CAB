@@ -212,6 +212,8 @@ public:
     }
 
 private:
+    friend class FPinkCabFareRuntimeSnapshotCodec;
+
     FPinkCabStableId FareId;
     TOptional<FPinkCabFareSession> FareSession;
     TOptional<FPinkCabTaximeter> Taximeter;

@@ -82,6 +82,8 @@ public:
     double GetFareSeconds() const { return FareSeconds; }
 
 private:
+    friend class FPinkCabFareRuntimeSnapshotCodec;
+
     FPinkCabFarePricingTerms Terms;
     double DistanceKm = 0.0;
     double FareSeconds = 0.0;

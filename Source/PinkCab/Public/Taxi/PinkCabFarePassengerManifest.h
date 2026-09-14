@@ -133,6 +133,8 @@ public:
     }
 
 private:
+    friend class FPinkCabFareRuntimeSnapshotCodec;
+
     FPinkCabStableId FareId;
     TArray<FPinkCabFarePassengerRecord, TInlineAllocator<5>> Records;
     float TotalPassengerMassKg = 0.0f;

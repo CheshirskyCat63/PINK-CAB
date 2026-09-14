@@ -162,6 +162,8 @@ public:
     }
 
 private:
+    friend class FPinkCabFareRuntimeSnapshotCodec;
+
     FPinkCabStableId FareId;
     EPinkCabFareState State = EPinkCabFareState::Boarding;
     bool bPaymentCommitted = false;
