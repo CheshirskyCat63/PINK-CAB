@@ -164,6 +164,7 @@ private:
     friend class FPinkCabPassengerRegistry;
     friend class FPinkCabPassengerSnapshotCodec;
     friend class FPinkCabGameSnapshotArchive;
+    friend class FPinkCabPassengerSnapshotArchive;
 };
 
 inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
