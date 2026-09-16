@@ -188,15 +188,20 @@ FName APinkCabChaosTatraPawn::GetVehicleVisualProfileId() const
 
 bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile)
 {
-    if (!VehicleVisualShell || !Profile.IsValid() || !VehicleVisualShell->ApplyProfile(Profile))
+    if (!VehicleVisualShell || !CockpitAssembly || !CockpitVisualDriver || !Profile.IsValid()) return false;
+    const FPinkCabVehicleVisualProfile Previous = VehicleVisualShell->GetProfile();
+    if (!VehicleVisualShell->ApplyProfile(Profile)) return false;
+    if (!CockpitAssembly->ApplyVisualBindings(Profile.CockpitBindings))
     {
+        VehicleVisualShell->ApplyProfile(Previous);
         return false;
     }
     CockpitAssembly->SetRelativeTransform(Profile.CockpitRootTransform);
     DriverHeadRoot->SetRelativeTransform(Profile.DriverHeadTransform);
+    CockpitVisualDriver->InvalidateBaseTransforms();
     if (USkeletalMeshComponent* VehicleMesh = GetMesh())
     {
-        VehicleMesh->SetVisibility(!(Profile.HasExteriorAsset() && Profile.bHidePhysicsChassisWhenExteriorPresent), true);
+        VehicleMesh->SetVisibility(!(Profile.HasExteriorAsset() && Profile.bHidePhysicsChassisWhenExteriorPresent), false);
     }
     return true;
 }

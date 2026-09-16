@@ -77,34 +77,31 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildCabin()
 {
     AActor* Owner = GetOwner();
     if (!Owner) return nullptr;
-
-    if (!Profile.CabinStaticMesh.IsNull())
+    UStaticMesh* StaticMesh = nullptr;
+    USkeletalMesh* SkeletalMesh = nullptr;
+    FTransform Transform = Profile.CabinTransform;
+    if (!Profile.CabinStaticMesh.IsNull()) StaticMesh = Profile.CabinStaticMesh.LoadSynchronous();
+    else if (!Profile.CabinSkeletalMesh.IsNull()) SkeletalMesh = Profile.CabinSkeletalMesh.LoadSynchronous();
+    else if (Profile.bUseExteriorAsCabinWhenCabinMissing)
     {
-        UStaticMesh* Mesh = Profile.CabinStaticMesh.LoadSynchronous();
-        if (!Mesh) return nullptr;
+        Transform = Profile.ExteriorTransform;
+        if (!Profile.ExteriorStaticMesh.IsNull()) StaticMesh = Profile.ExteriorStaticMesh.LoadSynchronous();
+        else if (!Profile.ExteriorSkeletalMesh.IsNull()) SkeletalMesh = Profile.ExteriorSkeletalMesh.LoadSynchronous();
+    }
+    if (StaticMesh)
+    {
         UStaticMeshComponent* Component = NewObject<UStaticMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
-        Owner->AddInstanceComponent(Component);
-        Component->SetupAttachment(this);
-        Component->SetStaticMesh(Mesh);
-        Component->SetRelativeTransform(Profile.CabinTransform);
-        Component->SetOnlyOwnerSee(true);
-        ConfigurePresentation(*Component);
-        Component->RegisterComponent();
+        Owner->AddInstanceComponent(Component); Component->SetupAttachment(this);
+        Component->SetStaticMesh(StaticMesh); Component->SetRelativeTransform(Transform);
+        Component->SetOnlyOwnerSee(true); ConfigurePresentation(*Component); Component->RegisterComponent();
         return Component;
     }
-
-    if (!Profile.CabinSkeletalMesh.IsNull())
+    if (SkeletalMesh)
     {
-        USkeletalMesh* Mesh = Profile.CabinSkeletalMesh.LoadSynchronous();
-        if (!Mesh) return nullptr;
         USkeletalMeshComponent* Component = NewObject<USkeletalMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
-        Owner->AddInstanceComponent(Component);
-        Component->SetupAttachment(this);
-        Component->SetSkeletalMesh(Mesh);
-        Component->SetRelativeTransform(Profile.CabinTransform);
-        Component->SetOnlyOwnerSee(true);
-        ConfigurePresentation(*Component);
-        Component->RegisterComponent();
+        Owner->AddInstanceComponent(Component); Component->SetupAttachment(this);
+        Component->SetSkeletalMesh(SkeletalMesh); Component->SetRelativeTransform(Transform);
+        Component->SetOnlyOwnerSee(true); ConfigurePresentation(*Component); Component->RegisterComponent();
         return Component;
     }
     return nullptr;
@@ -112,12 +109,13 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildCabin()
 
 bool UPinkCabVehicleVisualShellComponent::ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile)
 {
-    if (!InProfile.IsValid())
-    {
-        return false;
-    }
+    if (!InProfile.IsValid()) return false;
+    const FPinkCabVehicleVisualProfile Previous = Profile;
     Profile = InProfile;
-    return !IsRegistered() || RebuildPresentation();
+    if (!IsRegistered() || RebuildPresentation()) return true;
+    Profile = Previous;
+    RebuildPresentation();
+    return false;
 }
 
 bool UPinkCabVehicleVisualShellComponent::RebuildPresentation()
@@ -128,5 +126,7 @@ bool UPinkCabVehicleVisualShellComponent::RebuildPresentation()
 
     ExteriorPresentation = BuildExterior();
     CabinPresentation = BuildCabin();
-    return true;
+    const bool bExteriorReady = !Profile.HasExteriorAsset() || ExteriorPresentation != nullptr;
+    const bool bCabinReady = !Profile.HasCabinAsset() || CabinPresentation != nullptr;
+    return bExteriorReady && bCabinReady;
 }

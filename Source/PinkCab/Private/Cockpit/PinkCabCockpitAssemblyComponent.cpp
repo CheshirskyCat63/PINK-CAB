@@ -32,6 +32,30 @@ void UPinkCabCockpitAssemblyComponent::BeginPlay()
     Super::BeginPlay();
     IndexConfiguredSlots();
     BuildPrimitiveShell();
+    CaptureVisualBaseline();
+}
+
+
+void UPinkCabCockpitAssemblyComponent::CaptureVisualBaseline()
+{
+    if (bVisualBaselineCaptured) return;
+    BaselineTransforms.Reset();
+    BaselineMeshes.Reset();
+    BaselineMaterials.Reset();
+    BaselineHiddenInGame.Reset();
+    for (const TPair<uint8, TObjectPtr<USceneComponent>>& Pair : SlotComponents)
+    {
+        USceneComponent* Component = Pair.Value.Get();
+        if (!Component) continue;
+        BaselineTransforms.Add(Pair.Key, Component->GetRelativeTransform());
+        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
+        {
+            BaselineMeshes.Add(Pair.Key, StaticMesh->GetStaticMesh());
+            BaselineMaterials.Add(Pair.Key, StaticMesh->GetMaterial(0));
+            BaselineHiddenInGame.Add(Pair.Key, StaticMesh->bHiddenInGame);
+        }
+    }
+    bVisualBaselineCaptured = true;
 }
 
 void UPinkCabCockpitAssemblyComponent::IndexConfiguredSlots()
@@ -95,6 +119,61 @@ void UPinkCabCockpitAssemblyComponent::RegisterExternalSlot(const EPinkCabCockpi
         ApplyDefaultInteractionMetadata(Definition);
         SlotDefinitions.Add(Key, Definition);
     }
+}
+
+
+void UPinkCabCockpitAssemblyComponent::ResetVisualBindings()
+{
+    if (!bVisualBaselineCaptured) CaptureVisualBaseline();
+    for (const TPair<uint8, FTransform>& Pair : BaselineTransforms)
+    {
+        if (TObjectPtr<USceneComponent>* Found = SlotComponents.Find(Pair.Key))
+        {
+            if (USceneComponent* Component = Found->Get()) Component->SetRelativeTransform(Pair.Value);
+        }
+    }
+    for (const TPair<uint8, TObjectPtr<UStaticMesh>>& Pair : BaselineMeshes)
+    {
+        if (TObjectPtr<USceneComponent>* Found = SlotComponents.Find(Pair.Key))
+        {
+            if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Found->Get()))
+            {
+                StaticMesh->SetStaticMesh(Pair.Value.Get());
+                if (TObjectPtr<UMaterialInterface>* Material = BaselineMaterials.Find(Pair.Key))
+                    StaticMesh->SetMaterial(0, Material->Get());
+                StaticMesh->SetHiddenInGame(BaselineHiddenInGame.FindRef(Pair.Key));
+            }
+        }
+    }
+}
+
+bool UPinkCabCockpitAssemblyComponent::ApplyVisualBindings(
+    TConstArrayView<FPinkCabCockpitVisualBinding> Bindings)
+{
+    if (!FPinkCabCockpitVisualBinding::ValidateUnique(Bindings)) return false;
+    if (!bVisualBaselineCaptured) CaptureVisualBaseline();
+    for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
+    {
+        USceneComponent* Component = GetSlotComponent(Binding.Slot);
+        if (!Component) return false;
+        if ((!Binding.MeshOverride.IsNull() || !Binding.MaterialOverride.IsNull())
+            && !Cast<UStaticMeshComponent>(Component)) return false;
+        if (!Binding.MeshOverride.IsNull() && !Binding.MeshOverride.LoadSynchronous()) return false;
+        if (!Binding.MaterialOverride.IsNull() && !Binding.MaterialOverride.LoadSynchronous()) return false;
+    }
+    ResetVisualBindings();
+    for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
+    {
+        USceneComponent* Component = GetSlotComponent(Binding.Slot);
+        Component->SetRelativeTransform(Binding.LocalTransform);
+        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
+        {
+            if (!Binding.MeshOverride.IsNull()) StaticMesh->SetStaticMesh(Binding.MeshOverride.Get());
+            if (!Binding.MaterialOverride.IsNull()) StaticMesh->SetMaterial(0, Binding.MaterialOverride.Get());
+            StaticMesh->SetHiddenInGame(!Binding.bShowAnchorMesh);
+        }
+    }
+    return true;
 }
 
 FName UPinkCabCockpitAssemblyComponent::ResolveGazeTarget(

@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
+#include "Cockpit/PinkCabCockpitVisualBinding.h"
 #include "PinkCabVehicleVisualProfile.generated.h"
 
 class UStaticMesh;
@@ -18,9 +19,17 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
         return Result;
     }
 
-    bool IsValid() const { return !ProfileId.IsNone(); }
+    bool IsValid() const
+    {
+        return !ProfileId.IsNone() && FPinkCabCockpitVisualBinding::ValidateUnique(CockpitBindings);
+    }
+
     bool HasExteriorAsset() const { return !ExteriorStaticMesh.IsNull() || !ExteriorSkeletalMesh.IsNull(); }
-    bool HasCabinAsset() const { return !CabinStaticMesh.IsNull() || !CabinSkeletalMesh.IsNull(); }
+    bool HasCabinAsset() const
+    {
+        return !CabinStaticMesh.IsNull() || !CabinSkeletalMesh.IsNull()
+            || (bUseExteriorAsCabinWhenCabinMissing && HasExteriorAsset());
+    }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FName ProfileId = NAME_None;
@@ -38,10 +47,16 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
     TSoftObjectPtr<USkeletalMesh> CabinSkeletalMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    bool bUseExteriorAsCabinWhenCabinMissing = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform ExteriorTransform = FTransform::Identity;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform CabinTransform = FTransform::Identity;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TArray<FPinkCabCockpitVisualBinding> CockpitBindings;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform CockpitRootTransform = FTransform::Identity;

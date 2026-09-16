@@ -20,6 +20,8 @@ public:
     FName GetProfileId() const { return Profile.ProfileId; }
     bool HasExteriorAsset() const { return Profile.HasExteriorAsset(); }
     bool HasCabinAsset() const { return Profile.HasCabinAsset(); }
+    UPrimitiveComponent* GetExteriorPresentation() const { return ExteriorPresentation.Get(); }
+    UPrimitiveComponent* GetCabinPresentation() const { return CabinPresentation.Get(); }
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
     bool RebuildPresentation();
 

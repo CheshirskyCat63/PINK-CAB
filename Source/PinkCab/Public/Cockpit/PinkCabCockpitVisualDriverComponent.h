@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -21,6 +21,7 @@ public:
 
     void Apply(UPinkCabCockpitAssemblyComponent& Assembly,
         const FPinkCabCockpitPresentationState& State);
+    void InvalidateBaseTransforms() { BaseTransforms.Reset(); }
 
 private:
     TMap<uint8, FTransform> BaseTransforms;
