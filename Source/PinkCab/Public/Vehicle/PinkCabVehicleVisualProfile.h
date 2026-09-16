@@ -8,6 +8,33 @@ class UStaticMesh;
 class USkeletalMesh;
 
 USTRUCT(BlueprintType)
+struct PINKCAB_API FPinkCabVehiclePresentationPart
+{
+    GENERATED_BODY()
+
+    bool IsValid() const
+    {
+        return !PartId.IsNone() && !Mesh.IsNull() && !LocalTransform.ContainsNaN()
+            && !(bOwnerNoSee && bOnlyOwnerSee);
+    }
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FName PartId = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TSoftObjectPtr<UStaticMesh> Mesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FTransform LocalTransform = FTransform::Identity;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    bool bOwnerNoSee = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    bool bOnlyOwnerSee = false;
+};
+
+USTRUCT(BlueprintType)
 struct PINKCAB_API FPinkCabVehicleVisualProfile
 {
     GENERATED_BODY()
@@ -19,9 +46,18 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
         return Result;
     }
 
+    static FPinkCabVehicleVisualProfile Tatra613Donor();
+
     bool IsValid() const
     {
-        return !ProfileId.IsNone() && FPinkCabCockpitVisualBinding::ValidateUnique(CockpitBindings);
+        if (ProfileId.IsNone() || !FPinkCabCockpitVisualBinding::ValidateUnique(CockpitBindings)) return false;
+        TSet<FName> Seen;
+        for (const FPinkCabVehiclePresentationPart& Part : PresentationParts)
+        {
+            if (!Part.IsValid() || Seen.Contains(Part.PartId)) return false;
+            Seen.Add(Part.PartId);
+        }
+        return true;
     }
 
     bool HasExteriorAsset() const { return !ExteriorStaticMesh.IsNull() || !ExteriorSkeletalMesh.IsNull(); }
@@ -54,6 +90,9 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform CabinTransform = FTransform::Identity;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TArray<FPinkCabVehiclePresentationPart> PresentationParts;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     TArray<FPinkCabCockpitVisualBinding> CockpitBindings;
