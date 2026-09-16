@@ -595,6 +595,7 @@ confluence_authorities:
   level1_to_level2_roadmap: 8716289
   qa_evidence: 6750209
   daily_insurance_post_first_euro: 10321936
+  mechanics_freeze_world_inventory: 15138825
 
 jira_authorities:
   root: CD-519
@@ -642,6 +643,7 @@ implementation_mirrors:
   level1_to_level2_roadmap: docs/PINK_CAB_L1_TO_L2_ROADMAP.md
   open_decisions: docs/OPEN_DECISIONS.md
   verification_matrix: docs/VERIFICATION_MATRIX.md
+  mechanics_freeze_world_inventory: docs/PINK_CAB_MECHANICS_FREEZE_WORLD_CONTENT_INVENTORY.md
 
 qa_mirrors:
   vehicle_stack: docs/qa/PINK_CAB_NATIVE_UNREAL_CHAOS_ARCADE_SIM_PLAN.md
