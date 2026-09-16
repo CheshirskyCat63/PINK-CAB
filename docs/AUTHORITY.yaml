@@ -601,6 +601,10 @@ confluence_authorities:
 
 jira_authorities:
   root: CD-519
+  reconciliation_master: CD-841
+  reconciliation_units: CD-842_CD-843_CD-844_CD-845_CD-846_CD-847
+  mechanics_freeze_master: CD-848
+  mechanics_freeze_units: CD-849_CD-850_CD-851_CD-852_CD-853_CD-854
   open_decisions: CD-588
   readiness: CD-660_CD-661
   master_question_register: CD-673
