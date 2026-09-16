@@ -17,6 +17,9 @@
 #include "Misc/CoreDelegates.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "Persistence/PinkCabVehicleSnapshot.h"
+#include "Vehicle/PinkCabChaosLoadBridge.h"
+#include "Vehicle/PinkCabVehicleVisualShellComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
@@ -44,6 +47,9 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
     VehicleMesh->SetSimulatePhysics(true);
     VehicleMesh->SetOwnerNoSee(true);
+
+    VehicleVisualShell = CreateDefaultSubobject<UPinkCabVehicleVisualShellComponent>(TEXT("VehicleVisualShell"));
+    VehicleVisualShell->SetupAttachment(VehicleMesh);
 
     CockpitAssembly = CreateDefaultSubobject<UPinkCabCockpitAssemblyComponent>(TEXT("CockpitAssembly"));
     CockpitAssembly->SetupAttachment(VehicleMesh);
@@ -95,6 +101,10 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
         FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
     Profile.ApplyToMovement(*Movement);
 
+    VehicleLoadState.SetFuelMassKg(TatraProfile.FullFuelMassKg);
+    VehicleLoadState.SetCrew(TatraProfile.HeroineMassKg, TatraProfile.DaughterMassKg);
+    SyncLoadToChaos();
+
     Movement->WheelSetups.SetNum(4);
     Movement->WheelSetups[0].WheelClass = UPinkCabChaosWheelFront::StaticClass();
     Movement->WheelSetups[0].BoneName = PrototypeVisualProfile.WheelBones[0];
@@ -112,6 +122,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
+    SyncLoadToChaos();
     SyncCockpitToChaos();
     ApplicationWillDeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
         this, &APinkCabChaosTatraPawn::HandleApplicationWillDeactivate);
@@ -161,8 +172,136 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
 {
     if (UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
     {
+        ApplyHealthToControls();
         FPinkCabChaosCockpitBridge::Apply(CockpitState, *Movement, ControlState, DynamicsProvider);
+        if (!VehicleHealthService.HasCapability(VehicleHealthState, EPinkCabVehicleCapability::RunEngine))
+        {
+            Movement->EnableMechanicalSim(false);
+        }
     }
+}
+
+FName APinkCabChaosTatraPawn::GetVehicleVisualProfileId() const
+{
+    return VehicleVisualShell ? VehicleVisualShell->GetProfileId() : NAME_None;
+}
+
+bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile)
+{
+    if (!VehicleVisualShell || !Profile.IsValid() || !VehicleVisualShell->ApplyProfile(Profile))
+    {
+        return false;
+    }
+    CockpitAssembly->SetRelativeTransform(Profile.CockpitRootTransform);
+    DriverHeadRoot->SetRelativeTransform(Profile.DriverHeadTransform);
+    if (USkeletalMeshComponent* VehicleMesh = GetMesh())
+    {
+        VehicleMesh->SetVisibility(!(Profile.HasExteriorAsset() && Profile.bHidePhysicsChassisWhenExteriorPresent), true);
+    }
+    return true;
+}
+
+bool APinkCabChaosTatraPawn::SyncLoadToChaos()
+{
+    UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
+    return Movement && FPinkCabChaosLoadBridge::Apply(VehicleLoadState, TatraProfile, *Movement);
+}
+
+void APinkCabChaosTatraPawn::ApplyHealthToControls()
+{
+    VehicleHealthService.ApplyCapabilitiesToControls(VehicleHealthState, ControlState);
+}
+
+bool APinkCabChaosTatraPawn::SetFuelMassKg(const float MassKg, const float LongitudinalCm)
+{
+    if (!FMath::IsFinite(MassKg) || !FMath::IsFinite(LongitudinalCm) || MassKg < 0.0f)
+    {
+        return false;
+    }
+    const FPinkCabVehicleLoadState Before = VehicleLoadState;
+    VehicleLoadState.SetFuelMassKg(MassKg, LongitudinalCm);
+    if (SyncLoadToChaos()) return true;
+    VehicleLoadState = Before;
+    SyncLoadToChaos();
+    return false;
+}
+
+bool APinkCabChaosTatraPawn::TrySetFarePassengerGroup(
+    const FPinkCabStableId& GroupId,
+    TConstArrayView<FPinkCabVehicleLoadItem> Items)
+{
+    const FPinkCabVehicleLoadState Before = VehicleLoadState;
+    if (!VehicleLoadState.TrySetFarePassengerGroup(GroupId, Items)) return false;
+    if (SyncLoadToChaos()) return true;
+    VehicleLoadState = Before;
+    SyncLoadToChaos();
+    return false;
+}
+
+bool APinkCabChaosTatraPawn::RemoveFarePassengerGroup(const FPinkCabStableId& GroupId)
+{
+    const FPinkCabVehicleLoadState Before = VehicleLoadState;
+    if (!VehicleLoadState.RemoveFarePassengerGroup(GroupId)) return false;
+    if (SyncLoadToChaos()) return true;
+    VehicleLoadState = Before;
+    SyncLoadToChaos();
+    return false;
+}
+
+bool APinkCabChaosTatraPawn::SetVehicleDamageProfile(const FPinkCabVehicleDamageProfile& Profile)
+{
+    if (Profile.GetProfileId().IsNone()) return false;
+    VehicleDamageProfile = Profile;
+    return true;
+}
+
+bool APinkCabChaosTatraPawn::ApplyAuthoredVehicleHit(FName ZoneId, float CollisionSeverity)
+{
+    FPinkCabVehicleHitEvent Event;
+    if (!VehicleDamageProfile.ResolveFunctionalHit(ZoneId, CollisionSeverity, Event)) return false;
+    return ApplyVehicleHit(Event);
+}
+
+bool APinkCabChaosTatraPawn::ApplyVehicleHit(const FPinkCabVehicleHitEvent& Event)
+{
+    if (!VehicleHealthService.ApplyHit(VehicleHealthState, Event)) return false;
+    ApplyHealthToControls();
+    DynamicsProvider.ApplyControls(ControlState);
+    if (!VehicleHealthService.HasCapability(VehicleHealthState, EPinkCabVehicleCapability::RunEngine))
+    {
+        if (UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
+        {
+            Movement->EnableMechanicalSim(false);
+        }
+    }
+    return true;
+}
+
+bool APinkCabChaosTatraPawn::CaptureVehicleSnapshot(FPinkCabVehicleSnapshot& OutSnapshot) const
+{
+    return FPinkCabVehicleSnapshotCodec::Capture(VehicleHealthState, VehicleLoadState, OutSnapshot);
+}
+
+bool APinkCabChaosTatraPawn::RestoreVehicleSnapshot(const FPinkCabVehicleSnapshot& Snapshot)
+{
+    FPinkCabVehicleHealthState RestoredHealth;
+    FPinkCabVehicleLoadState RestoredLoad;
+    if (!FPinkCabVehicleSnapshotCodec::Restore(Snapshot, RestoredHealth, RestoredLoad)) return false;
+
+    const FPinkCabVehicleHealthState BeforeHealth = VehicleHealthState;
+    const FPinkCabVehicleLoadState BeforeLoad = VehicleLoadState;
+    VehicleHealthState = RestoredHealth;
+    VehicleLoadState = RestoredLoad;
+    if (!SyncLoadToChaos())
+    {
+        VehicleHealthState = BeforeHealth;
+        VehicleLoadState = BeforeLoad;
+        SyncLoadToChaos();
+        return false;
+    }
+    ApplyHealthToControls();
+    SyncCockpitToChaos();
+    return true;
 }
 
 float APinkCabChaosTatraPawn::IntegrateMouseSteering(
@@ -192,6 +331,7 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     ControlState = InputFrame.ToControlState(
         SteeringCommand,
         CockpitState.GetHandbrakeAmount());
+    ApplyHealthToControls();
     DynamicsProvider.ApplyControls(ControlState);
 }
 

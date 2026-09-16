@@ -4,6 +4,9 @@
 #include "Cockpit/PinkCabPrototypeVisualProfile.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabVehicleDamageProfile.h"
+#include "Vehicle/PinkCabVehicleHealthService.h"
+#include "Vehicle/PinkCabVehicleLoadState.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -16,8 +19,11 @@ class USpringArmComponent;
 class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
+class UPinkCabVehicleVisualShellComponent;
 struct FPinkCabInteractionEvent;
 struct FPinkCabVehicleInputFrame;
+struct FPinkCabVehicleSnapshot;
+struct FPinkCabVehicleVisualProfile;
 class FPinkCabTaximeter;
 
 UCLASS()
@@ -42,6 +48,24 @@ public:
     FName GetPrototypeVisualProfileId() const { return PrototypeVisualProfile.ProfileId; }
     USkeletalMeshComponent* GetPrototypeDriverVisual() const { return PrototypeDriverVisual; }
     UCameraComponent* GetDriverCamera() const { return DriverCamera; }
+    UPinkCabVehicleVisualShellComponent* GetVehicleVisualShell() const { return VehicleVisualShell; }
+    FName GetVehicleVisualProfileId() const;
+    bool ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile);
+    const FPinkCabVehicleLoadState& GetVehicleLoadState() const { return VehicleLoadState; }
+    const FPinkCabVehicleHealthState& GetVehicleHealthState() const { return VehicleHealthState; }
+
+    bool SetFuelMassKg(float MassKg, float LongitudinalCm = 0.0f);
+    bool TrySetFarePassengerGroup(
+        const FPinkCabStableId& GroupId,
+        TConstArrayView<FPinkCabVehicleLoadItem> Items);
+    bool RemoveFarePassengerGroup(const FPinkCabStableId& GroupId);
+    bool SetVehicleDamageProfile(const FPinkCabVehicleDamageProfile& Profile);
+    FName GetVehicleDamageProfileId() const { return VehicleDamageProfile.GetProfileId(); }
+    bool ApplyAuthoredVehicleHit(FName ZoneId, float CollisionSeverity);
+    bool ApplyVehicleHit(const FPinkCabVehicleHitEvent& Event);
+    bool IsVehicleTerminal() const { return VehicleHealthService.IsTerminal(VehicleHealthState); }
+    bool CaptureVehicleSnapshot(FPinkCabVehicleSnapshot& OutSnapshot) const;
+    bool RestoreVehicleSnapshot(const FPinkCabVehicleSnapshot& Snapshot);
 
     static float IntegrateMouseSteering(
         float CurrentSteering,
@@ -60,6 +84,9 @@ public:
     void SetCockpitMirrorsAvailable(bool bAvailable) { bCockpitMirrorsAvailable = bAvailable; }
 
 private:
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Visual")
+    TObjectPtr<UPinkCabVehicleVisualShellComponent> VehicleVisualShell;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UPinkCabCockpitAssemblyComponent> CockpitAssembly;
 
@@ -85,10 +112,17 @@ private:
     TObjectPtr<UCameraComponent> ChaseCamera;
 
     void SyncCockpitToChaos();
+    bool SyncLoadToChaos();
+    void ApplyHealthToControls();
     void HandleApplicationWillDeactivate();
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
+    FPinkCabTatraProfile TatraProfile = FPinkCabTatraProfile::Canonical();
+    FPinkCabVehicleLoadState VehicleLoadState;
+    FPinkCabVehicleDamageProfile VehicleDamageProfile{TEXT("PinkCab.Damage.Fallback")};
+    FPinkCabVehicleHealthState VehicleHealthState;
+    FPinkCabVehicleHealthService VehicleHealthService;
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
     FPinkCabVehicleControlState ControlState;
     FPinkCabCockpitState CockpitState;

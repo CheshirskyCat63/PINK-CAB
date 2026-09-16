@@ -31,7 +31,7 @@ struct FPinkCabVehicleLoadSnapshot
 
 struct FPinkCabVehicleSnapshot
 {
-    static constexpr int32 CurrentSchemaVersion = 1;
+    static constexpr int32 CurrentSchemaVersion = 2;
     int32 SchemaVersion = CurrentSchemaVersion;
     FPinkCabVehicleHealthSnapshot Health;
     FPinkCabVehicleLoadSnapshot Load;
