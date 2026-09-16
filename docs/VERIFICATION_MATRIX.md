@@ -69,14 +69,14 @@ Locked physical identity: 1450 kg base; 1550 kg full fuel; heroine 58 kg; daught
 | `PC-T-DMG-001` | authored/native damage presentation maps severity to bounded persistent damage states | SPECIFIED / remaining destruction depth tracked by native program |
 | `PC-T-DMG-002` | only authored hit-zone mappings create Vehicle Health consequences | LOCKED / NOT IMPLEMENTED |
 | `PC-T-DMG-003` | air-cooled oil/head/fan/oil-cooler/airflow thermal model; no generic coolant/radiator system | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-001` | hold Space transfers mouse steering→gaze/target-search→steering cleanly | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-002` | gaze/target selection and quick recall never actuate the target | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-003` | RMB brings/retains the right hand only on a valid grip-capable current target | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-004` | LMB tap/hold produces momentary press semantics only on controls that declare it; horn proves short/long hold distinction | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-005` | mouse wheel produces signed detent/rotary/incremental input only on controls that declare wheel adjustment | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-006` | 1 signals / 2 horn / 3 gearbox / 4 handbrake quick-recall their saved physical target/hand pose without direct action | LOCKED / NOT IMPLEMENTED |
-| `PC-T-INP-007` | one bounded current interaction target; no world scan and hidden continuity never chooses route/lane/gap or brakes/throttles | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-INP-008` | repeated gaze/target/grip/press/wheel/focus-loss/recovery cycles leave no stuck hand or input ownership state | SPECIFIED / NOT IMPLEMENTED |
+| `PC-T-INP-001` | hold Space transfers mouse steering→gaze/target-search→steering cleanly | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-002` | gaze/target selection and quick recall never actuate the target | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-003` | RMB brings/retains the right hand only on a valid grip-capable current target | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-004` | LMB tap/hold produces momentary press semantics only on controls that declare it; horn proves short/long hold distinction | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-005` | mouse wheel produces signed detent/rotary/incremental input only on controls that declare wheel adjustment | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-006` | 1 signals / 2 horn / 3 gearbox / 4 handbrake quick-recall their saved physical target/hand pose without direct action | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-007` | one bounded current interaction target; no world scan and hidden continuity never chooses route/lane/gap or brakes/throttles | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
+| `PC-T-INP-008` | repeated gaze/target/grip/press/wheel/focus-loss/recovery cycles leave no stuck hand or input ownership state | VERIFIED / `CD-825` 12/12 PASS @ `e3241dc` |
 
 ## P2 · Taxi / FareSession / passenger exchange — `CD-749`
 

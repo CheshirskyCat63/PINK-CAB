@@ -248,6 +248,8 @@ current_canon:
     rebinding_restore_defaults: required
     physical_control_model_changes_from_rebinding: forbidden
     old_attention_go_grammar: SUPERSEDED_BY_CONTEXTUAL_PHYSICAL_CONTROL_MODEL_2026_09_11
+    runtime_verification: CD_825_12_of_12_PASS_e3241dc
+    player_facing_free_reset: forbidden
 
   post_first_euro_visual_backlog:
     prism_smart_glasses: taxi_uniform_glasses_with_outward_prism
