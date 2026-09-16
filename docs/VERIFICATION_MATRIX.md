@@ -21,7 +21,7 @@ Every executable result records where relevant:
 - requirement/test ID;
 - exact build/commit;
 - UE version;
-- exact FGear and VDS versions where vehicle code participates;
+- exact native Chaos provider/profile/build identity where vehicle code participates;
 - content/config/schema/generator/vehicle-profile versions;
 - CityCode and deterministic seeds;
 - route/chunk/module/ServiceNode/workday/session IDs;
@@ -41,32 +41,32 @@ Build PASS is never gameplay VERIFIED.
 
 | Test ID | Required proof | State |
 |---|---|---|
-| `PC-T-P0-001` | clean checkout builds/packages with the exact locked UE + required plugin versions | BLOCKED exact stack/toolchain `CD-557/CD-596/CD-731` |
-| `PC-T-P0-002` | executable reports build/commit/content/schema/FGear/VDS/profile identity | SPECIFIED / NOT IMPLEMENTED |
+| `PC-T-P0-001` | clean checkout builds/packages with the exact locked UE and declared dependency set | VERIFIED / canonical `e3241dc`, UE 5.8.2, package success |
+| `PC-T-P0-002` | executable reports build/commit/content/schema/Chaos-provider/profile identity | SPECIFIED / NOT IMPLEMENTED |
 | `PC-T-P0-003` | deterministic CityCode/Traffic/Passenger fixtures reproduce | SPECIFIED / NOT IMPLEMENTED |
 | `PC-T-P0-004` | logs/crashes identify exact build and version context | SPECIFIED / NOT IMPLEMENTED |
 | `PC-T-P0-005` | older/incompatible/newer persistent schema migrates or fails explicitly | SPECIFIED / NOT IMPLEMENTED |
 | `PC-T-P0-006` | vendor plugins are isolated behind declared PINK CAB adapters | LOCKED ARCHITECTURE / NOT IMPLEMENTED |
 | `PC-T-P0-007` | hot-path audit finds no unbounded Tick/world scan/sync load or uncontrolled collection growth | SPECIFIED / NOT IMPLEMENTED |
 
-## P1 · Hero Tatra / FGear / VDS / input — `CD-748`
+## P1 · Hero Tatra / native Chaos / input — `CD-748`
 
 Locked physical identity: 1450 kg base; 1550 kg full fuel; heroine 58 kg; daughter 49 kg; reference 1657 kg; declared max 2107 kg; no ABS/ESP; 180 hp / 240 Nm / 195 km/h target.
 
 | Test ID | Required proof | State |
 |---|---|---|
-| `PC-T-STACK-001` | FGear is sole hero-Tatra road-dynamics solver | LOCKED / NOT IMPLEMENTED `CD-730/CD-738` |
-| `PC-T-STACK-002` | Debugging Delight VDS is sole permanent body-deformation owner | LOCKED / NOT IMPLEMENTED `CD-730/CD-736/CD-738` |
+| `PC-T-STACK-001` | native Unreal Chaos is sole production hero-Tatra road-dynamics solver | VERIFIED / `CD-792`, canonical runtime evidence |
+| `PC-T-STACK-002` | production path has no required FGear/VDS dependency; damage/destruction uses bounded native authored/Chaos architecture | LOCKED / implementation depth tracked separately |
 | `PC-T-VEH-001` | Tatra remains controllable/readable across declared speed/load envelope | SPECIFIED / NOT IMPLEMENTED |
-| `PC-T-VEH-002` | versioned FGear profile reproduces owner handling targets and normalized telemetry | CALIBRATION / NOT IMPLEMENTED `CD-732/CD-738` |
+| `PC-T-VEH-002` | versioned Chaos physical profile and provider expose reproducible handling targets and normalized telemetry | IMPLEMENTED / calibration remains iterative |
 | `PC-T-WET-001` | wet >~160 rapid lane change + excess throttle can progressively saturate rear; easing throttle restores reserve without ESP/autocountersteer | LOCKED DIRECTION / NOT IMPLEMENTED |
 | `PC-T-MASS-001` | total mass = base + current fuel + crew + exact boarded passenger masses | LOCKED / NOT IMPLEMENTED |
 | `PC-T-MASS-002` | passenger/fuel mass persists and applies exactly once | LOCKED / NOT IMPLEMENTED |
 | `PC-T-MASS-003` | 1657 kg and 2107 kg fixtures reconstruct exactly | LOCKED / NOT IMPLEMENTED |
 | `PC-T-ELEC-001` | no ABS system or authoritative intervention | LOCKED / NOT IMPLEMENTED |
 | `PC-T-ELEC-002` | no ESP individual-wheel intervention; deliberate spin remains possible | LOCKED / NOT IMPLEMENTED |
-| `PC-T-EXPR-001` | Tatra Expression may amplify presentation but cannot change FGear force/trajectory | LOCKED DIRECTION / NOT IMPLEMENTED |
-| `PC-T-DMG-001` | VDS produces configured persistent deformation | LOCKED / NOT IMPLEMENTED |
+| `PC-T-EXPR-001` | Tatra Expression/presentation may amplify presentation but cannot change Chaos force/trajectory | LOCKED DIRECTION / runtime boundary implemented |
+| `PC-T-DMG-001` | authored/native damage presentation maps severity to bounded persistent damage states | SPECIFIED / remaining destruction depth tracked by native program |
 | `PC-T-DMG-002` | only authored hit-zone mappings create Vehicle Health consequences | LOCKED / NOT IMPLEMENTED |
 | `PC-T-DMG-003` | air-cooled oil/head/fan/oil-cooler/airflow thermal model; no generic coolant/radiator system | LOCKED / NOT IMPLEMENTED |
 | `PC-T-INP-001` | hold Space transfers mouse steering→gaze/target-search→steering cleanly | LOCKED / NOT IMPLEMENTED |
@@ -223,7 +223,7 @@ These may have specs/legacy QA files, but they are not year-one pass criteria.
 
 ## Current primary FIRST EURO owner locks
 
-- exact runtime/toolchain/plugin/package matrix — `CD-557/CD-559/CD-596/CD-731`;
+- exact runtime/toolchain/dependency/package matrix — `CD-785..CD-792`, `CD-802`, `CD-823..829`;
 - save/autosave/quit/recovery details — `CD-560/CD-598/CD-602/CD-750`;
 - debt/negative balance/anti-softlock — `CD-601`;
 - remaining fare/meter/stop/door/evasion edges — `CD-672/CD-749`;

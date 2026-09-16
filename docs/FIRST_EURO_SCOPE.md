@@ -14,7 +14,7 @@ BASE-100 scores implementation-facing code/logic/numeric/ownership/data/persiste
 ## FIRST EURO implementation — IN
 
 - full playable Level 1 + Level 2;
-- hero bespoke early/Gen-1 Tatra 603-family through FGear Vehicle Physics + Debugging Delight Vehicle Damage System;
+- hero bespoke early/Gen-1 Tatra 603-family through native Unreal Chaos Vehicles + bounded authored/Chaos damage/destruction;
 - PINK CAB input/profile/Vehicle Health/Expression/persistence/telemetry adapters;
 - complete taxi order → pickup → boarding → fare → payment/evasion → drop-off loop;
 - procedural passengers plus persistent repeat clients + basic Neural history/contact/messages;
@@ -50,7 +50,7 @@ One authoritative owner per responsibility; no production duplicate solvers. C++
 ## Required technical domain set
 
 - CORE — `CD-747`: runtime/data/input/plugin/performance/evidence;
-- VEHICLE — `CD-748`: FGear/VDS/Vehicle Health/wallride/L2 vehicle integration;
+- VEHICLE — `CD-748`: native Chaos/Vehicle Health/wallride/L2 vehicle integration and bounded PS2-style destruction;
 - TAXI — `CD-749`: FareSession/passengers/repeat clients/Neural;
 - STATE — `CD-750`: EconomyService/workday/save/transactions;
 - WORLD — `CD-751`: CityCode/streaming/road graph/traffic/rules/EnforcementEvent;

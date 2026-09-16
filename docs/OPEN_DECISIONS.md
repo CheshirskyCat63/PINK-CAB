@@ -7,7 +7,7 @@ BASE-100 code program: `CD-746`
 FIRST EURO scope: `CD-753`
 Code architecture: `docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md` / Confluence `11239425`
 Technical owner pack: `docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md`
-Vehicle technology: `10977288` / `CD-730`
+Vehicle technology: `13303842` / `CD-785..CD-792`
 Daily insurance: `10321936` / `CD-741..745` — POST-FIRST-EURO
 
 ## State rule
@@ -56,15 +56,15 @@ Exact UE version/module split/feature flags and any explicit exceptions remain i
 
 ### `OD-TATRA-STACK-001` — LOCKED SPEC
 
-FGear Vehicle Physics = sole hero-Tatra road-dynamics owner. Debugging Delight Vehicle Damage System = sole permanent runtime deformation owner. PINK CAB code owns adapters/profile/Expression/Vehicle Health/persistence/normalized telemetry only.
+Native Unreal Chaos = sole production hero-Tatra road-dynamics owner. Damage/destruction uses bounded authored states, detachable parts, pooled debris and selective Chaos events. PINK CAB owns adapters/profile/Expression/Vehicle Health/persistence/normalized telemetry.
 
-No parallel Chaos/custom hero-Tatra physics or second deformation solver without reopening `CD-730`.
+No parallel competing hero-Tatra solver or hidden second destruction authority without an explicit migration decision.
 
 ### `OD-TATRA-MASS-001` — LOCKED SPEC
 
 Base **1450 kg**; full-fuel vehicle **1550 kg**; full tank **100 kg**; heroine **58 kg**; daughter **49 kg**; passenger masses actual; full-fuel crew reference **1657 kg**; declared max fixture **2107 kg**.
 
-### `OD-TATRA-E34-FEEL-001` — LOCKED DIRECTION / FGear CALIBRATION
+### `OD-TATRA-E34-FEEL-001` — LOCKED DIRECTION / NATIVE CHAOS CALIBRATION
 
 E34 530i V8 5MT is behavioral-control reference only. PINK CAB retains rear-engine air-cooled V8, no ABS/ESP, 180 hp / 240 Nm and 195 km/h targets. Wet rapid lane change above ~160 km/h with maintained/excess throttle can progressively saturate rear grip; throttle reduction normally restores lateral reserve for steering recovery. No scripted drift threshold or automatic rescue.
 
@@ -78,7 +78,7 @@ The Tatra 50-question pack is retired. Low-level plugin constants are CALIBRATIO
 
 ### `OD-DAMAGE-001` — RESOLVED / LOCKED SPEC
 
-`CD-600` DONE. FIRST EURO includes permanent VDS deformation, glass, lamps, door jam/latch, tire/wheel path, authored alignment/suspension consequences, brake heat/fade/hydraulic health, air-cooled V8 oil/head/fan/oil-cooler/airflow thermal health, repair and persistence.
+`CD-600` DONE. FIRST EURO includes persistent authored damage-state consequences, glass, lamps, door jam/latch, tire/wheel path, authored alignment/suspension consequences, brake heat/fade/hydraulic health, air-cooled V8 oil/head/fan/oil-cooler/airflow thermal health, repair and persistence.
 
 No generic coolant/radiator system. No universal vehicle HP model as primary functional damage owner. Terminal failure is capability-based.
 
@@ -164,7 +164,7 @@ Batch acceptance/rejection of the remaining `PROPOSED DEFAULT` rows will close m
 
 ## POST-FIRST-EURO visual backlog · prism taxi glasses
 
-Taxi-uniform smart glasses use an outward prism and later add a lore-driven augmented-reality layer: fake holograms, maps and broken/angled 3D diegetic overlays integrated into the world. This is explicitly **POST-FIRST-EURO** and **not a pre-FGear blocker**. FIRST EURO preserves only a presentation extension boundary; it does not build the AR framework.
+Taxi-uniform smart glasses use an outward prism and later add a lore-driven augmented-reality layer: fake holograms, maps and broken/angled 3D diegetic overlays integrated into the world. This is explicitly **POST-FIRST-EURO** and **not a vehicle-stack blocker**. FIRST EURO preserves only a presentation extension boundary; it does not build the AR framework.
 
 ## Proof rule
 

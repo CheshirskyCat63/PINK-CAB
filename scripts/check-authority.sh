@@ -100,8 +100,9 @@ require_text "$registry" "hand_selection: interaction_truth_hand_agnostic_left_o
 require_text "$registry" "rebinding_first_euro: true"
 
 # Vehicle and residual owner decisions that must not be falsely closed.
-require_text "$registry" "road_dynamics_solver: FGear_Vehicle_Physics"
-require_text "$registry" "permanent_body_deformation: Debugging_Delight_Vehicle_Damage_System"
+require_text "$registry" "road_dynamics_solver: Native_Unreal_Chaos_Vehicles"
+require_text "$registry" "required_third_party_vehicle_plugins: none"
+require_text "$registry" "fgear_vds_status: archived_research_fallback_only"
 require_text "$registry" "first_euro: false"
 require_text "$registry" "prism_smart_glasses: taxi_uniform_glasses_with_outward_prism"
 require_text "$registry" "pre_fgear_blocker: false"
@@ -222,6 +223,7 @@ for file in \
   docs/PROJECT_SETUP.md \
   docs/VERIFICATION_MATRIX.md \
   docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md \
+  docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md \
   docs/PINK_CAB_REPOSITORY_CUTOVER.md; do
   require_file "$file"
 done
@@ -250,6 +252,7 @@ active_docs=(
   docs/PROJECT_SETUP.md
   docs/VERIFICATION_MATRIX.md
   docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md
+  docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md
   docs/PINK_CAB_REPOSITORY_CUTOVER.md
 )
 

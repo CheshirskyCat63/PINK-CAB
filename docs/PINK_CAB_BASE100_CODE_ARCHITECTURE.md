@@ -23,7 +23,7 @@ Every runtime domain is documented as:
 
 - PC single-player only;
 - complete Level 1 + Level 2 gameplay/runtime;
-- hero Tatra using FGear Vehicle Physics + Debugging Delight Vehicle Damage System;
+- hero Tatra using native Unreal Chaos Vehicles + bounded authored/Chaos destruction;
 - taxi order/fare/passenger/payment loop;
 - persistent repeat clients + basic Neural history/contact/messages/repeat orders;
 - CityCode generation, persistence, streaming, road graph, traffic, incidents, rules/fines;
@@ -107,7 +107,7 @@ Locked CORE decisions: `Core FeatureConfig` owns `L2 / Damage / Neural / MovingF
 
 ### VEHICLE — `CD-748`
 
-FGear/VDS/Vehicle Health/mass/CG/surfaces/Tatra Expression/wallride/magnet/Level2 vehicle integration. Existing vehicle authority remains `CD-729/CD-730/CD-731..740` plus vertical owners.
+native Chaos/Vehicle Health/mass/CG/surfaces/Tatra Expression/wallride/magnet/Level2 vehicle integration. Current vehicle authority is `CD-785..CD-792`; `CD-729` is retained only for handling targets/reference direction, plus vertical owners.
 
 ### TAXI — `CD-749`
 
@@ -133,15 +133,15 @@ FIRST EURO vs post-year delivery boundary consumed by all readiness calculations
 
 ## 7. Vehicle stack boundary
 
-`PLAYER INPUT -> PINK CAB INPUT ADAPTER -> FGEAR -> AUTHORITATIVE VEHICLE STATE`
+`PLAYER INPUT -> PINK CAB INPUT ADAPTER -> CHAOS-BACKED VEHICLE PROVIDER -> AUTHORITATIVE VEHICLE STATE`
 
-`COLLISION -> VDS DEFORMATION + HIT ZONE -> OPTIONAL VEHICLE HEALTH CONSEQUENCE -> FGEAR PARAMETER/STATE ADAPTER`
+`COLLISION -> NATIVE DAMAGE/DESTRUCTION EVENT + HIT ZONE -> OPTIONAL VEHICLE HEALTH CONSEQUENCE -> CHAOS PROFILE/STATE ADAPTER`
 
 `AUTHORITATIVE VEHICLE STATE -> TATRA EXPRESSION/PRESENTATION`
 
-FGear is sole hero-Tatra road-dynamics owner. VDS is sole permanent mesh-deformation owner. Expression/presentation cannot write steering, throttle, brake or tire force.
+Native Unreal Chaos is sole production hero-Tatra road-dynamics owner. Damage/destruction is owned by bounded authored states, detachable parts, pooled debris and selective Chaos events. Expression/presentation cannot write steering, throttle, brake or tire force.
 
-Mass/fuel/passengers affect authoritative mass and CG. Dry/wet/storm are surface/environment profile changes, not duplicate vehicle definitions. Wallride/magnet is a bounded external force/contact/state layer over FGear, never a second vehicle solver.
+Mass/fuel/passengers affect authoritative mass and CG. Dry/wet/storm are surface/environment profile changes, not duplicate vehicle definitions. Wallride/magnet is a bounded external force/contact/state layer over Chaos, never a second vehicle solver.
 
 ## 8. Taxi / Passenger / Neural boundary
 
@@ -169,7 +169,7 @@ Prefer UE World Partition/PCG/engine systems plus a thin deterministic PINK CAB 
 
 One machine-readable road/lane graph is consumed by generation, routing, traffic and rule lookup.
 
-Ordinary traffic is bounded logical/kinematic simulation with physical materialization only where gameplay/collision relevance requires it. Do not run hero-level FGear simulation for all distant traffic vehicles by default.
+Ordinary traffic is bounded logical/kinematic simulation with physical materialization only where gameplay/collision relevance requires it. Do not run hero-level Chaos simulation for all distant traffic vehicles by default.
 
 ## 11. Enforcement boundary
 

@@ -74,7 +74,7 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 ## C · Input / physical interaction
 
 - `C01 LOCKED` — one C++ Enhanced Input router/adapter receives physical KBM input and distributes semantic commands/states; feature systems do not read raw keys independently.
-- `C02 LOCKED` — FGear does not consume raw Enhanced Input directly; PINK CAB vehicle adapter sits between.
+- `C02 LOCKED` — Chaos does not consume raw Enhanced Input directly; the PINK CAB semantic input / vehicle provider boundary sits between.
 - `C03 LOCKED` — steering/throttle/brake/clutch/handbrake are continuous normalized states/commands.
 - `C04 LOCKED` — one reusable physical-control interaction contract serves cabin switches/levers/buttons/rotaries; each control declares supported Grip / Press-Hold / Wheel gestures instead of inventing its own interaction system.
 - `C05 LOCKED` — physical controls emit semantic events/commands and never reach directly into unrelated Taxi/Economy/Vehicle subsystem internals.
@@ -82,22 +82,22 @@ Owner may answer compactly, e.g. `F05 B; H04 no; all other proposed defaults acc
 - `C07 LOCKED` — gaze resolves one bounded current interaction target through trace/query; no world-wide or cabin-wide Actor scan in the hot path.
 - `C08 LOCKED` - FIRST EURO includes semantic KBM rebinding with conflict detection and Restore Defaults; rebinding cannot change the canonical physical-control model.
 
-## D · Vehicle / FGear
+## D · Vehicle / Native Chaos
 
-- `D01 LOCKED` — FGear is sole hero-Tatra road-dynamics solver.
-- `D02 PROPOSED DEFAULT` — ordinary traffic uses cheaper logical/kinematic backend; FGear reserved for player/selected physically relevant vehicles.
+- `D01 LOCKED` — native Unreal Chaos is the sole production hero-Tatra road-dynamics solver.
+- `D02 PROPOSED DEFAULT` — ordinary traffic uses a cheaper logical/kinematic backend; full Chaos is reserved for the player/selected physically relevant vehicles.
 - `D03 PROPOSED DEFAULT` — one versioned Tatra vehicle profile with nested structs/profiles.
 - `D04 PROPOSED DEFAULT` — road surfaces resolve through stable `SurfaceId`/surface profile.
 - `D05 PROPOSED DEFAULT` — dry/wet/storm are surface/environment modifiers, not duplicate vehicle definitions.
 - `D06 LOCKED` — passenger/fuel load contributes actual authoritative total mass.
 - `D07 LOCKED` — load implementation must affect mass and CG, not mass alone.
 - `D08 LOCKED` — Tatra Expression cannot modify authoritative forces/trajectory.
-- `D09 LOCKED` — wallride/magnet is an external force/contact/state layer over FGear, never replacement physics.
-- `D10 PROPOSED DEFAULT` — gameplay consumes normalized vehicle telemetry interface rather than vendor-specific FGear types.
+- `D09 LOCKED` — wallride/magnet is an external force/contact/state layer over Chaos, never replacement physics.
+- `D10 PROPOSED DEFAULT` — gameplay consumes the normalized vehicle telemetry/provider interface rather than engine-internal Chaos types.
 
 ## E · Vehicle Damage / Health
 
-- `E01 LOCKED` — VDS owns deformation; functional damage is authored Vehicle Health mapping.
+- `E01 LOCKED` — native bounded damage/destruction owns visual state changes; functional damage is authored Vehicle Health mapping.
 - `E02 LOCKED` — no universal vehicle HP bar/state as primary damage model.
 - `E03 LOCKED` — component-oriented health: wheels, steering/alignment, suspension, brakes, door, lamps, tire path, air-cooled engine thermal/oil/fan/oil-cooler/airflow and authored extensions.
 - `E04 LOCKED` — functional consequence derives from authored hit zone + collision severity/threshold mapping.
@@ -200,7 +200,7 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 - `K09 LOCKED` — no designed systemic standing-jam state; temporary local zero speed can occur physically.
 - `K10 PROPOSED DEFAULT` — speed enforcement uses authoritative vehicle speed + rule zone/context.
 - `K11 OPEN` — Level1 base road cross-section and implementation geometry profile: express/shoulder/accel-decel/local/parking/micromobility/pedestrian/median/frontage/ramp/bridge/route-warning dimensions.
-- `K12 OPEN` — Level1 gameplay-geometry envelope for wallride/debris/freight-ceiling/receiving strips/poplar side-swap apertures and valid approach/landing/no-spawn clearances. FGear/contact force values remain calibration under M/CD-592.
+- `K12 OPEN` — Level1 gameplay-geometry envelope for wallride/debris/freight-ceiling/receiving strips/poplar side-swap apertures and valid approach/landing/no-spawn clearances. Chaos/contact force values remain calibration under the current native vehicle program.
 - `K13 OPEN` — right-entry pipe/interchange numeric geometry profile: entry/decel/merge throat/tube diameter-radius-banking-pitch-grade/lane-barrier/near-miss/recovery/streaming clearances.
 
 ## L · Enforcement / fine / reputation interface
@@ -215,7 +215,7 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 
 ## M · Level 1 traversal
 
-- `M01 LOCKED` — wallride is state/external constraint over FGear, not alternate vehicle solver.
+- `M01 LOCKED` — wallride is state/external constraint over Chaos, not alternate vehicle solver.
 - `M02 LOCKED` — seven wallride bands are gameplay/data bands; Tatra occupies approximately three.
 - `M03 PROPOSED DEFAULT` — magnet state identity: Detached / Contact / Residual / Expired.
 - `M04 LOCKED` — residual timeout is linear by authoritative mass: 5.0 s @1657 kg -> 4.0 s @2107 kg, lighter legal states cap 5.0 s.
@@ -244,7 +244,7 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 - `O04 PROPOSED DEFAULT` — parts inventory uses stable item IDs and bounded quantities/slots as defined by profile.
 - `O05 PROPOSED DEFAULT` — Garage operates on versioned `VehicleBuild` component/slot data.
 - `O06 LOCKED` — Repair consumes/restores the same component Vehicle Health state owned by damage system.
-- `O07 LOCKED` — installed parts modify FGear only through approved vehicle profile/adapter.
+- `O07 LOCKED` — installed parts modify authoritative Chaos behavior only through the approved vehicle profile/provider boundary.
 - `O08 LOCKED` — ServiceNodes request EconomyService transactions; they never own balance.
 
 ## P · Moving refueling
@@ -269,7 +269,7 @@ Owner streaming-density intent (LOCKED qualitative direction, not a new BASE-100
 
 - `Q01 PROPOSED DEFAULT` — mandatory engine/Fab/plugin/library audit before large custom subsystem.
 - `Q02 PROPOSED DEFAULT` — purchased plugin is always wrapped by adapter/interface.
-- `Q03 LOCKED for FGear/VDS` — vendor APIs do not spread throughout gameplay; same doctrine proposed globally.
+- `Q03 LOCKED` — engine/vendor-specific APIs do not spread throughout gameplay; stable PINK CAB boundaries remain mandatory.
 - `Q04 PROPOSED DEFAULT` — vendor replacement should primarily require adapter/config changes, not whole-game rewrites.
 - `Q05 PROPOSED DEFAULT` — mature 80% solution + thin product-specific extension preferred to custom 100% framework.
 - `Q06 PROPOSED DEFAULT` — no two competing production plugins for one responsibility after selection.

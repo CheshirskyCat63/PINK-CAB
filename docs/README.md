@@ -44,15 +44,15 @@ If all 69 proposed defaults are owner-accepted, score becomes 174/196 = 88.8%; a
 
 FIRST EURO = **first 12 months / PC / single-player / full L1 + L2**.
 
-Included: FGear+VDS hero Tatra, taxi/fare/passenger loop, repeat clients + basic Neural, deterministic CityCode/world/road/traffic/rules, automotive ServiceNodes `Parking/Garage-Tuning/Parts/Repair-Service` plus Practice Hangar where Level1 training/acceptance requires it, moving refueling, economy/session/save/config/build/QA foundations.
+Included: native Chaos hero Tatra + bounded authored/Chaos damage/destruction, taxi/fare/passenger loop, repeat clients + basic Neural, deterministic CityCode/world/road/traffic/rules, automotive ServiceNodes `Parking/Garage-Tuning/Parts/Repair-Service` plus Practice Hangar where Level1 training/acceptance requires it, moving refueling, economy/session/save/config/build/QA foundations.
 
-PRE-PURCHASE PROCUREMENT: zero spend until the verified purchase gate; use only official free demos/example projects/docs and built-in or already-owned free content. Paid plugins enter only when they are the proven next blocker and the owner approves purchase. Before any paid purchase, complete an official demo/example/docs compatibility report. Purchase FGear first; defer VDS until permanent deformation itself is the verified next blocker.
+VEHICLE DEPENDENCY POLICY: production vehicle physics/destruction spend target is EUR 0. FGear/VDS evaluation remains archived research only; no vehicle-plugin purchase is on the production critical path.
 
 POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle ServiceNodes, full Taxi Regulator and daily insurance. Only minimal extension boundaries are preserved in year one.
 
 ## Current implementation-facing system mirrors
 
-- vehicle stack: [`PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md`](PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md);
+- vehicle stack: [`PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`](PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md);
 - Tatra handling: [`PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`](PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md);
 - mass/load: [`PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`](PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md);
 - taxi physicality: [`PINK_CAB_TAXI_WORK_PHYSICALITY.md`](PINK_CAB_TAXI_WORK_PHYSICALITY.md);

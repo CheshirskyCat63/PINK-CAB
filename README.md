@@ -7,14 +7,15 @@
 ## Start here
 
 - Jira Game Studio product lane: `CD-519`
-- PRE-FGEAR development program: `CD-754`
+- Core Code Complete: `CD-793` — DONE
+- Administrative / Design Reconciliation gate: `CD-841`
+- Native Unreal Chaos vehicle program: `CD-785..CD-792`
 - Repository cut-over gate: `CD-558`
 - BASE-100 program: `CD-746`; scope owner: `CD-753`
-- Readiness: Jira `CD-660/CD-661` / Confluence `6553617` / `docs/PINK_CAB_START90_READINESS.md`
 - Confluence authority index: `6586369`
 - Repository authority page: `12451841`
 - Machine-readable authority: `docs/AUTHORITY.yaml`
-- PRE-FGEAR execution index: `docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md`
+- Current vehicle stack: `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`
 
 ## Truth rule
 
@@ -24,22 +25,22 @@ Documentation never implies runtime verification. Exact executable evidence wins
 
 ## FIRST EURO
 
-First 12 months: **PC / single-player / full Level 1 + Level 2**. Multiplayer/coop/common rooms, Level 3 gameplay, lifestyle ServiceNodes, full Taxi Regulator and daily insurance implementation are post-FIRST-EURO.
-
+First 12 months: **PC / single-player / Level 1 + approved Level 2 foundation and gameplay scope**. Mechanics Freeze remains a later gate; unresolved world/content scope is tracked by `CD-841`.
 ## Vehicle stack authority
 
-- FGear Vehicle Physics: sole hero road-dynamics owner.
-- Debugging Delight Vehicle Damage System: sole permanent body-deformation owner.
-- PINK CAB: input/profile adapters, Tatra Expression, Vehicle Health bridge, persistence glue and normalized telemetry.
-- Before PF-16: **zero paid dependencies introduced by the PRE-FGEAR corridor**. No temporary production vehicle or deformation solver.
+- **Chaos Vehicles / native Unreal physics**: sole production hero-Tatra road-dynamics owner.
+- **Native bounded PS2-style damage/destruction**: authored damage states, detachable parts, pooled debris and selective Chaos events.
+- **PINK CAB**: input/profile adapters, Tatra calibration, Vehicle Health, persistence, normalized telemetry and presentation.
+- Required third-party vehicle/damage dependency spend: **EUR 0**.
+- FGear/VDS evaluation material is archived fallback research only and is not production authority.
 
-Neither FGear nor VDS is claimed installed until exact repository/build evidence proves it.
+The current executable path is already verified through clean build, automation, PIE/runtime and packaged Win64 smoke. Any future external solver adoption requires an explicit new decision and migration gate.
 
 ## Development entry
 
-PRE-FGEAR work follows `CD-754` / `CD-755..CD-771`. Repository cut-over `CD-558` is complete; PF-00..PF-16 are certified complete through the evaluation/purchase gate. The next action is owner-approved FGear acquisition/install; FGear and VDS remain uninstalled. Use short-lived Jira-keyed branches; `main` is canonical integration.
+Current work follows `CD-841` reconciliation before Mechanics Freeze. Use short-lived Jira-keyed branches/worktrees; `main` is canonical integration. Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and the current gate/task evidence before changing product code or authority.
 
-Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and `docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md` before changing product code or authority.
+Historical PRE-FGEAR material remains in the repository for audit context only; it must not be interpreted as the next production step.
 
 ## Legacy boundary
 

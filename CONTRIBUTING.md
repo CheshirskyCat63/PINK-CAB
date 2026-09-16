@@ -27,9 +27,9 @@ Current year-one scope is 12 months, PC, single-player, full L1+L2. Multiplayer/
 
 Use short-lived Jira-keyed branches, for example:
 
-- `feat/CD-731-fgear-plugin-integration`
+- `feat/CD-787-chaos-calibration`
 - `feat/CD-733-input-adapter`
-- `fix/CD-738-vehicle-acceptance-regression`
+- `fix/CD-792-native-vehicle-acceptance-regression`
 - `docs/CD-673-owner-pack-reconciliation`
 
 `main` is canonical integration. Use short-lived Jira-keyed branches; the old DEADRACE administrative/staging branches are historical migration evidence only.
@@ -49,9 +49,9 @@ Compilation alone is never gameplay acceptance.
 
 ## PINK CAB architecture rules
 
-- FGear Vehicle Physics is sole hero-Tatra road-dynamics owner unless `CD-730` is explicitly reopened.
-- Debugging Delight Vehicle Damage System is sole permanent hero body-deformation owner.
-- PINK CAB owns thin adapters, profiles, Tatra Expression, Vehicle Health bridge, persistence and normalized telemetry.
+- Native Unreal Chaos is the sole production hero-Tatra road-dynamics owner under `CD-785..CD-792`.
+- Damage/destruction uses native bounded authored states, detachable parts, pooled debris and selective Chaos events; VDS is not a required dependency.
+- PINK CAB owns thin adapters, Chaos/Tatra profiles, bounded presentation/arcade controls, Vehicle Health, persistence and normalized telemetry.
 - One authoritative owner per responsibility; no hidden second solver.
 - C++ owns authoritative state/interfaces/invariants/persistence-critical orchestration; Blueprint remains thin composition/orchestration; DataAssets/DataTables/config own tunables.
 - Persistent logical identity is separate from materialized Actor representation.

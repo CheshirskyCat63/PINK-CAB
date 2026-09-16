@@ -1,11 +1,13 @@
 # PINK CAB · Vehicle Technology Stack — FGear + Vehicle Damage System
 
-**Status:** CURRENT IMPLEMENTATION-FACING VEHICLE STACK AUTHORITY
+**Status:** ARCHIVED / SUPERSEDED — historical FGear/VDS plan only
 **Jira:** `CD-730`; integration `CD-731..738`; damage state `CD-740`; handling `CD-729`; damage decision `CD-600`
 **Confluence:** `10977288` — `38 · PINK CAB · Vehicle Technology Stack, FGear/VDS & Tatra Calibration Contract`
-**Runtime:** SPECIFIED / NOT IMPLEMENTED / NOT VERIFIED
+**Superseded by:** `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md` / Confluence `13303842` / `CD-785..792`
 
-## 1. Hard stack boundary
+> **Archive rule (CD-843, 2026-09-16):** the sections below preserve historical evaluation/calibration context only. They are not current production authority and must not be used to require FGear/VDS, vendor purchase, or a non-Chaos runtime path.
+
+## 1. Historical stack boundary
 
 - **FGear Vehicle Physics** is the sole road-dynamics owner for the hero Tatra: tires/contact, steering response, drivetrain/transmission integration, suspension-force state, braking/handbrake behavior and plugin telemetry.
 - **Vehicle Damage System (Debugging Delight Studios)** is the sole runtime permanent body-mesh deformation owner.

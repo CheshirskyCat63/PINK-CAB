@@ -5,7 +5,7 @@ Jira root: `CD-519`
 BASE-100 code architecture: `docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md` / Confluence `11239425` / `CD-746..753`
 Readiness: `docs/PINK_CAB_START90_READINESS.md` / Confluence `6553617` / `CD-660/CD-661`
 Confluence baseline: `5537802`
-Vehicle technology: `docs/PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md` / page `10977288` / `CD-730`
+Vehicle technology: `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md` / page `13303842` / `CD-785..CD-792`
 Handling: `docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md` / page `6225936` / `CD-729`
 Mass/load: `docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`
 Future daily insurance authority: `docs/PINK_CAB_DAILY_INSURANCE_CRASH_RECOVERY.md` / page `10321936` / `CD-741..745` — POST-FIRST-EURO
@@ -57,10 +57,10 @@ Locked identity:
 
 Technology stack:
 
-- **FGear Vehicle Physics** = sole road-dynamics owner;
+- **Chaos Vehicles / native Unreal physics** = sole production road-dynamics owner;
 - **Vehicle Damage System — Debugging Delight Studios** = sole permanent runtime body-deformation owner;
 - PINK CAB code = input/profile adapters, Tatra Expression, Vehicle Health bridge, persistence and normalized telemetry;
-- no parallel Chaos/custom hero-Tatra dynamics or second deformation solver without reopening `CD-730`.
+- no parallel competing hero-Tatra dynamics solver or hidden second destruction authority without an explicit migration decision.
 
 ## Handling — E34-like control / Tatra expression
 
@@ -74,7 +74,7 @@ Wet high-speed behavior is locked: rain + rapid lane change above roughly 160 km
 
 Speed character: 0–100 lively/comfortable; 100–140 confident; 140–170 visibly barge-like and suspension-busy; 170–195 still power-capable while chassis/road workload becomes the challenge.
 
-FGear owns physical trajectory/forces. Tatra Expression may slightly amplify roll/pitch/heave, body/cabin shake, trim rattle, steering tremor and bounded camera motion but cannot independently change grip or collision outcome.
+Chaos owns physical trajectory/forces. Tatra Expression may slightly amplify roll/pitch/heave, body/cabin shake, trim rattle, steering tremor and bounded camera motion but cannot independently change grip or collision outcome.
 
 ## Closed Tatra calibration baseline
 
@@ -106,7 +106,7 @@ Current grammar: mouse steers by default; hold Space for gaze/free-look and targ
 
 Steering, throttle, brake, clutch state/release speed and handbrake are continuous. The same wheel is contextual: on clutch adjustment it changes release speed rather than instantaneous clutch pressure; on a targeted cabin control it follows that control's authored incremental/rotary semantics. No Drift Mode, auto-countersteer, ABS or ESP rescue.
 
-Input reaches FGear through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model. One C++ semantic router owns raw KBM intake, one bounded target is active, and valid-target feedback is a textless translucent reticle that brightens to a white-matte state. Left/right hand choice is presentation only and may switch automatically; instruments/controls must work before full hand animation fidelity.
+Input reaches the Chaos-backed `IPinkCabVehicleDynamicsProvider` through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model. One C++ semantic router owns raw KBM intake, one bounded target is active, and valid-target feedback is a textless translucent reticle that brightens to a white-matte state. Left/right hand choice is presentation only and may switch automatically; instruments/controls must work before full hand animation fidelity.
 
 ## Core taxi work
 
@@ -124,7 +124,7 @@ Procedural PassengerTemplate and persistent PassengerIdentity are distinct. A pe
 
 ## Damage / mechanical health
 
-`CD-600` is RESOLVED/DONE. FIRST EURO includes permanent VDS deformation, glass/lamp damage, door jam/latch, tire/wheel path, authored alignment/suspension consequences, brake heat/fade/hydraulic health and **air-cooled V8 oil/head/fan/oil-cooler/airflow thermal health**, plus repair/persistence.
+`CD-600` is RESOLVED/DONE. FIRST EURO includes persistent authored damage-state consequences, glass/lamp damage, door jam/latch, tire/wheel path, authored alignment/suspension consequences, brake heat/fade/hydraulic health and **air-cooled V8 oil/head/fan/oil-cooler/airflow thermal health**, plus repair/persistence.
 
 Generic coolant/radiator-overheat wording is SUPERSEDED. Full soft-body structural fracture, detailed engine internals, CFD/fluid volumes, detailed tire thermodynamics, catastrophic fuel explosion/fire chain, centimeter brake plumbing and occupant injury are off/post-sale by default.
 
@@ -148,7 +148,7 @@ Prefer Unreal World Partition/PCG/engine streaming plus a thin deterministic PIN
 
 ## Traffic / enforcement interface
 
-Ordinary distant traffic should use bounded logical/kinematic simulation rather than hero-level FGear for every vehicle. Physically relevant traffic may materialize near the player/collision context. Traffic populations, incidents and queues must remain bounded.
+Ordinary distant traffic should use bounded logical/kinematic simulation rather than hero-level Chaos for every vehicle. Physically relevant traffic may materialize near the player/collision context. Traffic populations, incidents and queues must remain bounded.
 
 Full Taxi Regulator/inspection gameplay under `CD-723` is POST-FIRST-EURO. FIRST EURO still defines a stable `EnforcementEvent` contract and ordinary rules/fines may consume those events. A future regulator subscribes without changing event producers.
 
@@ -173,10 +173,10 @@ Moving refueling is a first-year gameplay mechanic. It uses the common FuelTank,
 ## Production architecture priority
 
 1. BASE-100 core/runtime/data/input/plugin/evidence contract (`CD-746/CD-747`);
-2. FGear+VDS pin/integration and Tatra profile (`CD-731/CD-732`);
+2. native Chaos baseline/calibration and Tatra profile (`CD-785..CD-788`);
 3. analog input, wet handling and Tatra Expression (`CD-733..735`);
-4. VDS deformation, Vehicle Health and damage persistence (`CD-736/CD-737/CD-740`);
-5. integrated vehicle proof (`CD-738`);
+4. native bounded destruction, Vehicle Health and damage persistence (`CD-790` plus current persistence owners);
+5. integrated native vehicle proof (`CD-792`);
 6. FareSession/passenger exchange + repeat-client/basic Neural contracts (`CD-749` plus existing fare/passenger owners);
 7. Economy/Workday/save/exactly-once transaction layer (`CD-750`);
 8. CityCode/world streaming/road graph/traffic/enforcement interface (`CD-751`);
@@ -185,6 +185,6 @@ Moving refueling is a first-year gameplay mechanic. It uses the common FuelTank,
 
 ## Verification
 
-Documentation establishes CANON/SPECIFIED only. Vehicle stack requires `CD-738`; handling `CD-657/CD-658`; mass/load/vertical `CD-701`; Fare Zero `CD-724`; world/runtime and other systems require their own exact-build evidence.
+Canonical runtime evidence now exists for the native Chaos vehicle/core/playable path through `CD-792`, `CD-802` and `CD-823..829`. Remaining unresolved work is design/authority reconciliation and later asset/content substitution; documentation alone still cannot promote unverified future mechanics.
 
 Current code-only START-90 score is **66.6%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. PF-00 bootstrap and PF-01 Core Contracts have exact-build executable evidence; later systems remain NOT IMPLEMENTED / NOT VERIFIED until their own evidence exists.

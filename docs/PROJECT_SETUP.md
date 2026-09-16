@@ -33,9 +33,9 @@ PF-00 bootstrap is VERIFIED on the canonical UE 5.8.2 build/package path and PF-
 
 - engine family: Unreal Engine 5;
 - `A01 LOCKED`: production engine line is Unreal Engine 5.8; bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186); changing the production engine line requires an explicit migration/compatibility decision;
-- **FGear Vehicle Physics** = sole hero-Tatra road-dynamics solver;
-- **Debugging Delight Vehicle Damage System** = sole permanent body-deformation owner;
-- purchased/vendor systems remain behind PINK CAB adapters;
+- **Chaos Vehicles / native Unreal physics** = sole production hero-Tatra road-dynamics solver;
+- **Native bounded damage/destruction** = authored damage-state swaps, detachable parts, pooled debris and selective Chaos events;
+- FGear/VDS remain archived research only; any future vendor system must remain behind a PINK CAB adapter and requires a new explicit migration decision;
 - native Unreal or mature ready-made solutions are preferred before custom framework development;
 - FIRST EURO platform = PC;
 - FIRST EURO input baseline = keyboard + mouse.
