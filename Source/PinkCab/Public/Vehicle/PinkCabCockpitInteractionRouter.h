@@ -79,6 +79,16 @@ struct FPinkCabCockpitInteractionRouter
             return true;
         }
 
+        if (Event.TargetId == FName(TEXT("ClutchPedal")))
+        {
+            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
+            {
+                return false;
+            }
+            State.AdjustClutchReleaseSpeed(Event.SignedValue);
+            return true;
+        }
+
         if (Event.TargetId == FName(TEXT("PassengerDoor")))
         {
             if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
