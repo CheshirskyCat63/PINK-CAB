@@ -71,7 +71,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
 {
     const float First = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.0f, 10.0f, false);
-    TestEqual(TEXT("mouse delta changes steering continuously"), First, 0.25f);
+    TestEqual(TEXT("mouse right stays semantic right-positive before Chaos adaptation"), First, 0.25f);
 
     const float Tiny = APinkCabChaosTatraPawn::IntegrateMouseSteering(First, -0.1f, false);
     TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"), Tiny < First);
@@ -81,6 +81,11 @@ bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
 
     const float Clamped = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.95f, 20.0f, false);
     TestEqual(TEXT("steering command clamps at full lock"), Clamped, 1.0f);
+
+    const float LowSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(0.0f);
+    const float HighSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(195.0f);
+    TestTrue(TEXT("high-speed steering reduces mouse sensitivity"), HighSpeedGain < LowSpeedGain);
+    TestTrue(TEXT("high-speed steering keeps deliberate authority"), HighSpeedGain > 0.0f);
     return true;
 }
 
@@ -134,10 +139,18 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 
     Cockpit.StartEngine();
     Cockpit.SetHandbrakeEngaged(false);
+    Cockpit.ShiftBy(1);
+    Controls.SetClutch(0.0f);
     TestTrue(TEXT("running cockpit reapplies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
     TestFalse(TEXT("released handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
+    TestEqual(TEXT("selected first gear reaches Chaos when clutch is released"), Movement->GetTargetGear(), 1);
+
+    Controls.SetClutch(1.0f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    TestEqual(TEXT("pressed clutch disengages drivetrain through neutral gate"), Movement->GetTargetGear(), 0);
     return true;
 }
 

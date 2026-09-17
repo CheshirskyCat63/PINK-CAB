@@ -24,6 +24,7 @@
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabVehicleInputResponse.h"
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
 {
@@ -174,6 +175,12 @@ float APinkCabChaosTatraPawn::IntegrateMouseSteering(
     return bGazeHeld ? CurrentSteering : FMath::Clamp(CurrentSteering + DeltaX * Gain, -1.0f, 1.0f);
 }
 
+float APinkCabChaosTatraPawn::SteeringGainForSpeed(const float SpeedKmh)
+{
+    const float Alpha = FMath::Clamp(FMath::Abs(SpeedKmh) / 140.0f, 0.0f, 1.0f);
+    return FMath::Lerp(0.010f, 0.0035f, Alpha);
+}
+
 void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(const float DeltaX, const bool bGazeHeld)
 {
     SteeringCommand = IntegrateMouseSteering(SteeringCommand, DeltaX, bGazeHeld, MouseSteeringGain);
@@ -192,7 +199,7 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     ControlState = InputFrame.ToControlState(
         SteeringCommand,
         CockpitState.GetHandbrakeAmount());
-    DynamicsProvider.ApplyControls(ControlState);
+    SyncCockpitToChaos();
 }
 
 void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
@@ -209,9 +216,25 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     float MouseX = 0.0f;
     float MouseY = 0.0f;
     PC->GetInputMouseDelta(MouseX, MouseY);
-    const FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
+    FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
+
+    SmoothedClutch = FPinkCabVehicleInputResponse::StepAxis(
+        SmoothedClutch, InputFrame.Clutch, DeltaSeconds, ClutchPressSeconds, CockpitState.GetClutchReleaseSeconds());
+    SmoothedBrake = FPinkCabVehicleInputResponse::StepAxis(
+        SmoothedBrake, InputFrame.Brake, DeltaSeconds, BrakePressSeconds, BrakeReleaseSeconds);
+    SmoothedThrottle = FPinkCabVehicleInputResponse::StepAxis(
+        SmoothedThrottle, InputFrame.Throttle, DeltaSeconds, ThrottlePressSeconds, ThrottleReleaseSeconds);
+    InputFrame.Clutch = SmoothedClutch;
+    InputFrame.Brake = SmoothedBrake;
+    InputFrame.Throttle = SmoothedThrottle;
+
+    FPinkCabVehicleTelemetry SteeringTelemetry;
+    if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
+    {
+        MouseSteeringGain = SteeringGainForSpeed(SteeringTelemetry.SpeedKmh);
+    }
 
     const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
     {

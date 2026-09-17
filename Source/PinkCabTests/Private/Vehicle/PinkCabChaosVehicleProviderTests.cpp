@@ -15,20 +15,20 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
 
     FPinkCabVehicleControlState Controls;
-    Controls.SetSteering(-0.35f);
+    Controls.SetSteering(0.35f);
     Controls.SetThrottle(0.72f);
     Controls.SetBrake(0.18f);
     Controls.SetClutch(0.64f);
     Controls.SetHandbrake(0.80f);
 
     TestTrue(TEXT("provider accepts normalized controls"), Provider.ApplyControls(Controls));
-    TestEqual(TEXT("steering reaches Chaos"), Movement->GetSteeringInput(), -0.35f);
+    TestEqual(TEXT("semantic right-positive steering is adapted to Chaos right-steer sign"), Movement->GetSteeringInput(), -0.35f);
     TestEqual(TEXT("throttle reaches Chaos"), Movement->GetThrottleInput(), 0.72f);
     TestEqual(TEXT("brake reaches Chaos"), Movement->GetBrakeInput(), 0.18f);
     TestTrue(TEXT("handbrake threshold reaches Chaos"), Movement->GetHandbrakeInput());
     FPinkCabVehicleTelemetry Telemetry;
     TestTrue(TEXT("provider returns telemetry"), Provider.ReadTelemetry(Telemetry));
-    TestEqual(TEXT("telemetry echoes steering command"), Telemetry.NormalizedSteering, -0.35f);
+    TestEqual(TEXT("telemetry preserves semantic right-positive steering"), Telemetry.NormalizedSteering, 0.35f);
     TestEqual(TEXT("telemetry echoes throttle command"), Telemetry.NormalizedThrottle, 0.72f);
     TestEqual(TEXT("telemetry preserves clutch command without claiming Chaos clutch actuation"), Telemetry.NormalizedClutch, 0.64f);
     TestEqual(TEXT("telemetry echoes handbrake command"), Telemetry.NormalizedHandbrake, 0.80f);

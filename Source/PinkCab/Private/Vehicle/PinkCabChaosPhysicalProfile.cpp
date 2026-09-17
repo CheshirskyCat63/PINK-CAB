@@ -56,8 +56,8 @@ float VariantFriction(const EPinkCabCalibrationVariant Variant)
 
 float VariantSpring(const EPinkCabCalibrationVariant Variant)
 {
-    return Variant == EPinkCabCalibrationVariant::Low ? 225.0f
-        : Variant == EPinkCabCalibrationVariant::High ? 275.0f : 250.0f;
+    return Variant == EPinkCabCalibrationVariant::Low ? 150.0f
+        : Variant == EPinkCabCalibrationVariant::High ? 195.0f : 170.0f;
 }
 FPinkCabChaosWheelPhysicalProfile MakeWheel(
     const bool bFront,
@@ -77,12 +77,12 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.MaxBrakeTorqueNm = P(bFront ? 2400.0f : 2200.0f, A::Calibration);
     W.MaxHandBrakeTorqueNm = P(bFront ? 0.0f : 1700.0f, A::Calibration);
     W.SpringRate = P(VariantSpring(Variant), A::Calibration);
-    W.SpringPreload = P(50.0f, A::Calibration);
-    W.SuspensionMaxRaiseCm = P(10.0f, A::Calibration);
-    W.SuspensionMaxDropCm = P(10.0f, A::Calibration);
-    W.SuspensionDampingRatio = P(0.5f, A::Calibration);
-    W.WheelLoadRatio = P(0.5f, A::Calibration);
-    W.RollbarScaling = P(0.15f, A::Calibration);
+    W.SpringPreload = P(32.0f, A::Calibration);
+    W.SuspensionMaxRaiseCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
+    W.SuspensionMaxDropCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
+    W.SuspensionDampingRatio = P(0.38f, A::Calibration);
+    W.WheelLoadRatio = P(0.38f, A::Calibration);
+    W.RollbarScaling = P(0.08f, A::Calibration);
     W.bABSEnabled = P(false, A::DesignTarget);
     W.bTractionControlEnabled = P(false, A::DesignTarget);
     W.bAffectedBySteering = P(bFront, A::DesignTarget);
@@ -113,8 +113,8 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.NormalizedTorqueCurve = P(TArray<FVector2D>{
         FVector2D(0.0, 0.65), FVector2D(800.0, 0.72), FVector2D(2000.0, 0.90),
         FVector2D(3500.0, 1.00), FVector2D(5000.0, 0.85), FVector2D(6000.0, 0.65)}, A::Calibration);
-    R.bUseAutomaticGears = P(true, A::Calibration);
-    R.bUseAutoReverse = P(true, A::Calibration);
+    R.bUseAutomaticGears = P(false, A::Calibration);
+    R.bUseAutoReverse = P(false, A::Calibration);
     R.FinalDriveRatio = P(3.2f, A::Calibration);
     R.ForwardGearRatios = P(TArray<float>{3.8f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
     R.ReverseGearRatios = P(TArray<float>{3.5f}, A::Calibration);

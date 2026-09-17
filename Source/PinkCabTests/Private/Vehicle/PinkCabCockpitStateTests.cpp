@@ -13,6 +13,7 @@ bool FPinkCabCockpitDefaultsTest::RunTest(const FString& Parameters)
     const FPinkCabCockpitState State;
     TestEqual(TEXT("engine starts off"), State.GetIgnitionState(), EPinkCabIgnitionState::Off);
     TestEqual(TEXT("gear starts neutral"), State.GetSelectedGear(), 0);
+    TestEqual(TEXT("clutch release starts at neutral midpoint"), State.GetClutchReleaseSeconds(), 0.70f);
     TestTrue(TEXT("parking handbrake starts engaged"), State.IsHandbrakeEngaged());
     TestFalse(TEXT("passenger door starts closed"), State.IsPassengerDoorOpen());
     TestEqual(TEXT("meter starts off"), State.GetMeterState(), EPinkCabMeterState::Off);
@@ -53,6 +54,13 @@ bool FPinkCabCockpitGearAndHandbrakeTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("handbrake releases"), State.IsHandbrakeEngaged());
     State.SetHandbrakeEngaged(true);
     TestTrue(TEXT("handbrake engages"), State.IsHandbrakeEngaged());
+
+    State.AdjustClutchReleaseSpeed(1);
+    TestTrue(TEXT("positive clutch wheel step changes release calibration"), State.GetClutchReleaseSeconds() > 0.70f);
+    State.AdjustClutchReleaseSpeed(999);
+    TestEqual(TEXT("clutch release clamps at slow envelope"), State.GetClutchReleaseSeconds(), 1.20f);
+    State.AdjustClutchReleaseSpeed(-999);
+    TestEqual(TEXT("clutch release clamps at fast envelope"), State.GetClutchReleaseSeconds(), 0.20f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -108,6 +116,13 @@ bool FPinkCabCockpitInteractionRouterTest::RunTest(const FString& Parameters)
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
     TestEqual(TEXT("handbrake returns to full"), State.GetHandbrakeAmount(), 1.0f);
+
+    const float ClutchReleaseBefore = State.GetClutchReleaseSeconds();
+    TestTrue(TEXT("clutch pedal wheel event is consumed"),
+        FPinkCabCockpitInteractionRouter::Apply(
+            {FName(TEXT("ClutchPedal")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
+    TestTrue(TEXT("clutch pedal wheel changes release speed only"),
+        State.GetClutchReleaseSeconds() > ClutchReleaseBefore);
 
     TestTrue(TEXT("ignition press starts engine"),
         FPinkCabCockpitInteractionRouter::Apply(

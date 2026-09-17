@@ -48,6 +48,7 @@ public:
         float DeltaX,
         bool bGazeHeld,
         float Gain = 0.025f);
+    static float SteeringGainForSpeed(float SpeedKmh);
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld);
     void ApplyVehicleInputFrame(const FPinkCabVehicleInputFrame& InputFrame, float MouseDeltaX);
@@ -98,8 +99,22 @@ private:
     bool bCockpitRadioAvailable = false;
     bool bCockpitMirrorsAvailable = true;
 
+    UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
+    float ClutchPressSeconds = 0.16f;
+    UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
+    float BrakePressSeconds = 0.20f;
+    UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
+    float BrakeReleaseSeconds = 0.28f;
+    UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
+    float ThrottlePressSeconds = 0.35f;
+    UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
+    float ThrottleReleaseSeconds = 0.22f;
+
+    float SmoothedClutch = 0.0f;
+    float SmoothedBrake = 0.0f;
+    float SmoothedThrottle = 0.0f;
     float SteeringCommand = 0.0f;
-    float MouseSteeringGain = 0.025f;
+    float MouseSteeringGain = 0.010f;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
     FDelegateHandle ApplicationWillDeactivateHandle;

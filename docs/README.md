@@ -53,6 +53,8 @@ POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle Servi
 ## Current implementation-facing system mirrors
 
 - vehicle stack: [`PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`](PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md);
+- hero-vehicle pre-model freeze: [`PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md`](PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md);
+- Tatra asset import contract: [`PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md`](PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md);
 - Tatra handling: [`PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`](PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md);
 - mass/load: [`PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`](PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md);
 - taxi physicality: [`PINK_CAB_TAXI_WORK_PHYSICALITY.md`](PINK_CAB_TAXI_WORK_PHYSICALITY.md);

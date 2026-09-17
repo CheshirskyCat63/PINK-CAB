@@ -31,6 +31,16 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("rear handbrake seed"), Profile.RearWheel.MaxHandBrakeTorqueNm.Value, 1700.0f);
     TestEqual(TEXT("handbrake seed is calibration"), Profile.RearWheel.MaxHandBrakeTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::Calibration);
+    TestEqual(TEXT("nominal spring is softened from the wooden prototype"),
+        Profile.FrontWheel.SpringRate.Value, 170.0f);
+    TestEqual(TEXT("nominal suspension damping is compliant"),
+        Profile.FrontWheel.SuspensionDampingRatio.Value, 0.38f);
+    TestEqual(TEXT("front suspension travel matches 160 mm seed"),
+        Profile.FrontWheel.SuspensionMaxRaiseCm.Value + Profile.FrontWheel.SuspensionMaxDropCm.Value, 16.0f);
+    TestEqual(TEXT("rear suspension travel matches 180 mm seed"),
+        Profile.RearWheel.SuspensionMaxRaiseCm.Value + Profile.RearWheel.SuspensionMaxDropCm.Value, 18.0f);
+    TestFalse(TEXT("FIRST EURO gearbox is manual"), Profile.bUseAutomaticGears.Value);
+    TestFalse(TEXT("FIRST EURO reverse is manually selected"), Profile.bUseAutoReverse.Value);
     return true;
 }
 

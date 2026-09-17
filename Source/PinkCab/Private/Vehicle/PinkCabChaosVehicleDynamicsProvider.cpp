@@ -16,7 +16,7 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     }
 
     LastControls = Controls;
-    Movement->SetSteeringInput(Controls.Steering);
+    Movement->SetSteeringInput(-Controls.Steering);
     Movement->SetThrottleInput(Controls.Throttle);
     Movement->SetBrakeInput(Controls.Brake);
     Movement->SetHandbrakeInput(Controls.Handbrake >= 0.5f);

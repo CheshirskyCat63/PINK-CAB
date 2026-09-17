@@ -4,6 +4,7 @@
 #include "InputCoreTypes.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabVehicleInputResponse.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -57,9 +58,27 @@ bool FPinkCabChaosClutchCapabilityTest::RunTest(const FString& Parameters)
 {
     FPinkCabChaosVehicleDynamicsProvider Provider(nullptr);
     TestEqual(
-        TEXT("stock Chaos provider does not pretend to actuate a mechanical clutch"),
+        TEXT("stock Chaos provider exposes bounded clutch emulation rather than fake native support"),
         Provider.GetMechanicalClutchCapability(),
-        EPinkCabMechanicalClutchCapability::Unsupported);
+        EPinkCabMechanicalClutchCapability::EmulatedNeutralGate);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPedalResponseTest,
+    "PinkCab.Vehicle.Input.PedalResponse",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPedalResponseTest::RunTest(const FString& Parameters)
+{
+    TestEqual(TEXT("press ramps continuously"),
+        FPinkCabVehicleInputResponse::StepAxis(0.0f, 1.0f, 0.10f, 0.20f, 1.00f), 0.5f);
+    TestEqual(TEXT("release uses independent duration"),
+        FPinkCabVehicleInputResponse::StepAxis(1.0f, 0.0f, 0.25f, 0.20f, 1.00f), 0.75f);
+    TestEqual(TEXT("fast clutch release envelope reaches zero in 0.20 seconds"),
+        FPinkCabVehicleInputResponse::StepAxis(1.0f, 0.0f, 0.20f, 0.16f, 0.20f), 0.0f);
+    TestTrue(TEXT("slow clutch release remains partially engaged at 0.20 seconds"),
+        FPinkCabVehicleInputResponse::StepAxis(1.0f, 0.0f, 0.20f, 0.16f, 1.20f) > 0.8f);
     return true;
 }
 

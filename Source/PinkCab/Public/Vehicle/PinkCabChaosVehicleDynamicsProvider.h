@@ -14,7 +14,7 @@ public:
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const override;
     virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override
     {
-        return EPinkCabMechanicalClutchCapability::Unsupported;
+        return EPinkCabMechanicalClutchCapability::EmulatedNeutralGate;
     }
 
     UChaosWheeledVehicleMovementComponent* GetMovement() const { return Movement; }
