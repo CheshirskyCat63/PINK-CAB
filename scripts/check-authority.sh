@@ -103,6 +103,13 @@ require_text "$registry" "rebinding_first_euro: true"
 require_text "$registry" "road_dynamics_solver: Native_Unreal_Chaos_Vehicles"
 require_text "$registry" "required_third_party_vehicle_plugins: none"
 require_text "$registry" "fgear_vds_status: archived_research_fallback_only"
+require_text "$registry" "owner_gate: CD-848"
+require_text "$registry" "consumer_task: CD-855"
+require_text "$registry" "status: IMPLEMENTED_VERIFIED_PRE_MODEL_CONTRACT"
+require_text "$registry" "asset_import_contract: docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md"
+require_text "$registry" "model_integration_may_proceed: true"
+require_text "$registry" "full_mechanics_freeze_implied: false"
+require_text "$registry" "final_model_complete: false"
 require_text "$registry" "first_euro: false"
 require_text "$registry" "prism_smart_glasses: taxi_uniform_glasses_with_outward_prism"
 require_text "$registry" "pre_fgear_blocker: false"
@@ -224,6 +231,8 @@ for file in \
   docs/VERIFICATION_MATRIX.md \
   docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md \
   docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md \
+  docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md \
+  docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md \
   docs/PINK_CAB_REPOSITORY_CUTOVER.md; do
   require_file "$file"
 done

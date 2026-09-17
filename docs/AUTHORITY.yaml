@@ -286,7 +286,25 @@ current_canon:
     pink_cab_owns: [input_translation, versioned_tatra_profile, bounded_arcade_controls, vehicle_health, persistence_glue, normalized_telemetry, presentation]
     runtime_status: IMPLEMENTED_VERIFIED_CORE_PATH
 
-  tatra:    family: early_gen1_tatra_603_family_bespoke
+  pre_model_vehicle_handoff:
+    owner_gate: CD-848
+    consumer_task: CD-855
+    status: IMPLEMENTED_VERIFIED_PRE_MODEL_CONTRACT
+    git_freeze: docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md
+    asset_import_contract: docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md
+    model_integration_may_proceed: true
+    full_mechanics_freeze_implied: false
+    final_model_complete: false
+    presentation_may_replace_assets_without_gameplay_rewrite: true
+    donor_613_role: licensed_placeholder_presentation_only
+    canonical_identity_remains: bespoke_early_gen1_tatra_603_family
+    import_units: 1_UU_equals_1_cm
+    import_axes: X_forward_Y_right_Z_up
+    runtime_negative_scale: forbidden
+    cockpit_stable_slots: 22
+
+  tatra:
+    family: early_gen1_tatra_603_family_bespoke
     propulsion_layout: rear_engine_rwd
     engine_identity: rear_mounted_air_cooled_v8
     current_power_hp: 180
