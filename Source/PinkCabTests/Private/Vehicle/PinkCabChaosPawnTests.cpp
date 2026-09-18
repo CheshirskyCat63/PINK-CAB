@@ -247,8 +247,22 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     Controls.SetDriveline(1, 1, 0.5f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
     TestEqual(TEXT("partial coupling keeps Chaos transmission neutral"), Movement->GetTargetGear(), 0);
+    const float PoweredPartialTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
     TestTrue(TEXT("partial coupling produces continuous external rear torque"),
-        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm) > 0.0f);
+        PoweredPartialTorque > 0.0f);
+
+    // A real idling engine still has anti-stall/idle torque at the clutch bite point.
+    // This is what lets a careful no-throttle launch creep while a fast clutch dump
+    // can still hit the drivetrain stall gate.
+    Controls.SetThrottle(0.0f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    const float IdleBiteTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
+    TestTrue(TEXT("partial clutch carries idle bite torque with zero throttle"),
+        IdleBiteTorque > 0.0f);
+    TestTrue(TEXT("idle bite remains below powered partial-clutch torque"),
+        IdleBiteTorque < PoweredPartialTorque);
 
     Controls.SetClutch(1.0f);
     Controls.SetDriveline(1, 1, 0.0f);

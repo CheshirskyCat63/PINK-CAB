@@ -78,8 +78,10 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.MaxHandBrakeTorqueNm = P(bFront ? 0.0f : 1700.0f, A::Calibration);
     W.SpringRate = P(VariantSpring(Variant), A::Calibration);
     W.SpringPreload = P(32.0f, A::Calibration);
-    W.SuspensionMaxRaiseCm = P(14.0f, A::Calibration);
-    W.SuspensionMaxDropCm = P(18.0f, A::Calibration);
+    // Keep the last pre-integration executable suspension seed:
+    // 160 mm total front travel and 180 mm total rear travel.
+    W.SuspensionMaxRaiseCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
+    W.SuspensionMaxDropCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
     W.SuspensionDampingRatio = P(0.38f, A::Calibration);
     W.WheelLoadRatio = P(0.38f, A::Calibration);
     W.RollbarScaling = P(0.08f, A::Calibration);

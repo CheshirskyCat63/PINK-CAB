@@ -85,6 +85,9 @@ public:
         float MouseDeltaY,
         float DeltaSeconds = 1.0f / 60.0f);
     float GetSteeringCommand() const { return SteeringCommand; }
+    FVector2D GetGearLeverVisualCursor() const { return GearLeverCursor; }
+    int32 GetRequestedGear() const { return GearboxController.GetRequestedGear(); }
+    int32 GetEngagedGear() const { return GearboxController.GetEngagedGear(); }
     EPinkCabVehicleMotionMode GetMotionMode() const { return MotionClassifier.GetMode(); }
     const FPinkCabVehicleHealthState& GetVehicleHealthState() const { return VehicleHealthBinding.Get(); }
     FPinkCabVehicleHealthState& GetMutableVehicleHealthState() { return VehicleHealthBinding.GetMutable(); }

@@ -226,20 +226,26 @@ bool FPinkCabCoupledStallTest::RunTest(const FString& Parameters)
     FPinkCabDrivetrainConditionInput Input;
     Input.DeltaSeconds = 0.1f;
     Input.bEngineRunning = true;
-    Input.EngineRpm = 500.0f;
+    // Chaos reports at least its configured 750 RPM idle while mechanical sim is running.
+    // Stall detection therefore has to work at the live idle floor, not only for synthetic sub-idle RPM.
+    Input.EngineRpm = 750.0f;
     Input.SpeedKmh = 0.5f;
     Input.Brake = 0.8f;
     Input.Throttle = 0.0f;
     Input.ClutchCoupling = 1.0f;
     Input.EngagedGear = 1;
-    TestTrue(TEXT("coupled low-rpm braking requests stall"), Condition.Step(Input, Health).bShouldStall);
+    TestTrue(TEXT("coupled Chaos-idle braking requests stall"), Condition.Step(Input, Health).bShouldStall);
 
     Input.ClutchCoupling = 0.0f;
     TestFalse(TEXT("disengaged clutch prevents drivetrain stall"), Condition.Step(Input, Health).bShouldStall);
 
     Input.ClutchCoupling = 1.0f;
     Input.Brake = 0.0f;
-    TestTrue(TEXT("low-rpm coupled launch can stall without brake"),
+    TestTrue(TEXT("Chaos-idle coupled launch can stall without brake"),
+        Condition.Step(Input, Health).bShouldStall);
+
+    Input.Throttle = 0.25f;
+    TestFalse(TEXT("driver throttle prevents idle launch stall"),
         Condition.Step(Input, Health).bShouldStall);
     return true;
 }

@@ -94,8 +94,18 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
             UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Gearbox")));
         Test->TestTrue(TEXT("physical gearbox grip begins"), Interaction->BeginGrip(Event));
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
+        Test->TestTrue(TEXT("visible lever follows continuous neutral cross-gate left"),
+            Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 0.0f), 0.01f));
+        Test->TestEqual(TEXT("neutral cross-gate does not engage a gear"),
+            Pawn->GetEngagedGear(), 0);
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
-        Test->TestEqual(TEXT("physical H-gate selects first"),
+        Test->TestTrue(TEXT("visible lever reaches first through the same physical cursor"),
+            Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 1.0f), 0.01f));
+        Test->TestEqual(TEXT("physical H-gate requests first"),
+            Pawn->GetRequestedGear(), 1);
+        Test->TestEqual(TEXT("requested first is still separate from engagement before clutch validation"),
+            Pawn->GetEngagedGear(), 0);
+        Test->TestEqual(TEXT("cockpit lever selection mirrors requested gear"),
             Pawn->GetCockpitState().GetSelectedGear(), 1);
         const FPinkCabVehicleInputFrame ClutchFrame =
             FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);

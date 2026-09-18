@@ -38,11 +38,25 @@ bool FPinkCabChaosCockpitBridge::Apply(
             Movement.EngineSetup.MaxTorque * FMath::Max(NormalizedTorque, 0.0f);
         const float GearRatio =
             Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear);
+
+        // Chaos exposes no public clutch axis, so partial coupling is authored here.
+        // Preserve actual driver throttle, but let the physical engine's idle governor
+        // contribute a small amount of torque around the launch bite point. That makes
+        // careful no-throttle clutch release capable of creeping instead of feeling
+        // disconnected, while the separate stall gate still kills a fast clutch dump.
+        constexpr float LaunchSpeedCmPerSecond = 300.0f; // 10.8 km/h
+        constexpr float IdleGovernorTorqueFraction = 0.18f;
+        const bool bNearLaunchSpeed =
+            FMath::Abs(Movement.GetForwardSpeed()) < LaunchSpeedCmPerSecond;
+        const float EffectiveThrottle =
+            bNearLaunchSpeed
+                ? FMath::Max(Controls.Throttle, IdleGovernorTorqueFraction)
+                : Controls.Throttle;
         const float AxleTorqueNm =
             EngineTorqueNm
             * GearRatio
             * Movement.TransmissionSetup.TransmissionEfficiency
-            * Controls.Throttle
+            * EffectiveThrottle
             * Controls.ClutchCoupling;
         ExternalRearDriveTorquePerWheelNm = AxleTorqueNm * 0.5f;
     }

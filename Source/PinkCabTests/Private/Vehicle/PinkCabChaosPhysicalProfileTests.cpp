@@ -32,8 +32,10 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestFalse(TEXT("rear traction control disabled"), Profile.RearWheel.bTractionControlEnabled.Value);
     TestEqual(TEXT("rear handbrake seed"), Profile.RearWheel.MaxHandBrakeTorqueNm.Value, 1700.0f);
     TestEqual(TEXT("nominal suspension is softened for visible travel"), Profile.FrontWheel.SpringRate.Value, 170.0f);
-    TestEqual(TEXT("suspension has useful bump travel"), Profile.FrontWheel.SuspensionMaxRaiseCm.Value, 14.0f);
-    TestEqual(TEXT("suspension has useful droop travel"), Profile.FrontWheel.SuspensionMaxDropCm.Value, 18.0f);
+    TestEqual(TEXT("front suspension bump travel keeps pre-integration seed"), Profile.FrontWheel.SuspensionMaxRaiseCm.Value, 8.0f);
+    TestEqual(TEXT("front suspension droop travel keeps pre-integration seed"), Profile.FrontWheel.SuspensionMaxDropCm.Value, 8.0f);
+    TestEqual(TEXT("rear suspension bump travel keeps pre-integration seed"), Profile.RearWheel.SuspensionMaxRaiseCm.Value, 9.0f);
+    TestEqual(TEXT("rear suspension droop travel keeps pre-integration seed"), Profile.RearWheel.SuspensionMaxDropCm.Value, 9.0f);
     TestEqual(TEXT("suspension damping is compliant"), Profile.FrontWheel.SuspensionDampingRatio.Value, 0.38f);
     TestEqual(TEXT("handbrake seed is calibration"), Profile.RearWheel.MaxHandBrakeTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::Calibration);

@@ -93,7 +93,9 @@ FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(FVector2
 {
     Cursor.X = FMath::Clamp(Cursor.X, -1.30f, 1.0f);
     Cursor.Y = FMath::Clamp(Cursor.Y, -1.0f, 1.0f);
-    return FVector(Cursor.Y * 6.0f, Cursor.X * 7.0f, 0.0f);
+    // Tatra cockpit local axes: X crosses the H gate left/right, while negative Y
+    // points forward. Preserve the canonical 1/3/5 forward and 2/4/R rearward layout.
+    return FVector(Cursor.X * 7.0f, -Cursor.Y * 6.0f, 0.0f);
 }
 
 int32 UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D Cursor)
@@ -185,6 +187,16 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
         FRotator(0.0f, 0.0f, TachometerNeedleAngleDegrees(State.EngineRpm)));
     SetRotOffset(EPinkCabCockpitSlot::Ignition,
         FRotator(0.0f, State.bIgnitionRunning ? 42.0f : 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::TurnSignals,
+        FRotator(0.0f, State.bTurnSignalLeft ? -24.0f : (State.bTurnSignalRight ? 24.0f : 0.0f), 0.0f));
+    SetLocOffset(EPinkCabCockpitSlot::Horn,
+        FVector(State.bHornActive ? -1.5f : 0.0f, 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::Lights,
+        FRotator(State.bLightsOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::Wipers,
+        FRotator(State.bWipersOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    SetLocOffset(EPinkCabCockpitSlot::Washer,
+        FVector(State.bWasherActive ? -1.0f : 0.0f, 0.0f, 0.0f));
     SetRotOffset(EPinkCabCockpitSlot::PassengerDoor,
         FRotator(0.0f, State.bPassengerDoorOpen ? 38.0f : 0.0f, 0.0f));
 

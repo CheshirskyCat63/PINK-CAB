@@ -37,7 +37,10 @@ struct FPinkCabDrivetrainConditionConfig
     float BrakeWearPerHotSecond = 0.00012f;
     float BrakeFadeStart = 0.65f;
     float BrakeFadeMinimum = 0.55f;
-    float StallRpm = 600.0f;
+    // Chaos keeps a running engine at the physical profile's 750 RPM idle floor.
+    // Keep the stall decision slightly above that floor so a clutch dump can actually
+    // stop the engine instead of requiring an unreachable sub-idle telemetry value.
+    float StallRpm = 850.0f;
 };
 
 class FPinkCabDrivetrainCondition
