@@ -17,6 +17,7 @@
 7. [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md) вЂ” current implementation-facing unresolved locks.
 8. [`VERIFICATION_MATRIX.md`](VERIFICATION_MATRIX.md) вЂ” FIRST EURO executable proof index.
 9. [`PROGRAM_ROADMAP.md`](PROGRAM_ROADMAP.md) вЂ” current dependency/delivery roadmap.
+10. [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md) — current owner control/vehicle-mechanics release authority mirror (`CD-848`, Confluence `16744449`).
 
 ## BASE-100 rule
 
@@ -52,6 +53,7 @@ POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle Servi
 
 ## Current implementation-facing system mirrors
 
+- control/mechanics release contract: [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md);
 - vehicle stack: [`PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`](PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md);
 - hero-vehicle pre-model freeze: [`PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md`](PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md);
 - Tatra asset import contract: [`PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md`](PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md);
@@ -86,6 +88,7 @@ POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle Servi
 Primary current pages include:
 
 - `6586369` Authority Index;
+- `16744449` Control & Vehicle Mechanics Release Contract;
 - `5537802` Active Product Baseline;
 - `6553617` START-90 / Specification Coverage Ledger;
 - `11239425` BASE-100 Code Architecture & FIRST EURO 12M Contract;
