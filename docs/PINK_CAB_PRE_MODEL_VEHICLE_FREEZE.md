@@ -5,6 +5,10 @@ Gate: `CD-856` — PRE-MODEL VEHICLE FREEZE / asset handoff
 Broader Mechanics Freeze: `CD-848` — independent, not a hero-model blocker after this gate
 Next asset task: `CD-855`
 
+## Post-handoff authority amendment · 2026-09-18
+
+This file remains **historical CD-856 pre-model evidence**. Current control/mechanics authority is [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md) / Confluence [16744449](https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/16744449/47+PINK+CAB+Control+Vehicle+Mechanics+Release+Contract). The later owner correction supersedes this file's fixed 0.20–1.20 clutch-range wording, old neutral-gate clutch behavior as a final target, and any conflicting control/mechanics semantics. **CD-856 remains DONE**; historical build/package evidence is not retroactively changed and does not prove the newer QA-01..QA-20 contract.
+
 ## Result
 
 The code/interaction side of the hero vehicle is frozen sufficiently for final-model substitution. Final art may replace presentation assets; it must not redefine gameplay, controls, physics ownership, taxi state, economy or persistence.

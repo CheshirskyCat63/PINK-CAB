@@ -17,6 +17,7 @@
 - Confluence authority index: `6586369`
 - Repository authority page: `12451841`
 - Machine-readable authority: `docs/AUTHORITY.yaml`
+- Current control/mechanics release contract: `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md` / Confluence `16744449` / Jira `CD-848`
 - Current vehicle stack: `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`
 - Hero-vehicle pre-model freeze: `docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md`
 - Tatra asset import contract: `docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md`
@@ -26,6 +27,8 @@
 `CANON -> SPECIFIED -> IMPLEMENTED -> VERIFIED`
 
 Documentation never implies runtime verification. Exact executable evidence wins for implementation/verification status.
+
+The 2026-09-18 control/mechanics owner correction is SPECIFIED but its QA-01..QA-20 matrix remains NOT RUN until exact executable evidence exists.
 
 ## FIRST EURO
 
