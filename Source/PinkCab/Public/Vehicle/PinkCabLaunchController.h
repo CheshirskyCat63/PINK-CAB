@@ -23,7 +23,7 @@ public:
 
     bool ApplyThrottleDoseSteps(int32 SignedSteps)
     {
-        if (!bLaunchActive || SignedSteps == 0)
+        if (SignedSteps == 0)
         {
             return false;
         }
@@ -31,7 +31,7 @@ public:
             ThrottleTarget + static_cast<float>(SignedSteps) * ThrottleDoseStep,
             0.0f,
             1.0f);
-        bThrottleDoseRequired = false;
+        bThrottleDoseRequired = ThrottleTarget <= KINDA_SMALL_NUMBER;
         return true;
     }
 

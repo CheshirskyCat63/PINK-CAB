@@ -214,6 +214,57 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
 
+    const EPinkCabVehicleMotionMode PreviousMotionMode = MotionClassifier.GetMode();
+    FPinkCabVehicleTelemetry SteeringTelemetry;
+    if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
+    {
+        LastSpeedKmh = SteeringTelemetry.SpeedKmh;
+        MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
+    }
+    const EPinkCabVehicleMotionMode MotionMode = MotionClassifier.GetMode();
+    LaunchController.NotifyMotionMode(MotionMode);
+
+    const bool bClutchHeld = InputFrame.Clutch > 0.5f;
+    const bool bBrakeHeld = InputFrame.Brake > 0.5f;
+    const bool bThrottleHeld = InputFrame.Throttle > 0.5f;
+    const bool bReturnedToStationary =
+        PreviousMotionMode == EPinkCabVehicleMotionMode::Moving
+        && MotionMode == EPinkCabVehicleMotionMode::Stationary;
+    if (MotionMode == EPinkCabVehicleMotionMode::Stationary
+        && ((bThrottleHeld && !bThrottleHeldLastFrame)
+            || (bReturnedToStationary && bThrottleHeld)))
+    {
+        if (LaunchController.BeginLaunchAttempt())
+        {
+            SmoothedThrottle = 0.0f;
+        }
+    }
+
+    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
+    {
+        const FKey Key = InputRouter.GetKeyForAction(Action);
+        return Key.IsValid() && PC->IsInputKeyDown(Key);
+    };
+    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
+    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
+    const int32 WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    const EPinkCabPedalWheelRecipient WheelRecipient =
+        PedalDosingController.ApplyWheelSteps(
+            bClutchHeld,
+            bBrakeHeld,
+            bThrottleHeld,
+            WheelSteps,
+            LaunchController,
+            CockpitState);
+
+    const FPinkCabPedalTargets PedalTargets =
+        PedalDosingController.ResolveTargets(
+            bBrakeHeld,
+            bThrottleHeld,
+            LaunchController.GetThrottleTarget());
+    InputFrame.Brake = PedalTargets.Brake;
+    InputFrame.Throttle = PedalTargets.Throttle;
+
     SmoothedClutch = FPinkCabVehicleInputResponse::StepAxis(
         SmoothedClutch, InputFrame.Clutch, DeltaSeconds, ClutchPressSeconds, CockpitState.GetClutchReleaseSeconds());
     SmoothedBrake = FPinkCabVehicleInputResponse::StepAxis(
@@ -224,21 +275,6 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InputFrame.Brake = SmoothedBrake;
     InputFrame.Throttle = SmoothedThrottle;
 
-    FPinkCabVehicleTelemetry SteeringTelemetry;
-    if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
-    {
-        LastSpeedKmh = SteeringTelemetry.SpeedKmh;
-        MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
-    }
-
-    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
-    {
-        const FKey Key = InputRouter.GetKeyForAction(Action);
-        return Key.IsValid() && PC->IsInputKeyDown(Key);
-    };
-    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
-    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
-
     FPinkCabCockpitInteractionFrame InteractionFrame;
     InteractionFrame.bGazeHeld = InputFrame.bGazeHeld;
     InteractionFrame.bQuickRecall1Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall1);
@@ -247,7 +283,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InteractionFrame.bQuickRecall4Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall4);
     InteractionFrame.bGripHeld = IsActionHeld(EPinkCabSemanticAction::Grip);
     InteractionFrame.bMomentaryHeld = IsActionHeld(EPinkCabSemanticAction::MomentaryPress);
-    InteractionFrame.WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    InteractionFrame.WheelSteps = WheelRecipient == EPinkCabPedalWheelRecipient::None ? WheelSteps : 0;
     InteractionFrame.NowSeconds = FPlatformTime::Seconds();
     if (DriverCamera)
     {
@@ -263,6 +299,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     }
 
     ApplyVehicleInputFrame(InputFrame, MouseX, DeltaSeconds);
+    bThrottleHeldLastFrame = bThrottleHeld;
     const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
 
     if (bGazeHeld)

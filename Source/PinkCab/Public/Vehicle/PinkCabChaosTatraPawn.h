@@ -6,6 +6,8 @@
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabSteeringController.h"
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
+#include "Vehicle/PinkCabLaunchController.h"
+#include "Vehicle/PinkCabPedalDosingController.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -92,6 +94,8 @@ private:
     FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
     FPinkCabVehicleMotionClassifier MotionClassifier;
     FPinkCabSteeringController SteeringController;
+    FPinkCabLaunchController LaunchController;
+    FPinkCabPedalDosingController PedalDosingController;
     const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
     TOptional<float> CockpitRouteProgress01;
     bool bCockpitRadioAvailable = false;
@@ -113,6 +117,7 @@ private:
     float SmoothedThrottle = 0.0f;
     float SteeringCommand = 0.0f;
     float LastSpeedKmh = 0.0f;
+    bool bThrottleHeldLastFrame = false;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
     FDelegateHandle ApplicationWillDeactivateHandle;

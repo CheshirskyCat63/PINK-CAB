@@ -4,6 +4,8 @@
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
 #include "Vehicle/PinkCabLaunchController.h"
 #include "Vehicle/PinkCabSteeringController.h"
+#include "Vehicle/PinkCabPedalDosingController.h"
+#include "Vehicle/PinkCabCockpitState.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -153,6 +155,55 @@ bool FPinkCabSteeringGazeOwnershipTest::RunTest(const FString& Parameters)
     Steering.Step(100.0f, true, 120.0f, EPinkCabVehicleMotionMode::Moving, 1.0f);
     TestEqual(TEXT("gaze owns mouse and freezes steering cursor"), Steering.GetVirtualCursor(), CursorBefore);
     TestEqual(TEXT("gaze ownership does not auto-steer"), Steering.GetSteering(), SteeringBefore);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPedalWheelPriorityTest,
+    "PinkCab.Vehicle.ControlRuntime.Pedals.WheelPriority",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPedalWheelPriorityTest::RunTest(const FString& Parameters)
+{
+    FPinkCabPedalDosingController Pedals;
+    FPinkCabLaunchController Launch;
+    FPinkCabCockpitState Cockpit;
+    Launch.BeginLaunchAttempt();
+
+    TestEqual(TEXT("E beats W and Q for wheel ownership"),
+        Pedals.ApplyWheelSteps(true, true, true, 2, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Throttle);
+    TestTrue(TEXT("throttle target changed"), Launch.GetThrottleTarget() > 0.0f);
+
+    const float BrakeBefore = Pedals.GetBrakeTarget();
+    TestEqual(TEXT("W beats Q when E absent"),
+        Pedals.ApplyWheelSteps(true, true, false, -2, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Brake);
+    TestTrue(TEXT("brake target changed only on W route"), Pedals.GetBrakeTarget() < BrakeBefore);
+
+    const float ReleaseBefore = Cockpit.GetClutchReleaseSeconds();
+    TestEqual(TEXT("Q owns wheel when alone"),
+        Pedals.ApplyWheelSteps(true, false, false, 1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::ClutchRelease);
+    TestTrue(TEXT("Q wheel changes release setting"), Cockpit.GetClutchReleaseSeconds() > ReleaseBefore);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPedalTargetsTest,
+    "PinkCab.Vehicle.ControlRuntime.Pedals.TargetsAndCoexistence",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPedalTargetsTest::RunTest(const FString& Parameters)
+{
+    FPinkCabPedalDosingController Pedals;
+    TestTrue(TEXT("default brake target is usable"), Pedals.GetBrakeTarget() > 0.0f);
+    TestTrue(TEXT("default brake target remains analog"), Pedals.GetBrakeTarget() < 1.0f);
+
+    const FPinkCabPedalTargets Both = Pedals.ResolveTargets(true, true, 0.6f);
+    TestEqual(TEXT("W and E coexist: brake retained"), Both.Brake, Pedals.GetBrakeTarget());
+    TestEqual(TEXT("W and E coexist: throttle retained"), Both.Throttle, 0.6f);
     return true;
 }
 
