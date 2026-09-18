@@ -8,7 +8,9 @@
 
 - Jira Game Studio product lane: `CD-519`
 - Core Code Complete: `CD-793` — DONE
-- Administrative / Design Reconciliation gate: `CD-841`
+- Administrative / Design Reconciliation gate: `CD-841` — DONE
+- Broader Mechanics Freeze: `CD-848` — independent of the hero-model handoff
+- Pre-model vehicle / asset handoff gate: `CD-856`
 - Native Unreal Chaos vehicle program: `CD-785..CD-792`
 - Repository cut-over gate: `CD-558`
 - BASE-100 program: `CD-746`; scope owner: `CD-753`
@@ -29,7 +31,7 @@ Documentation never implies runtime verification. Exact executable evidence wins
 
 First 12 months: **PC / single-player / Level 1 + approved Level 2 foundation and gameplay scope**. Full Mechanics Freeze remains a separate gate; unresolved world/content scope does not reopen the verified hero-vehicle pre-model contract.
 
-The hero-vehicle lane is frozen for asset substitution: `CD-855` consumes the pre-model vehicle freeze and Tatra import contract without changing Chaos/input/gameplay authority.
+The hero-vehicle lane is frozen for asset substitution under `CD-856`. After that terminal handoff is synchronized across Git/Jira/Confluence, `CD-855` consumes the pre-model vehicle freeze and Tatra import contract without changing Chaos/input/gameplay authority.
 
 ## Vehicle stack authority
 
@@ -43,7 +45,7 @@ The current executable path is already verified through clean build, automation,
 
 ## Development entry
 
-Current work keeps full Mechanics Freeze governance separate from the hero-vehicle model lane. `CD-855` may proceed only against the verified pre-model and asset-import contracts; `main` remains canonical integration. Use short-lived Jira-keyed branches/worktrees and read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
+Current work keeps full Mechanics Freeze governance separate from the hero-vehicle model lane. `CD-856` is the terminal handoff owner; `CD-855` proceeds only against that verified pre-model and asset-import contract. `main` remains canonical integration. Use short-lived Jira-keyed branches/worktrees and read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
 
 Historical PRE-FGEAR material remains in the repository for audit context only; it must not be interpreted as the next production step.
 
