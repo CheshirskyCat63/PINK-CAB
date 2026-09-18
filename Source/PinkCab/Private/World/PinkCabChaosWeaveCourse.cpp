@@ -36,18 +36,25 @@ APinkCabChaosWeaveCourse::APinkCabChaosWeaveCourse()
     RoadSurface->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     RoadSurface->SetCastShadow(false);
 
-    for (int32 Index = 0; Index < GetObstacleCount(); ++Index)
+    // Human-gate road is intentionally clear; barriers only keep the car on the test surface.
+    const FVector Half = CourseSize * 0.5f;
+    const FVector SideBarrierScale(CourseSize.X / 100.0f, 0.30f, 1.20f);
+    const FVector EndBarrierScale(0.30f, CourseSize.Y / 100.0f, 1.20f);
+    const FVector BarrierLocations[] = {
+        FVector(0.0f, -Half.Y, 60.0f), FVector(0.0f, Half.Y, 60.0f),
+        FVector(-Half.X, 0.0f, 60.0f), FVector(Half.X, 0.0f, 60.0f)};
+    for (int32 Index = 0; Index < 4; ++Index)
     {
-        const FName Name(*FString::Printf(TEXT("VehicleBlock_%02d"), Index));
-        UStaticMeshComponent* Block = CreateDefaultSubobject<UStaticMeshComponent>(Name);
-        Block->SetupAttachment(SceneRoot);
-        Block->SetStaticMesh(Cube);
-        Block->SetRelativeLocation(GetObstacleLocation(Index));
-        Block->SetRelativeScale3D(PinkCabChaosWeavePrivate::ObstacleSizeCm / 100.0f);
-        Block->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        Block->SetCastShadow(false);
-        ObstacleBlocks.Add(Block);
+        UStaticMeshComponent* Barrier = CreateDefaultSubobject<UStaticMeshComponent>(
+            *FString::Printf(TEXT("SafetyBarrier_%02d"), Index));
+        Barrier->SetupAttachment(SceneRoot);
+        Barrier->SetStaticMesh(Cube);
+        Barrier->SetRelativeLocation(BarrierLocations[Index]);
+        Barrier->SetRelativeScale3D(Index < 2 ? SideBarrierScale : EndBarrierScale);
+        Barrier->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        Barrier->SetCastShadow(false);
     }
+
 }
 
 FVector APinkCabChaosWeaveCourse::GetObstacleLocation(const int32 Index)

@@ -6,6 +6,7 @@
 #include "PinkCabVehicleVisualShellComponent.generated.h"
 
 class UPrimitiveComponent;
+class UStaticMeshComponent;
 
 UCLASS(ClassGroup=(PinkCab), meta=(BlueprintSpawnableComponent))
 class PINKCAB_API UPinkCabVehicleVisualShellComponent : public USceneComponent
@@ -20,14 +21,17 @@ public:
     FName GetProfileId() const { return Profile.ProfileId; }
     bool HasExteriorAsset() const { return Profile.HasExteriorAsset(); }
     bool HasCabinAsset() const { return Profile.HasCabinAsset(); }
-    UPrimitiveComponent* GetExteriorPresentation() const { return ExteriorPresentation.Get(); }
-    UPrimitiveComponent* GetCabinPresentation() const { return CabinPresentation.Get(); }
+    UPrimitiveComponent* GetExteriorPresentation() const;
+    UPrimitiveComponent* GetCabinPresentation() const;
+    int32 GetPresentationPartCount() const { return PresentationPartComponents.Num(); }
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
     bool RebuildPresentation();
 
 private:
     UPrimitiveComponent* BuildExterior();
     UPrimitiveComponent* BuildCabin();
+    bool BuildPresentationParts();
+    void DestroyPresentationParts();
     void DestroyPresentationComponent(TObjectPtr<UPrimitiveComponent>& Component);
 
     UPROPERTY(EditAnywhere, Category="Vehicle|Visual")
@@ -38,4 +42,7 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<UPrimitiveComponent> CabinPresentation;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UStaticMeshComponent>> PresentationPartComponents;
 };

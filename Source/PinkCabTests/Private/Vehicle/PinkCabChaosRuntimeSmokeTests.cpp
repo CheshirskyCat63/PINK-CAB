@@ -48,6 +48,9 @@ public:
                 AController* Controller = It->GetController();
                 Test->TestNotNull(TEXT("PIE pawn remains possessed for Chaos input processing"), Controller);
                 Test->TestTrue(TEXT("PIE controller is local"), Controller && Controller->IsLocalController());
+                Test->TestTrue(TEXT("system menu starts open before Chaos drive smoke"), It->IsSystemMenuOpen());
+                It->SetSystemMenuOpen(false);
+                Test->TestFalse(TEXT("Chaos drive smoke resumes from system menu"), It->IsSystemMenuOpen());
                 It->SetActorTickEnabled(false);
                 break;
             }

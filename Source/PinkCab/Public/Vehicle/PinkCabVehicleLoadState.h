@@ -25,6 +25,8 @@ struct FPinkCabVehicleLoadState
         FuelLongitudinalCm = InLongitudinalCm;
     }
 
+    float GetFuelMassKg() const { return FuelMassKg; }
+
     void SetCrew(float InHeroineMassKg, float InDaughterMassKg)
     {
         HeroineMassKg = FMath::Max(0.0f, InHeroineMassKg);

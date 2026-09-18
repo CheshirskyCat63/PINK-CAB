@@ -19,6 +19,7 @@
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
 
+class APlayerController;
 class UChaosWheeledVehicleMovementComponent;
 class UCameraComponent;
 class USceneComponent;
@@ -33,6 +34,7 @@ struct FPinkCabVehicleInputFrame;
 struct FPinkCabVehicleSnapshot;
 struct FPinkCabVehicleVisualProfile;
 class FPinkCabTaximeter;
+class SWidget;
 
 UCLASS()
 class PINKCAB_API APinkCabChaosTatraPawn : public AWheeledVehiclePawn
@@ -90,6 +92,8 @@ public:
     void UnbindVehicleHealthState() { VehicleHealthBinding.UnbindPreservingState(); }
     bool IsVehicleHealthStateBound() const { return VehicleHealthBinding.IsBound(); }
     void ResetTransientCockpitInput();
+    void SetSystemMenuOpen(bool bOpen);
+    bool IsSystemMenuOpen() const { return bSystemMenuOpen; }
 
     void SetCockpitTaximeterSource(const FPinkCabTaximeter* InTaximeter) { CockpitTaximeterSource = InTaximeter; }
     void SetCockpitRouteProgress(TOptional<float> InRouteProgress01) { CockpitRouteProgress01 = InRouteProgress01; }
@@ -128,6 +132,14 @@ private:
     bool SyncLoadToChaos();
     void ApplyHealthToControls();
     void HandleApplicationWillDeactivate();
+    void MountPlayableHud();
+    void UnmountPlayableHud();
+    void MountSystemMenu();
+    void UnmountSystemMenu();
+    void ApplyGameplayInputMode(APlayerController* PC);
+    void ApplySystemMenuInputMode(APlayerController* PC);
+    void EnsurePlayableLighting();
+    void SetGearboxPointerCapture(APlayerController* PC, bool bCaptured);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
@@ -172,7 +184,18 @@ private:
     float DrivetrainTorqueCapacity = 1.0f;
     uint32 LastProcessedGearEventSerial = 0;
     bool bThrottleHeldLastFrame = false;
+    float SmoothedLookMouseX = 0.0f;
+    float SmoothedLookMouseY = 0.0f;
+    float VisualSteering = 0.0f;
+    float EngineTemperature01 = 0.15f;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
+    bool bGearLeverDragging = false;
+    bool bGearboxPointerCaptured = false;
+    FVector2D GearLeverCursor = FVector2D::ZeroVector;
     FDelegateHandle ApplicationWillDeactivateHandle;
+    TSharedPtr<SWidget> PlayableHudOverlay;
+    TSharedPtr<SWidget> SystemMenuOverlay;
+    bool bSystemMenuOpen = false;
+    bool bSystemMenuSettingsOpen = false;
 };

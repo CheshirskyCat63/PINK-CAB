@@ -13,13 +13,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabCockpitStableSlotContractTest::RunTest(const FString& Parameters)
 {
     TArray<FPinkCabCockpitSlotDefinition> Definitions;
-    for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::RightMirror); ++Raw)
+    for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::TachometerNeedle); ++Raw)
     {
         const EPinkCabCockpitSlot Slot = static_cast<EPinkCabCockpitSlot>(Raw);
         Definitions.Emplace(Slot, PinkCabCockpitSlotId(Slot));
     }
 
-    TestEqual(TEXT("all required cockpit slots are defined"), Definitions.Num(), 22);
+    TestEqual(TEXT("all required cockpit slots are defined"), Definitions.Num(),
+        static_cast<int32>(EPinkCabCockpitSlot::TachometerNeedle) + 1);
     TestTrue(TEXT("unique stable slot definitions validate"), FPinkCabCockpitSlotDefinition::ValidateUnique(Definitions));
     const FPinkCabCockpitSlotDefinition Duplicate = Definitions[0];
     Definitions.Add(Duplicate);

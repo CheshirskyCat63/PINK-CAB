@@ -618,6 +618,7 @@ confluence_authorities:
   base100_code_architecture: 11239425
   open_decisions: 5832744
   tatra_cockpit: 6619137
+  hero_vehicle_pre_model_asset_contract: 15826945
   vehicle_technology_stack: 13303842
   tatra_handling: 6225936
   tatra_handling_qa: 6160435
@@ -643,6 +644,8 @@ jira_authorities:
   reconciliation_master: CD-841
   reconciliation_units: CD-842_CD-843_CD-844_CD-845_CD-846_CD-847
   mechanics_freeze_master: CD-848
+  pre_model_vehicle_asset_handoff: CD-856
+  model_presentation_consumer: CD-855
   mechanics_freeze_units: CD-849_CD-850_CD-851_CD-852_CD-853_CD-854
   open_decisions: CD-588
   readiness: CD-660_CD-661
@@ -678,6 +681,7 @@ implementation_mirrors:
   first_euro_scope: docs/FIRST_EURO_SCOPE.md
   vehicle_technology_stack: docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md
   tatra_handling: docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md
+  tatra_pre_model_asset_contract: docs/PINK_CAB_TATRA613_PREMODEL_ASSET_CONTRACT.md
   tatra_mass_load: docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md
   taxi_work_physicality: docs/PINK_CAB_TAXI_WORK_PHYSICALITY.md
   servicenode: docs/PINK_CAB_SERVICENODE_TAXONOMY.md

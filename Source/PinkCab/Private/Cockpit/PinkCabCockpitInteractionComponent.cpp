@@ -147,23 +147,27 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     }
 
     FPinkCabInteractionEvent Event;
-    if (Frame.bGripHeld && !bGripActive)
+    const FPinkCabInteractionControlSpec PointerSpec = ResolveActiveSpec();
+    const bool bPrimaryPointerGrips = Frame.bMomentaryHeld
+        && PointerSpec.bSupportsGrip && !PointerSpec.bSupportsMomentary;
+    const bool bEffectiveGripHeld = Frame.bGripHeld || bPrimaryPointerGrips;
+    if (bEffectiveGripHeld && !bGripActive)
     {
         BeginGrip(Event);
     }
-    else if (!Frame.bGripHeld && bGripActive)
+    else if (!bEffectiveGripHeld && bGripActive)
     {
         EndGrip(Event);
     }
 
-    if (Frame.bMomentaryHeld && !bMomentaryActive)
+    if (!bPrimaryPointerGrips && Frame.bMomentaryHeld && !bMomentaryActive)
     {
         if (BeginMomentary(Frame.NowSeconds, Event))
         {
             OutActuationEvents.Add(Event);
         }
     }
-    else if (!Frame.bMomentaryHeld && bMomentaryActive)
+    else if ((!Frame.bMomentaryHeld || bPrimaryPointerGrips) && bMomentaryActive)
     {
         if (EndMomentary(Frame.NowSeconds, Event))
         {

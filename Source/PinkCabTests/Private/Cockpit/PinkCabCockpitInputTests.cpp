@@ -282,4 +282,24 @@ bool FPinkCabPawnTransientCleanupComplianceTest::RunTest(const FString& Paramete
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPrimaryPointerGearboxGripTest,
+    "PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    Frame.bQuickRecall3Held = true;
+    Frame.bMomentaryHeld = true;
+    Frame.NowSeconds = 1.0;
+    TArray<FPinkCabInteractionEvent> Events;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB owns grip-only gearbox while held"), Interaction->IsGripActive());
+    TestEqual(TEXT("gearbox pointer grip does not actuate by itself"), Events.Num(), 0);
+    Frame.bMomentaryHeld = false;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("LMB release returns gearbox grip ownership"), Interaction->IsGripActive());
+    return true;
+}
 #endif

@@ -61,6 +61,7 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
     }
 
     bool HasExteriorAsset() const { return !ExteriorStaticMesh.IsNull() || !ExteriorSkeletalMesh.IsNull(); }
+    bool HasVisualAsset() const { return HasExteriorAsset() || PresentationParts.Num() > 0; }
     bool HasCabinAsset() const
     {
         return !CabinStaticMesh.IsNull() || !CabinSkeletalMesh.IsNull()

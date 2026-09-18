@@ -26,6 +26,18 @@ void UPinkCabVehicleVisualShellComponent::BeginPlay()
     RebuildPresentation();
 }
 
+UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::GetExteriorPresentation() const
+{
+    if (ExteriorPresentation) return ExteriorPresentation.Get();
+    return PresentationPartComponents.Num() > 0 ? PresentationPartComponents[0].Get() : nullptr;
+}
+
+UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::GetCabinPresentation() const
+{
+    if (CabinPresentation) return CabinPresentation.Get();
+    return PresentationPartComponents.Num() > 0 ? PresentationPartComponents[0].Get() : nullptr;
+}
+
 void UPinkCabVehicleVisualShellComponent::DestroyPresentationComponent(
     TObjectPtr<UPrimitiveComponent>& Component)
 {
@@ -34,6 +46,39 @@ void UPinkCabVehicleVisualShellComponent::DestroyPresentationComponent(
         Component->DestroyComponent();
         Component = nullptr;
     }
+}
+
+void UPinkCabVehicleVisualShellComponent::DestroyPresentationParts()
+{
+    for (UStaticMeshComponent* Component : PresentationPartComponents)
+    {
+        if (Component) Component->DestroyComponent();
+    }
+    PresentationPartComponents.Reset();
+}
+
+bool UPinkCabVehicleVisualShellComponent::BuildPresentationParts()
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return Profile.PresentationParts.IsEmpty();
+
+    for (const FPinkCabVehiclePresentationPart& Part : Profile.PresentationParts)
+    {
+        UStaticMesh* Mesh = Part.Mesh.LoadSynchronous();
+        if (!Mesh) return false;
+        UStaticMeshComponent* Component = NewObject<UStaticMeshComponent>(Owner);
+        Owner->AddInstanceComponent(Component);
+        Component->SetupAttachment(this);
+        Component->SetMobility(EComponentMobility::Movable);
+        Component->SetStaticMesh(Mesh);
+        Component->SetRelativeTransform(Part.LocalTransform);
+        Component->SetOwnerNoSee(Part.bOwnerNoSee);
+        Component->SetOnlyOwnerSee(Part.bOnlyOwnerSee);
+        ConfigurePresentation(*Component);
+        Component->RegisterComponent();
+        PresentationPartComponents.Add(Component);
+    }
+    return true;
 }
 
 UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildExterior()
@@ -122,11 +167,13 @@ bool UPinkCabVehicleVisualShellComponent::RebuildPresentation()
 {
     DestroyPresentationComponent(ExteriorPresentation);
     DestroyPresentationComponent(CabinPresentation);
+    DestroyPresentationParts();
     if (!Profile.IsValid()) return false;
 
     ExteriorPresentation = BuildExterior();
     CabinPresentation = BuildCabin();
+    const bool bPartsReady = BuildPresentationParts();
     const bool bExteriorReady = !Profile.HasExteriorAsset() || ExteriorPresentation != nullptr;
     const bool bCabinReady = !Profile.HasCabinAsset() || CabinPresentation != nullptr;
-    return bExteriorReady && bCabinReady;
+    return bExteriorReady && bCabinReady && bPartsReady;
 }

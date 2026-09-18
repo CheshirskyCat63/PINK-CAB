@@ -16,7 +16,9 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("reference service mass"), Profile.ReferenceMassKg.Value, 1657.0f);
     TestEqual(TEXT("mass is product design authority"), Profile.ReferenceMassKg.Authority,
         EPinkCabPhysicalParameterAuthority::DesignTarget);
-    TestEqual(TEXT("historical wheelbase source"), Profile.WheelbaseMm.Value, 2750.0f);
+    TestEqual(TEXT("Tatra 613 wheelbase source"), Profile.WheelbaseMm.Value, 2980.0f);
+    TestEqual(TEXT("Tatra 613 front track source"), Profile.FrontTrackMm.Value, 1520.0f);
+    TestEqual(TEXT("Tatra 613 rear track source"), Profile.RearTrackMm.Value, 1520.0f);
     TestEqual(TEXT("wheelbase is source authority"), Profile.WheelbaseMm.Authority,
         EPinkCabPhysicalParameterAuthority::Source);
     TestEqual(TEXT("Tatra torque target"), Profile.MaxTorqueNm.Value, 240.0f);
@@ -29,6 +31,10 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestFalse(TEXT("front traction control disabled"), Profile.FrontWheel.bTractionControlEnabled.Value);
     TestFalse(TEXT("rear traction control disabled"), Profile.RearWheel.bTractionControlEnabled.Value);
     TestEqual(TEXT("rear handbrake seed"), Profile.RearWheel.MaxHandBrakeTorqueNm.Value, 1700.0f);
+    TestEqual(TEXT("nominal suspension is softened for visible travel"), Profile.FrontWheel.SpringRate.Value, 170.0f);
+    TestEqual(TEXT("suspension has useful bump travel"), Profile.FrontWheel.SuspensionMaxRaiseCm.Value, 14.0f);
+    TestEqual(TEXT("suspension has useful droop travel"), Profile.FrontWheel.SuspensionMaxDropCm.Value, 18.0f);
+    TestEqual(TEXT("suspension damping is compliant"), Profile.FrontWheel.SuspensionDampingRatio.Value, 0.38f);
     TestEqual(TEXT("handbrake seed is calibration"), Profile.RearWheel.MaxHandBrakeTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::Calibration);
     TestEqual(TEXT("nominal spring is softened from the wooden prototype"),

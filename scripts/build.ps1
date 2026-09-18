@@ -6,6 +6,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# UE 5.8 Build.bat uses %TMP% for its process lock. Some agent shells only expose TEMP.
+if ([string]::IsNullOrWhiteSpace($env:TMP)) {
+    if ([string]::IsNullOrWhiteSpace($env:TEMP)) {
+        throw "Neither TMP nor TEMP is configured; Unreal Build.bat cannot create its lock file."
+    }
+    $env:TMP = $env:TEMP
+}
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $RepoRoot "PinkCab.uproject"
 

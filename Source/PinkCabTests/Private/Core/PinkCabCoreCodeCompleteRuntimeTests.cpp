@@ -46,6 +46,9 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
         {
             State->Pawn = *It;
             State->StartLocation = It->GetActorLocation();
+            Test->TestTrue(TEXT("system menu starts open before exact-head drive"), It->IsSystemMenuOpen());
+            It->SetSystemMenuOpen(false);
+            Test->TestFalse(TEXT("exact-head drive resumes from system menu"), It->IsSystemMenuOpen());
             It->SetActorTickEnabled(false);
             AController* Controller = It->GetController();
             Test->TestNotNull(TEXT("exact-head Tatra pawn is possessed"), Controller);

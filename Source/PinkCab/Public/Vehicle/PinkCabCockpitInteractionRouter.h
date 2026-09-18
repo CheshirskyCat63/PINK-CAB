@@ -5,7 +5,7 @@
 
 struct FPinkCabCockpitInteractionRouter
 {
-    static constexpr float HandbrakeWheelStep = 1.0f / 64.0f;
+    static constexpr float HandbrakeWheelStep = 0.25f;
 
     static bool Apply(const FPinkCabInteractionEvent& Event, FPinkCabCockpitState& State)
     {

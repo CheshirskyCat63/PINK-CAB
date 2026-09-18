@@ -58,6 +58,9 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Test->TestTrue(TEXT("playable taxi controller is local"), Controller && Controller->IsLocalController());
         Test->TestNotNull(TEXT("driver camera exists"), Pawn->GetDriverCamera());
         Test->TestTrue(TEXT("driver camera is active"), Pawn->GetDriverCamera() && Pawn->GetDriverCamera()->IsActive());
+        Test->TestTrue(TEXT("system menu starts open before playable drive"), Pawn->IsSystemMenuOpen());
+        Pawn->SetSystemMenuOpen(false);
+        Test->TestFalse(TEXT("playable drive resumes from system menu"), Pawn->IsSystemMenuOpen());
         Pawn->SetActorTickEnabled(false);
         const FPinkCabSemanticInputRouter Router = FPinkCabSemanticInputRouter::CreateDefaults();
         Test->TestEqual(TEXT("canonical throttle is E"),

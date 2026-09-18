@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/SkinnedAsset.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabCockpitState.h"
@@ -11,6 +12,9 @@
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabSteeringController.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "PhysicsEngine/BodyInstance.h"
+#include "PhysicsEngine/BodySetup.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPawnBaselineConfigTest,
@@ -58,6 +62,78 @@ bool FPinkCabChaosWheelRolesTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("rear wheels do not steer"), Rear->bAffectedBySteering);
     TestTrue(TEXT("rear wheels drive"), Rear->bAffectedByEngine);
     TestTrue(TEXT("rear wheels handbrake"), Rear->bAffectedByHandbrake);
+    return true;
+}
+
+namespace
+{
+FVector ResolveChaosWheelRestPosition(
+    const APinkCabChaosTatraPawn& Pawn,
+    const FChaosWheelSetup& Setup)
+{
+    const USkeletalMeshComponent* Mesh = Pawn.GetMesh();
+    const USkinnedAsset* Asset = Mesh ? Mesh->GetSkinnedAsset() : nullptr;
+    FVector Offset = Setup.WheelClass.GetDefaultObject()->Offset + Setup.AdditionalOffset;
+    if (!Mesh || !Asset || Setup.BoneName.IsNone())
+    {
+        return Offset;
+    }
+
+    const FVector BonePosition =
+        Asset->GetComposedRefPoseMatrix(Setup.BoneName).GetOrigin() * Mesh->GetRelativeScale3D();
+    FMatrix RootBodyMatrix = FMatrix::Identity;
+    if (const FBodyInstance* BodyInstance = Mesh->GetBodyInstance())
+    {
+        if (BodyInstance->BodySetup.IsValid())
+        {
+            RootBodyMatrix = Asset->GetComposedRefPoseMatrix(BodyInstance->BodySetup->BoneName);
+        }
+    }
+    return Offset + RootBodyMatrix.InverseTransformPosition(BonePosition);
+}
+
+const FPinkCabVehiclePresentationPart* FindPresentationPart(
+    const FPinkCabVehicleVisualProfile& Profile,
+    const FName PartId)
+{
+    return Profile.PresentationParts.FindByPredicate([PartId](const FPinkCabVehiclePresentationPart& Part)
+    {
+        return Part.PartId == PartId;
+    });
+}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosTatraWheelGeometryBindingTest,
+    "PinkCab.Vehicle.ChaosBaseline.Pawn.TatraWheelGeometryBinding",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosTatraWheelGeometryBindingTest::RunTest(const FString& Parameters)
+{
+    const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
+    const UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+    TestNotNull(TEXT("Tatra pawn owns Chaos movement"), Movement);
+    if (!Movement || Movement->WheelSetups.Num() != 4)
+    {
+        return false;
+    }
+
+    const FPinkCabVehicleVisualProfile Tatra = FPinkCabVehicleVisualProfile::Tatra613Donor();
+    const FName PartIds[4] = { TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR") };
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const FPinkCabVehiclePresentationPart* Part = FindPresentationPart(Tatra, PartIds[Index]);
+        TestNotNull(*FString::Printf(TEXT("%s target wheel contract exists"), *PartIds[Index].ToString()), Part);
+        if (!Part)
+        {
+            return false;
+        }
+        const FVector Expected = Part->LocalTransform.GetLocation();
+        const FVector Actual = ResolveChaosWheelRestPosition(*Pawn, Movement->WheelSetups[Index]);
+        TestTrue(
+            *FString::Printf(TEXT("%s Chaos resting position follows Tatra geometry contract"), *PartIds[Index].ToString()),
+            Actual.Equals(Expected, 0.01f));
+    }
     return true;
 }
 

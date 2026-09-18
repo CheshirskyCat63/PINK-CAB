@@ -26,6 +26,7 @@ public:
     int32 GetRegisteredSlotCount() const { return SlotComponents.Num(); }
     bool ApplyVisualBindings(TConstArrayView<FPinkCabCockpitVisualBinding> Bindings);
     void ResetVisualBindings();
+    void SetGeneratedVisualMode(bool bShowFallbackShell, TConstArrayView<FPinkCabCockpitVisualBinding> ActiveBindings);
 
     FName ResolveGazeTarget(
         const FVector& WorldOrigin,
@@ -57,6 +58,9 @@ private:
 
     UPROPERTY(Transient)
     TMap<uint8, TObjectPtr<USceneComponent>> SlotComponents;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UStaticMeshComponent>> GeneratedPrimitives;
 
     TMap<uint8, FPinkCabCockpitSlotDefinition> SlotDefinitions;
     TMap<uint8, FTransform> BaselineTransforms;

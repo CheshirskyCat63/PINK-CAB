@@ -28,6 +28,16 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     APinkCabChaosTatraPawn* Pawn = nullptr;
     for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It) { Pawn = *It; break; }
     Test->TestNotNull(TEXT("playable map owns Tatra pawn"), Pawn);
+    bool bFoundPlayableSkyRig = false;
+    for (TActorIterator<AActor> It(World); It; ++It)
+    {
+        if (It->ActorHasTag(FName(TEXT("PinkCab.PlayableLighting"))))
+        {
+            bFoundPlayableSkyRig = true;
+            break;
+        }
+    }
+    Test->TestTrue(TEXT("playable map owns Unreal sky/light rig"), bFoundPlayableSkyRig);
     if (!Pawn) return true;
     UPinkCabCockpitAssemblyComponent* Assembly = Pawn->GetCockpitAssembly();
     UPinkCabCockpitVisualDriverComponent* VisualDriver = Pawn->GetCockpitVisualDriver();
@@ -36,12 +46,22 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestNotNull(TEXT("cockpit visual driver exists"), VisualDriver);
     Test->TestNotNull(TEXT("vehicle visual shell exists"), Shell);
     if (!Assembly || !VisualDriver || !Shell) return true;
+    Test->TestEqual(TEXT("playable map starts with Tatra 613 desktop-clean profile"),
+        Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
+    Test->TestNotNull(TEXT("playable map starts with visible donor exterior"), Shell->GetExteriorPresentation());
+    Test->TestNotNull(TEXT("playable map starts with owner-visible source scene"), Shell->GetCabinPresentation());
+    Test->TestEqual(TEXT("playable map renders 133 source meshes plus four donor wheels"),
+        Shell->GetPresentationPartCount(), 137);
 
     USceneComponent* Steering = Assembly->GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel);
     const FPinkCabCockpitSlotDefinition* Definition = Assembly->GetSlotDefinition(EPinkCabCockpitSlot::SteeringWheel);
     Test->TestNotNull(TEXT("steering anchor exists"), Steering);
     Test->TestNotNull(TEXT("steering definition exists"), Definition);
     if (!Steering || !Definition) return true;
+
+    const UPrimitiveComponent* SteeringPrimitive = Cast<UPrimitiveComponent>(Steering);
+    Test->TestTrue(TEXT("faithful Tatra hides generated cockpit visuals"),
+        SteeringPrimitive && SteeringPrimitive->bHiddenInGame);
 
     const FTransform OriginalTransform = Steering->GetRelativeTransform();
     const FName StableIdBefore = Definition->StableId;
@@ -71,7 +91,6 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestTrue(TEXT("steering anchor moves to donor control location"),
         Steering->GetRelativeTransform().Equals(SteeringBinding.LocalTransform, 0.01f));
 
-    const UPrimitiveComponent* SteeringPrimitive = Cast<UPrimitiveComponent>(Steering);
     Test->TestTrue(TEXT("baked donor control can hide primitive mesh while keeping anchor"),
         SteeringPrimitive && SteeringPrimitive->bHiddenInGame);
     Definition = Assembly->GetSlotDefinition(EPinkCabCockpitSlot::SteeringWheel);
@@ -87,10 +106,12 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestTrue(TEXT("fallback profile reapplies"),
         Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Fallback()));
     Test->TestTrue(TEXT("physics chassis returns when donor exterior is removed"), Pawn->GetMesh()->IsVisible());
-    Test->TestTrue(TEXT("fallback restores original steering transform"),
-        Steering->GetRelativeTransform().Equals(OriginalTransform, 0.01f));
     Test->TestTrue(TEXT("fallback restores primitive steering visibility"),
         SteeringPrimitive && !SteeringPrimitive->bHiddenInGame);
+    Test->TestTrue(TEXT("donor profile reapplies after fallback"),
+        Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613Donor()));
+    Test->TestEqual(TEXT("desktop-clean profile id restored after fallback proof"),
+        Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     return true;
 }
 

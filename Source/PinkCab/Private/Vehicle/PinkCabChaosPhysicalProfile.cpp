@@ -65,8 +65,8 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
 {
     using A = EPinkCabPhysicalParameterAuthority;
     FPinkCabChaosWheelPhysicalProfile W;
-    W.WheelRadiusCm = P(34.0f, A::Calibration);
-    W.WheelWidthCm = P(18.5f, A::Calibration);
+    W.WheelRadiusCm = P(32.13f, A::Source);
+    W.WheelWidthCm = P(20.5f, A::Source);
     W.WheelMassKg = P(20.0f, A::Calibration);
     W.CorneringStiffness = P(1000.0f, A::Calibration);
     W.FrictionForceMultiplier = P(VariantFriction(Variant), A::Calibration);
@@ -78,8 +78,8 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.MaxHandBrakeTorqueNm = P(bFront ? 0.0f : 1700.0f, A::Calibration);
     W.SpringRate = P(VariantSpring(Variant), A::Calibration);
     W.SpringPreload = P(32.0f, A::Calibration);
-    W.SuspensionMaxRaiseCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
-    W.SuspensionMaxDropCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
+    W.SuspensionMaxRaiseCm = P(14.0f, A::Calibration);
+    W.SuspensionMaxDropCm = P(18.0f, A::Calibration);
     W.SuspensionDampingRatio = P(0.38f, A::Calibration);
     W.WheelLoadRatio = P(0.38f, A::Calibration);
     W.RollbarScaling = P(0.08f, A::Calibration);
@@ -100,9 +100,9 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     FPinkCabChaosPhysicalProfile R;
     const FPinkCabTatraProfile Tatra = FPinkCabTatraProfile::Canonical();
     R.ReferenceMassKg = P(Tatra.GetReferenceCrewMassKg(), A::DesignTarget);
-    R.WheelbaseMm = P(2750.0f, A::Source);
-    R.FrontTrackMm = P(1485.0f, A::Source);
-    R.RearTrackMm = P(1400.0f, A::Source);
+    R.WheelbaseMm = P(2980.0f, A::Source);
+    R.FrontTrackMm = P(1520.0f, A::Source);
+    R.RearTrackMm = P(1520.0f, A::Source);
     R.MaxPowerHp = P(180.0f, A::DesignTarget);
     R.MaxTorqueNm = P(240.0f, A::DesignTarget);
     R.TerminalTargetKmh = P(195.0f, A::DesignTarget);

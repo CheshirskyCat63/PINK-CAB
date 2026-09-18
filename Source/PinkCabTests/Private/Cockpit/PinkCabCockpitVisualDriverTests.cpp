@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+﻿#if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
@@ -22,6 +22,14 @@ bool FPinkCabCockpitVisualMappingTest::RunTest(const FString& Parameters)
         UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -16.0f);
     TestEqual(TEXT("full handbrake gets bounded lever angle"),
         UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -32.0f);
+    TestEqual(TEXT("cold temperature needle starts at low stop"),
+        UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(0.0f), -60.0f);
+    TestEqual(TEXT("full fuel needle reaches high stop"),
+        UPinkCabCockpitVisualDriverComponent::FuelNeedleAngleDegrees(1.0f), 60.0f);
+    TestEqual(TEXT("speedometer midpoint is 110 kmh"),
+        UPinkCabCockpitVisualDriverComponent::SpeedometerNeedleAngleDegrees(110.0f), 0.0f);
+    TestEqual(TEXT("tachometer midpoint is 3500 rpm"),
+        UPinkCabCockpitVisualDriverComponent::TachometerNeedleAngleDegrees(3500.0f), 0.0f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -37,6 +45,31 @@ bool FPinkCabCockpitVisualGearPoseTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("neutral gear lever is centered"), Neutral, FVector::ZeroVector);
     TestTrue(TEXT("reverse has distinct lever pose"), Reverse != Neutral);
     TestTrue(TEXT("fifth has distinct lever pose"), Fifth != Neutral && Fifth != Reverse);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCockpitMouseGearLeverTest,
+    "PinkCab.Cockpit.VisualDriver.MouseGearLever",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCockpitMouseGearLeverTest::RunTest(const FString& Parameters)
+{
+    FVector2D Cursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(0);
+    Cursor = UPinkCabCockpitVisualDriverComponent::IntegrateGearCursor(Cursor, 18.0f, -22.0f, 0.025f);
+    TestTrue(TEXT("mouse movement moves lever preview right"), Cursor.X > 0.0f);
+    TestTrue(TEXT("mouse movement moves lever preview forward"), Cursor.Y > 0.0f);
+    const FVector Preview = UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(Cursor);
+    TestTrue(TEXT("preview produces visible nonzero lever offset"), !Preview.IsNearlyZero());
+
+    TestEqual(TEXT("first gear gate resolves"),
+        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(-1.0f, 1.0f)), 1);
+    TestEqual(TEXT("second gear gate resolves"),
+        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(-1.0f, -1.0f)), 2);
+    TestEqual(TEXT("fifth gear gate resolves"),
+        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(1.0f, 1.0f)), 5);
+    TestEqual(TEXT("center corridor resolves neutral"),
+        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(0.0f, 0.05f)), 0);
     return true;
 }
 
@@ -72,4 +105,19 @@ bool FPinkCabCockpitPresentationFlagsTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringGeometricPivotTest,
+    "PinkCab.Cockpit.VisualDriver.SteeringGeometricPivot",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabSteeringGeometricPivotTest::RunTest(const FString& Parameters)
+{
+    const FTransform Base(FRotator(0.0f, 180.0f, 0.0f), FVector(48.0f, -44.0f, 82.0f), FVector::OneVector);
+    const FVector MeshCenter(8.0f, -3.0f, 2.0f);
+    const FRotator Offset(0.0f, 0.0f, 90.0f);
+    const FVector Before = Base.TransformPosition(MeshCenter);
+    const FVector NewLocation = UPinkCabCockpitVisualDriverComponent::PivotCompensatedLocation(Base, MeshCenter, Offset);
+    const FTransform After(Base.Rotator() + Offset, NewLocation, Base.GetScale3D());
+    TestTrue(TEXT("steering mesh center remains fixed while wheel rotates"), Before.Equals(After.TransformPosition(MeshCenter), 0.01f));
+    return true;
+}
 #endif

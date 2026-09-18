@@ -31,7 +31,11 @@ enum class EPinkCabCockpitSlot : uint8
     Radio,
     RearViewMirror,
     LeftMirror,
-    RightMirror
+    RightMirror,
+    TemperatureNeedle,
+    FuelNeedle,
+    SpeedometerNeedle,
+    TachometerNeedle
 };
 
 inline FName PinkCabCockpitSlotId(const EPinkCabCockpitSlot Slot)
@@ -60,6 +64,10 @@ inline FName PinkCabCockpitSlotId(const EPinkCabCockpitSlot Slot)
     case EPinkCabCockpitSlot::RearViewMirror: return TEXT("RearViewMirror");
     case EPinkCabCockpitSlot::LeftMirror: return TEXT("LeftMirror");
     case EPinkCabCockpitSlot::RightMirror: return TEXT("RightMirror");
+    case EPinkCabCockpitSlot::TemperatureNeedle: return TEXT("TemperatureNeedle");
+    case EPinkCabCockpitSlot::FuelNeedle: return TEXT("FuelNeedle");
+    case EPinkCabCockpitSlot::SpeedometerNeedle: return TEXT("SpeedometerNeedle");
+    case EPinkCabCockpitSlot::TachometerNeedle: return TEXT("TachometerNeedle");
     default: return NAME_None;
     }
 }
