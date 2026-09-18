@@ -1,8 +1,9 @@
 # PINK CAB В· PRE-MODEL VEHICLE FREEZE
 
 Date: 2026-09-17
-Gate: `CD-848` owner-narrowed pre-model vehicle lane
-Next asset gate: `CD-855`
+Gate: `CD-856` — PRE-MODEL VEHICLE FREEZE / asset handoff
+Broader Mechanics Freeze: `CD-848` — independent, not a hero-model blocker after this gate
+Next asset task: `CD-855`
 
 ## Result
 

@@ -287,8 +287,10 @@ current_canon:
     runtime_status: IMPLEMENTED_VERIFIED_CORE_PATH
 
   pre_model_vehicle_handoff:
-    owner_gate: CD-848
+    owner_gate: CD-856
+    broader_mechanics_freeze_gate: CD-848
     consumer_task: CD-855
+    confluence_page: 15663105
     status: IMPLEMENTED_VERIFIED_PRE_MODEL_CONTRACT
     git_freeze: docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md
     asset_import_contract: docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md
