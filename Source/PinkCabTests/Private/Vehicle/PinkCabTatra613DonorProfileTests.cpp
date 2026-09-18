@@ -18,8 +18,8 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     TestTrue(TEXT("scene profile does not use a merged exterior mesh"), Profile.ExteriorStaticMesh.IsNull());
     TestFalse(TEXT("scene profile does not duplicate exterior into a cabin mesh"), Profile.bUseExteriorAsCabinWhenCabinMissing);
-    TestEqual(TEXT("scene profile contains 133 source meshes plus four donor wheels"),
-        Profile.PresentationParts.Num(), 137);
+    TestEqual(TEXT("scene profile contains 132 static source meshes plus four donor wheels; steering is live"),
+        Profile.PresentationParts.Num(), 136);
 
     int32 WheelPartCount = 0;
     int32 SourceScenePartCount = 0;
@@ -43,7 +43,7 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         }
     }
     TestEqual(TEXT("four visual wheel instances are authored"), WheelPartCount, 4);
-    TestEqual(TEXT("all 133 non-wheel Blender mesh objects are authored as scene parts"), SourceScenePartCount, 133);
+    TestEqual(TEXT("all non-steering Blender mesh objects stay authored as untouched scene parts"), SourceScenePartCount, 132);
 
     const auto FindPart = [&Profile](const TCHAR* Id)
     {
@@ -70,8 +70,15 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("visual rear track matches Tatra 613 source"), RearTrackCm, 152.0f);
     }
 
-    TestEqual(TEXT("desktop Tatra uses no generated cockpit visual overrides"),
-        Profile.CockpitBindings.Num(), 0);
+    TestEqual(TEXT("desktop Tatra uses exactly one live cockpit visual override"),
+        Profile.CockpitBindings.Num(), 1);
+    if (Profile.CockpitBindings.Num() == 1)
+    {
+        TestEqual(TEXT("only steering wheel is allowed to be a live cockpit override"),
+            Profile.CockpitBindings[0].Slot, EPinkCabCockpitSlot::SteeringWheel);
+        TestTrue(TEXT("steering override uses the dedicated V12 donor mesh"),
+            Profile.CockpitBindings[0].MeshOverride.ToSoftObjectPath().ToString().Contains(TEXT("Tatra613_V12_Steering")));
+    }
     return true;
 }
 

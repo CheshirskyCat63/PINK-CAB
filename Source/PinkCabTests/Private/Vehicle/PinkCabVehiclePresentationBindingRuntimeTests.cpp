@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
@@ -50,8 +51,8 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
         Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     Test->TestNotNull(TEXT("playable map starts with visible donor exterior"), Shell->GetExteriorPresentation());
     Test->TestNotNull(TEXT("playable map starts with owner-visible source scene"), Shell->GetCabinPresentation());
-    Test->TestEqual(TEXT("playable map renders 133 source meshes plus four donor wheels"),
-        Shell->GetPresentationPartCount(), 137);
+    Test->TestEqual(TEXT("playable map renders 132 static source meshes plus four donor wheels; steering is a live cockpit binding"),
+        Shell->GetPresentationPartCount(), 136);
 
     USceneComponent* Steering = Assembly->GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel);
     const FPinkCabCockpitSlotDefinition* Definition = Assembly->GetSlotDefinition(EPinkCabCockpitSlot::SteeringWheel);
@@ -60,10 +61,23 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     if (!Steering || !Definition) return true;
 
     const UPrimitiveComponent* SteeringPrimitive = Cast<UPrimitiveComponent>(Steering);
-    Test->TestTrue(TEXT("faithful Tatra hides generated cockpit visuals"),
-        SteeringPrimitive && SteeringPrimitive->bHiddenInGame);
+    Test->TestTrue(TEXT("Tatra exposes the dedicated steering mesh while generated controls remain hidden"),
+        SteeringPrimitive && !SteeringPrimitive->bHiddenInGame);
+    const UStaticMeshComponent* SteeringMesh = Cast<UStaticMeshComponent>(Steering);
+    Test->TestTrue(TEXT("visible steering uses dedicated pivot-centered donor mesh"),
+        SteeringMesh && SteeringMesh->GetStaticMesh()
+            && SteeringMesh->GetStaticMesh()->GetName() == TEXT("Tatra613_V12_Steering"));
 
     const FTransform OriginalTransform = Steering->GetRelativeTransform();
+    FPinkCabCockpitPresentationState TurnState;
+    TurnState.Steering = 0.25f;
+    VisualDriver->Apply(*Assembly, TurnState);
+    Test->TestTrue(TEXT("visible steering rotates without translating its pivot"),
+        Steering->GetRelativeLocation().Equals(OriginalTransform.GetLocation(), 0.01f));
+    Test->TestFalse(TEXT("visible steering rotation changes with steering command"),
+        Steering->GetRelativeRotation().Equals(OriginalTransform.Rotator(), 0.01f));
+    VisualDriver->Apply(*Assembly, FPinkCabCockpitPresentationState{});
+
     const FName StableIdBefore = Definition->StableId;
     const bool bGripBefore = Definition->bSupportsGrip;
     const bool bMomentaryBefore = Definition->bSupportsMomentary;

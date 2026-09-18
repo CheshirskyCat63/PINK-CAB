@@ -52,12 +52,19 @@ bool FPinkCabTatra613V12AssetContractTest::RunTest(const FString& Parameters)
     const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Tatra613Donor();
     const FPinkCabChaosPhysicalProfile Physical = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
 
-    TestEqual(TEXT("desktop TATRA613 does not replace any source cockpit geometry"),
-        Visual.CockpitBindings.Num(), 0);
+    TestEqual(TEXT("desktop TATRA613 replaces only the steering wheel with a live cockpit binding"),
+        Visual.CockpitBindings.Num(), 1);
+    if (Visual.CockpitBindings.Num() == 1)
+    {
+        TestEqual(TEXT("the single live cockpit binding is steering"),
+            Visual.CockpitBindings[0].Slot, EPinkCabCockpitSlot::SteeringWheel);
+        TestTrue(TEXT("live steering uses the dedicated donor steering mesh"),
+            Visual.CockpitBindings[0].MeshOverride.ToSoftObjectPath().ToString().Contains(TEXT("Tatra613_V12_Steering")));
+    }
     TestTrue(TEXT("scene-preserved profile does not use merged exterior mesh"),
         Visual.ExteriorStaticMesh.IsNull());
-    TestEqual(TEXT("scene-preserved profile has 133 source meshes plus four donor wheels"),
-        Visual.PresentationParts.Num(), 137);
+    TestEqual(TEXT("scene-preserved profile has 132 static source meshes plus four donor wheels; steering is live"),
+        Visual.PresentationParts.Num(), 136);
 
     TestTrue(TEXT("Tatra visual profile is structurally valid"), Visual.IsValid());
     TestEqual(TEXT("source wheelbase is 2980 mm"), Physical.WheelbaseMm.Value, 2980.0f);

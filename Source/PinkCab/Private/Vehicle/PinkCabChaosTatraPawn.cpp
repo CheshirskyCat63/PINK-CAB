@@ -140,6 +140,21 @@ const TCHAR* EngagementLabel(const EPinkCabGearEngagementResult Result)
     default: return TEXT("NONE");
     }
 }
+
+FString GaugeBar(const float Value, const int32 Segments = 10)
+{
+    const float Clamped = FMath::Clamp(Value, 0.0f, 1.0f);
+    const int32 Filled = FMath::Clamp(FMath::RoundToInt(Clamped * Segments), 0, Segments);
+    FString Result;
+    Result.Reserve(Segments + 2);
+    Result.AppendChar(TEXT('['));
+    for (int32 Index = 0; Index < Segments; ++Index)
+    {
+        Result.AppendChar(Index < Filled ? TEXT('#') : TEXT('-'));
+    }
+    Result.AppendChar(TEXT(']'));
+    return Result;
+}
 }
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
@@ -335,75 +350,90 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
             const FName Target = WeakThis->CockpitInteraction->GetCurrentTargetId();
             return Target.IsNone() ? FText::GetEmpty() : FText::FromName(Target);
         }) ]
-        + SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(FMargin(24,24,24,0))
-        [ SNew(SBorder).Padding(FMargin(12,9)).BorderBackgroundColor(FLinearColor(0,0,0,0.58f))
+        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(FMargin(20,0,20,28))
+        [ SNew(SBorder).Padding(FMargin(16,12)).BorderBackgroundColor(FLinearColor(0.015f,0.018f,0.022f,0.88f))
           [ SNew(SVerticalBox)
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),12)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
+            + SVerticalBox::Slot().AutoHeight()
+            [ SNew(SHorizontalBox)
+              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("SPEED"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid()
+                        ? FText::FromString(FString::Printf(TEXT("%03d  km/h"), FMath::RoundToInt(FMath::Abs(WeakThis->LastSpeedKmh))))
+                        : FText::GetEmpty();
+                }) ]
+              ]
+              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("GEAR"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor(0.92f,0.95f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid() ? FText::FromString(GearLabel(WeakThis->GearboxController.GetEngagedGear())) : FText::GetEmpty();
+                }) ]
+              ]
+              + SHorizontalBox::Slot().AutoWidth()
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("ENGINE RPM"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),24)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid()
+                        ? FText::FromString(FString::Printf(TEXT("%04d"), FMath::RoundToInt(FMath::Max(WeakThis->LastEngineRpm, 0.0f))))
+                        : FText::GetEmpty();
+                }) ]
+              ]
+            ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,6,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),11)).ColorAndOpacity(FLinearColor(0.88f,0.92f,0.96f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const TCHAR* Engine = WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running ? TEXT("ON")
-                    : (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled ? TEXT("STALLED") : TEXT("OFF"));
+                const EPinkCabIgnitionState Ignition = WeakThis->CockpitState.GetIgnitionState();
+                const TCHAR* Engine = Ignition == EPinkCabIgnitionState::Running ? TEXT("ENGINE ON")
+                    : (Ignition == EPinkCabIgnitionState::Stalled ? TEXT("ENGINE STALLED") : TEXT("ENGINE OFF"));
+                const float Fuel01 = WeakThis->TatraProfile.FullFuelMassKg > KINDA_SMALL_NUMBER
+                    ? FMath::Clamp(WeakThis->VehicleLoadState.GetFuelMassKg() / WeakThis->TatraProfile.FullFuelMassKg, 0.0f, 1.0f)
+                    : 0.0f;
                 return FText::FromString(FString::Printf(
-                    TEXT("ENGINE %s   %s   %.1f km/h   %.0f RPM"),
-                    Engine, MotionLabel(WeakThis->GetMotionMode()), WeakThis->LastSpeedKmh, WeakThis->LastEngineRpm));
+                    TEXT("%s   |   %s   |   FUEL %3d%%   |   TEMP %3d%%   |   HB %s"),
+                    Engine,
+                    MotionLabel(WeakThis->GetMotionMode()),
+                    FMath::RoundToInt(Fuel01 * 100.0f),
+                    FMath::RoundToInt(FMath::Clamp(WeakThis->EngineTemperature01, 0.0f, 1.0f) * 100.0f),
+                    WeakThis->HandbrakeActuator.IsParkingLatched() ? TEXT("PARK") :
+                        (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f ? TEXT("ACTIVE") : TEXT("OFF"))));
             }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text_Lambda([WeakThis]() {
+            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
                 return FText::FromString(FString::Printf(
-                    TEXT("GEAR REQ %s   ENG %s   %s   CURSOR %.2f/%.2f"),
-                    *GearLabel(WeakThis->GearboxController.GetRequestedGear()),
-                    *GearLabel(WeakThis->GearboxController.GetEngagedGear()),
-                    EngagementLabel(WeakThis->GearboxController.GetLastResult()),
-                    WeakThis->GearLeverCursor.X, WeakThis->GearLeverCursor.Y));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const float Coupling = WeakThis->GearboxController.ComputeClutchCoupling(WeakThis->ControlState.Clutch);
-                return FText::FromString(FString::Printf(
-                    TEXT("CLUTCH %d%%   COUPLING %d%%   RELEASE %.2fs   HEALTH %d%%   TEMP %d%%"),
+                    TEXT("CLUTCH %s %3d%%    GAS %s %3d%%    BRAKE %s %3d%%"),
+                    *GaugeBar(WeakThis->ControlState.Clutch),
                     FMath::RoundToInt(WeakThis->ControlState.Clutch * 100.0f),
-                    FMath::RoundToInt(Coupling * 100.0f),
-                    WeakThis->CockpitState.GetClutchReleaseSeconds(),
-                    FMath::RoundToInt(WeakThis->GetVehicleHealthState().GetHealth(EPinkCabVehicleHealthChannel::Clutch) * 100.0f),
-                    FMath::RoundToInt(WeakThis->GetVehicleHealthState().GetClutchTemperature01() * 100.0f)));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                return FText::FromString(FString::Printf(
-                    TEXT("THROTTLE %d%% TARGET %d%% %s   BRAKE %d%% TARGET %d%%"),
+                    *GaugeBar(WeakThis->ControlState.Throttle),
                     FMath::RoundToInt(WeakThis->ControlState.Throttle * 100.0f),
-                    FMath::RoundToInt(WeakThis->LaunchController.GetThrottleTarget() * 100.0f),
-                    WeakThis->LaunchController.RequiresThrottleDose() ? TEXT("DOSE!") : TEXT("READY"),
-                    FMath::RoundToInt(WeakThis->ControlState.Brake * 100.0f),
-                    FMath::RoundToInt(WeakThis->PedalDosingController.GetBrakeTarget() * 100.0f)));
+                    *GaugeBar(WeakThis->ControlState.Brake),
+                    FMath::RoundToInt(WeakThis->ControlState.Brake * 100.0f)));
             }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text_Lambda([WeakThis]() {
+            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),10)).ColorAndOpacity(FLinearColor(1.0f,0.78f,0.30f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
-                return FText::FromString(FString::Printf(
-                    TEXT("STEER %.2f TARGET %.2f CURSOR %.2f   HB LEVER %d%% TORQUE %d%% %s   BRAKE TEMP %d%%"),
-                    WeakThis->ControlState.Steering,
-                    WeakThis->SteeringController.GetTarget(),
-                    WeakThis->SteeringController.GetVirtualCursor(),
-                    FMath::RoundToInt(WeakThis->HandbrakeActuator.GetLeverPosition() * 100.0f),
-                    FMath::RoundToInt(WeakThis->HandbrakeActuator.GetBrakeCommand() * 100.0f),
-                    WeakThis->HandbrakeActuator.IsParkingLatched() ? TEXT("LATCH") : TEXT("FREE"),
-                    FMath::RoundToInt(WeakThis->GetVehicleHealthState().GetBrakeTemperature01() * 100.0f)));
+                TArray<FString> Warnings;
+                if (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled) Warnings.Add(TEXT("STALL"));
+                if (WeakThis->LaunchController.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
+                if (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
+                if (WeakThis->GetVehicleHealthState().GetBrakeTemperature01() > 0.75f) Warnings.Add(TEXT("BRAKES HOT"));
+                if (WeakThis->GetVehicleHealthState().GetClutchTemperature01() > 0.75f) Warnings.Add(TEXT("CLUTCH HOT"));
+                const EPinkCabGearEngagementResult GearResult = WeakThis->GearboxController.GetLastResult();
+                if (GearResult == EPinkCabGearEngagementResult::GrindRefused
+                    || GearResult == EPinkCabGearEngagementResult::ReverseLockout
+                    || GearResult == EPinkCabGearEngagementResult::DangerousOverrev)
+                {
+                    Warnings.Add(EngagementLabel(GearResult));
+                }
+                Warnings.Add(TEXT("ABS OFF"));
+                Warnings.Add(TEXT("ESP OFF"));
+                return FText::FromString(FString::Join(Warnings, TEXT("   |   ")));
             }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.76f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const int32 Signal = WeakThis->CockpitState.GetTurnSignalDirection();
-                return FText::FromString(FString::Printf(
-                    TEXT("SIGNAL %s   HORN %s   LIGHTS %d   WIPERS %d   WASHER %s   ABS OFF   ESP OFF"),
-                    Signal < 0 ? TEXT("L") : (Signal > 0 ? TEXT("R") : TEXT("-")),
-                    WeakThis->CockpitState.IsHornActive() ? TEXT("ON") : TEXT("OFF"),
-                    WeakThis->CockpitState.GetLightMode(),
-                    WeakThis->CockpitState.GetWiperMode(),
-                    WeakThis->CockpitState.IsWasherActive() ? TEXT("ON") : TEXT("OFF")));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("SPACE hold: LOOK   RMB: ready/control focus   LMB: use/capture   WHEEL: fine adjust"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("1 signal   2 horn   3 gearbox   4 handbrake"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("Q clutch   W brake   E throttle (smooth analog ramps)   MOUSE steer"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("GEAR: press 3 to target, hold RMB, move mouse through H-gate 1/3/5 - N - 2/4/R"))) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("HANDBRAKE: press 4 to target, hold RMB, mouse pull/push = analog lever"))) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,7,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.58f))
+              .Text(FText::FromString(TEXT("MOUSE STEER   Q CLUTCH   W BRAKE   E GAS   3 GEARBOX   4 HANDBRAKE   SPACE LOOK"))) ]
           ] ];
     GEngine->GameViewport->AddViewportWidgetContent(PlayableHudOverlay.ToSharedRef(),1000);
 }
@@ -1129,11 +1159,9 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     DriverHeadRoot->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
 
     FPinkCabCockpitPresentationState Presentation;
-    VisualSteering = FMath::FInterpTo(
-        VisualSteering,
-        ControlState.Steering,
-        DeltaSeconds,
-        7.0f);
+    // The steering controller is already filtered for road feel. The visible
+    // wheel must mirror that command exactly so its direction is immediately readable.
+    VisualSteering = ControlState.Steering;
     Presentation.Steering = VisualSteering;
     Presentation.Clutch = ControlState.Clutch;
     Presentation.Brake = ControlState.Brake;
