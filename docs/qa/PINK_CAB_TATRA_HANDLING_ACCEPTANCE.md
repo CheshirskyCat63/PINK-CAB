@@ -3,7 +3,7 @@
 **Status:** QA SPECIFIED — RUNTIME NOT VERIFIED
 **Authority:** `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md` + `docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`
 **Vehicle stack:** `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`
-**Jira:** owner `CD-729`; FGear profile `CD-732`; wet calibration `CD-734`; expression `CD-735`; integrated QA `CD-738`; telemetry `CD-657`; acceptance `CD-658`; mass/vertical `CD-701`
+**Jira:** handling owner `CD-648`; steering `CD-649`; handbrake `CD-653`; clutch `CD-659`; telemetry `CD-657`; acceptance `CD-658`; mass/vertical `CD-701`; technology reconciliation `CD-843`
 
 Every result records exact build/commit, UE 5.8.x / Chaos profile versions as relevant, Tatra physics/tire/surface/expression profile versions and exact load fixture.
 
@@ -109,7 +109,7 @@ At ~0.8g target physical roll roughly **4.5–5.5°**. Nominal visible roll begi
 
 ## PC-T-SURF-001 · Rut
 
-Verify `RUT → FGEAR WHEEL/SUSPENSION → PHYSICAL BODY → STEERING TREMOR → EXPRESSION → AUDIO/VFX`. No random shake without owning physical/surface state.
+Verify `RUT → CHAOS WHEEL/SUSPENSION → PHYSICAL BODY → STEERING TREMOR → EXPRESSION → AUDIO/VFX`. No random shake without owning physical/surface state.
 
 ## PC-T-SURF-002 · Pothole / patch / crack
 
