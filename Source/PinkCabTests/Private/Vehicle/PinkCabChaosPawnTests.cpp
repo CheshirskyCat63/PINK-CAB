@@ -9,6 +9,7 @@
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPawnBaselineConfigTest,
@@ -70,22 +71,33 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
 {
-    const float First = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.0f, 10.0f, false);
-    TestEqual(TEXT("mouse right stays semantic right-positive before Chaos adaptation"), First, 0.25f);
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
 
-    const float Tiny = APinkCabChaosTatraPawn::IntegrateMouseSteering(First, -0.1f, false);
-    TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"), Tiny < First);
+    FPinkCabSteeringController Steering(Config);
+    const float First = Steering.Step(
+        50.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 1.0f);
+    TestTrue(TEXT("mouse right stays semantic right-positive before Chaos adaptation"), First > 0.0f);
 
-    const float GazeHeld = APinkCabChaosTatraPawn::IntegrateMouseSteering(Tiny, 50.0f, true);
-    TestEqual(TEXT("Space gaze hold preserves steering command"), GazeHeld, Tiny);
+    const float CursorBeforeTiny = Steering.GetVirtualCursor();
+    Steering.Step(-0.1f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 1.0f);
+    TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"),
+        Steering.GetVirtualCursor() < CursorBeforeTiny);
 
-    const float Clamped = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.95f, 20.0f, false);
-    TestEqual(TEXT("steering command clamps at full lock"), Clamped, 1.0f);
+    const float BeforeGaze = Steering.GetSteering();
+    const float GazeHeld = Steering.Step(
+        50.0f, true, 120.0f, EPinkCabVehicleMotionMode::Moving, 1.0f);
+    TestEqual(TEXT("Space gaze hold preserves steering command"), GazeHeld, BeforeGaze);
 
-    const float LowSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(0.0f);
-    const float HighSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(195.0f);
-    TestTrue(TEXT("high-speed steering reduces mouse sensitivity"), HighSpeedGain < LowSpeedGain);
-    TestTrue(TEXT("high-speed steering keeps deliberate authority"), HighSpeedGain > 0.0f);
+    FPinkCabSteeringController Slow(Config);
+    FPinkCabSteeringController Fast(Config);
+    const float SlowResult = Slow.Step(
+        100.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.1f);
+    const float FastResult = Fast.Step(
+        100.0f, false, 160.0f, EPinkCabVehicleMotionMode::Moving, 0.1f);
+    TestTrue(TEXT("stationary steering is heavier than moving high-speed response"),
+        FMath::Abs(SlowResult) < FMath::Abs(FastResult));
+    TestTrue(TEXT("steering remains bounded"), FMath::Abs(FastResult) <= 1.0f);
     return true;
 }
 

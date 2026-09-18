@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
 #include "Vehicle/PinkCabLaunchController.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -83,5 +84,77 @@ bool FPinkCabLaunchEdgeTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("stationary frames do not retrigger launch"), Launch.GetLaunchSerial(), SerialBeforeJitter);
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringTransferTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.Transfer",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+    FPinkCabSteeringController Steering(Config);
+
+    Steering.Step(25.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    TestEqual(TEXT("quarter mouse travel maps to quarter virtual cursor"), Steering.GetVirtualCursor(), 0.25f);
+    TestTrue(TEXT("nonlinear center target stays below linear cursor"), FMath::Abs(Steering.GetTarget()) < 0.25f);
+
+    const float PositiveTarget = Steering.GetTarget();
+    Steering.Reset();
+    Steering.Step(-25.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    TestTrue(TEXT("target curve is odd symmetric"), FMath::IsNearlyEqual(Steering.GetTarget(), -PositiveTarget, 1.e-4f));
+
+    Steering.Reset();
+    Steering.Step(10000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    TestEqual(TEXT("virtual cursor clamps positive"), Steering.GetVirtualCursor(), 1.0f);
+    Steering.Step(-20000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    TestEqual(TEXT("virtual cursor clamps negative"), Steering.GetVirtualCursor(), -1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringSpeedResponseTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.SpeedResponse",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringSpeedResponseTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+
+    FPinkCabSteeringController Stationary(Config);
+    FPinkCabSteeringController MovingSlow(Config);
+    FPinkCabSteeringController MovingFast(Config);
+    Stationary.Step(100.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.10f);
+    MovingSlow.Step(100.0f, false, 20.0f, EPinkCabVehicleMotionMode::Moving, 0.10f);
+    MovingFast.Step(100.0f, false, 140.0f, EPinkCabVehicleMotionMode::Moving, 0.10f);
+
+    TestTrue(TEXT("stationary wheel responds heavier/slower than moving"), FMath::Abs(Stationary.GetSteering()) < FMath::Abs(MovingSlow.GetSteering()));
+    TestTrue(TEXT("high speed steering response is sharper than low speed"), FMath::Abs(MovingSlow.GetSteering()) < FMath::Abs(MovingFast.GetSteering()));
+    TestTrue(TEXT("high speed still stays bounded"), FMath::Abs(MovingFast.GetSteering()) <= 1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringGazeOwnershipTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.GazeOwnership",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringGazeOwnershipTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+    FPinkCabSteeringController Steering(Config);
+    Steering.Step(50.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.2f);
+
+    const float CursorBefore = Steering.GetVirtualCursor();
+    const float SteeringBefore = Steering.GetSteering();
+    Steering.Step(100.0f, true, 120.0f, EPinkCabVehicleMotionMode::Moving, 1.0f);
+    TestEqual(TEXT("gaze owns mouse and freezes steering cursor"), Steering.GetVirtualCursor(), CursorBefore);
+    TestEqual(TEXT("gaze ownership does not auto-steer"), Steering.GetSteering(), SteeringBefore);
+    return true;
+}
+
 
 #endif

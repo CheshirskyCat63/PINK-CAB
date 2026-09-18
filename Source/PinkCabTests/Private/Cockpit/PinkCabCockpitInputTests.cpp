@@ -9,6 +9,7 @@
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCanonicalBindingComplianceTest,
@@ -34,15 +35,23 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGazeOwnershipComplianceTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+    FPinkCabSteeringController Steering(Config);
+
     Interaction->SetGazeHeld(false);
-    const float Steered = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.2f, 10.0f, false, 0.025f);
-    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.2f);
+    const float Steered = Steering.Step(
+        50.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
+    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.0f);
 
     Interaction->SetGazeHeld(true);
-    const float Preserved = APinkCabChaosTatraPawn::IntegrateMouseSteering(Steered, 20.0f, true, 0.025f);
+    const float Preserved = Steering.Step(
+        20.0f, true, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestEqual(TEXT("Space gaze preserves steering command"), Preserved, Steered);
+
     Interaction->SetGazeHeld(false);
-    const float Returned = APinkCabChaosTatraPawn::IntegrateMouseSteering(Preserved, -4.0f, false, 0.025f);
+    const float Returned = Steering.Step(
+        -80.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestTrue(TEXT("Space release returns mouse to steering"), Returned < Preserved);
     return true;
 }

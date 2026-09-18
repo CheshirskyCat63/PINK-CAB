@@ -166,36 +166,30 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
     }
 }
 
-float APinkCabChaosTatraPawn::IntegrateMouseSteering(
-    const float CurrentSteering,
+void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
     const float DeltaX,
     const bool bGazeHeld,
-    const float Gain)
+    const float DeltaSeconds)
 {
-    return bGazeHeld ? CurrentSteering : FMath::Clamp(CurrentSteering + DeltaX * Gain, -1.0f, 1.0f);
-}
-
-float APinkCabChaosTatraPawn::SteeringGainForSpeed(const float SpeedKmh)
-{
-    const float Alpha = FMath::Clamp(FMath::Abs(SpeedKmh) / 140.0f, 0.0f, 1.0f);
-    return FMath::Lerp(0.010f, 0.0035f, Alpha);
-}
-
-void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(const float DeltaX, const bool bGazeHeld)
-{
-    SteeringCommand = IntegrateMouseSteering(SteeringCommand, DeltaX, bGazeHeld, MouseSteeringGain);
+    SteeringCommand = SteeringController.Step(
+        DeltaX,
+        bGazeHeld,
+        LastSpeedKmh,
+        MotionClassifier.GetMode(),
+        DeltaSeconds);
     ControlState.SetSteering(SteeringCommand);
 }
 
 void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const FPinkCabVehicleInputFrame& InputFrame,
-    const float MouseDeltaX)
+    const float MouseDeltaX,
+    const float DeltaSeconds)
 {
     if (CockpitInteraction)
     {
         CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
     }
-    ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld);
+    ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld, DeltaSeconds);
     ControlState = InputFrame.ToControlState(
         SteeringCommand,
         CockpitState.GetHandbrakeAmount());
@@ -233,7 +227,8 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     FPinkCabVehicleTelemetry SteeringTelemetry;
     if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
     {
-        MouseSteeringGain = SteeringGainForSpeed(SteeringTelemetry.SpeedKmh);
+        LastSpeedKmh = SteeringTelemetry.SpeedKmh;
+        MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
     }
 
     const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
@@ -267,7 +262,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         ApplyCockpitInteraction(InteractionEvent);
     }
 
-    ApplyVehicleInputFrame(InputFrame, MouseX);
+    ApplyVehicleInputFrame(InputFrame, MouseX, DeltaSeconds);
     const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
 
     if (bGazeHeld)
