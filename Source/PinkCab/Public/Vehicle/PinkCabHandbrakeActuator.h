@@ -5,7 +5,9 @@
 
 struct FPinkCabHandbrakeActuatorConfig
 {
-    float MouseCountsForFullPull = 420.0f;
+    // Short physical lever throw: a deliberate pull can reach hydraulic
+    // lock quickly, while torque remains continuous through LeverPosition.
+    float MouseCountsForFullPull = 220.0f;
     float TorqueExponent = 1.65f;
     float AutoReturnPerSecond = 4.5f;
     float InitialParkingAmount = 1.0f;

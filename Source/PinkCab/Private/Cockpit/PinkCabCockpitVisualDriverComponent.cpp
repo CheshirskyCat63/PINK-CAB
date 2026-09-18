@@ -24,7 +24,7 @@ float UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(const float Value
 
 float UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(const float Amount)
 {
-    return FMath::Clamp(Amount, 0.0f, 1.0f) * -32.0f;
+    return FMath::Clamp(Amount, 0.0f, 1.0f) * -20.0f;
 }
 
 float UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(const float Temperature01)

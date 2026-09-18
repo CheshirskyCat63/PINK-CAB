@@ -756,8 +756,36 @@ bool APinkCabChaosTatraPawn::ConfigureSourceSteeringVisual(
 
     UStaticMeshComponent* SourceSteering =
         VehicleVisualShell->GetPresentationPartComponent(Profile.SteeringPresentationPartId);
-    const FVector Axis = Profile.SteeringPresentationAxis.GetSafeNormal();
-    if (!SourceSteering || Axis.IsNearlyZero())
+    UStaticMesh* SteeringMesh = SourceSteering ? SourceSteering->GetStaticMesh() : nullptr;
+    if (!SourceSteering || !SteeringMesh)
+    {
+        return false;
+    }
+
+    // Derive the steering-column pivot from the actual visible source wheel,
+    // not camera/head-space or guessed scene coordinates. The preserved Tatra
+    // wheel is a thin disc; its thinnest local bounds axis is the column axis.
+    const FBoxSphereBounds LocalBounds = SteeringMesh->GetBounds();
+    const FVector Extent = LocalBounds.BoxExtent;
+    FVector LocalAxis = FVector::ForwardVector;
+    if (Extent.Y <= Extent.X && Extent.Y <= Extent.Z)
+    {
+        LocalAxis = FVector::RightVector;
+    }
+    else if (Extent.Z <= Extent.X && Extent.Z <= Extent.Y)
+    {
+        LocalAxis = FVector::UpVector;
+    }
+
+    const FTransform SteeringWorld = SourceSteering->GetComponentTransform();
+    const FVector PivotWorld = SteeringWorld.TransformPosition(LocalBounds.Origin);
+    const FVector AxisWorld =
+        SteeringWorld.TransformVectorNoScale(LocalAxis).GetSafeNormal();
+    const FTransform ShellWorld = VehicleVisualShell->GetComponentTransform();
+    const FVector PivotLocal = ShellWorld.InverseTransformPosition(PivotWorld);
+    const FVector AxisLocal =
+        ShellWorld.InverseTransformVectorNoScale(AxisWorld).GetSafeNormal();
+    if (AxisLocal.IsNearlyZero())
     {
         return false;
     }
@@ -767,12 +795,12 @@ bool APinkCabChaosTatraPawn::ConfigureSourceSteeringVisual(
     AddInstanceComponent(Pivot);
     Pivot->SetupAttachment(VehicleVisualShell);
     Pivot->SetMobility(EComponentMobility::Movable);
-    Pivot->SetRelativeLocation(Profile.SteeringPresentationPivot);
-    Pivot->SetRelativeRotation(FRotationMatrix::MakeFromX(Axis).Rotator());
+    Pivot->SetRelativeLocation(PivotLocal);
+    Pivot->SetRelativeRotation(FRotationMatrix::MakeFromX(AxisLocal).Rotator());
     Pivot->RegisterComponent();
 
-    // Preserve the exact authored steering wheel placement. Only its parent
-    // changes; the pivot itself sits on the source t613_steer origin.
+    // Keep the source wheel exactly where the artist put it; only its parent
+    // changes so subsequent rotation occurs around the wheel hub/column.
     SourceSteering->AttachToComponent(Pivot, FAttachmentTransformRules::KeepWorldTransform);
     SourceSteeringPivot = Pivot;
     CockpitVisualDriver->SetSteeringVisualComponent(Pivot);
@@ -959,7 +987,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     HandbrakeActuator.Step(
         MotionClassifier.GetMode(),
         bHandbrakeGrip,
-        bHandbrakeGrip ? MouseDeltaY : 0.0f,
+        // UE mouse Y is positive toward the dash and negative toward the
+        // driver in this cockpit path. Pull toward self must tighten.
+        bHandbrakeGrip ? -MouseDeltaY : 0.0f,
         DeltaSeconds);
     CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
     ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
@@ -1072,11 +1102,21 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     // physical ±5 cm steering workspace. Feed steering the raw mouse delta
     // while keeping gaze/cockpit look on the authored processed sensitivity.
     float SteeringMouseX = MouseX;
+    float PhysicalMouseX = MouseX;
+    float PhysicalMouseY = MouseY;
     if (PC->PlayerInput)
     {
+        const float RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
+        const float RawMouseY = PC->PlayerInput->GetRawKeyValue(EKeys::MouseY);
         SteeringMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
-            MouseX,
-            PC->PlayerInput->GetRawKeyValue(EKeys::MouseX));
+            MouseX, RawMouseX);
+        // Gearbox and handbrake are physical lever gestures. Their authored
+        // counts are raw-device counts; using processed 0.07 sensitivity made
+        // the far-right/bottom reverse gate practically unreachable.
+        PhysicalMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseX, RawMouseX);
+        PhysicalMouseY = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseY, RawMouseY);
     }
 
     FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
@@ -1195,8 +1235,8 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     ApplyPhysicalControlMouseDelta(
         ActiveGripTarget,
         CockpitInteraction->IsGripActive(),
-        MouseX,
-        MouseY,
+        PhysicalMouseX,
+        PhysicalMouseY,
         DeltaSeconds);
 
     bGearLeverDragging = bGearboxGripActive;

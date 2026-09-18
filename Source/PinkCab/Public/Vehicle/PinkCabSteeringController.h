@@ -60,7 +60,15 @@ public:
             return Steering;
         }
 
-        const float Counts = FMath::Max(Config.MouseCountsForFullScale, 1.0f);
+        // Parking/standstill steering deliberately needs more physical mouse
+        // travel. Once the car is moving, retain the compact learned workspace.
+        constexpr float StationaryTravelScale = 2.20f;
+        const float TravelScale =
+            MotionMode == EPinkCabVehicleMotionMode::Stationary
+                ? StationaryTravelScale
+                : 1.0f;
+        const float Counts =
+            FMath::Max(Config.MouseCountsForFullScale * TravelScale, 1.0f);
         VirtualCursor = FMath::Clamp(
             VirtualCursor + MouseDeltaX / Counts,
             -1.0f,

@@ -81,7 +81,10 @@ if (-not $SkipTests) {
     $TestLog = Join-Path $RepoRoot "Saved\Logs\FastDelivery_Test.log"
     Remove-Item $TestLog -Force -ErrorAction SilentlyContinue
     $TestWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    & $EditorCmd $Project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$TestLog" "-ExecCmds=Automation RunTests $TestFilter" "-TestExit=Automation Test Queue Empty"
+    # -Multiprocess skips TargetPlatformManager's startup ValidatePlatforms UBT
+    # subprocess. This prevents unrelated UE projects from holding the global
+    # Build.bat mutex and stalling a local owner iteration for many minutes.
+    & $EditorCmd $Project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$TestLog" "-ExecCmds=Automation RunTests $TestFilter" "-TestExit=Automation Test Queue Empty"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $TestWatch.Stop()
     $Success = @(Select-String -Path $TestLog -Pattern 'Test Completed\. Result=\{Success\}')

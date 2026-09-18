@@ -100,14 +100,14 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
     Config.MouseCountsForFullScale = 100.0f;
     FPinkCabSteeringController Steering(Config);
 
-    Steering.Step(25.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
-    TestEqual(TEXT("quarter mouse travel maps to quarter virtual cursor"), Steering.GetVirtualCursor(), 0.25f);
+    Steering.Step(25.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
+    TestEqual(TEXT("moving quarter mouse travel maps to quarter virtual cursor"), Steering.GetVirtualCursor(), 0.25f);
     TestTrue(TEXT("center response remains precise instead of feeling like a dead zone"),
         FMath::Abs(Steering.GetTarget()) > 0.20f && FMath::Abs(Steering.GetTarget()) <= 0.25f);
 
     const float PositiveTarget = Steering.GetTarget();
     Steering.Reset();
-    Steering.Step(-25.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    Steering.Step(-25.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
     TestTrue(TEXT("target curve is odd symmetric"), FMath::IsNearlyEqual(Steering.GetTarget(), -PositiveTarget, 1.e-4f));
 
     Steering.Reset();
@@ -115,6 +115,28 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("virtual cursor clamps positive"), Steering.GetVirtualCursor(), 1.0f);
     Steering.Step(-20000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
     TestEqual(TEXT("virtual cursor clamps negative"), Steering.GetVirtualCursor(), -1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringStationaryTravelTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.StationaryTravel",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringStationaryTravelTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+
+    FPinkCabSteeringController Stationary(Config);
+    FPinkCabSteeringController Moving(Config);
+    Stationary.Step(50.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    Moving.Step(50.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
+
+    TestTrue(TEXT("stationary steering requires at least twice the mouse travel"),
+        Stationary.GetVirtualCursor() <= Moving.GetVirtualCursor() * 0.5f + KINDA_SMALL_NUMBER);
+    TestTrue(TEXT("moving steering keeps the existing compact mouse workspace"),
+        FMath::IsNearlyEqual(Moving.GetVirtualCursor(), 0.5f, 1.e-4f));
     return true;
 }
 

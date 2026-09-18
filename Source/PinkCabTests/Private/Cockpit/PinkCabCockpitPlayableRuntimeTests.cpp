@@ -84,11 +84,17 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Interaction->SetCurrentTarget(
             UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Handbrake")));
         Test->TestTrue(TEXT("physical handbrake grip begins"), Interaction->BeginGrip(Event));
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, -500.0f, 0.1f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, 500.0f, 0.1f);
+        Test->TestEqual(TEXT("pushing handbrake away fully releases parking lever"),
+            Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, -110.0f, 0.05f);
+        Test->TestTrue(TEXT("pulling handbrake toward driver applies analog pressure"),
+            Pawn->GetCockpitState().GetHandbrakeAmount() > 0.0f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, 500.0f, 0.05f);
+        Test->TestEqual(TEXT("pushing away again releases before driving"),
+            Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
         Interaction->EndGrip(Event);
         Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
-        Test->TestEqual(TEXT("stationary mouse pull fully releases parking lever"),
-            Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
 
         Interaction->SetCurrentTarget(
             UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Gearbox")));
@@ -124,6 +130,27 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
             Test->TestEqual(TEXT("validated first gear reaches Chaos after clutch release"),
                 Movement->GetTargetGear(), 1);
         }
+
+        // Physically traverse first -> neutral -> right corridor -> reverse.
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 320.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        Test->TestEqual(TEXT("physical bottom-right gate requests reverse"), Pawn->GetRequestedGear(), -1);
+        Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+        Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+        Test->TestEqual(TEXT("reverse engages through common validator"), Pawn->GetEngagedGear(), -1);
+        if (Movement)
+        {
+            Test->TestEqual(TEXT("validated reverse reaches Chaos target gear"), Movement->GetTargetGear(), -1);
+        }
+
+        // Return through neutral to first so the existing forward-drive proof remains unchanged.
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -320.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+        Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+        Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+        Test->TestEqual(TEXT("first is restored after reverse proof"), Pawn->GetEngagedGear(), 1);
 
         const FPinkCabVehicleInputFrame GazeThrottleFrame = FPinkCabVehicleInputFrame::FromRouter(
             Router, [](const FKey& Key) { return Key == EKeys::E || Key == EKeys::SpaceBar; });

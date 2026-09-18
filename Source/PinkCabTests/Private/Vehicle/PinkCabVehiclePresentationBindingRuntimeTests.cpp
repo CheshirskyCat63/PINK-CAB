@@ -82,6 +82,8 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     if (!SteeringPivot) return true;
     Test->TestTrue(TEXT("the actual source steering mesh is parented to the live pivot"),
         SourceSteering->GetAttachParent() == SteeringPivot);
+    Test->TestTrue(TEXT("steering-column pivot lies inside the actual steering-wheel bounds"),
+        SourceSteering->Bounds.GetBox().IsInsideOrOn(SteeringPivot->GetComponentLocation()));
 
     const FTransform OriginalPivot = SteeringPivot->GetRelativeTransform();
     const FTransform OriginalSourceWorld = SourceSteering->GetComponentTransform();
