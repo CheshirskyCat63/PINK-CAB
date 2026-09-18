@@ -223,6 +223,12 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     FPinkCabVehicleControlState Controls;
     FPinkCabCockpitState Cockpit;
 
+    Controls.SetSteering(0.40f);
+    TestTrue(TEXT("semantic right-positive steering reaches Chaos without a second inversion"),
+        Provider.ApplyControls(Controls));
+    TestTrue(TEXT("Chaos raw steering keeps player-facing right-positive sign"),
+        FMath::IsNearlyEqual(Movement->GetSteeringInput(), 0.40f, 1.e-4f));
+
     Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));

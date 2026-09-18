@@ -6,10 +6,14 @@
 struct FPinkCabSteeringControllerConfig
 {
     float MouseCountsForFullScale = 1400.0f;
-    float CenterExponent = 1.65f;
-    float StationaryResponsePerSecond = 0.65f;
-    float MovingResponseLowPerSecond = 2.25f;
-    float MovingResponseHighPerSecond = 4.50f;
+    // Keep the center close to linear: the driver's physical mouse circle already
+    // provides precision, so the steering curve must not manufacture a dead zone.
+    float CenterExponent = 1.10f;
+    // Response is intentionally heavier at rest and progressively quicker in motion.
+    // These are exponential response rates, not fixed steering-units-per-second.
+    float StationaryResponsePerSecond = 3.0f;
+    float MovingResponseLowPerSecond = 8.0f;
+    float MovingResponseHighPerSecond = 12.0f;
     float HighSpeedKmh = 160.0f;
     float HighSpeedTargetGain = 1.12f;
 };
@@ -68,12 +72,12 @@ public:
             return Steering;
         }
 
-        const float ResponseRate = GetResponseRate(SpeedKmh, MotionMode);
-        Steering = FMath::FInterpConstantTo(
-            Steering,
-            Target,
-            DeltaSeconds,
-            ResponseRate);
+        const float ResponseRate = FMath::Max(GetResponseRate(SpeedKmh, MotionMode), 0.0f);
+        const float ResponseAlpha = FMath::Clamp(
+            1.0f - FMath::Exp(-ResponseRate * DeltaSeconds),
+            0.0f,
+            1.0f);
+        Steering = FMath::Lerp(Steering, Target, ResponseAlpha);
         Steering = FMath::Clamp(Steering, -1.0f, 1.0f);
         return Steering;
     }

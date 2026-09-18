@@ -108,7 +108,7 @@ public:
         constexpr float CountsX = 160.0f;
         constexpr float CountsY = 140.0f;
         const float GateDx = MouseDeltaX / CountsX;
-        const float GateDy = -MouseDeltaY / CountsY;
+        const float GateDy = MouseDeltaY / CountsY;
         const int32 Steps = FMath::Max(
             1,
             FMath::CeilToInt(FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / 0.20f));

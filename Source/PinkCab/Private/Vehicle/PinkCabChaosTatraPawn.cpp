@@ -19,6 +19,7 @@
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerInput.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
@@ -954,6 +955,17 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     float MouseX = 0.0f;
     float MouseY = 0.0f;
     PC->GetInputMouseDelta(MouseX, MouseY);
+
+    // GetInputMouseDelta is already multiplied by the project's 0.07 mouse
+    // sensitivity. That is appropriate for free-look, but it destroys the
+    // physical ±5 cm steering workspace. Feed steering the raw mouse delta
+    // while keeping gaze/cockpit look on the authored processed sensitivity.
+    float RawMouseX = MouseX;
+    if (PC->PlayerInput)
+    {
+        RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
+    }
+
     FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
@@ -1082,7 +1094,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     ApplyVehicleInputFrame(
         InputFrame,
-        bPhysicalGripActive ? 0.0f : MouseX,
+        bPhysicalGripActive ? 0.0f : RawMouseX,
         DeltaSeconds);
     bThrottleHeldLastFrame = bThrottleHeld;
 

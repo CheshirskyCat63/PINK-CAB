@@ -102,7 +102,8 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
 
     Steering.Step(25.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
     TestEqual(TEXT("quarter mouse travel maps to quarter virtual cursor"), Steering.GetVirtualCursor(), 0.25f);
-    TestTrue(TEXT("nonlinear center target stays below linear cursor"), FMath::Abs(Steering.GetTarget()) < 0.25f);
+    TestTrue(TEXT("center response remains precise instead of feeling like a dead zone"),
+        FMath::Abs(Steering.GetTarget()) > 0.20f && FMath::Abs(Steering.GetTarget()) <= 0.25f);
 
     const float PositiveTarget = Steering.GetTarget();
     Steering.Reset();
@@ -137,6 +138,13 @@ bool FPinkCabSteeringSpeedResponseTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("stationary wheel responds heavier/slower than moving"), FMath::Abs(Stationary.GetSteering()) < FMath::Abs(MovingSlow.GetSteering()));
     TestTrue(TEXT("high speed steering response is sharper than low speed"), FMath::Abs(MovingSlow.GetSteering()) < FMath::Abs(MovingFast.GetSteering()));
     TestTrue(TEXT("high speed still stays bounded"), FMath::Abs(MovingFast.GetSteering()) <= 1.0f);
+
+    FPinkCabSteeringController SmallCorrection(Config);
+    FPinkCabSteeringController LargeCorrection(Config);
+    SmallCorrection.Step(50.0f, false, 80.0f, EPinkCabVehicleMotionMode::Moving, 0.02f);
+    LargeCorrection.Step(100.0f, false, 80.0f, EPinkCabVehicleMotionMode::Moving, 0.02f);
+    TestTrue(TEXT("smoothing preserves fine correction magnitude instead of fixed-step snapping"),
+        FMath::Abs(SmallCorrection.GetSteering()) < FMath::Abs(LargeCorrection.GetSteering()));
     return true;
 }
 
@@ -420,8 +428,8 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
         Gearbox.ApplyLeverMouseDelta(-160.0f, 0.0f));
-    TestTrue(TEXT("moving lever upward from left neutral selects first"),
-        Gearbox.ApplyLeverMouseDelta(0.0f, -140.0f));
+    TestTrue(TEXT("UE raw MouseY positive/up moves lever forward into first"),
+        Gearbox.ApplyLeverMouseDelta(0.0f, 140.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
     Gearbox.ApplyLeverMouseDelta(160.0f, 0.0f);
