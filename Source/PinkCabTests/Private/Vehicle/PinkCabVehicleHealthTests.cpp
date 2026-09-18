@@ -236,6 +236,11 @@ bool FPinkCabCoupledStallTest::RunTest(const FString& Parameters)
 
     Input.ClutchCoupling = 0.0f;
     TestFalse(TEXT("disengaged clutch prevents drivetrain stall"), Condition.Step(Input, Health).bShouldStall);
+
+    Input.ClutchCoupling = 1.0f;
+    Input.Brake = 0.0f;
+    TestTrue(TEXT("low-rpm coupled launch can stall without brake"),
+        Condition.Step(Input, Health).bShouldStall);
     return true;
 }
 
@@ -258,8 +263,11 @@ bool FPinkCabBrakeFadeTest::RunTest(const FString& Parameters)
     }
     TestTrue(TEXT("sustained hard braking raises temperature"),
         Health.GetBrakeTemperature01() > 0.65f);
-    TestTrue(TEXT("hot brakes fade but do not become hidden ABS"),
-        Condition.GetBrakeEffectiveness(Health) < 1.0f && Condition.GetBrakeEffectiveness(Health) > 0.0f);
+    const FPinkCabDrivetrainConditionOutput Output = Condition.Step(Input, Health);
+    TestTrue(TEXT("hot service brakes fade but do not become hidden ABS"),
+        Output.BrakeEffectiveness < 1.0f && Output.BrakeEffectiveness > 0.0f);
+    TestEqual(TEXT("moving hydraulic handbrake shares thermal fade"),
+        Output.HandbrakeEffectiveness, Output.BrakeEffectiveness);
     return true;
 }
 

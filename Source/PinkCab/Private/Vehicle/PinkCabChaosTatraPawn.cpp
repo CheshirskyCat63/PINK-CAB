@@ -270,6 +270,11 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
         DrivetrainCondition.Step(ConditionInput, Health);
 
     EffectiveInput.Brake *= ConditionOutput.BrakeEffectiveness;
+    const float EffectiveHandbrake =
+        HandbrakeActuator.GetBrakeCommand()
+        * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
+            ? ConditionOutput.HandbrakeEffectiveness
+            : 1.0f);
     DrivetrainTorqueCapacity = ConditionOutput.DrivetrainTorqueCapacity;
     if (ConditionOutput.bShouldStall)
     {
@@ -283,7 +288,7 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     ApplyMouseSteeringDelta(MouseDeltaX, EffectiveInput.bGazeHeld, DeltaSeconds);
     ControlState = EffectiveInput.ToControlState(
         SteeringCommand,
-        HandbrakeActuator.GetBrakeCommand());
+        EffectiveHandbrake);
     ControlState.SetDriveline(
         GearboxController.GetRequestedGear(),
         GearboxController.GetEngagedGear(),

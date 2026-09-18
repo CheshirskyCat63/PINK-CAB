@@ -22,6 +22,7 @@ struct FPinkCabDrivetrainConditionOutput
 {
     bool bShouldStall = false;
     float BrakeEffectiveness = 1.0f;
+    float HandbrakeEffectiveness = 1.0f;
     float DrivetrainTorqueCapacity = 1.0f;
 };
 
@@ -64,9 +65,9 @@ public:
             && Input.EngineRpm > 0.0f
             && Input.EngineRpm < Config.StallRpm
             && FMath::Abs(Input.SpeedKmh) < 3.0f
-            && Input.Brake > 0.25f
             && Input.Throttle < 0.12f;
         Output.BrakeEffectiveness = GetBrakeEffectiveness(Health);
+        Output.HandbrakeEffectiveness = Output.BrakeEffectiveness;
         Output.DrivetrainTorqueCapacity =
             GetClutchTorqueCapacity(Health)
             * Health.GetHealth(EPinkCabVehicleHealthChannel::Gearbox);
