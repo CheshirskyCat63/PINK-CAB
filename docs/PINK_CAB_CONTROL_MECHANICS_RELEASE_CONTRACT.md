@@ -1,10 +1,10 @@
 # PINK CAB · Control & Vehicle Mechanics Release Contract
 
-**Status:** CURRENT OWNER CONTROL / VEHICLE-MECHANICS AUTHORITY MIRROR  
-**Date:** 2026-09-18  
-**Jira umbrella:** `CD-848`  
-**Confluence authority:** page `16744449` — `47 · PINK CAB · Control & Vehicle Mechanics Release Contract`  
-**Runtime technology:** Unreal Engine 5.8.2 / native Chaos Vehicles  
+**Status:** CURRENT OWNER CONTROL / VEHICLE-MECHANICS AUTHORITY MIRROR
+**Date:** 2026-09-18
+**Jira umbrella:** `CD-848`
+**Confluence authority:** page `16744449` — `47 · PINK CAB · Control & Vehicle Mechanics Release Contract`
+**Runtime technology:** Unreal Engine 5.8.2 / native Chaos Vehicles
 **Implementation state:** SPECIFIED / ADMIN-SYNCHRONIZED / **NOT RUNTIME VERIFIED**
 
 This file mirrors the owner-approved 2026-09-18 release matrix into Git. It does not claim that the current executable already behaves this way.
@@ -211,5 +211,5 @@ This contract supersedes contradictory older PINK CAB wording specifically for:
 
 Historical build/package/test evidence remains historical evidence. It is not retroactively promoted to proof of these newer requirements.
 
-Confluence durable authority:  
+Confluence durable authority:
 https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/16744449/47+PINK+CAB+Control+Vehicle+Mechanics+Release+Contract
