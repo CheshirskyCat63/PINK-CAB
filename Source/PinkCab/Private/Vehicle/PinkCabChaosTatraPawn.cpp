@@ -113,6 +113,8 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
+    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
+    ControlState.SetDriveline(0, 0, 0.0f);
     SyncCockpitToChaos();
     ApplicationWillDeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
         this, &APinkCabChaosTatraPawn::HandleApplicationWillDeactivate);
@@ -146,6 +148,17 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
     {
         ApplyCockpitInteraction(ReleaseEvent);
     }
+
+    GearboxController.CancelPendingRequest();
+    CockpitState.SetSelectedGear(GearboxController.GetEngagedGear());
+
+    if (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving)
+    {
+        HandbrakeActuator.Reset(0.0f, false);
+        CockpitState.SetHandbrakeAmount(0.0f);
+        ControlState.SetHandbrake(0.0f);
+        SyncCockpitToChaos();
+    }
 }
 
 bool APinkCabChaosTatraPawn::ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event)
@@ -166,39 +179,121 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
     }
 }
 
-float APinkCabChaosTatraPawn::IntegrateMouseSteering(
-    const float CurrentSteering,
+void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
     const float DeltaX,
     const bool bGazeHeld,
-    const float Gain)
+    const float DeltaSeconds)
 {
-    return bGazeHeld ? CurrentSteering : FMath::Clamp(CurrentSteering + DeltaX * Gain, -1.0f, 1.0f);
-}
-
-float APinkCabChaosTatraPawn::SteeringGainForSpeed(const float SpeedKmh)
-{
-    const float Alpha = FMath::Clamp(FMath::Abs(SpeedKmh) / 140.0f, 0.0f, 1.0f);
-    return FMath::Lerp(0.010f, 0.0035f, Alpha);
-}
-
-void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(const float DeltaX, const bool bGazeHeld)
-{
-    SteeringCommand = IntegrateMouseSteering(SteeringCommand, DeltaX, bGazeHeld, MouseSteeringGain);
+    SteeringCommand = SteeringController.Step(
+        DeltaX,
+        bGazeHeld,
+        LastSpeedKmh,
+        MotionClassifier.GetMode(),
+        DeltaSeconds);
     ControlState.SetSteering(SteeringCommand);
+}
+
+
+void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
+    const FName TargetId,
+    const bool bGripHeld,
+    const float MouseDeltaX,
+    const float MouseDeltaY,
+    const float DeltaSeconds)
+{
+    if (TargetId == FName(TEXT("Gearbox")) && bGripHeld)
+    {
+        GearboxController.ApplyLeverMouseDelta(MouseDeltaX, MouseDeltaY);
+        CockpitState.SetSelectedGear(GearboxController.GetRequestedGear());
+    }
+
+    const bool bHandbrakeGrip =
+        TargetId == FName(TEXT("Handbrake")) && bGripHeld;
+    HandbrakeActuator.Step(
+        MotionClassifier.GetMode(),
+        bHandbrakeGrip,
+        bHandbrakeGrip ? MouseDeltaY : 0.0f,
+        DeltaSeconds);
+    CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
+    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
+    SyncCockpitToChaos();
 }
 
 void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const FPinkCabVehicleInputFrame& InputFrame,
-    const float MouseDeltaX)
+    const float MouseDeltaX,
+    const float DeltaSeconds)
 {
+    FPinkCabVehicleInputFrame EffectiveInput = InputFrame;
+
+    FPinkCabGearEngagementContext GearContext;
+    GearContext.ClutchPedal = EffectiveInput.Clutch;
+    GearContext.EngineRpm = LastEngineRpm;
+    GearContext.SpeedKmh = LastSpeedKmh;
+    GearContext.Throttle = EffectiveInput.Throttle;
+    GearContext.Brake = EffectiveInput.Brake;
+    FPinkCabVehicleHealthState& Health = GetMutableVehicleHealthState();
+    GearContext.GearboxHealth =
+        Health.GetHealth(EPinkCabVehicleHealthChannel::Gearbox);
+
+    if (CockpitState.GetSelectedGear() != GearboxController.GetRequestedGear())
+    {
+        GearboxController.RequestGear(CockpitState.GetSelectedGear(), GearContext);
+    }
+    else
+    {
+        GearboxController.EvaluateCurrentEngagement(GearContext);
+    }
+
+    if (GearboxController.GetEventSerial() != LastProcessedGearEventSerial)
+    {
+        DrivetrainCondition.RecordGearEvent(
+            GearboxController.GetLastResult(),
+            Health);
+        LastProcessedGearEventSerial = GearboxController.GetEventSerial();
+    }
+
+    FPinkCabDrivetrainConditionInput ConditionInput;
+    ConditionInput.DeltaSeconds = DeltaSeconds;
+    ConditionInput.bEngineRunning =
+        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    ConditionInput.EngineRpm = LastEngineRpm;
+    ConditionInput.ExpectedCoupledRpm = GearboxController.GetExpectedCoupledRpm();
+    ConditionInput.SpeedKmh = LastSpeedKmh;
+    ConditionInput.Throttle = EffectiveInput.Throttle;
+    ConditionInput.Brake = EffectiveInput.Brake;
+    ConditionInput.Handbrake = HandbrakeActuator.GetBrakeCommand();
+    ConditionInput.ClutchCoupling =
+        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch);
+    ConditionInput.EngagedGear = GearboxController.GetEngagedGear();
+    const FPinkCabDrivetrainConditionOutput ConditionOutput =
+        DrivetrainCondition.Step(ConditionInput, Health);
+
+    EffectiveInput.Brake *= ConditionOutput.BrakeEffectiveness;
+    const float EffectiveHandbrake =
+        HandbrakeActuator.GetBrakeCommand()
+        * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
+            ? ConditionOutput.HandbrakeEffectiveness
+            : 1.0f);
+    DrivetrainTorqueCapacity = ConditionOutput.DrivetrainTorqueCapacity;
+    if (ConditionOutput.bShouldStall)
+    {
+        CockpitState.StallEngine();
+    }
+
     if (CockpitInteraction)
     {
-        CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
+        CockpitInteraction->SetGazeHeld(EffectiveInput.bGazeHeld);
     }
-    ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld);
-    ControlState = InputFrame.ToControlState(
+    ApplyMouseSteeringDelta(MouseDeltaX, EffectiveInput.bGazeHeld, DeltaSeconds);
+    ControlState = EffectiveInput.ToControlState(
         SteeringCommand,
-        CockpitState.GetHandbrakeAmount());
+        EffectiveHandbrake);
+    ControlState.SetDriveline(
+        GearboxController.GetRequestedGear(),
+        GearboxController.GetEngagedGear(),
+        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch)
+            * DrivetrainTorqueCapacity);
     SyncCockpitToChaos();
 }
 
@@ -220,6 +315,58 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
 
+    const EPinkCabVehicleMotionMode PreviousMotionMode = MotionClassifier.GetMode();
+    FPinkCabVehicleTelemetry SteeringTelemetry;
+    if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
+    {
+        LastSpeedKmh = SteeringTelemetry.SpeedKmh;
+        LastEngineRpm = SteeringTelemetry.EngineRpm;
+        MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
+    }
+    const EPinkCabVehicleMotionMode MotionMode = MotionClassifier.GetMode();
+    LaunchController.NotifyMotionMode(MotionMode);
+
+    const bool bClutchHeld = InputFrame.Clutch > 0.5f;
+    const bool bBrakeHeld = InputFrame.Brake > 0.5f;
+    const bool bThrottleHeld = InputFrame.Throttle > 0.5f;
+    const bool bReturnedToStationary =
+        PreviousMotionMode == EPinkCabVehicleMotionMode::Moving
+        && MotionMode == EPinkCabVehicleMotionMode::Stationary;
+    if (MotionMode == EPinkCabVehicleMotionMode::Stationary
+        && ((bThrottleHeld && !bThrottleHeldLastFrame)
+            || (bReturnedToStationary && bThrottleHeld)))
+    {
+        if (LaunchController.BeginLaunchAttempt())
+        {
+            SmoothedThrottle = 0.0f;
+        }
+    }
+
+    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
+    {
+        const FKey Key = InputRouter.GetKeyForAction(Action);
+        return Key.IsValid() && PC->IsInputKeyDown(Key);
+    };
+    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
+    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
+    const int32 WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    const EPinkCabPedalWheelRecipient WheelRecipient =
+        PedalDosingController.ApplyWheelSteps(
+            bClutchHeld,
+            bBrakeHeld,
+            bThrottleHeld,
+            WheelSteps,
+            LaunchController,
+            CockpitState);
+
+    const FPinkCabPedalTargets PedalTargets =
+        PedalDosingController.ResolveTargets(
+            bBrakeHeld,
+            bThrottleHeld,
+            LaunchController.GetThrottleTarget());
+    InputFrame.Brake = PedalTargets.Brake;
+    InputFrame.Throttle = PedalTargets.Throttle;
+
     SmoothedClutch = FPinkCabVehicleInputResponse::StepAxis(
         SmoothedClutch, InputFrame.Clutch, DeltaSeconds, ClutchPressSeconds, CockpitState.GetClutchReleaseSeconds());
     SmoothedBrake = FPinkCabVehicleInputResponse::StepAxis(
@@ -230,20 +377,6 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InputFrame.Brake = SmoothedBrake;
     InputFrame.Throttle = SmoothedThrottle;
 
-    FPinkCabVehicleTelemetry SteeringTelemetry;
-    if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
-    {
-        MouseSteeringGain = SteeringGainForSpeed(SteeringTelemetry.SpeedKmh);
-    }
-
-    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
-    {
-        const FKey Key = InputRouter.GetKeyForAction(Action);
-        return Key.IsValid() && PC->IsInputKeyDown(Key);
-    };
-    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
-    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
-
     FPinkCabCockpitInteractionFrame InteractionFrame;
     InteractionFrame.bGazeHeld = InputFrame.bGazeHeld;
     InteractionFrame.bQuickRecall1Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall1);
@@ -252,7 +385,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InteractionFrame.bQuickRecall4Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall4);
     InteractionFrame.bGripHeld = IsActionHeld(EPinkCabSemanticAction::Grip);
     InteractionFrame.bMomentaryHeld = IsActionHeld(EPinkCabSemanticAction::MomentaryPress);
-    InteractionFrame.WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    InteractionFrame.WheelSteps = WheelRecipient == EPinkCabPedalWheelRecipient::None ? WheelSteps : 0;
     InteractionFrame.NowSeconds = FPlatformTime::Seconds();
     if (DriverCamera)
     {
@@ -267,8 +400,28 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         ApplyCockpitInteraction(InteractionEvent);
     }
 
-    ApplyVehicleInputFrame(InputFrame, MouseX);
-    const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
+    const FName ActiveGripTarget = CockpitInteraction->GetActiveGripTargetId();
+    const bool bHandbrakeGripActive =
+        CockpitInteraction->IsGripActive()
+        && ActiveGripTarget == FName(TEXT("Handbrake"));
+    const bool bGearboxGripActive =
+        CockpitInteraction->IsGripActive()
+        && ActiveGripTarget == FName(TEXT("Gearbox"));
+    const bool bPhysicalGripActive = bHandbrakeGripActive || bGearboxGripActive;
+
+    ApplyPhysicalControlMouseDelta(
+        ActiveGripTarget,
+        CockpitInteraction->IsGripActive(),
+        MouseX,
+        MouseY,
+        DeltaSeconds);
+
+    ApplyVehicleInputFrame(
+        InputFrame,
+        bPhysicalGripActive ? 0.0f : MouseX,
+        DeltaSeconds);
+    bThrottleHeldLastFrame = bThrottleHeld;
+    const bool bGazeHeld = CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
 
     if (bGazeHeld)
     {

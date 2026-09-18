@@ -9,6 +9,8 @@ enum class EPinkCabVehicleHealthChannel : uint8
     Alignment,
     Suspension,
     Brake,
+    Clutch,
+    Gearbox,
     Door,
     Lamp,
     EngineOil,
@@ -38,6 +40,18 @@ struct FPinkCabVehicleHealthState
     }
 
     uint32 GetFunctionalDamageSerial() const { return FunctionalDamageSerial; }
+    float GetClutchTemperature01() const { return ClutchTemperature01; }
+    float GetBrakeTemperature01() const { return BrakeTemperature01; }
+
+    void SetClutchTemperature01(float Value)
+    {
+        ClutchTemperature01 = FMath::Clamp(Value, 0.0f, 1.0f);
+    }
+
+    void SetBrakeTemperature01(float Value)
+    {
+        BrakeTemperature01 = FMath::Clamp(Value, 0.0f, 1.0f);
+    }
 
     bool ApplyFunctionalDamage(EPinkCabVehicleHealthChannel Channel, float Severity)
     {
@@ -67,4 +81,6 @@ private:
 
     float Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Count)] = {};
     uint32 FunctionalDamageSerial = 0;
+    float ClutchTemperature01 = 0.0f;
+    float BrakeTemperature01 = 0.0f;
 };

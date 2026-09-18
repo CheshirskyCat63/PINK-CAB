@@ -9,6 +9,7 @@
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCanonicalBindingComplianceTest,
@@ -34,15 +35,23 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGazeOwnershipComplianceTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+    FPinkCabSteeringController Steering(Config);
+
     Interaction->SetGazeHeld(false);
-    const float Steered = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.2f, 10.0f, false, 0.025f);
-    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.2f);
+    const float Steered = Steering.Step(
+        50.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
+    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.0f);
 
     Interaction->SetGazeHeld(true);
-    const float Preserved = APinkCabChaosTatraPawn::IntegrateMouseSteering(Steered, 20.0f, true, 0.025f);
+    const float Preserved = Steering.Step(
+        20.0f, true, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestEqual(TEXT("Space gaze preserves steering command"), Preserved, Steered);
+
     Interaction->SetGazeHeld(false);
-    const float Returned = APinkCabChaosTatraPawn::IntegrateMouseSteering(Preserved, -4.0f, false, 0.025f);
+    const float Returned = Steering.Step(
+        -80.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestTrue(TEXT("Space release returns mouse to steering"), Returned < Preserved);
     return true;
 }
@@ -123,10 +132,15 @@ bool FPinkCabWheelComplianceTest::RunTest(const FString& Parameters)
     FPinkCabInteractionEvent Event;
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
     TestFalse(TEXT("wheel rejects control without wheel capability"), Interaction->BuildWheelEvent(1, Event));
-    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
-    TestFalse(TEXT("wheel cannot move a grip-required control before RMB grip"), Interaction->BuildWheelEvent(-1, Event));
-    TestTrue(TEXT("RMB establishes grip for gearbox"), Interaction->BeginGrip(Event));
-    TestTrue(TEXT("wheel emits after authored grip"), Interaction->BuildWheelEvent(-1, Event));
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("Gearbox")));
+    TestFalse(TEXT("gearbox wheel is disabled because H-gate owns mouse travel"),
+        Interaction->BuildWheelEvent(-1, Event));
+
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("PassengerDoor")));
+    TestFalse(TEXT("wheel cannot move a grip-required lever before RMB grip"),
+        Interaction->BuildWheelEvent(-1, Event));
+    TestTrue(TEXT("RMB establishes grip for authored wheel lever"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("wheel emits for the passenger-door lever"), Interaction->BuildWheelEvent(-1, Event));
     TestEqual(TEXT("wheel keeps signed step"), Event.SignedValue, -1);
     return true;
 }
@@ -229,6 +243,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabContinuousHandbrakeComplianceTest::RunTest(const FString& Parameters)
 {
+    const FPinkCabInteractionControlSpec Spec =
+        PinkCabInteractionSpecForTargetId(TEXT("Handbrake"));
+    TestTrue(TEXT("handbrake requires RMB grip"), Spec.bSupportsGrip);
+    TestFalse(TEXT("handbrake no longer uses wheel actuation"), Spec.bSupportsWheel);
+
     FPinkCabCockpitState State;
     State.SetHandbrakeAmount(0.37f);
     TestEqual(TEXT("handbrake preserves intermediate analog command"), State.GetHandbrakeAmount(), 0.37f);

@@ -9,6 +9,8 @@ struct FPinkCabVehicleHealthSnapshot
 {
     TArray<float> ChannelHealth;
     uint32 FunctionalDamageSerial = 0;
+    float ClutchTemperature01 = 0.0f;
+    float BrakeTemperature01 = 0.0f;
 };
 
 struct FPinkCabVehicleLoadItemSnapshot
@@ -31,7 +33,9 @@ struct FPinkCabVehicleLoadSnapshot
 
 struct FPinkCabVehicleSnapshot
 {
-    static constexpr int32 CurrentSchemaVersion = 1;
+    static constexpr int32 LegacySchemaVersion = 1;
+    static constexpr int32 CurrentSchemaVersion = 2;
+    static constexpr int32 LegacySchema1HealthChannelCount = 12;
     int32 SchemaVersion = CurrentSchemaVersion;
     FPinkCabVehicleHealthSnapshot Health;
     FPinkCabVehicleLoadSnapshot Load;
@@ -51,6 +55,8 @@ public:
             Snapshot.Health.ChannelHealth.Add(Health.Health[Index]);
         }
         Snapshot.Health.FunctionalDamageSerial = Health.FunctionalDamageSerial;
+        Snapshot.Health.ClutchTemperature01 = Health.ClutchTemperature01;
+        Snapshot.Health.BrakeTemperature01 = Health.BrakeTemperature01;
         Snapshot.Load.FuelMassKg = Load.FuelMassKg;
         Snapshot.Load.FuelLongitudinalCm = Load.FuelLongitudinalCm;
         Snapshot.Load.HeroineMassKg = Load.HeroineMassKg;
@@ -83,9 +89,32 @@ public:
         }
 
         FPinkCabVehicleHealthState Health;
-        for (int32 Index = 0; Index < Snapshot.Health.ChannelHealth.Num(); ++Index)
+        if (Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::LegacySchemaVersion)
         {
-            Health.Health[Index] = Snapshot.Health.ChannelHealth[Index];
+            // v1 layout:
+            // Wheel,Tire,Alignment,Suspension,Brake,Door,Lamp,EngineOil,
+            // EngineFan,OilCooler,Airflow,CosmeticBody.
+            for (int32 Index = 0; Index <= static_cast<int32>(EPinkCabVehicleHealthChannel::Brake); ++Index)
+            {
+                Health.Health[Index] = Snapshot.Health.ChannelHealth[Index];
+            }
+            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Clutch)] = 1.0f;
+            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Gearbox)] = 1.0f;
+            for (int32 LegacyIndex = 5; LegacyIndex < FPinkCabVehicleSnapshot::LegacySchema1HealthChannelCount; ++LegacyIndex)
+            {
+                Health.Health[LegacyIndex + 2] = Snapshot.Health.ChannelHealth[LegacyIndex];
+            }
+            Health.ClutchTemperature01 = 0.0f;
+            Health.BrakeTemperature01 = 0.0f;
+        }
+        else
+        {
+            for (int32 Index = 0; Index < Snapshot.Health.ChannelHealth.Num(); ++Index)
+            {
+                Health.Health[Index] = Snapshot.Health.ChannelHealth[Index];
+            }
+            Health.ClutchTemperature01 = Snapshot.Health.ClutchTemperature01;
+            Health.BrakeTemperature01 = Snapshot.Health.BrakeTemperature01;
         }
         Health.FunctionalDamageSerial = Snapshot.Health.FunctionalDamageSerial;
 
@@ -123,9 +152,18 @@ private:
 
     static bool Validate(const FPinkCabVehicleSnapshot& Snapshot)
     {
-        if (Snapshot.SchemaVersion != FPinkCabVehicleSnapshot::CurrentSchemaVersion
-            || Snapshot.Health.ChannelHealth.Num()
-                != static_cast<int32>(EPinkCabVehicleHealthChannel::Count))
+        const bool bLegacyV1 =
+            Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::LegacySchemaVersion;
+        const bool bCurrent =
+            Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::CurrentSchemaVersion;
+        if (!bLegacyV1 && !bCurrent)
+        {
+            return false;
+        }
+        const int32 ExpectedHealthCount = bLegacyV1
+            ? FPinkCabVehicleSnapshot::LegacySchema1HealthChannelCount
+            : static_cast<int32>(EPinkCabVehicleHealthChannel::Count);
+        if (Snapshot.Health.ChannelHealth.Num() != ExpectedHealthCount)
         {
             return false;
         }
@@ -135,6 +173,16 @@ private:
             {
                 return false;
             }
+        }
+        if (bCurrent
+            && (!FMath::IsFinite(Snapshot.Health.ClutchTemperature01)
+                || !FMath::IsFinite(Snapshot.Health.BrakeTemperature01)
+                || Snapshot.Health.ClutchTemperature01 < 0.0f
+                || Snapshot.Health.ClutchTemperature01 > 1.0f
+                || Snapshot.Health.BrakeTemperature01 < 0.0f
+                || Snapshot.Health.BrakeTemperature01 > 1.0f))
+        {
+            return false;
         }
         if (!FMath::IsFinite(Snapshot.Load.FuelMassKg)
             || !FMath::IsFinite(Snapshot.Load.FuelLongitudinalCm)

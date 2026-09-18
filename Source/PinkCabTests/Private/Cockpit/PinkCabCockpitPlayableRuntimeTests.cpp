@@ -81,15 +81,35 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Interaction->SetCurrentTarget(
             UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Handbrake")));
         Test->TestTrue(TEXT("physical handbrake grip begins"), Interaction->BeginGrip(Event));
-        Test->TestTrue(TEXT("physical handbrake wheel event builds"), Interaction->BuildWheelEvent(-64, Event));
-        Test->TestTrue(TEXT("physical handbrake release reaches pawn"), Pawn->ApplyCockpitInteraction(Event));
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, -500.0f, 0.1f);
         Interaction->EndGrip(Event);
+        Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
+        Test->TestEqual(TEXT("stationary mouse pull fully releases parking lever"),
+            Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+
+        Interaction->SetCurrentTarget(
+            UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Gearbox")));
+        Test->TestTrue(TEXT("physical gearbox grip begins"), Interaction->BeginGrip(Event));
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        Test->TestEqual(TEXT("physical H-gate selects first"),
+            Pawn->GetCockpitState().GetSelectedGear(), 1);
+        const FPinkCabVehicleInputFrame ClutchFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+        Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+        const FPinkCabVehicleInputFrame CoupledFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
+        Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+        Interaction->EndGrip(Event);
+
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
         Test->TestNotNull(TEXT("live Chaos movement exists"), Movement);
         if (Movement)
         {
             Test->TestTrue(TEXT("ignition enabled mechanical simulation"), Movement->bMechanicalSimEnabled);
-            Test->TestFalse(TEXT("physical lever fully released handbrake"), Movement->GetHandbrakeInput());
+            Test->TestFalse(TEXT("legacy bool handbrake path remains disabled"), Movement->GetHandbrakeInput());
+            Test->TestEqual(TEXT("validated first gear reaches Chaos after clutch release"),
+                Movement->GetTargetGear(), 1);
         }
 
         const FPinkCabVehicleInputFrame GazeThrottleFrame = FPinkCabVehicleInputFrame::FromRouter(
