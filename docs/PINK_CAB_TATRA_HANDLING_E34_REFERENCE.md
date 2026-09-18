@@ -58,10 +58,10 @@ The latest 50-question Tatra pack is retired from owner intake. These values for
 - starting brake bias: **60/40 F/R**;
 - differential: **mild LSD**, modest power lock / lighter coast lock;
 - handbrake torque seed: **~1700 Nm per rear wheel**, progressive lever curve;
-- clutch release-speed envelope: **0.20 s fast → 1.20 s slow**, >=64 smoothly addressable settings;
+- clutch release timing: **player-adjustable continuous setting; final numeric range = RECONCILE / NOT OWNER-LOCKED**;
 - headline performance/handling benchmark: **1657 kg full-fuel crew-only**, plus mandatory 2107 kg and intermediate tests.
 
-Dry/wet/storm grip coefficients such as ~1.02/~0.86/~0.80 remain FGear tuning seeds, not immutable owner law. Final tire curves are accepted by behavior/telemetry rather than by preserving arbitrary coefficient values.
+Dry/wet/storm grip coefficients remain native Chaos/PINK CAB calibration seeds, not immutable owner law. Final tire curves are accepted by behavior/telemetry rather than by preserving arbitrary coefficient values.
 
 ## Power feel
 
@@ -82,7 +82,7 @@ Steering is continuous, degree-readable and player-owned. Road-wheel mapping is 
 
 ## Tires / grip / wet high-speed failure
 
-One FGear tire model family covers `GRIP → SLIDE → DEEP SLIDE → SPIN` with no hidden mode swap.
+One continuous native Chaos/PINK CAB tire model family covers `GRIP → SLIDE → DEEP SLIDE → SPIN` with no hidden mode swap.
 
 Required wet chain:
 
@@ -96,7 +96,7 @@ Post-peak lateral force must remain progressive rather than cliff-like. Useful n
 
 ## Suspension / Tatra Expression
 
-FGear owns physical suspension forces, tire loads, actual body state and trajectory. Tatra Expression is presentation-only:
+Native Chaos/PINK CAB vehicle dynamics owns physical suspension forces, tire loads, actual body state and trajectory. Tatra Expression is presentation-only:
 
 `SURFACE → Chaos wheel/suspension → PHYSICAL CHASSIS → EXPRESSION ROLL/PITCH/HEAVE/SHAKE → STEERING/CABIN/CAMERA/AUDIO/VFX`
 
