@@ -32,6 +32,7 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     {
         Movement->SetTorqueCombineMethod(ETorqueCombineMethod::Additive, WheelIndex);
         Movement->SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
+        Movement->SetDriveTorque(Controls.ExternalRearDriveTorquePerWheelNm, WheelIndex);
     }
     return true;
 }

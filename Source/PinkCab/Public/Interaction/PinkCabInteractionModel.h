@@ -45,7 +45,7 @@ inline FPinkCabInteractionControlSpec PinkCabInteractionSpecForTargetId(const FN
 {
     if (TargetId == TEXT("TurnSignals")) return {TargetId, false, false, true};
     if (TargetId == TEXT("Horn")) return {TargetId, false, true, false};
-    if (TargetId == TEXT("Gearbox")) return {TargetId, true, false, true};
+    if (TargetId == TEXT("Gearbox")) return {TargetId, true, false, false};
     if (TargetId == TEXT("Handbrake")) return {TargetId, true, false, false};
     if (TargetId == TEXT("ClutchPedal")) return {TargetId, false, false, true};
     if (TargetId == TEXT("Ignition")) return {TargetId, false, true, false};

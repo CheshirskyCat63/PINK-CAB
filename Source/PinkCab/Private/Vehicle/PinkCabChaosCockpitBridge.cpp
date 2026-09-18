@@ -16,13 +16,37 @@ bool FPinkCabChaosCockpitBridge::Apply(
     Movement.EnableMechanicalSim(bEngineRunning);
     Movement.SetUseAutomaticGears(false);
 
-    // Chaos Wheeled Vehicles has no native clutch axis. FIRST EURO therefore uses a
-    // bounded neutral-gate adapter: clutch pressure is still continuous, and the
-    // selected 5+N+R cockpit gear is reconnected only when the release curve reaches zero.
-    const int32 DrivelineGear = Controls.Clutch > KINDA_SMALL_NUMBER
-        ? 0
-        : Cockpit.GetSelectedGear();
-    Movement.SetTargetGear(DrivelineGear, true);
+    // Chaos has no public clutch axis. PINK CAB keeps Chaos as the tire/contact
+    // solver while using its normal transmission at full coupling and additive
+    // rear-wheel drive torque during partial clutch transfer.
+    constexpr float FullyCoupledThreshold = 0.995f;
+    const bool bFullyCoupled =
+        Controls.ClutchCoupling >= FullyCoupledThreshold
+        && Controls.EngagedGear != 0;
+    Movement.SetTargetGear(bFullyCoupled ? Controls.EngagedGear : 0, true);
+
+    float ExternalRearDriveTorquePerWheelNm = 0.0f;
+    if (bEngineRunning
+        && Controls.EngagedGear != 0
+        && Controls.ClutchCoupling > KINDA_SMALL_NUMBER
+        && Controls.ClutchCoupling < FullyCoupledThreshold)
+    {
+        const float EngineRpm = Movement.GetEngineRotationSpeed();
+        const float NormalizedTorque =
+            Movement.EngineSetup.TorqueCurve.GetRichCurveConst()->Eval(EngineRpm);
+        const float EngineTorqueNm =
+            Movement.EngineSetup.MaxTorque * FMath::Max(NormalizedTorque, 0.0f);
+        const float GearRatio =
+            Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear);
+        const float AxleTorqueNm =
+            EngineTorqueNm
+            * GearRatio
+            * Movement.TransmissionSetup.TransmissionEfficiency
+            * Controls.Throttle
+            * Controls.ClutchCoupling;
+        ExternalRearDriveTorquePerWheelNm = AxleTorqueNm * 0.5f;
+    }
+    Controls.SetExternalRearDriveTorquePerWheel(ExternalRearDriveTorquePerWheelNm);
 
     return Provider.ApplyControls(Controls);
 }

@@ -25,7 +25,9 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("semantic right-positive steering is adapted to Chaos right-steer sign"), Movement->GetSteeringInput(), -0.35f);
     TestEqual(TEXT("throttle reaches Chaos"), Movement->GetThrottleInput(), 0.72f);
     TestEqual(TEXT("brake reaches Chaos"), Movement->GetBrakeInput(), 0.18f);
-    TestTrue(TEXT("handbrake threshold reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
+    TestEqual(TEXT("provider retains continuous analog handbrake command"),
+        Provider.GetLastControls().Handbrake, 0.80f);
     FPinkCabVehicleTelemetry Telemetry;
     TestTrue(TEXT("provider returns telemetry"), Provider.ReadTelemetry(Telemetry));
     TestEqual(TEXT("telemetry preserves semantic right-positive steering"), Telemetry.NormalizedSteering, 0.35f);

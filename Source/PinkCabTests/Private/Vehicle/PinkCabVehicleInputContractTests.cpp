@@ -58,9 +58,9 @@ bool FPinkCabChaosClutchCapabilityTest::RunTest(const FString& Parameters)
 {
     FPinkCabChaosVehicleDynamicsProvider Provider(nullptr);
     TestEqual(
-        TEXT("stock Chaos provider exposes bounded clutch emulation rather than fake native support"),
+        TEXT("stock Chaos provider exposes continuous external-torque clutch transfer"),
         Provider.GetMechanicalClutchCapability(),
-        EPinkCabMechanicalClutchCapability::EmulatedNeutralGate);
+        EPinkCabMechanicalClutchCapability::ContinuousExternalTorque);
     return true;
 }
 

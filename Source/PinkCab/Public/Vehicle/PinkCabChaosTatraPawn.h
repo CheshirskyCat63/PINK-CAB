@@ -9,6 +9,9 @@
 #include "Vehicle/PinkCabLaunchController.h"
 #include "Vehicle/PinkCabPedalDosingController.h"
 #include "Vehicle/PinkCabHandbrakeActuator.h"
+#include "Vehicle/PinkCabGearboxController.h"
+#include "Vehicle/PinkCabDrivetrainCondition.h"
+#include "Vehicle/PinkCabVehicleHealthBinding.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -50,8 +53,19 @@ public:
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld, float DeltaSeconds = 1.0f / 60.0f);
     void ApplyVehicleInputFrame(const FPinkCabVehicleInputFrame& InputFrame, float MouseDeltaX, float DeltaSeconds = 1.0f / 60.0f);
+    void ApplyPhysicalControlMouseDelta(
+        FName TargetId,
+        bool bGripHeld,
+        float MouseDeltaX,
+        float MouseDeltaY,
+        float DeltaSeconds = 1.0f / 60.0f);
     float GetSteeringCommand() const { return SteeringCommand; }
     EPinkCabVehicleMotionMode GetMotionMode() const { return MotionClassifier.GetMode(); }
+    const FPinkCabVehicleHealthState& GetVehicleHealthState() const { return VehicleHealthBinding.Get(); }
+    FPinkCabVehicleHealthState& GetMutableVehicleHealthState() { return VehicleHealthBinding.GetMutable(); }
+    void BindVehicleHealthState(FPinkCabVehicleHealthState& ExternalHealth) { VehicleHealthBinding.Bind(ExternalHealth); }
+    void UnbindVehicleHealthState() { VehicleHealthBinding.UnbindPreservingState(); }
+    bool IsVehicleHealthStateBound() const { return VehicleHealthBinding.IsBound(); }
     void ResetTransientCockpitInput();
 
     void SetCockpitTaximeterSource(const FPinkCabTaximeter* InTaximeter) { CockpitTaximeterSource = InTaximeter; }
@@ -98,6 +112,9 @@ private:
     FPinkCabLaunchController LaunchController;
     FPinkCabPedalDosingController PedalDosingController;
     FPinkCabHandbrakeActuator HandbrakeActuator;
+    FPinkCabGearboxController GearboxController;
+    FPinkCabDrivetrainCondition DrivetrainCondition;
+    FPinkCabVehicleHealthBinding VehicleHealthBinding;
     const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
     TOptional<float> CockpitRouteProgress01;
     bool bCockpitRadioAvailable = false;
@@ -119,6 +136,9 @@ private:
     float SmoothedThrottle = 0.0f;
     float SteeringCommand = 0.0f;
     float LastSpeedKmh = 0.0f;
+    float LastEngineRpm = 0.0f;
+    float DrivetrainTorqueCapacity = 1.0f;
+    uint32 LastProcessedGearEventSerial = 0;
     bool bThrottleHeldLastFrame = false;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;

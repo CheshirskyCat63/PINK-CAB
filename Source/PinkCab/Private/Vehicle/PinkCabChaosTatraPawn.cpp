@@ -113,6 +113,8 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
+    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
+    ControlState.SetDriveline(0, 0, 0.0f);
     SyncCockpitToChaos();
     ApplicationWillDeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
         this, &APinkCabChaosTatraPawn::HandleApplicationWillDeactivate);
@@ -146,6 +148,9 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
     {
         ApplyCockpitInteraction(ReleaseEvent);
     }
+
+    GearboxController.CancelPendingRequest();
+    CockpitState.SetSelectedGear(GearboxController.GetEngagedGear());
 
     if (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving)
     {
@@ -188,19 +193,102 @@ void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
     ControlState.SetSteering(SteeringCommand);
 }
 
+
+void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
+    const FName TargetId,
+    const bool bGripHeld,
+    const float MouseDeltaX,
+    const float MouseDeltaY,
+    const float DeltaSeconds)
+{
+    if (TargetId == FName(TEXT("Gearbox")) && bGripHeld)
+    {
+        GearboxController.ApplyLeverMouseDelta(MouseDeltaX, MouseDeltaY);
+        CockpitState.SetSelectedGear(GearboxController.GetRequestedGear());
+    }
+
+    const bool bHandbrakeGrip =
+        TargetId == FName(TEXT("Handbrake")) && bGripHeld;
+    HandbrakeActuator.Step(
+        MotionClassifier.GetMode(),
+        bHandbrakeGrip,
+        bHandbrakeGrip ? MouseDeltaY : 0.0f,
+        DeltaSeconds);
+    CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
+    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
+    SyncCockpitToChaos();
+}
+
 void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const FPinkCabVehicleInputFrame& InputFrame,
     const float MouseDeltaX,
     const float DeltaSeconds)
 {
+    FPinkCabVehicleInputFrame EffectiveInput = InputFrame;
+
+    FPinkCabGearEngagementContext GearContext;
+    GearContext.ClutchPedal = EffectiveInput.Clutch;
+    GearContext.EngineRpm = LastEngineRpm;
+    GearContext.SpeedKmh = LastSpeedKmh;
+    GearContext.Throttle = EffectiveInput.Throttle;
+    GearContext.Brake = EffectiveInput.Brake;
+    FPinkCabVehicleHealthState& Health = GetMutableVehicleHealthState();
+    GearContext.GearboxHealth =
+        Health.GetHealth(EPinkCabVehicleHealthChannel::Gearbox);
+
+    if (CockpitState.GetSelectedGear() != GearboxController.GetRequestedGear())
+    {
+        GearboxController.RequestGear(CockpitState.GetSelectedGear(), GearContext);
+    }
+    else
+    {
+        GearboxController.EvaluateCurrentEngagement(GearContext);
+    }
+
+    if (GearboxController.GetEventSerial() != LastProcessedGearEventSerial)
+    {
+        DrivetrainCondition.RecordGearEvent(
+            GearboxController.GetLastResult(),
+            Health);
+        LastProcessedGearEventSerial = GearboxController.GetEventSerial();
+    }
+
+    FPinkCabDrivetrainConditionInput ConditionInput;
+    ConditionInput.DeltaSeconds = DeltaSeconds;
+    ConditionInput.bEngineRunning =
+        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    ConditionInput.EngineRpm = LastEngineRpm;
+    ConditionInput.ExpectedCoupledRpm = GearboxController.GetExpectedCoupledRpm();
+    ConditionInput.SpeedKmh = LastSpeedKmh;
+    ConditionInput.Throttle = EffectiveInput.Throttle;
+    ConditionInput.Brake = EffectiveInput.Brake;
+    ConditionInput.Handbrake = HandbrakeActuator.GetBrakeCommand();
+    ConditionInput.ClutchCoupling =
+        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch);
+    ConditionInput.EngagedGear = GearboxController.GetEngagedGear();
+    const FPinkCabDrivetrainConditionOutput ConditionOutput =
+        DrivetrainCondition.Step(ConditionInput, Health);
+
+    EffectiveInput.Brake *= ConditionOutput.BrakeEffectiveness;
+    DrivetrainTorqueCapacity = ConditionOutput.DrivetrainTorqueCapacity;
+    if (ConditionOutput.bShouldStall)
+    {
+        CockpitState.StallEngine();
+    }
+
     if (CockpitInteraction)
     {
-        CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
+        CockpitInteraction->SetGazeHeld(EffectiveInput.bGazeHeld);
     }
-    ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld, DeltaSeconds);
-    ControlState = InputFrame.ToControlState(
+    ApplyMouseSteeringDelta(MouseDeltaX, EffectiveInput.bGazeHeld, DeltaSeconds);
+    ControlState = EffectiveInput.ToControlState(
         SteeringCommand,
         HandbrakeActuator.GetBrakeCommand());
+    ControlState.SetDriveline(
+        GearboxController.GetRequestedGear(),
+        GearboxController.GetEngagedGear(),
+        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch)
+            * DrivetrainTorqueCapacity);
     SyncCockpitToChaos();
 }
 
@@ -227,6 +315,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     if (DynamicsProvider.ReadTelemetry(SteeringTelemetry))
     {
         LastSpeedKmh = SteeringTelemetry.SpeedKmh;
+        LastEngineRpm = SteeringTelemetry.EngineRpm;
         MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
     }
     const EPinkCabVehicleMotionMode MotionMode = MotionClassifier.GetMode();
@@ -306,19 +395,28 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         ApplyCockpitInteraction(InteractionEvent);
     }
 
+    const FName ActiveGripTarget = CockpitInteraction->GetActiveGripTargetId();
     const bool bHandbrakeGripActive =
         CockpitInteraction->IsGripActive()
-        && CockpitInteraction->GetActiveGripTargetId() == FName(TEXT("Handbrake"));
-    HandbrakeActuator.Step(
-        MotionMode,
-        bHandbrakeGripActive,
-        bHandbrakeGripActive ? MouseY : 0.0f,
-        DeltaSeconds);
-    CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
+        && ActiveGripTarget == FName(TEXT("Handbrake"));
+    const bool bGearboxGripActive =
+        CockpitInteraction->IsGripActive()
+        && ActiveGripTarget == FName(TEXT("Gearbox"));
+    const bool bPhysicalGripActive = bHandbrakeGripActive || bGearboxGripActive;
 
-    ApplyVehicleInputFrame(InputFrame, MouseX, DeltaSeconds);
+    ApplyPhysicalControlMouseDelta(
+        ActiveGripTarget,
+        CockpitInteraction->IsGripActive(),
+        MouseX,
+        MouseY,
+        DeltaSeconds);
+
+    ApplyVehicleInputFrame(
+        InputFrame,
+        bPhysicalGripActive ? 0.0f : MouseX,
+        DeltaSeconds);
     bThrottleHeldLastFrame = bThrottleHeld;
-    const bool bGazeHeld = CockpitInteraction->IsGazeHeld();
+    const bool bGazeHeld = CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
 
     if (bGazeHeld)
     {

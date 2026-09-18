@@ -11,12 +11,9 @@ struct FPinkCabCockpitInteractionRouter
     {
         if (Event.TargetId == FName(TEXT("Gearbox")))
         {
-            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
-            {
-                return false;
-            }
-            State.ShiftBy(Event.SignedValue);
-            return true;
+            // Gearbox authority is RMB grip + mouse H-gate travel in the vehicle runtime.
+            // Wheel input must never bypass the common engagement validator.
+            return false;
         }
 
         if (Event.TargetId == FName(TEXT("TurnSignals")))

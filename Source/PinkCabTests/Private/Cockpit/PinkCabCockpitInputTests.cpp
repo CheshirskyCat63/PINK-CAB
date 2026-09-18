@@ -132,10 +132,15 @@ bool FPinkCabWheelComplianceTest::RunTest(const FString& Parameters)
     FPinkCabInteractionEvent Event;
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
     TestFalse(TEXT("wheel rejects control without wheel capability"), Interaction->BuildWheelEvent(1, Event));
-    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
-    TestFalse(TEXT("wheel cannot move a grip-required control before RMB grip"), Interaction->BuildWheelEvent(-1, Event));
-    TestTrue(TEXT("RMB establishes grip for gearbox"), Interaction->BeginGrip(Event));
-    TestTrue(TEXT("wheel emits after authored grip"), Interaction->BuildWheelEvent(-1, Event));
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("Gearbox")));
+    TestFalse(TEXT("gearbox wheel is disabled because H-gate owns mouse travel"),
+        Interaction->BuildWheelEvent(-1, Event));
+
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("PassengerDoor")));
+    TestFalse(TEXT("wheel cannot move a grip-required lever before RMB grip"),
+        Interaction->BuildWheelEvent(-1, Event));
+    TestTrue(TEXT("RMB establishes grip for authored wheel lever"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("wheel emits for the passenger-door lever"), Interaction->BuildWheelEvent(-1, Event));
     TestEqual(TEXT("wheel keeps signed step"), Event.SignedValue, -1);
     return true;
 }

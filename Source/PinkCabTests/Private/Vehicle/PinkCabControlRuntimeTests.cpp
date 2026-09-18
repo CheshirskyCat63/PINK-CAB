@@ -7,6 +7,7 @@
 #include "Vehicle/PinkCabPedalDosingController.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabHandbrakeActuator.h"
+#include "Vehicle/PinkCabGearboxController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -283,6 +284,164 @@ bool FPinkCabHandbrakeCurveTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("25/50/100 commands are distinct"), Q < H && H < F);
     TestTrue(TEXT("fine first half is softer than linear"), H < 0.5f);
     TestEqual(TEXT("full pull reaches full torque command"), F, 1.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabHGateTopologyTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.HGateTopology",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabHGateTopologyTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    TestTrue(TEXT("neutral to first through top-left slot"), Gearbox.MoveGate(-1.0f, 1.0f));
+    TestEqual(TEXT("top-left requests first"), Gearbox.GetRequestedGear(), 1);
+    TestFalse(TEXT("top-row lateral wall blocks first-to-third shortcut"),
+        Gearbox.MoveGate(0.0f, 1.0f));
+    TestEqual(TEXT("lateral wall preserves first"), Gearbox.GetRequestedGear(), 1);
+
+    TestFalse(TEXT("direct top-to-bottom teleport is rejected"), Gearbox.MoveGate(-1.0f, -1.0f));
+    TestEqual(TEXT("rejected diagonal/vertical wall crossing preserves request"), Gearbox.GetRequestedGear(), 1);
+
+    TestTrue(TEXT("neutral corridor is reachable"), Gearbox.MoveGate(-1.0f, 0.0f));
+    TestEqual(TEXT("corridor requests neutral"), Gearbox.GetRequestedGear(), 0);
+    TestTrue(TEXT("after neutral traversal bottom-left is second"), Gearbox.MoveGate(-1.0f, -1.0f));
+    TestEqual(TEXT("bottom-left requests second"), Gearbox.GetRequestedGear(), 2);
+
+    TestTrue(TEXT("return to neutral"), Gearbox.MoveGate(0.0f, 0.0f));
+    TestTrue(TEXT("top-center is third"), Gearbox.MoveGate(0.0f, 1.0f));
+    TestEqual(TEXT("third requested"), Gearbox.GetRequestedGear(), 3);
+    TestTrue(TEXT("neutral before right column"), Gearbox.MoveGate(0.0f, 0.0f));
+    TestTrue(TEXT("top-right is fifth"), Gearbox.MoveGate(1.0f, 1.0f));
+    TestEqual(TEXT("fifth requested"), Gearbox.GetRequestedGear(), 5);
+    TestTrue(TEXT("neutral before reverse"), Gearbox.MoveGate(1.0f, 0.0f));
+    TestTrue(TEXT("bottom-right is reverse"), Gearbox.MoveGate(1.0f, -1.0f));
+    TestEqual(TEXT("reverse requested"), Gearbox.GetRequestedGear(), -1);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGearEngagementValidatorTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.EngagementValidator",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGearEngagementValidatorTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    FPinkCabGearEngagementContext Context;
+    Context.ClutchPedal = 1.0f;
+    Context.EngineRpm = 900.0f;
+    Context.SpeedKmh = 0.0f;
+    TestTrue(TEXT("request first accepted with clutch disengaged"), Gearbox.RequestGear(1, Context));
+    TestEqual(TEXT("requested gear records first"), Gearbox.GetRequestedGear(), 1);
+    TestEqual(TEXT("engaged gear becomes first"), Gearbox.GetEngagedGear(), 1);
+
+    Context.ClutchPedal = 0.0f;
+    Context.EngineRpm = 4000.0f;
+    Context.SpeedKmh = 35.0f;
+    Context.Throttle = 0.7f;
+    TestFalse(TEXT("loaded mismatched clutchless second is refused"), Gearbox.RequestGear(2, Context));
+    TestEqual(TEXT("refusal keeps old engaged gear"), Gearbox.GetEngagedGear(), 1);
+    TestEqual(TEXT("request remains observable after grind"), Gearbox.GetRequestedGear(), 2);
+    TestEqual(TEXT("mismatch classifies as grind"), Gearbox.GetLastResult(), EPinkCabGearEngagementResult::GrindRefused);
+
+    Context.ClutchPedal = 1.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestEqual(TEXT("previously refused request engages after clutch is pressed"), Gearbox.GetEngagedGear(), 2);
+    TestEqual(TEXT("retry is classified as clutch-disengaged acceptance"),
+        Gearbox.GetLastResult(), EPinkCabGearEngagementResult::ClutchDisengagedAccepted);
+
+    FPinkCabGearboxController Matched;
+    Context.ClutchPedal = 0.0f;
+    Context.SpeedKmh = 20.0f;
+    Context.EngineRpm = Matched.ExpectedEngineRpmForGear(2, Context.SpeedKmh);
+    Context.Throttle = 0.05f;
+    TestTrue(TEXT("matched low-load clutchless engagement is possible"), Matched.RequestGear(2, Context));
+    TestEqual(TEXT("matched request actually engages"), Matched.GetEngagedGear(), 2);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContinuousClutchTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.ContinuousClutch",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabContinuousClutchTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    const float C0 = Gearbox.ComputeClutchCoupling(1.0f);
+    const float C25 = Gearbox.ComputeClutchCoupling(0.75f);
+    const float C50 = Gearbox.ComputeClutchCoupling(0.50f);
+    const float C75 = Gearbox.ComputeClutchCoupling(0.25f);
+    const float C100 = Gearbox.ComputeClutchCoupling(0.0f);
+    TestEqual(TEXT("fully pressed clutch transfers zero torque"), C0, 0.0f);
+    TestTrue(TEXT("clutch transfer is continuous and monotonic"), C0 < C25 && C25 < C50 && C50 < C75 && C75 < C100);
+    TestTrue(TEXT("half clutch remains partial rather than binary"), C50 > 0.0f && C50 < 1.0f);
+    TestEqual(TEXT("released clutch reaches full coupling"), C100, 1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabDangerousDownshiftTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.DangerousDownshift",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabDangerousDownshiftTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    FPinkCabGearEngagementContext Context;
+    Context.ClutchPedal = 1.0f;
+    Context.SpeedKmh = 100.0f;
+    Context.EngineRpm = 2500.0f;
+    TestTrue(TEXT("fifth may be selected with clutch disengaged"), Gearbox.RequestGear(5, Context));
+    TestTrue(TEXT("first may be physically selected while clutch remains disengaged"), Gearbox.RequestGear(1, Context));
+
+    Context.ClutchPedal = 0.0f;
+    Context.EngineRpm = 2500.0f;
+    Context.Throttle = 0.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestEqual(TEXT("releasing clutch into impossible downshift reports dangerous overrev"),
+        Gearbox.GetLastResult(), EPinkCabGearEngagementResult::DangerousOverrev);
+    TestTrue(TEXT("dangerous classification exposes overspeed rpm"),
+        Gearbox.GetExpectedCoupledRpm() > Gearbox.GetMaxSafeEngineRpm());
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGearboxPhysicalMouseAndCancelTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.PhysicalMouseAndCancel",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    TestFalse(TEXT("moving lever left inside neutral remains neutral"),
+        Gearbox.ApplyLeverMouseDelta(-160.0f, 0.0f));
+    TestTrue(TEXT("moving lever upward from left neutral selects first"),
+        Gearbox.ApplyLeverMouseDelta(0.0f, -140.0f));
+    TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
+
+    Gearbox.ApplyLeverMouseDelta(160.0f, 0.0f);
+    TestEqual(TEXT("horizontal mouse cannot cut across top H wall"),
+        Gearbox.GetRequestedGear(), 1);
+
+    FPinkCabGearEngagementContext Context;
+    Context.ClutchPedal = 1.0f;
+    TestTrue(TEXT("first engages with clutch"), Gearbox.RequestGear(1, Context));
+    Context.ClutchPedal = 0.0f;
+    Context.EngineRpm = 4000.0f;
+    Context.SpeedKmh = 35.0f;
+    Context.Throttle = 0.8f;
+    TestFalse(TEXT("mismatched second creates pending request"), Gearbox.RequestGear(2, Context));
+    TestEqual(TEXT("second remains requested before cleanup"), Gearbox.GetRequestedGear(), 2);
+    Gearbox.CancelPendingRequest();
+    TestEqual(TEXT("focus cleanup returns lever request to engaged first"),
+        Gearbox.GetRequestedGear(), 1);
+    TestEqual(TEXT("focus cleanup never changes actual engaged gear"),
+        Gearbox.GetEngagedGear(), 1);
     return true;
 }
 

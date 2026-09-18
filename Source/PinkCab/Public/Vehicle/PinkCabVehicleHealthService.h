@@ -9,7 +9,8 @@ enum class EPinkCabVehicleCapability : uint8
     Roll,
     Steer,
     Brake,
-    RunEngine
+    RunEngine,
+    Drive
 };
 
 struct FPinkCabVehicleHealthService
@@ -35,6 +36,8 @@ struct FPinkCabVehicleHealthService
         else if (ZoneId == FName(TEXT("Alignment"))) Channel = EPinkCabVehicleHealthChannel::Alignment;
         else if (ZoneId == FName(TEXT("Suspension"))) Channel = EPinkCabVehicleHealthChannel::Suspension;
         else if (ZoneId == FName(TEXT("Brake"))) Channel = EPinkCabVehicleHealthChannel::Brake;
+        else if (ZoneId == FName(TEXT("Clutch"))) Channel = EPinkCabVehicleHealthChannel::Clutch;
+        else if (ZoneId == FName(TEXT("Gearbox"))) Channel = EPinkCabVehicleHealthChannel::Gearbox;
         else if (ZoneId == FName(TEXT("Door"))) Channel = EPinkCabVehicleHealthChannel::Door;
         else if (ZoneId == FName(TEXT("Lamp"))) Channel = EPinkCabVehicleHealthChannel::Lamp;
         else if (ZoneId == FName(TEXT("EngineOil"))) Channel = EPinkCabVehicleHealthChannel::EngineOil;
@@ -66,6 +69,9 @@ struct FPinkCabVehicleHealthService
                 && State.GetHealth(EPinkCabVehicleHealthChannel::EngineFan) > 0.0f
                 && State.GetHealth(EPinkCabVehicleHealthChannel::OilCooler) > 0.0f
                 && State.GetHealth(EPinkCabVehicleHealthChannel::Airflow) > 0.0f;
+        case EPinkCabVehicleCapability::Drive:
+            return State.GetHealth(EPinkCabVehicleHealthChannel::Clutch) > 0.0f
+                && State.GetHealth(EPinkCabVehicleHealthChannel::Gearbox) > 0.0f;
         default:
             return false;
         }
@@ -76,6 +82,7 @@ struct FPinkCabVehicleHealthService
         return !HasCapability(State, EPinkCabVehicleCapability::Roll)
             || !HasCapability(State, EPinkCabVehicleCapability::Steer)
             || !HasCapability(State, EPinkCabVehicleCapability::Brake)
-            || !HasCapability(State, EPinkCabVehicleCapability::RunEngine);
+            || !HasCapability(State, EPinkCabVehicleCapability::RunEngine)
+            || !HasCapability(State, EPinkCabVehicleCapability::Drive);
     }
 };

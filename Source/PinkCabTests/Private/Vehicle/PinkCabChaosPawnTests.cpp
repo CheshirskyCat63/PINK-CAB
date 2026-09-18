@@ -10,6 +10,7 @@
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabSteeringController.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPawnBaselineConfigTest,
@@ -140,6 +141,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 {
     UChaosWheeledVehicleMovementComponent* Movement = NewObject<UChaosWheeledVehicleMovementComponent>();
+    FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal)
+        .ApplyToMovement(*Movement);
     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
     FPinkCabVehicleControlState Controls;
     FPinkCabCockpitState Cockpit;
@@ -154,17 +157,27 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 
     Cockpit.StartEngine();
     Cockpit.ShiftBy(1);
+    Controls.SetThrottle(0.6f);
     Controls.SetClutch(0.0f);
+    Controls.SetDriveline(1, 1, 1.0f);
     TestTrue(TEXT("running cockpit reapplies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
     TestFalse(TEXT("bool handbrake remains disabled after reapply"), Movement->GetHandbrakeInput());
     TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
-    TestEqual(TEXT("selected first gear reaches Chaos when clutch is released"), Movement->GetTargetGear(), 1);
+    TestEqual(TEXT("fully coupled engaged first reaches Chaos"), Movement->GetTargetGear(), 1);
+
+    Controls.SetClutch(0.5f);
+    Controls.SetDriveline(1, 1, 0.5f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    TestEqual(TEXT("partial coupling keeps Chaos transmission neutral"), Movement->GetTargetGear(), 0);
+    TestTrue(TEXT("partial coupling produces continuous external rear torque"),
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm) > 0.0f);
 
     Controls.SetClutch(1.0f);
+    Controls.SetDriveline(1, 1, 0.0f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
-    TestEqual(TEXT("pressed clutch disengages drivetrain through neutral gate"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("fully pressed clutch carries zero transmission gear"), Movement->GetTargetGear(), 0);
     return true;
 }
 

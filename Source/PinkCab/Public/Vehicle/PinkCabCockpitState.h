@@ -63,6 +63,11 @@ struct FPinkCabCockpitState
         return SelectedGear;
     }
 
+    void SetSelectedGear(int32 Gear)
+    {
+        SelectedGear = FMath::Clamp(Gear, -1, 5);
+    }
+
     float AdjustClutchReleaseSpeed(int32 SignedSteps)
     {
         ClutchReleaseSeconds = FMath::Clamp(

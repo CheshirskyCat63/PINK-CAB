@@ -100,22 +100,19 @@ bool FPinkCabCockpitInteractionRouterTest::RunTest(const FString& Parameters)
 {
     FPinkCabCockpitState State;
 
-    TestTrue(TEXT("gearbox wheel event is consumed"),
+    TestFalse(TEXT("gearbox wheel cannot bypass mouse H-gate"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Gearbox")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("gearbox event selects first"), State.GetSelectedGear(), 1);
+    TestEqual(TEXT("rejected gearbox wheel leaves neutral intent"), State.GetSelectedGear(), 0);
 
     TestFalse(TEXT("handbrake rejects momentary toggle semantics"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 1}, State));
-    TestTrue(TEXT("handbrake wheel decrement is consumed"),
+    TestFalse(TEXT("handbrake wheel cannot bypass mouse actuator"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, -1}, State));
-    TestEqual(TEXT("handbrake wheel moves one calibration step"), State.GetHandbrakeAmount(), 63.0f / 64.0f);
-    TestTrue(TEXT("handbrake wheel increment restores full command"),
-        FPinkCabCockpitInteractionRouter::Apply(
-            {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("handbrake returns to full"), State.GetHandbrakeAmount(), 1.0f);
+    TestEqual(TEXT("rejected handbrake wheel preserves parking position"),
+        State.GetHandbrakeAmount(), 1.0f);
 
     const float ClutchReleaseBefore = State.GetClutchReleaseSeconds();
     TestTrue(TEXT("clutch pedal wheel event is consumed"),
