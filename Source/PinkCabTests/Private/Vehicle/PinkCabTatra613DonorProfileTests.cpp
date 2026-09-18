@@ -18,8 +18,8 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     TestTrue(TEXT("scene profile does not use a merged exterior mesh"), Profile.ExteriorStaticMesh.IsNull());
     TestFalse(TEXT("scene profile does not duplicate exterior into a cabin mesh"), Profile.bUseExteriorAsCabinWhenCabinMissing);
-    TestEqual(TEXT("scene profile contains 132 static source meshes plus four donor wheels; steering is live"),
-        Profile.PresentationParts.Num(), 136);
+    TestEqual(TEXT("scene profile contains all 133 source meshes plus four donor wheels"),
+        Profile.PresentationParts.Num(), 137);
 
     int32 WheelPartCount = 0;
     int32 SourceScenePartCount = 0;
@@ -43,7 +43,7 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         }
     }
     TestEqual(TEXT("four visual wheel instances are authored"), WheelPartCount, 4);
-    TestEqual(TEXT("all non-steering Blender mesh objects stay authored as untouched scene parts"), SourceScenePartCount, 132);
+    TestEqual(TEXT("all 133 Blender scene meshes stay authored as untouched scene parts"), SourceScenePartCount, 133);
 
     const auto FindPart = [&Profile](const TCHAR* Id)
     {
@@ -70,14 +70,20 @@ bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("visual rear track matches Tatra 613 source"), RearTrackCm, 152.0f);
     }
 
-    TestEqual(TEXT("desktop Tatra uses exactly one live cockpit visual override"),
-        Profile.CockpitBindings.Num(), 1);
-    if (Profile.CockpitBindings.Num() == 1)
+    TestEqual(TEXT("desktop Tatra uses no replacement cockpit mesh overrides"),
+        Profile.CockpitBindings.Num(), 0);
+    TestFalse(TEXT("source steering part is tagged for runtime pivoting"),
+        Profile.SteeringPresentationPartId.IsNone());
+    const FPinkCabVehiclePresentationPart* SourceSteering =
+        Profile.PresentationParts.FindByPredicate([&Profile](const FPinkCabVehiclePresentationPart& Part)
+        {
+            return Part.PartId == Profile.SteeringPresentationPartId;
+        });
+    TestNotNull(TEXT("tagged steering part exists"), SourceSteering);
+    if (SourceSteering)
     {
-        TestEqual(TEXT("only steering wheel is allowed to be a live cockpit override"),
-            Profile.CockpitBindings[0].Slot, EPinkCabCockpitSlot::SteeringWheel);
-        TestTrue(TEXT("steering override uses the dedicated V12 donor mesh"),
-            Profile.CockpitBindings[0].MeshOverride.ToSoftObjectPath().ToString().Contains(TEXT("Tatra613_V12_Steering")));
+        TestTrue(TEXT("tagged steering part is the preserved t613_steer object"),
+            SourceSteering->Mesh.ToSoftObjectPath().ToString().Contains(TEXT("t613_Black_material_021")));
     }
     return true;
 }

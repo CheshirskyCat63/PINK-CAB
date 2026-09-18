@@ -9,6 +9,7 @@
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -25,6 +26,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/CoreDelegates.h"
+#include "Math/RotationMatrix.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodyInstance.h"
@@ -391,30 +393,49 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                     ? FMath::Clamp(WeakThis->VehicleLoadState.GetFuelMassKg() / WeakThis->TatraProfile.FullFuelMassKg, 0.0f, 1.0f)
                     : 0.0f;
                 return FText::FromString(FString::Printf(
-                    TEXT("%s   |   %s   |   FUEL %3d%%   |   TEMP %3d%%   |   HB %s"),
+                    TEXT("%s   |   %s   |   FUEL %3d%%   |   TEMP %3d%%"),
                     Engine,
                     MotionLabel(WeakThis->GetMotionMode()),
                     FMath::RoundToInt(Fuel01 * 100.0f),
-                    FMath::RoundToInt(FMath::Clamp(WeakThis->EngineTemperature01, 0.0f, 1.0f) * 100.0f),
-                    WeakThis->HandbrakeActuator.IsParkingLatched() ? TEXT("PARK") :
-                        (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f ? TEXT("ACTIVE") : TEXT("OFF"))));
+                    FMath::RoundToInt(FMath::Clamp(WeakThis->EngineTemperature01, 0.0f, 1.0f) * 100.0f)));
             }) ]
             + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
             [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
                 return FText::FromString(FString::Printf(
-                    TEXT("CLUTCH %s %3d%%    GAS %s %3d%%    BRAKE %s %3d%%"),
+                    TEXT("CLUTCH %s %3d%%    GAS %s %3d%%"),
                     *GaugeBar(WeakThis->ControlState.Clutch),
                     FMath::RoundToInt(WeakThis->ControlState.Clutch * 100.0f),
                     *GaugeBar(WeakThis->ControlState.Throttle),
-                    FMath::RoundToInt(WeakThis->ControlState.Throttle * 100.0f),
+                    FMath::RoundToInt(WeakThis->ControlState.Throttle * 100.0f)));
+            }) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
+                if (!WeakThis.IsValid()) return FText::GetEmpty();
+                const float Handbrake = WeakThis->HandbrakeActuator.GetBrakeCommand();
+                return FText::FromString(FString::Printf(
+                    TEXT("BRAKE  %s %3d%%    H-BRAKE %s %3d%%"),
                     *GaugeBar(WeakThis->ControlState.Brake),
-                    FMath::RoundToInt(WeakThis->ControlState.Brake * 100.0f)));
+                    FMath::RoundToInt(WeakThis->ControlState.Brake * 100.0f),
+                    *GaugeBar(Handbrake),
+                    FMath::RoundToInt(Handbrake * 100.0f)));
             }) ]
             + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
             [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),10)).ColorAndOpacity(FLinearColor(1.0f,0.78f,0.30f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
                 TArray<FString> Warnings;
+                const float Steering = WeakThis->ControlState.Steering;
+                const FString SteeringText = FMath::Abs(Steering) < 0.02f
+                    ? TEXT("STEER CENTER")
+                    : FString::Printf(
+                        TEXT("STEER %s %d%%"),
+                        Steering > 0.0f ? TEXT("R") : TEXT("L"),
+                        FMath::RoundToInt(FMath::Abs(Steering) * 100.0f));
+                Warnings.Add(SteeringText);
+                Warnings.Add(FString::Printf(
+                    TEXT("REQ %s / ENG %s"),
+                    *GearLabel(WeakThis->GearboxController.GetRequestedGear()),
+                    *GearLabel(WeakThis->GearboxController.GetEngagedGear())));
                 if (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled) Warnings.Add(TEXT("STALL"));
                 if (WeakThis->LaunchController.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
                 if (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
@@ -427,8 +448,7 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                 {
                     Warnings.Add(EngagementLabel(GearResult));
                 }
-                Warnings.Add(TEXT("ABS OFF"));
-                Warnings.Add(TEXT("ESP OFF"));
+                if (WeakThis->HandbrakeActuator.IsParkingLatched()) Warnings.Add(TEXT("PARK LATCH"));
                 return FText::FromString(FString::Join(Warnings, TEXT("   |   ")));
             }) ]
             + SVerticalBox::Slot().AutoHeight().Padding(0,7,0,0)
@@ -717,17 +737,78 @@ FName APinkCabChaosTatraPawn::GetVehicleVisualProfileId() const
     return VehicleVisualShell ? VehicleVisualShell->GetProfileId() : NAME_None;
 }
 
+bool APinkCabChaosTatraPawn::ConfigureSourceSteeringVisual(
+    const FPinkCabVehicleVisualProfile& Profile)
+{
+    if (!VehicleVisualShell || !CockpitVisualDriver) return false;
+
+    CockpitVisualDriver->SetSteeringVisualComponent(nullptr);
+    if (SourceSteeringPivot)
+    {
+        SourceSteeringPivot->DestroyComponent();
+        SourceSteeringPivot = nullptr;
+    }
+
+    if (Profile.SteeringPresentationPartId.IsNone())
+    {
+        return true;
+    }
+
+    UStaticMeshComponent* SourceSteering =
+        VehicleVisualShell->GetPresentationPartComponent(Profile.SteeringPresentationPartId);
+    const FVector Axis = Profile.SteeringPresentationAxis.GetSafeNormal();
+    if (!SourceSteering || Axis.IsNearlyZero())
+    {
+        return false;
+    }
+
+    USceneComponent* Pivot = NewObject<USceneComponent>(this);
+    if (!Pivot) return false;
+    AddInstanceComponent(Pivot);
+    Pivot->SetupAttachment(VehicleVisualShell);
+    Pivot->SetMobility(EComponentMobility::Movable);
+    Pivot->SetRelativeLocation(Profile.SteeringPresentationPivot);
+    Pivot->SetRelativeRotation(FRotationMatrix::MakeFromX(Axis).Rotator());
+    Pivot->RegisterComponent();
+
+    // Preserve the exact authored steering wheel placement. Only its parent
+    // changes; the pivot itself sits on the source t613_steer origin.
+    SourceSteering->AttachToComponent(Pivot, FAttachmentTransformRules::KeepWorldTransform);
+    SourceSteeringPivot = Pivot;
+    CockpitVisualDriver->SetSteeringVisualComponent(Pivot);
+    return true;
+}
+
 bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile)
 {
     if (!VehicleVisualShell || !CockpitAssembly || !CockpitVisualDriver || !Profile.IsValid()) return false;
     const FPinkCabVehicleVisualProfile Previous = VehicleVisualShell->GetProfile();
+
+    CockpitVisualDriver->SetSteeringVisualComponent(nullptr);
+    if (SourceSteeringPivot)
+    {
+        SourceSteeringPivot->DestroyComponent();
+        SourceSteeringPivot = nullptr;
+    }
+
     if (!VehicleVisualShell->ApplyProfile(Profile)) return false;
     if (!CockpitAssembly->ApplyVisualBindings(Profile.CockpitBindings))
     {
         VehicleVisualShell->ApplyProfile(Previous);
+        ConfigureSourceSteeringVisual(Previous);
         return false;
     }
     CockpitAssembly->SetGeneratedVisualMode(!Profile.HasVisualAsset(), Profile.CockpitBindings);
+
+    if (!ConfigureSourceSteeringVisual(Profile))
+    {
+        VehicleVisualShell->ApplyProfile(Previous);
+        CockpitAssembly->ApplyVisualBindings(Previous.CockpitBindings);
+        CockpitAssembly->SetGeneratedVisualMode(!Previous.HasVisualAsset(), Previous.CockpitBindings);
+        ConfigureSourceSteeringVisual(Previous);
+        return false;
+    }
+
     CockpitAssembly->SetRelativeTransform(Profile.CockpitRootTransform);
     DriverHeadRoot->SetRelativeTransform(Profile.DriverHeadTransform);
     CockpitVisualDriver->InvalidateBaseTransforms();
@@ -990,10 +1071,12 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     // sensitivity. That is appropriate for free-look, but it destroys the
     // physical ±5 cm steering workspace. Feed steering the raw mouse delta
     // while keeping gaze/cockpit look on the authored processed sensitivity.
-    float RawMouseX = MouseX;
+    float SteeringMouseX = MouseX;
     if (PC->PlayerInput)
     {
-        RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
+        SteeringMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseX,
+            PC->PlayerInput->GetRawKeyValue(EKeys::MouseX));
     }
 
     FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
@@ -1124,7 +1207,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     ApplyVehicleInputFrame(
         InputFrame,
-        bPhysicalGripActive ? 0.0f : RawMouseX,
+        bPhysicalGripActive ? 0.0f : SteeringMouseX,
         DeltaSeconds);
     bThrottleHeldLastFrame = bThrottleHeld;
 

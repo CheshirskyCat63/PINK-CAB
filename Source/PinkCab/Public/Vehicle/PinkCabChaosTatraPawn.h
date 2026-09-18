@@ -125,6 +125,9 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UCameraComponent> DriverCamera;
 
+    UPROPERTY(Transient)
+    TObjectPtr<USceneComponent> SourceSteeringPivot;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -143,6 +146,7 @@ private:
     void ApplySystemMenuInputMode(APlayerController* PC);
     void EnsurePlayableLighting();
     void SetGearboxPointerCapture(APlayerController* PC, bool bCaptured);
+    bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();

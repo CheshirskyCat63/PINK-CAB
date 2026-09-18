@@ -28,10 +28,7 @@ const TCHAR* WheelPath = TEXT(
     "Tatra613_V12_Wheel.Tatra613_V12_Wheel");
 const TCHAR* SourceSteeringPath = TEXT(
     "/Game/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes/"
-    "t613_Black_material_019.t613_Black_material_019");
-const TCHAR* LiveSteeringPath = TEXT(
-    "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Steering/StaticMeshes/"
-    "Tatra613_V12_Steering.Tatra613_V12_Steering");
+    "t613_Black_material_021.t613_Black_material_021");
 constexpr float SourcePresentationScale = 1.0f / 0.5869123935699463f;
 }
 
@@ -49,36 +46,28 @@ FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613Donor()
         FVector::ZeroVector,
         FVector(SourcePresentationScale));
 
+    // source_scene_report.json: t613_steer -> t613_Black_material.021
+    // Object origin is the real steering pivot. Rotation -75 deg about source X
+    // makes the steering-column normal point 15 deg upward.
+    const FVector SourceSteeringPivotCm(27.012235f, -23.020297f, 49.803603f);
+    const FVector SourceSteeringAxis(0.0f, 0.9659258f, 0.2588190f);
+    Result.SteeringPresentationPivot = SceneTransform.TransformPosition(SourceSteeringPivotCm);
+    Result.SteeringPresentationAxis =
+        SceneTransform.TransformVectorNoScale(SourceSteeringAxis).GetSafeNormal();
+
     for (int32 Index = 0; Index < UE_ARRAY_COUNT(GTatra613SceneMeshPaths); ++Index)
     {
         const TCHAR* MeshPath = GTatra613SceneMeshPaths[Index];
-        // The source-scene steering wheel must not stay static underneath the
-        // live steering mesh. t613_Black_material_019 is the exact t613_steer
-        // source object identified from the donor glTF hierarchy.
-        if (FCString::Strcmp(MeshPath, SourceSteeringPath) == 0)
-        {
-            continue;
-        }
+        const FName PartId(*FString::Printf(TEXT("Scene_%03d"), Index));
         Result.PresentationParts.Add(Part(
-            FName(*FString::Printf(TEXT("Scene_%03d"), Index)),
+            PartId,
             MeshPath,
             SceneTransform));
+        if (FCString::Strcmp(MeshPath, SourceSteeringPath) == 0)
+        {
+            Result.SteeringPresentationPartId = PartId;
+        }
     }
-
-    FPinkCabCockpitVisualBinding SteeringBinding;
-    SteeringBinding.Slot = EPinkCabCockpitSlot::SteeringWheel;
-    SteeringBinding.MeshOverride = MeshAt(LiveSteeringPath);
-    SteeringBinding.bShowAnchorMesh = true;
-    if (UStaticMesh* SourceSteering = MeshAt(SourceSteeringPath).LoadSynchronous())
-    {
-        const FVector SourceCenter = SourceSteering->GetBounds().Origin;
-        const FVector SteeringCenter = SceneTransform.TransformPosition(SourceCenter);
-        SteeringBinding.LocalTransform = FTransform(
-            SceneTransform.GetRotation(),
-            SteeringCenter,
-            SceneTransform.GetScale3D());
-    }
-    Result.CockpitBindings.Add(SteeringBinding);
 
     constexpr float FrontX = 135.012f;
     constexpr float RearX = -162.988f;

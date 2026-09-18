@@ -113,6 +113,12 @@ FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffset(const int32 Gear)
     return GearLeverOffsetFromCursor(GearCursorForGear(Gear));
 }
 
+void UPinkCabCockpitVisualDriverComponent::SetSteeringVisualComponent(USceneComponent* Component)
+{
+    SteeringVisualComponent = Component;
+    bSteeringVisualBaseValid = false;
+}
+
 void UPinkCabCockpitVisualDriverComponent::CacheBaseTransforms(
     UPinkCabCockpitAssemblyComponent& Assembly)
 {
@@ -157,14 +163,27 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
             }
         }
     };
-    if (USceneComponent* Steering = Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel))
+    if (USceneComponent* Steering = SteeringVisualComponent.Get())
+    {
+        if (!bSteeringVisualBaseValid)
+        {
+            SteeringVisualBaseTransform = Steering->GetRelativeTransform();
+            bSteeringVisualBaseValid = true;
+        }
+
+        // The source steering pivot is authored with local X along the
+        // steering-column axis. Rotate the pivot around that axis only.
+        const float AngleRadians = FMath::DegreesToRadians(SteeringAngleDegrees(State.Steering));
+        const FQuat LocalTurn(FVector::ForwardVector, AngleRadians);
+        Steering->SetRelativeLocation(SteeringVisualBaseTransform.GetLocation());
+        Steering->SetRelativeRotation(SteeringVisualBaseTransform.GetRotation() * LocalTurn);
+    }
+    else if (USceneComponent* FallbackSteering = Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel))
     {
         if (const FTransform* Base = GetBase(EPinkCabCockpitSlot::SteeringWheel))
         {
-            // Desktop Tatra mesh is authored relative to the exact t613_steer pivot.
-            // Rotate in place; never translate the wheel to compensate for mesh bounds.
             const FRotator Offset(0.0f, 0.0f, SteeringAngleDegrees(State.Steering));
-            Steering->SetRelativeLocationAndRotation(Base->GetLocation(), Base->Rotator() + Offset);
+            FallbackSteering->SetRelativeLocationAndRotation(Base->GetLocation(), Base->Rotator() + Offset);
         }
     }
     SetRotOffset(EPinkCabCockpitSlot::ClutchPedal,

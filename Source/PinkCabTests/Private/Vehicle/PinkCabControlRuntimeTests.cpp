@@ -119,6 +119,24 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringHorizontalMouseOnlyTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.HorizontalMouseOnly",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringHorizontalMouseOnlyTest::RunTest(const FString& Parameters)
+{
+    TestEqual(TEXT("vertical-only frame rejects stale raw MouseX"),
+        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.0f, 18.0f), 0.0f);
+    TestEqual(TEXT("tiny horizontal noise is treated as no steering motion"),
+        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.00001f, -22.0f), 0.0f);
+    TestEqual(TEXT("real horizontal frame keeps raw steering magnitude"),
+        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.35f, 18.0f), 18.0f);
+    TestEqual(TEXT("leftward horizontal frame keeps raw sign"),
+        FPinkCabSteeringController::ResolveHorizontalMouseDelta(-0.35f, -18.0f), -18.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabSteeringSpeedResponseTest,
     "PinkCab.Vehicle.ControlRuntime.Steering.SpeedResponse",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
