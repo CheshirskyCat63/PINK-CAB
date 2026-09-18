@@ -146,6 +146,14 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
     {
         ApplyCockpitInteraction(ReleaseEvent);
     }
+
+    if (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving)
+    {
+        HandbrakeActuator.Reset(0.0f, false);
+        CockpitState.SetHandbrakeAmount(0.0f);
+        ControlState.SetHandbrake(0.0f);
+        SyncCockpitToChaos();
+    }
 }
 
 bool APinkCabChaosTatraPawn::ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event)
@@ -192,7 +200,7 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     ApplyMouseSteeringDelta(MouseDeltaX, InputFrame.bGazeHeld, DeltaSeconds);
     ControlState = InputFrame.ToControlState(
         SteeringCommand,
-        CockpitState.GetHandbrakeAmount());
+        HandbrakeActuator.GetBrakeCommand());
     SyncCockpitToChaos();
 }
 
@@ -297,6 +305,16 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     {
         ApplyCockpitInteraction(InteractionEvent);
     }
+
+    const bool bHandbrakeGripActive =
+        CockpitInteraction->IsGripActive()
+        && CockpitInteraction->GetActiveGripTargetId() == FName(TEXT("Handbrake"));
+    HandbrakeActuator.Step(
+        MotionMode,
+        bHandbrakeGripActive,
+        bHandbrakeGripActive ? MouseY : 0.0f,
+        DeltaSeconds);
+    CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
 
     ApplyVehicleInputFrame(InputFrame, MouseX, DeltaSeconds);
     bThrottleHeldLastFrame = bThrottleHeld;

@@ -71,12 +71,9 @@ struct FPinkCabCockpitInteractionRouter
 
         if (Event.TargetId == FName(TEXT("Handbrake")))
         {
-            if (Event.Gesture != EPinkCabInteractionGesture::WheelIncrement || Event.SignedValue == 0)
-            {
-                return false;
-            }
-            State.SetHandbrakeAmount(State.GetHandbrakeAmount() + Event.SignedValue * HandbrakeWheelStep);
-            return true;
+            // Handbrake analog authority is the RMB + mouse-pull actuator.
+            // Wheel events must not bypass stationary latch / moving auto-return semantics.
+            return false;
         }
 
         if (Event.TargetId == FName(TEXT("ClutchPedal")))

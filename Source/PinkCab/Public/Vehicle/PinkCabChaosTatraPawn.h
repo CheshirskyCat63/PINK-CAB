@@ -8,6 +8,7 @@
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
 #include "Vehicle/PinkCabLaunchController.h"
 #include "Vehicle/PinkCabPedalDosingController.h"
+#include "Vehicle/PinkCabHandbrakeActuator.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -96,6 +97,7 @@ private:
     FPinkCabSteeringController SteeringController;
     FPinkCabLaunchController LaunchController;
     FPinkCabPedalDosingController PedalDosingController;
+    FPinkCabHandbrakeActuator HandbrakeActuator;
     const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
     TOptional<float> CockpitRouteProgress01;
     bool bCockpitRadioAvailable = false;

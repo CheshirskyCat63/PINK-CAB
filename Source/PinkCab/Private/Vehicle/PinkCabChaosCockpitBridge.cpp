@@ -24,6 +24,5 @@ bool FPinkCabChaosCockpitBridge::Apply(
         : Cockpit.GetSelectedGear();
     Movement.SetTargetGear(DrivelineGear, true);
 
-    Controls.SetHandbrake(Cockpit.GetHandbrakeAmount());
     return Provider.ApplyControls(Controls);
 }

@@ -18,6 +18,7 @@ public:
     }
 
     UChaosWheeledVehicleMovementComponent* GetMovement() const { return Movement; }
+    const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }
 
 private:
     UChaosWheeledVehicleMovementComponent* Movement = nullptr;

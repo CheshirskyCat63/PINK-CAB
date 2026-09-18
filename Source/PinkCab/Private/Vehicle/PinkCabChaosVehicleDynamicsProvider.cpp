@@ -19,7 +19,20 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     Movement->SetSteeringInput(-Controls.Steering);
     Movement->SetThrottleInput(Controls.Throttle);
     Movement->SetBrakeInput(Controls.Brake);
-    Movement->SetHandbrakeInput(Controls.Handbrake >= 0.5f);
+
+    // PINK CAB owns a continuous parking/hydraulic handbrake actuator. Keep
+    // Chaos' bool handbrake path disabled and add authored analog torque only
+    // to the canonical rear axle.
+    Movement->SetHandbrakeInput(false);
+    constexpr float RearHandbrakeMaxTorqueNm = 1700.0f;
+    const float RearBrakeTorqueNm =
+        FMath::Clamp(Controls.Handbrake, 0.0f, 1.0f) * RearHandbrakeMaxTorqueNm;
+    const int32 WheelCount = Movement->GetNumWheels();
+    for (int32 WheelIndex = 2; WheelIndex < FMath::Min(WheelCount, 4); ++WheelIndex)
+    {
+        Movement->SetTorqueCombineMethod(ETorqueCombineMethod::Additive, WheelIndex);
+        Movement->SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
+    }
     return true;
 }
 

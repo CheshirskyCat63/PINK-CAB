@@ -6,6 +6,7 @@
 #include "Vehicle/PinkCabSteeringController.h"
 #include "Vehicle/PinkCabPedalDosingController.h"
 #include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabHandbrakeActuator.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -204,6 +205,84 @@ bool FPinkCabPedalTargetsTest::RunTest(const FString& Parameters)
     const FPinkCabPedalTargets Both = Pedals.ResolveTargets(true, true, 0.6f);
     TestEqual(TEXT("W and E coexist: brake retained"), Both.Brake, Pedals.GetBrakeTarget());
     TestEqual(TEXT("W and E coexist: throttle retained"), Both.Throttle, 0.6f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabHandbrakeStationaryLatchTest,
+    "PinkCab.Vehicle.ControlRuntime.Handbrake.StationaryLatch",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabHandbrakeStationaryLatchTest::RunTest(const FString& Parameters)
+{
+    FPinkCabHandbrakeActuatorConfig Config;
+    Config.MouseCountsForFullPull = 100.0f;
+    FPinkCabHandbrakeActuator Handbrake(Config);
+
+    Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, true, -100.0f, 0.1f);
+    Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, false, 0.0f, 0.1f);
+    TestEqual(TEXT("parking lever can be fully released"), Handbrake.GetLeverPosition(), 0.0f);
+
+    Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, true, 50.0f, 0.1f);
+    Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, false, 0.0f, 0.5f);
+    TestTrue(TEXT("stationary RMB release latches lever"), Handbrake.IsParkingLatched());
+    TestTrue(TEXT("latched parking amount is preserved"), FMath::IsNearlyEqual(Handbrake.GetLeverPosition(), 0.5f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabHandbrakeMovingReturnTest,
+    "PinkCab.Vehicle.ControlRuntime.Handbrake.MovingHydraulicReturn",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabHandbrakeMovingReturnTest::RunTest(const FString& Parameters)
+{
+    FPinkCabHandbrakeActuatorConfig Config;
+    Config.MouseCountsForFullPull = 100.0f;
+    FPinkCabHandbrakeActuator Handbrake(Config);
+    Handbrake.Reset(0.0f, false);
+
+    Handbrake.Step(EPinkCabVehicleMotionMode::Moving, true, 60.0f, 0.05f);
+    const float Pulled = Handbrake.GetLeverPosition();
+    TestTrue(TEXT("moving pull raises hydraulic handbrake"), Pulled > 0.0f);
+    TestFalse(TEXT("moving handbrake never latches"), Handbrake.IsParkingLatched());
+
+    Handbrake.Step(EPinkCabVehicleMotionMode::Moving, false, 0.0f, 0.05f);
+    TestTrue(TEXT("RMB release begins automatic return"), Handbrake.GetLeverPosition() < Pulled);
+    for (int32 Index = 0; Index < 30; ++Index)
+    {
+        Handbrake.Step(EPinkCabVehicleMotionMode::Moving, false, 0.0f, 0.05f);
+    }
+    TestEqual(TEXT("moving auto-return reaches zero"), Handbrake.GetLeverPosition(), 0.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabHandbrakeCurveTest,
+    "PinkCab.Vehicle.ControlRuntime.Handbrake.NonlinearTorque",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabHandbrakeCurveTest::RunTest(const FString& Parameters)
+{
+    FPinkCabHandbrakeActuatorConfig Config;
+    Config.MouseCountsForFullPull = 100.0f;
+
+    FPinkCabHandbrakeActuator Quarter(Config);
+    Quarter.Reset(0.0f, false);
+    const float Q = Quarter.Step(EPinkCabVehicleMotionMode::Moving, true, 25.0f, 0.01f);
+
+    FPinkCabHandbrakeActuator Half(Config);
+    Half.Reset(0.0f, false);
+    const float H = Half.Step(EPinkCabVehicleMotionMode::Moving, true, 50.0f, 0.01f);
+
+    FPinkCabHandbrakeActuator Full(Config);
+    Full.Reset(0.0f, false);
+    const float F = Full.Step(EPinkCabVehicleMotionMode::Moving, true, 100.0f, 0.01f);
+
+    TestTrue(TEXT("25/50/100 commands are distinct"), Q < H && H < F);
+    TestTrue(TEXT("fine first half is softer than linear"), H < 0.5f);
+    TestEqual(TEXT("full pull reaches full torque command"), F, 1.0f);
     return true;
 }
 

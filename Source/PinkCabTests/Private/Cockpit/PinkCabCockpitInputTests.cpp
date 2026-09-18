@@ -238,6 +238,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabContinuousHandbrakeComplianceTest::RunTest(const FString& Parameters)
 {
+    const FPinkCabInteractionControlSpec Spec =
+        PinkCabInteractionSpecForTargetId(TEXT("Handbrake"));
+    TestTrue(TEXT("handbrake requires RMB grip"), Spec.bSupportsGrip);
+    TestFalse(TEXT("handbrake no longer uses wheel actuation"), Spec.bSupportsWheel);
+
     FPinkCabCockpitState State;
     State.SetHandbrakeAmount(0.37f);
     TestEqual(TEXT("handbrake preserves intermediate analog command"), State.GetHandbrakeAmount(), 0.37f);

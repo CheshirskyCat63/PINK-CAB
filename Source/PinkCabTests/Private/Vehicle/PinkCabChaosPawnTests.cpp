@@ -144,19 +144,21 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     FPinkCabVehicleControlState Controls;
     FPinkCabCockpitState Cockpit;
 
+    Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestFalse(TEXT("engine off disables mechanical simulation"), Movement->bMechanicalSimEnabled);
-    TestTrue(TEXT("default handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
+    TestEqual(TEXT("analog handbrake command remains continuous through provider"),
+        Provider.GetLastControls().Handbrake, 0.37f);
 
     Cockpit.StartEngine();
-    Cockpit.SetHandbrakeEngaged(false);
     Cockpit.ShiftBy(1);
     Controls.SetClutch(0.0f);
     TestTrue(TEXT("running cockpit reapplies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
-    TestFalse(TEXT("released handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("bool handbrake remains disabled after reapply"), Movement->GetHandbrakeInput());
     TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
     TestEqual(TEXT("selected first gear reaches Chaos when clutch is released"), Movement->GetTargetGear(), 1);
 
