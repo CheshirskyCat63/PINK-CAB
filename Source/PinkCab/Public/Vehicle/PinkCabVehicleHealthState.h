@@ -11,6 +11,8 @@ enum class EPinkCabVehicleHealthChannel : uint8
     Brake,
     BrakeHeat,
     BrakeHydraulic,
+    Clutch,
+    Gearbox,
     Door,
     Lamp,
     Glass,
@@ -42,6 +44,18 @@ struct FPinkCabVehicleHealthState
     }
 
     uint32 GetFunctionalDamageSerial() const { return FunctionalDamageSerial; }
+    float GetClutchTemperature01() const { return ClutchTemperature01; }
+    float GetBrakeTemperature01() const { return BrakeTemperature01; }
+
+    void SetClutchTemperature01(float Value)
+    {
+        ClutchTemperature01 = FMath::Clamp(Value, 0.0f, 1.0f);
+    }
+
+    void SetBrakeTemperature01(float Value)
+    {
+        BrakeTemperature01 = FMath::Clamp(Value, 0.0f, 1.0f);
+    }
 
     bool ApplyFunctionalDamage(EPinkCabVehicleHealthChannel Channel, float Severity)
     {
@@ -50,17 +64,28 @@ struct FPinkCabVehicleHealthState
         {
             return false;
         }
-        Health[Index] = FMath::Clamp(Health[Index] - FMath::Clamp(Severity, 0.0f, 1.0f), 0.0f, 1.0f);
+        Health[Index] = FMath::Clamp(
+            Health[Index] - FMath::Clamp(Severity, 0.0f, 1.0f),
+            0.0f,
+            1.0f);
         ++FunctionalDamageSerial;
         return true;
     }
 
-    bool RestoreFunctionalHealthTo(EPinkCabVehicleHealthChannel Channel, float TargetHealth01)
+    bool RestoreFunctionalHealthTo(
+        EPinkCabVehicleHealthChannel Channel,
+        float TargetHealth01)
     {
         const int32 Index = static_cast<int32>(Channel);
-        if (Index < 0 || Index >= static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)) return false;
+        if (Index < 0 || Index >= static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody))
+        {
+            return false;
+        }
         const float Target = FMath::Clamp(TargetHealth01, 0.0f, 1.0f);
-        if (Target <= Health[Index] + KINDA_SMALL_NUMBER) return false;
+        if (Target <= Health[Index] + KINDA_SMALL_NUMBER)
+        {
+            return false;
+        }
         Health[Index] = Target;
         ++FunctionalDamageSerial;
         return true;
@@ -71,4 +96,6 @@ private:
 
     float Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Count)] = {};
     uint32 FunctionalDamageSerial = 0;
+    float ClutchTemperature01 = 0.0f;
+    float BrakeTemperature01 = 0.0f;
 };

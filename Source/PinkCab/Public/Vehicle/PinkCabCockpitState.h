@@ -18,8 +18,15 @@ enum class EPinkCabMeterState : uint8
 
 struct FPinkCabCockpitState
 {
+    static constexpr float ClutchReleaseMinSeconds = 0.20f;
+    static constexpr float ClutchReleaseMaxSeconds = 1.20f;
+    static constexpr int32 ClutchReleaseIntervals = 64;
+    static constexpr float ClutchReleaseStepSeconds =
+        (ClutchReleaseMaxSeconds - ClutchReleaseMinSeconds) / static_cast<float>(ClutchReleaseIntervals);
+
     EPinkCabIgnitionState GetIgnitionState() const { return IgnitionState; }
     int32 GetSelectedGear() const { return SelectedGear; }
+    float GetClutchReleaseSeconds() const { return ClutchReleaseSeconds; }
     float GetHandbrakeAmount() const { return HandbrakeAmount; }
     bool IsHandbrakeEngaged() const { return HandbrakeAmount > KINDA_SMALL_NUMBER; }
     bool IsPassengerDoorOpen() const { return bPassengerDoorOpen; }
@@ -56,6 +63,20 @@ struct FPinkCabCockpitState
         return SelectedGear;
     }
 
+    void SetSelectedGear(int32 Gear)
+    {
+        SelectedGear = FMath::Clamp(Gear, -1, 5);
+    }
+
+    float AdjustClutchReleaseSpeed(int32 SignedSteps)
+    {
+        ClutchReleaseSeconds = FMath::Clamp(
+            ClutchReleaseSeconds + static_cast<float>(SignedSteps) * ClutchReleaseStepSeconds,
+            ClutchReleaseMinSeconds,
+            ClutchReleaseMaxSeconds);
+        return ClutchReleaseSeconds;
+    }
+
     void SetHandbrakeAmount(float Amount) { HandbrakeAmount = FMath::Clamp(Amount, 0.0f, 1.0f); }
     void SetHandbrakeEngaged(bool bEngaged) { SetHandbrakeAmount(bEngaged ? 1.0f : 0.0f); }
     void SetPassengerDoorOpen(bool bOpen) { bPassengerDoorOpen = bOpen; }
@@ -90,6 +111,7 @@ struct FPinkCabCockpitState
 private:
     EPinkCabIgnitionState IgnitionState = EPinkCabIgnitionState::Off;
     int32 SelectedGear = 0;
+    float ClutchReleaseSeconds = 0.70f;
     float HandbrakeAmount = 1.0f;
     bool bPassengerDoorOpen = false;
     EPinkCabMeterState MeterState = EPinkCabMeterState::Off;

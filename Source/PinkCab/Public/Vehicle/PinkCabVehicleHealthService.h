@@ -10,24 +10,32 @@ enum class EPinkCabVehicleCapability : uint8
     Roll,
     Steer,
     Brake,
-    RunEngine
+    RunEngine,
+    Drive
 };
 
 struct FPinkCabVehicleHealthService
 {
-    bool ApplyHit(FPinkCabVehicleHealthState& State, const FPinkCabVehicleHitEvent& Event) const
+    bool ApplyHit(
+        FPinkCabVehicleHealthState& State,
+        const FPinkCabVehicleHitEvent& Event) const
     {
         if (Event.Severity <= 0.0f)
         {
             return false;
         }
-        if (Event.bCosmeticOnly || Event.Channel == EPinkCabVehicleHealthChannel::CosmeticBody)
+        if (Event.bCosmeticOnly
+            || Event.Channel == EPinkCabVehicleHealthChannel::CosmeticBody)
         {
             return true;
         }
         return State.ApplyFunctionalDamage(Event.Channel, Event.Severity);
     }
-    bool ResolveSyntheticHitZone(FName ZoneId, float Severity, FPinkCabVehicleHitEvent& OutEvent) const
+
+    bool ResolveSyntheticHitZone(
+        FName ZoneId,
+        float Severity,
+        FPinkCabVehicleHitEvent& OutEvent) const
     {
         EPinkCabVehicleHealthChannel Channel;
         if (ZoneId == FName(TEXT("FrontLeftWheel"))) Channel = EPinkCabVehicleHealthChannel::Wheel;
@@ -37,6 +45,8 @@ struct FPinkCabVehicleHealthService
         else if (ZoneId == FName(TEXT("Brake"))) Channel = EPinkCabVehicleHealthChannel::Brake;
         else if (ZoneId == FName(TEXT("BrakeHeat"))) Channel = EPinkCabVehicleHealthChannel::BrakeHeat;
         else if (ZoneId == FName(TEXT("BrakeHydraulic"))) Channel = EPinkCabVehicleHealthChannel::BrakeHydraulic;
+        else if (ZoneId == FName(TEXT("Clutch"))) Channel = EPinkCabVehicleHealthChannel::Clutch;
+        else if (ZoneId == FName(TEXT("Gearbox"))) Channel = EPinkCabVehicleHealthChannel::Gearbox;
         else if (ZoneId == FName(TEXT("Door"))) Channel = EPinkCabVehicleHealthChannel::Door;
         else if (ZoneId == FName(TEXT("Lamp"))) Channel = EPinkCabVehicleHealthChannel::Lamp;
         else if (ZoneId == FName(TEXT("Glass"))) Channel = EPinkCabVehicleHealthChannel::Glass;
@@ -48,7 +58,9 @@ struct FPinkCabVehicleHealthService
         else if (ZoneId == FName(TEXT("CosmeticBody"))) Channel = EPinkCabVehicleHealthChannel::CosmeticBody;
         else return false;
 
-        OutEvent = FPinkCabVehicleHitEvent(Channel, FMath::Clamp(Severity, 0.0f, 1.0f),
+        OutEvent = FPinkCabVehicleHitEvent(
+            Channel,
+            FMath::Clamp(Severity, 0.0f, 1.0f),
             Channel == EPinkCabVehicleHealthChannel::CosmeticBody);
         return true;
     }
@@ -69,6 +81,7 @@ struct FPinkCabVehicleHealthService
         }
         return ResolveSyntheticHitZone(ZoneId, CollisionSeverity, OutEvent);
     }
+
     float GetBrakeEffectiveness01(const FPinkCabVehicleHealthState& State) const
     {
         return FMath::Min3(
@@ -87,7 +100,9 @@ struct FPinkCabVehicleHealthService
         return Result;
     }
 
-    bool HasCapability(const FPinkCabVehicleHealthState& State, EPinkCabVehicleCapability Capability) const
+    bool HasCapability(
+        const FPinkCabVehicleHealthState& State,
+        EPinkCabVehicleCapability Capability) const
     {
         switch (Capability)
         {
@@ -101,6 +116,9 @@ struct FPinkCabVehicleHealthService
             return GetBrakeEffectiveness01(State) > 0.0f;
         case EPinkCabVehicleCapability::RunEngine:
             return GetEnginePowerEffectiveness01(State) > 0.0f;
+        case EPinkCabVehicleCapability::Drive:
+            return State.GetHealth(EPinkCabVehicleHealthChannel::Clutch) > 0.0f
+                && State.GetHealth(EPinkCabVehicleHealthChannel::Gearbox) > 0.0f;
         default:
             return false;
         }
@@ -116,18 +134,23 @@ struct FPinkCabVehicleHealthService
         }
 
         const float BrakeEffectiveness = GetBrakeEffectiveness01(State);
-        Controls.SetBrake(BrakeEffectiveness > 0.0f
-            ? FMath::Min(Controls.Brake, BrakeEffectiveness)
-            : 0.0f);
+        Controls.SetBrake(
+            BrakeEffectiveness > 0.0f
+                ? FMath::Min(Controls.Brake, BrakeEffectiveness)
+                : 0.0f);
 
         if (!HasCapability(State, EPinkCabVehicleCapability::RunEngine)
-            || !HasCapability(State, EPinkCabVehicleCapability::Roll))
+            || !HasCapability(State, EPinkCabVehicleCapability::Roll)
+            || !HasCapability(State, EPinkCabVehicleCapability::Drive))
         {
             Controls.SetThrottle(0.0f);
         }
         else
         {
-            Controls.SetThrottle(FMath::Min(Controls.Throttle, GetEnginePowerEffectiveness01(State)));
+            Controls.SetThrottle(
+                FMath::Min(
+                    Controls.Throttle,
+                    GetEnginePowerEffectiveness01(State)));
         }
     }
 
@@ -136,6 +159,7 @@ struct FPinkCabVehicleHealthService
         return !HasCapability(State, EPinkCabVehicleCapability::Roll)
             || !HasCapability(State, EPinkCabVehicleCapability::Steer)
             || !HasCapability(State, EPinkCabVehicleCapability::Brake)
-            || !HasCapability(State, EPinkCabVehicleCapability::RunEngine);
+            || !HasCapability(State, EPinkCabVehicleCapability::RunEngine)
+            || !HasCapability(State, EPinkCabVehicleCapability::Drive);
     }
 };

@@ -12,6 +12,8 @@ enum class EPinkCabVehicleDynamicsProviderState : uint8
 enum class EPinkCabMechanicalClutchCapability : uint8
 {
     Unsupported,
+    EmulatedNeutralGate,
+    ContinuousExternalTorque,
     Native
 };
 

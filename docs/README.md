@@ -17,6 +17,7 @@
 7. [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md) вЂ” current implementation-facing unresolved locks.
 8. [`VERIFICATION_MATRIX.md`](VERIFICATION_MATRIX.md) вЂ” FIRST EURO executable proof index.
 9. [`PROGRAM_ROADMAP.md`](PROGRAM_ROADMAP.md) вЂ” current dependency/delivery roadmap.
+10. [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md) — current owner control/vehicle-mechanics release authority mirror (`CD-848`, Confluence `16744449`).
 
 ## BASE-100 rule
 
@@ -28,17 +29,17 @@ Visual/art/material/lighting/animation/narrative completeness does not enter the
 
 No prose, ticket status or committed config proves runtime behavior by itself.
 
-## Current START-90 snapshot вЂ” 2026-09-12
+## Current START-90 snapshot вЂ” 2026-09-16
 
-Technical Owner Pack 01: **196 rows = 102 LOCKED + 3 CALIBRATION + 69 PROPOSED DEFAULT + 22 OPEN**.
+Technical Owner Pack 01: **196 rows = 105 LOCKED + 3 CALIBRATION + 69 PROPOSED DEFAULT + 19 OPEN**.
 
 Scoring is reproducible: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
 
-**Current code-only specification readiness = 71.2%. START-90 FAIL. Gap = 18.8 percentage points.**
+**Current code-only specification readiness = 72.7%. START-90 FAIL. Gap = 17.3 percentage points.**
 
-Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 57.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 67.2%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
 
-If all 69 proposed defaults are owner-accepted, score becomes 174/196 = 88.8%; at least 3 of the 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%. Historical в‰€59% and 38.2% scores are retired.
+If all 69 proposed defaults are owner-accepted, score becomes 177/196 = 90.31%; no remaining OPEN row is required to cross START-90. Historical в‰€59%, 53.0% and 38.2% scores are retired.
 
 ## FIRST EURO вЂ” locked delivery scope
 
@@ -52,7 +53,10 @@ POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle Servi
 
 ## Current implementation-facing system mirrors
 
+- control/mechanics release contract: [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md);
 - vehicle stack: [`PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`](PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md);
+- hero-vehicle pre-model freeze: [`PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md`](PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md);
+- Tatra asset import contract: [`PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md`](PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md);
 - Tatra handling: [`PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`](PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md);
 - mass/load: [`PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`](PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md);
 - taxi physicality: [`PINK_CAB_TAXI_WORK_PHYSICALITY.md`](PINK_CAB_TAXI_WORK_PHYSICALITY.md);
@@ -84,6 +88,7 @@ POST-FIRST-EURO: multiplayer/coop/common rooms, Level3 gameplay, lifestyle Servi
 Primary current pages include:
 
 - `6586369` Authority Index;
+- `16744449` Control & Vehicle Mechanics Release Contract;
 - `5537802` Active Product Baseline;
 - `6553617` START-90 / Specification Coverage Ledger;
 - `11239425` BASE-100 Code Architecture & FIRST EURO 12M Contract;

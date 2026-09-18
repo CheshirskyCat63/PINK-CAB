@@ -44,6 +44,7 @@ public:
     bool BeginGrip(FPinkCabInteractionEvent& OutEvent);
     bool EndGrip(FPinkCabInteractionEvent& OutEvent);
     bool IsGripActive() const { return bGripActive; }
+    FName GetActiveGripTargetId() const { return ActiveGripTargetId; }
 
     bool BeginMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
     bool EndMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);

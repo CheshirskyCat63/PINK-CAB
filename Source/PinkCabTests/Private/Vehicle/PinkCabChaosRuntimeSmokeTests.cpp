@@ -7,6 +7,7 @@
 #include "GameFramework/Controller.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "World/PinkCabChaosWeaveCourse.h"
 
 struct FPinkCabChaosRuntimeState
@@ -70,16 +71,32 @@ public:
             if (Movement)
             {
                 Test->TestFalse(TEXT("live cockpit begins with engine off"), Movement->bMechanicalSimEnabled);
-                Test->TestTrue(TEXT("live cockpit begins with handbrake engaged"), Movement->GetHandbrakeInput());
+                Test->TestFalse(TEXT("legacy bool handbrake path is never authoritative"), Movement->GetHandbrakeInput());
             }
+            Test->TestTrue(TEXT("live cockpit begins with parking lever engaged"),
+                Pawn->GetCockpitState().GetHandbrakeAmount() > 0.99f);
             Test->TestTrue(TEXT("ignition interaction reaches live Chaos pawn"),
                 Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
-            Test->TestTrue(TEXT("analog handbrake interaction reaches live Chaos pawn"),
-                Pawn->ApplyCockpitInteraction({FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, -64}));
+
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, -500.0f, 0.1f);
+            Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
+            Test->TestEqual(TEXT("mouse actuator releases parking lever"),
+                Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+            const FPinkCabVehicleInputFrame ClutchFrame =
+                FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+            Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+            const FPinkCabVehicleInputFrame CoupledFrame =
+                FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
+            Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+
             if (Movement)
             {
                 Test->TestTrue(TEXT("ignition enables live mechanical simulation"), Movement->bMechanicalSimEnabled);
-                Test->TestFalse(TEXT("handbrake release reaches live Chaos"), Movement->GetHandbrakeInput());
+                Test->TestFalse(TEXT("legacy bool handbrake stays disabled after release"), Movement->GetHandbrakeInput());
+                Test->TestEqual(TEXT("physical H-gate plus clutch engages first"), Movement->GetTargetGear(), 1);
             }
             State->bCockpitPrimed = true;
         }

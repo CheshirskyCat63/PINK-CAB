@@ -14,10 +14,11 @@ public:
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const override;
     virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override
     {
-        return EPinkCabMechanicalClutchCapability::Unsupported;
+        return EPinkCabMechanicalClutchCapability::ContinuousExternalTorque;
     }
 
     UChaosWheeledVehicleMovementComponent* GetMovement() const { return Movement; }
+    const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }
 
 private:
     UChaosWheeledVehicleMovementComponent* Movement = nullptr;

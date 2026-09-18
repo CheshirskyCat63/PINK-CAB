@@ -75,3 +75,6 @@ worktrees/
 
 # Canonical local package archive
 Artifacts/
+
+# Local full-ref safety bundle; preserve on disk but never treat it as working-tree content.
+/PINK-CAB_ALL_REFS.bundle

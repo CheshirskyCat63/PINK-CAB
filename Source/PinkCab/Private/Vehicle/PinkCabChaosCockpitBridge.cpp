@@ -14,7 +14,39 @@ bool FPinkCabChaosCockpitBridge::Apply(
     const bool bEngineRunning =
         Cockpit.GetIgnitionState() == EPinkCabIgnitionState::Running;
     Movement.EnableMechanicalSim(bEngineRunning);
+    Movement.SetUseAutomaticGears(false);
 
-    Controls.SetHandbrake(Cockpit.GetHandbrakeAmount());
+    // Chaos has no public clutch axis. PINK CAB keeps Chaos as the tire/contact
+    // solver while using its normal transmission at full coupling and additive
+    // rear-wheel drive torque during partial clutch transfer.
+    constexpr float FullyCoupledThreshold = 0.995f;
+    const bool bFullyCoupled =
+        Controls.ClutchCoupling >= FullyCoupledThreshold
+        && Controls.EngagedGear != 0;
+    Movement.SetTargetGear(bFullyCoupled ? Controls.EngagedGear : 0, true);
+
+    float ExternalRearDriveTorquePerWheelNm = 0.0f;
+    if (bEngineRunning
+        && Controls.EngagedGear != 0
+        && Controls.ClutchCoupling > KINDA_SMALL_NUMBER
+        && Controls.ClutchCoupling < FullyCoupledThreshold)
+    {
+        const float EngineRpm = Movement.GetEngineRotationSpeed();
+        const float NormalizedTorque =
+            Movement.EngineSetup.TorqueCurve.GetRichCurveConst()->Eval(EngineRpm);
+        const float EngineTorqueNm =
+            Movement.EngineSetup.MaxTorque * FMath::Max(NormalizedTorque, 0.0f);
+        const float GearRatio =
+            Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear);
+        const float AxleTorqueNm =
+            EngineTorqueNm
+            * GearRatio
+            * Movement.TransmissionSetup.TransmissionEfficiency
+            * Controls.Throttle
+            * Controls.ClutchCoupling;
+        ExternalRearDriveTorquePerWheelNm = AxleTorqueNm * 0.5f;
+    }
+    Controls.SetExternalRearDriveTorquePerWheel(ExternalRearDriveTorquePerWheelNm);
+
     return Provider.ApplyControls(Controls);
 }
