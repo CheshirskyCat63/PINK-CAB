@@ -5,7 +5,7 @@
 #include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabTatraProfile.h"
-#include "Vehicle/PinkCabVehicleVisualShellComponent.h"
+#include "Runtime/PinkCabVehicleVisualShellComponent.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPawnIntegratedVehicleStateTest,

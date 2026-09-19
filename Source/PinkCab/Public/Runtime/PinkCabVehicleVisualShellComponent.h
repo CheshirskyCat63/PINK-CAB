@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "PinkCabVehicleVisualShellComponent.generated.h"
 
 class UPrimitiveComponent;

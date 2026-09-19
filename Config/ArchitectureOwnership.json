@@ -37,6 +37,13 @@
       "test_prefix": "PinkCab.Runtime.Composition"
     },
     {
+      "id": "vehicle_visual_presentation",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabVehicleVisualProfile.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabVehicleVisualShellComponent.cpp",
+      "test_prefix": "PinkCab.Vehicle.Visual"
+    },
+    {
       "id": "driver_ui",
       "owner_domain": "Runtime",
       "public_contract": "Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h",

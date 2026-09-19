@@ -10,8 +10,8 @@
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
-#include "Vehicle/PinkCabVehicleVisualShellComponent.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualShellComponent.h"
 
 class FPinkCabVehiclePresentationBindingCommand final : public IAutomationLatentCommand
 {

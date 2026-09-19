@@ -136,6 +136,16 @@ class CodeHealthAnalyzerTests(unittest.TestCase):
         report = self.run_analysis({"Source/PinkCab/Public/Taxi/Bad.h": source})
         self.assertIn("forbidden_dependency", self.rules(report))
 
+    def test_real_cockpit_taxi_vehicle_cycle_is_baseline_regression(self) -> None:
+        report = self.run_analysis({
+            "Source/PinkCab/Public/Vehicle/Visual.h": '#include "Cockpit/Binding.h"\n',
+            "Source/PinkCab/Private/Cockpit/Bridge.cpp": '#include "Taxi/Fare.h"\n',
+            "Source/PinkCab/Public/Taxi/Fare.h": '#include "Vehicle/Load.h"\n',
+        })
+        self.assertIn(["Cockpit", "Taxi", "Vehicle"], report["dependency_sccs"])
+        regressions = compare_baseline(report, {"version": 1, "items": []})
+        self.assertTrue(any(item["rule"] == "baseline_regression" for item in regressions))
+
     def test_detects_domain_cycle(self) -> None:
         report = self.run_analysis({
             "Source/PinkCab/Public/Vehicle/A.h": '#include "Taxi/B.h"\n',

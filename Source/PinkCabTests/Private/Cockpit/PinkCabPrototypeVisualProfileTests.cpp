@@ -2,7 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabPrototypeVisualProfile.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPrototypeVisualProfileDefaultsTest,

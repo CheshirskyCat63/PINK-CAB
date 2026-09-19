@@ -67,6 +67,16 @@
       "to": [
         "Persistence"
       ]
+    },
+    {
+      "from": [
+        "Vehicle"
+      ],
+      "to": [
+        "Cockpit",
+        "Taxi",
+        "Service"
+      ]
     }
   ],
   "allowlist": [],

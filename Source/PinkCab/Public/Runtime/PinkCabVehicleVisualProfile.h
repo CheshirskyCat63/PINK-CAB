@@ -12,11 +12,7 @@ struct PINKCAB_API FPinkCabVehiclePresentationPart
 {
     GENERATED_BODY()
 
-    bool IsValid() const
-    {
-        return !PartId.IsNone() && !Mesh.IsNull() && !LocalTransform.ContainsNaN()
-            && !(bOwnerNoSee && bOnlyOwnerSee);
-    }
+    bool IsValid() const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FName PartId = NAME_None;
@@ -39,34 +35,13 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
 {
     GENERATED_BODY()
 
-    static FPinkCabVehicleVisualProfile Fallback()
-    {
-        FPinkCabVehicleVisualProfile Result;
-        Result.ProfileId = TEXT("PinkCab.Visual.Fallback");
-        return Result;
-    }
-
+    static FPinkCabVehicleVisualProfile Fallback();
     static FPinkCabVehicleVisualProfile Tatra613Donor();
 
-    bool IsValid() const
-    {
-        if (ProfileId.IsNone() || !FPinkCabCockpitVisualBinding::ValidateUnique(CockpitBindings)) return false;
-        TSet<FName> Seen;
-        for (const FPinkCabVehiclePresentationPart& Part : PresentationParts)
-        {
-            if (!Part.IsValid() || Seen.Contains(Part.PartId)) return false;
-            Seen.Add(Part.PartId);
-        }
-        return true;
-    }
-
-    bool HasExteriorAsset() const { return !ExteriorStaticMesh.IsNull() || !ExteriorSkeletalMesh.IsNull(); }
-    bool HasVisualAsset() const { return HasExteriorAsset() || PresentationParts.Num() > 0; }
-    bool HasCabinAsset() const
-    {
-        return !CabinStaticMesh.IsNull() || !CabinSkeletalMesh.IsNull()
-            || (bUseExteriorAsCabinWhenCabinMissing && HasExteriorAsset());
-    }
+    bool IsValid() const;
+    bool HasExteriorAsset() const;
+    bool HasVisualAsset() const;
+    bool HasCabinAsset() const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FName ProfileId = NAME_None;

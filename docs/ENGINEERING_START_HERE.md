@@ -68,6 +68,7 @@ Hard rules:
 | `fare_runtime_state_snapshot` | fare/session/meter/manifest snapshot data without persistence schema | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h` | `PinkCab.Persistence.FareRuntimeSnapshot` |
 | `service_snapshot_state` | service/inventory/build/fuel snapshot data; persistence codec is external | Service | `Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h` | `PinkCab.Service.Snapshot` |
 | `runtime_composition` | possession/runtime wiring and compatibility shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h` | `PinkCab.Runtime.Composition` |
+| `vehicle_visual_presentation` | vehicle exterior/cabin/presentation profile and visual shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabVehicleVisualProfile.h` | `PinkCab.Vehicle.Visual` |
 | `driver_ui` | system menu, HUD, cursor/capture and input-mode presentation | Runtime | `Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h` | `PinkCab.UI.SystemMenu` |
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |

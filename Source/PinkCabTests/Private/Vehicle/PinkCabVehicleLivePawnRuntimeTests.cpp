@@ -8,7 +8,7 @@
 #include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 
 class FPinkCabVehicleLivePawnRoundTripCommand final : public IAutomationLatentCommand
 {

@@ -128,13 +128,6 @@
     },
     {
       "count": 1,
-      "max_value": 3,
-      "path": "<domain-graph>",
-      "rule": "dependency_cycle",
-      "symbol": "Cockpit|Taxi|Vehicle"
-    },
-    {
-      "count": 1,
       "max_value": 1226,
       "path": "Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp",
       "rule": "file_loc",
@@ -767,13 +760,6 @@
       "count": 1,
       "max_value": null,
       "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleMotionClassifier.h",
-      "rule": "public_header_logic",
-      "symbol": ""
-    },
-    {
-      "count": 1,
-      "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleVisualProfile.h",
       "rule": "public_header_logic",
       "symbol": ""
     },

@@ -11,7 +11,7 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 
 namespace
 {

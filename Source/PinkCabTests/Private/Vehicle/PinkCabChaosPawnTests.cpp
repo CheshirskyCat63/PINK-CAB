@@ -12,7 +12,7 @@
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabSteeringController.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
-#include "Vehicle/PinkCabVehicleVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsEngine/BodySetup.h"
 
