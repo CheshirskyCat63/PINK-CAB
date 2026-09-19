@@ -1,0 +1,50 @@
+﻿{
+  "version": 1,
+  "source_roots": ["Source/PinkCab"],
+  "domains": [
+    "Core", "Interaction", "Vehicle", "Taxi", "Economy",
+    "World", "Traffic", "Persistence", "Service", "Cockpit", "Enforcement"
+  ],
+  "thresholds": {
+    "cpp_loc": 350,
+    "header_loc": 250,
+    "function_loc": 80,
+    "complexity": 15
+  },
+  "raw_input": {
+    "allowed_prefixes": [
+      "Source/PinkCab/Public/Interaction",
+      "Source/PinkCab/Private/Interaction"
+    ],
+    "patterns": [
+      "IsInputKeyDown(",
+      "GetInputAnalogKeyState(",
+      "GetRawKeyValue(",
+      "InputKey("
+    ]
+  },
+  "chaos_writes": {
+    "allowed_files": [
+      "Source/PinkCab/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"
+    ],
+    "patterns": [
+      "SetSteeringInput(",
+      "SetThrottleInput(",
+      "SetBrakeInput(",
+      "SetHandbrakeInput(",
+      "SetDriveTorque(",
+      "SetBrakeTorque(",
+      "SetTorqueCombineMethod("
+    ]
+  },
+  "forbidden_dependencies": [
+    {
+      "from": [
+        "Core", "Interaction", "Vehicle", "Taxi", "Economy",
+        "World", "Traffic", "Service", "Cockpit", "Enforcement"
+      ],
+      "to": ["Persistence"]
+    }
+  ],
+  "allowlist": []
+}
