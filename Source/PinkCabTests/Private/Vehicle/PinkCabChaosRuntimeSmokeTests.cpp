@@ -311,4 +311,141 @@ bool FPinkCabChaosRuntimeHalfPedalSlipTest::RunTest(const FString& Parameters)
     return true;
 }
 
+
+class FPinkCabReverseDriveCommand final : public IAutomationLatentCommand
+{
+public:
+    FPinkCabReverseDriveCommand(
+        FAutomationTestBase* InTest,
+        TSharedRef<FPinkCabChaosRuntimeState> InState)
+        : Test(InTest), State(InState) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+        if (!State->Pawn.IsValid())
+        {
+            for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+            {
+                State->Pawn = *It;
+                State->StartLocation = It->GetActorLocation();
+                State->StartRotation = It->GetActorRotation();
+                It->SetSystemMenuOpen(false);
+                It->SetActorTickEnabled(false);
+                break;
+            }
+        }
+
+        APinkCabChaosTatraPawn* Pawn = State->Pawn.Get();
+        if (!Pawn)
+        {
+            return false;
+        }
+        UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+        if (!Movement)
+        {
+            return false;
+        }
+
+        if (!State->bCockpitPrimed)
+        {
+            Test->TestTrue(TEXT("reverse smoke ignition interaction succeeds"),
+                Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, 500.0f, 0.1f);
+            Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
+
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 320.0f, 0.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+            const FPinkCabVehicleInputFrame ClutchFrame =
+                FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+            Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+            const FPinkCabVehicleInputFrame CoupledFrame =
+                FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
+            Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+
+            Test->TestEqual(TEXT("physical H-gate requests reverse"), Pawn->GetRequestedGear(), -1);
+            Test->TestEqual(TEXT("clutch engagement accepts reverse"), Pawn->GetEngagedGear(), -1);
+            State->bCockpitPrimed = true;
+        }
+
+        int32 ContactCount = 0;
+        for (int32 WheelIndex = 0; WheelIndex < Movement->GetNumWheels(); ++WheelIndex)
+        {
+            ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
+        }
+        if (Movement->GetCurrentGear() != -1 || ContactCount < 2)
+        {
+            return false;
+        }
+
+        FPinkCabVehicleControlState Controls;
+        Controls.SetThrottle(0.25f);
+        Controls.SetBrake(0.0f);
+        Controls.SetHandbrake(0.0f);
+        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+
+        if (PhaseStartSeconds < 0.0)
+        {
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            return false;
+        }
+        if ((FPlatformTime::Seconds() - PhaseStartSeconds) < 2.0)
+        {
+            return false;
+        }
+
+        const FVector Travel = Pawn->GetActorLocation() - State->StartLocation;
+        const float ForwardAxisTravelCm = FVector::DotProduct(Travel, State->StartRotation.Vector());
+        Test->AddInfo(FString::Printf(
+            TEXT("reverse diagnostics: travel=%.1fcm speed=%.1fcm/s gear=%d contacts=%d"),
+            ForwardAxisTravelCm,
+            Movement->GetForwardSpeed(),
+            Movement->GetCurrentGear(),
+            ContactCount));
+        Test->TestTrue(TEXT("reverse gear produces negative longitudinal travel"), ForwardAxisTravelCm < -30.0f);
+        Test->TestTrue(TEXT("reverse gear produces negative live Chaos speed"), Movement->GetForwardSpeed() < -20.0f);
+        Test->TestEqual(TEXT("live Chaos remains in reverse"), Movement->GetCurrentGear(), -1);
+        Test->TestTrue(TEXT("reverse drive keeps at least two wheels in contact"), ContactCount >= 2);
+
+        FPinkCabVehicleTelemetry Telemetry;
+        Test->TestTrue(TEXT("provider returns reverse telemetry"),
+            Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry));
+        Test->TestTrue(TEXT("normalized telemetry reports negative reverse speed"), Telemetry.SpeedKmh < 0.0f);
+        Test->TestEqual(TEXT("normalized telemetry reports reverse gear"), Telemetry.CurrentGear, -1);
+        Test->TestEqual(TEXT("reverse telemetry preserves four wheel slots"), Telemetry.Wheels.Num(), 4);
+
+        FPinkCabVehicleControlState StopControls;
+        StopControls.SetBrake(1.0f);
+        Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+        return true;
+    }
+
+private:
+    FAutomationTestBase* Test = nullptr;
+    TSharedRef<FPinkCabChaosRuntimeState> State;
+    double PhaseStartSeconds = -1.0;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosRuntimeReverseDriveSmokeTest,
+    "PinkCab.Vehicle.ChaosBaseline.Runtime.ReverseDriveSmoke",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosRuntimeReverseDriveSmokeTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("Chaos weave map opens for reverse smoke"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+    const TSharedRef<FPinkCabChaosRuntimeState> State = MakeShared<FPinkCabChaosRuntimeState>();
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabReverseDriveCommand(this, State));
+    return true;
+}
+
 #endif

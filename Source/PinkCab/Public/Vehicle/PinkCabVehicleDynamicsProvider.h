@@ -21,7 +21,12 @@ class IPinkCabVehicleDynamicsProvider
 {
 public:
     virtual ~IPinkCabVehicleDynamicsProvider() = default;
+
+    // Sole gameplay-frame write seam for vehicle dynamics. Engine-specific
+    // steering signs, pedal mapping and wheel torque writes stay behind it.
     virtual bool ApplyControls(const FPinkCabVehicleControlState& Controls) = 0;
+
+    // Read-only normalized telemetry seam; never mutates engine state.
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const = 0;
     virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const
     {

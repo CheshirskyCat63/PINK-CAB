@@ -17,7 +17,6 @@ public:
         return EPinkCabMechanicalClutchCapability::ContinuousExternalTorque;
     }
 
-    UChaosWheeledVehicleMovementComponent* GetMovement() const { return Movement; }
     const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }
 
 private:

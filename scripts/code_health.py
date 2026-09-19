@@ -274,9 +274,19 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
         chaos_allowed = relative in set(chaos_policy.get("allowed_files", []))
         if not chaos_allowed:
             for pattern in chaos_policy.get("patterns", []):
-                offset = raw.find(pattern)
-                if offset >= 0:
-                    violations.append(_violation("chaos_write_ownership", relative, _line_number(raw, offset), f"direct Chaos write outside adapter: {pattern}", symbol=pattern))
+                search_from = 0
+                while True:
+                    offset = sanitized.find(pattern, search_from)
+                    if offset < 0:
+                        break
+                    violations.append(_violation(
+                        "chaos_write_ownership",
+                        relative,
+                        _line_number(sanitized, offset),
+                        f"direct Chaos write outside adapter: {pattern}",
+                        symbol=pattern,
+                    ))
+                    search_from = offset + len(pattern)
 
         if domain:
             for include in INCLUDE_RE.finditer(raw):

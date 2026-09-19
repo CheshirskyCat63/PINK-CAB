@@ -31,7 +31,7 @@ def policy(**thresholds: int) -> dict:
         },
         "chaos_writes": {
             "allowed_files": ["Source/PinkCab/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"],
-            "patterns": ["SetSteeringInput(", "SetThrottleInput(", "SetBrakeInput(", "SetHandbrakeInput(", "SetDriveTorque(", "SetBrakeTorque("],
+            "patterns": ["SetSteeringInput(", "SetThrottleInput(", "SetBrakeInput(", "SetHandbrakeInput(", "SetDriveTorque(", "SetBrakeTorque(", "SetTorqueCombineMethod("],
         },
         "forbidden_dependencies": [
             {"from": ["Vehicle", "Taxi", "Service", "Economy", "World", "Traffic", "Cockpit"], "to": ["Persistence"]}
@@ -95,10 +95,41 @@ class CodeHealthAnalyzerTests(unittest.TestCase):
         report = self.run_analysis({"Source/PinkCab/Private/Interaction/Input.cpp": source})
         self.assertNotIn("raw_input_ownership", self.rules(report))
 
-    def test_detects_direct_chaos_write_outside_provider(self) -> None:
-        source = "void Bad(UChaosWheeledVehicleMovementComponent& M) { M.SetThrottleInput(1.0f); }\n"
-        report = self.run_analysis({"Source/PinkCab/Private/Vehicle/BadChaos.cpp": source})
-        self.assertIn("chaos_write_ownership", self.rules(report))
+    def test_detects_every_direct_chaos_write_outside_provider(self) -> None:
+        apis = [
+            "SetSteeringInput(",
+            "SetThrottleInput(",
+            "SetBrakeInput(",
+            "SetHandbrakeInput(",
+            "SetDriveTorque(",
+            "SetBrakeTorque(",
+            "SetTorqueCombineMethod(",
+        ]
+        for api in apis:
+            with self.subTest(api=api):
+                source = f"void Bad() {{ Movement.{api}0); }}\n"
+                report = self.run_analysis({"Source/PinkCab/Private/Vehicle/BadChaos.cpp": source})
+                self.assertIn("chaos_write_ownership", self.rules(report))
+
+    def test_allows_direct_chaos_writes_only_in_canonical_provider(self) -> None:
+        source = "".join([
+            "void Good() { Movement.SetSteeringInput(0); }\n",
+            "void Good2() { Movement.SetThrottleInput(0); }\n",
+            "void Good3() { Movement.SetBrakeInput(0); }\n",
+            "void Good4() { Movement.SetHandbrakeInput(false); }\n",
+            "void Good5() { Movement.SetDriveTorque(0, 0); }\n",
+            "void Good6() { Movement.SetBrakeTorque(0, 0); }\n",
+            "void Good7() { Movement.SetTorqueCombineMethod(0, 0); }\n",
+        ])
+        report = self.run_analysis({
+            "Source/PinkCab/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp": source
+        })
+        self.assertNotIn("chaos_write_ownership", self.rules(report))
+
+    def test_chaos_write_names_in_comments_do_not_count_as_writes(self) -> None:
+        source = "// Never call Movement.SetThrottleInput(1.0f) here.\nvoid Good() {}\n"
+        report = self.run_analysis({"Source/PinkCab/Private/Vehicle/CommentOnly.cpp": source})
+        self.assertNotIn("chaos_write_ownership", self.rules(report))
 
     def test_detects_forbidden_persistence_dependency(self) -> None:
         source = '#include "Persistence/PinkCabGameSnapshot.h"\n'
