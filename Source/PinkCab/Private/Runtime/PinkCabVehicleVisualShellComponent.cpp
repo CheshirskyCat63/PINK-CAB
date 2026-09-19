@@ -85,6 +85,8 @@ bool UPinkCabVehicleVisualShellComponent::BuildPresentationParts()
         Component->SetRelativeTransform(Part.LocalTransform);
         Component->SetOwnerNoSee(Part.bOwnerNoSee);
         Component->SetOnlyOwnerSee(Part.bOnlyOwnerSee);
+        Component->SetVisibility(true, false);
+        Component->SetHiddenInGame(false, false);
         ConfigurePresentation(*Component);
         Component->RegisterComponent();
         PresentationPartComponents.Add(Component);

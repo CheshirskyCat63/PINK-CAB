@@ -206,7 +206,8 @@ public:
         Test->TestTrue(TEXT("provider returns live PIE telemetry"),
             Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry));
         Test->TestEqual(TEXT("telemetry mirrors live current gear"), Telemetry.CurrentGear, Movement->GetCurrentGear());
-        Test->TestTrue(TEXT("telemetry exposes running engine rpm"), Telemetry.EngineRpm > 750.0f);
+        Test->TestTrue(TEXT("fully coupled low-speed engine stays at or above idle rpm"),
+            Telemetry.EngineRpm >= Movement->EngineSetup.EngineIdleRPM);
         Test->TestEqual(TEXT("telemetry exposes four wheel slots"), Telemetry.Wheels.Num(), 4);
         int32 ContactCount = 0;
         for (const FPinkCabWheelTelemetry& Wheel : Telemetry.Wheels)
@@ -250,6 +251,102 @@ bool FPinkCabChaosRuntimeDriveSmokeTest::RunTest(const FString& Parameters)
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabDrivePhaseCommand(this, State, 2.5f, 0.25f, 0.0f));
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabDrivePhaseCommand(this, State, 1.5f, 0.25f, 0.35f));
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabVerifyDriveCommand(this, State));
+    return true;
+}
+
+class FPinkCabFullThrottleFreeRevCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabFullThrottleFreeRevCommand(FAutomationTestBase* InTest)
+        : Test(InTest) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        if (!Pawn.IsValid())
+        {
+            for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+            {
+                Pawn = *It;
+                It->SetSystemMenuOpen(false);
+                It->SetActorTickEnabled(false);
+                Test->TestTrue(TEXT("free-rev ignition interaction succeeds"),
+                    It->ApplyCockpitInteraction(
+                        {FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+                break;
+            }
+        }
+
+        APinkCabChaosTatraPawn* LivePawn = Pawn.Get();
+        if (!LivePawn)
+        {
+            return false;
+        }
+        UChaosWheeledVehicleMovementComponent* Movement = LivePawn->GetChaosMovement();
+        if (!Movement)
+        {
+            return false;
+        }
+
+        FPinkCabVehicleControlState Controls;
+        Controls.SetThrottle(1.0f);
+        Controls.SetDriveline(0, 0, 0.0f);
+        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        PeakRpm = FMath::Max(PeakRpm, Movement->GetEngineRotationSpeed());
+
+        if (StartSeconds < 0.0)
+        {
+            Test->TestEqual(TEXT("full-throttle free-rev starts in neutral"),
+                Movement->GetCurrentGear(), 0);
+            StartSeconds = FPlatformTime::Seconds();
+            return false;
+        }
+        if ((FPlatformTime::Seconds() - StartSeconds) < 1.5)
+        {
+            return false;
+        }
+
+        const float Rpm = Movement->GetEngineRotationSpeed();
+        PeakRpm = FMath::Max(PeakRpm, Rpm);
+        Test->AddInfo(FString::Printf(
+            TEXT("full-throttle free-rev diagnostics rpm=%.1f peak=%.1f max=%.1f moi=%.2f"),
+            Rpm, PeakRpm, Movement->EngineSetup.MaxRPM, Movement->EngineSetup.EngineRevUpMOI));
+        Test->TestTrue(TEXT("100 percent gas reaches the high-rev band in neutral"),
+            Rpm >= Movement->EngineSetup.MaxRPM * 0.94f);
+        Test->TestTrue(TEXT("high-rev engine remains inside limiter overshoot band"),
+            PeakRpm <= Movement->EngineSetup.MaxRPM * 1.03f);
+
+        Controls.SetThrottle(0.0f);
+        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        return true;
+    }
+
+private:
+    FAutomationTestBase* Test = nullptr;
+    TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
+    double StartSeconds = -1.0;
+    float PeakRpm = 0.0f;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosRuntimeFullThrottleFreeRevTest,
+    "PinkCab.Vehicle.ChaosBaseline.Runtime.FullThrottleFreeRev",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosRuntimeFullThrottleFreeRevTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("Chaos weave map opens for full-throttle free-rev test"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabFullThrottleFreeRevCommand(this));
     return true;
 }
 

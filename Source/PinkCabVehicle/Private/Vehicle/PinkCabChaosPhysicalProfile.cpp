@@ -136,16 +136,22 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.WheelbaseMm = P(2980.0f, A::Source);
     R.FrontTrackMm = P(1520.0f, A::Source);
     R.RearTrackMm = P(1520.0f, A::Source);
-    R.MaxPowerHp = P(180.0f, A::DesignTarget);
-    R.MaxTorqueNm = P(240.0f, A::DesignTarget);
+    R.MaxPowerHp = P(250.0f, A::DesignTarget);
+    R.MaxTorqueNm = P(260.0f, A::DesignTarget);
     R.TerminalTargetKmh = P(195.0f, A::DesignTarget);
     R.bRearWheelDrive = P(true, A::DesignTarget);
-    R.EngineMaxRpm = P(6000.0f, A::Calibration);
+    R.EngineMaxRpm = P(8500.0f, A::Calibration);
     R.EngineIdleRpm = P(750.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
+    R.EngineRevUpMOI = P(0.17f, A::Calibration);
+    // Supercharged/high-rev design target: strong low/mid response and a broad
+    // compressor-fed plateau with roughly 250 hp still available at the 8500 rpm
+    // redline. This changes engine character only; pedal, gearbox, steering and
+    // tire-control semantics remain untouched.
     R.NormalizedTorqueCurve = P(TArray<FVector2D>{
-        FVector2D(0.0, 0.90), FVector2D(800.0, 1.00), FVector2D(2000.0, 0.90),
-        FVector2D(3500.0, 1.00), FVector2D(5000.0, 0.85), FVector2D(6000.0, 0.65)}, A::Calibration);
+        FVector2D(0.0, 0.85), FVector2D(800.0, 0.92), FVector2D(2000.0, 0.95),
+        FVector2D(3500.0, 0.98), FVector2D(5000.0, 1.00), FVector2D(6500.0, 0.97),
+        FVector2D(7500.0, 0.90), FVector2D(8500.0, 0.81)}, A::Calibration);
     R.bUseAutomaticGears = P(false, A::Calibration);
     R.bUseAutoReverse = P(false, A::Calibration);
     R.FinalDriveRatio = P(3.2f, A::Calibration);
@@ -171,6 +177,7 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         EngineMaxRpm.Authority,
         EngineIdleRpm.Authority,
         EngineBrakeEffect.Authority,
+        EngineRevUpMOI.Authority,
         NormalizedTorqueCurve.Authority,
         bUseAutomaticGears.Authority,
         bUseAutoReverse.Authority,
@@ -195,6 +202,7 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     Movement.EngineSetup.MaxRPM = EngineMaxRpm.Value;
     Movement.EngineSetup.EngineIdleRPM = EngineIdleRpm.Value;
     Movement.EngineSetup.EngineBrakeEffect = EngineBrakeEffect.Value;
+    Movement.EngineSetup.EngineRevUpMOI = EngineRevUpMOI.Value;
     FRichCurve* TorqueCurve = Movement.EngineSetup.TorqueCurve.GetRichCurve();
     TorqueCurve->Reset();
     for (const FVector2D& Key : NormalizedTorqueCurve.Value)

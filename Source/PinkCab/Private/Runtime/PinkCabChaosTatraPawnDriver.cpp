@@ -210,7 +210,7 @@ FPinkCabCockpitPresentationState APinkCabChaosTatraPawn::BuildCockpitPresentatio
         Presentation.SpeedKmh = Telemetry.SpeedKmh;
     }
     Presentation.EngineRpm = VehicleControlRuntime.GetDisplayedEngineRpm();
-    const float Rpm01 = FMath::Clamp(Presentation.EngineRpm / 7000.0f, 0.0f, 1.0f);
+    const float Rpm01 = FMath::Clamp(Presentation.EngineRpm / 8500.0f, 0.0f, 1.0f);
     const float TemperatureTarget = Presentation.bIgnitionRunning
         ? FMath::Lerp(0.62f, 0.90f, Rpm01)
         : 0.12f;

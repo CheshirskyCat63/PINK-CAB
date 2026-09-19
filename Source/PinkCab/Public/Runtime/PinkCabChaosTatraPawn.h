@@ -154,6 +154,7 @@ private:
     void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
     void EnsurePlayableLighting();
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
+    bool AlignInitialPresentationToGround();
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();

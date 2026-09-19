@@ -3,6 +3,38 @@
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 
+namespace
+{
+float ApplyPinkCabRevLimiter(float RequestedEngineThrottle, float EngineRpm, float MaxRpm)
+{
+    if (MaxRpm <= KINDA_SMALL_NUMBER)
+    {
+        return RequestedEngineThrottle;
+    }
+
+    // UE 5.8 Chaos does not clamp free-running engine Omega to MaxRPM. Once a
+    // large physics step overshoots MaxRPM it can keep producing clamped-curve
+    // torque and run away. PINK CAB owns the limiter at the control boundary so
+    // we do not patch Engine source and the behavior remains deterministic.
+    constexpr float SoftLimiterStartRatio = 0.965f;
+    constexpr float HardLimiterCutRatio = 0.995f;
+    const float SoftStartRpm = MaxRpm * SoftLimiterStartRatio;
+    const float HardCutRpm = MaxRpm * HardLimiterCutRatio;
+    if (EngineRpm <= SoftStartRpm)
+    {
+        return RequestedEngineThrottle;
+    }
+    if (EngineRpm >= HardCutRpm)
+    {
+        return 0.0f;
+    }
+
+    const float Remaining = 1.0f - FMath::Clamp(
+        (EngineRpm - SoftStartRpm) / (HardCutRpm - SoftStartRpm), 0.0f, 1.0f);
+    return RequestedEngineThrottle * Remaining;
+}
+}
+
 FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
     UChaosWheeledVehicleMovementComponent* InMovement)
     : Movement(InMovement)
@@ -21,8 +53,13 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     // This Chaos/Tatra chassis uses the opposite vehicle-space sign, so adapt
     // exactly once here. Never invert the semantic controller/input path.
     Movement->SetSteeringInput(-Controls.Steering);
-    Movement->SetThrottleInput(
-        FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle));
+    const float RequestedEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
+    const float LimitedEngineThrottle = ApplyPinkCabRevLimiter(
+        RequestedEngineThrottle,
+        Movement->GetEngineRotationSpeed(),
+        Movement->EngineSetup.MaxRPM);
+    Movement->SetThrottleInput(LimitedEngineThrottle);
     Movement->SetBrakeInput(Controls.Brake);
 
     // PINK CAB owns a continuous parking/hydraulic handbrake actuator. Keep

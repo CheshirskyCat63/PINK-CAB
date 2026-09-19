@@ -10,6 +10,8 @@
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabVehicleVisualShellComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 class FPinkCabSystemMenuStartupPauseCommand final : public IAutomationLatentCommand
 {
@@ -23,6 +25,19 @@ public:
         for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
         {
             Test->TestTrue(TEXT("startup system menu state is open"), It->IsSystemMenuOpen());
+            UPinkCabVehicleVisualShellComponent* Shell = It->GetVehicleVisualShell();
+            Test->TestNotNull(TEXT("startup Tatra owns visual shell"), Shell);
+            float LowestTyreZ = TNumericLimits<float>::Max();
+            for (const FName WheelId : { FName(TEXT("WheelFL")), FName(TEXT("WheelFR")), FName(TEXT("WheelRL")), FName(TEXT("WheelRR")) })
+            {
+                UStaticMeshComponent* Wheel = Shell ? Shell->GetPresentationPartComponent(WheelId) : nullptr;
+                Test->TestNotNull(*FString::Printf(TEXT("%s donor tyre is instantiated"), *WheelId.ToString()), Wheel);
+                if (!Wheel) continue;
+                Test->TestTrue(*FString::Printf(TEXT("%s donor tyre is visible"), *WheelId.ToString()), Wheel->IsVisible() && !Wheel->bHiddenInGame);
+                LowestTyreZ = FMath::Min(LowestTyreZ, Wheel->Bounds.GetBox().Min.Z);
+            }
+            Test->TestTrue(TEXT("startup tyres rest on road instead of hanging in paused menu"),
+                FMath::IsFinite(LowestTyreZ) && FMath::Abs(LowestTyreZ - 1.0f) <= 5.0f);
             return true;
         }
         Test->AddError(TEXT("playable Tatra pawn was not found"));

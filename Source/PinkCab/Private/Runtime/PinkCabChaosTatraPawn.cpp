@@ -226,6 +226,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     EnsurePlayableLighting();
     ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613Donor());
+    AlignInitialPresentationToGround();
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();

@@ -74,6 +74,7 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
     TPinkCabPhysicalParameter<float> EngineMaxRpm;
     TPinkCabPhysicalParameter<float> EngineIdleRpm;
     TPinkCabPhysicalParameter<float> EngineBrakeEffect;
+    TPinkCabPhysicalParameter<float> EngineRevUpMOI;
     TPinkCabPhysicalParameter<TArray<FVector2D>> NormalizedTorqueCurve;
     TPinkCabPhysicalParameter<bool> bUseAutomaticGears;
     TPinkCabPhysicalParameter<bool> bUseAutoReverse;

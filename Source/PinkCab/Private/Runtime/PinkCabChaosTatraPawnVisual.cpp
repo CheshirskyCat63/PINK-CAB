@@ -10,6 +10,7 @@
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "Math/RotationMatrix.h"
@@ -54,6 +55,59 @@ void APinkCabChaosTatraPawn::EnsurePlayableLighting()
     SkyLight->SetIntensity(0.8f);
     SkyLight->SetRealTimeCapture(true);
     SkyLight->RegisterComponent();
+}
+
+
+bool APinkCabChaosTatraPawn::AlignInitialPresentationToGround()
+{
+    UWorld* World = GetWorld();
+    if (!World || !VehicleVisualShell)
+    {
+        return false;
+    }
+
+    static const FName WheelIds[] = {
+        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
+    float LowestTyreZ = TNumericLimits<float>::Max();
+    for (const FName WheelId : WheelIds)
+    {
+        UStaticMeshComponent* Wheel = VehicleVisualShell->GetPresentationPartComponent(WheelId);
+        if (!Wheel || !Wheel->IsRegistered() || !Wheel->GetStaticMesh())
+        {
+            return false;
+        }
+        Wheel->SetVisibility(true, false);
+        Wheel->SetHiddenInGame(false, false);
+        LowestTyreZ = FMath::Min(LowestTyreZ, Wheel->Bounds.GetBox().Min.Z);
+    }
+    if (!FMath::IsFinite(LowestTyreZ))
+    {
+        return false;
+    }
+
+    const FVector ActorLocation = GetActorLocation();
+    FHitResult GroundHit;
+    FCollisionQueryParams QueryParams;
+    QueryParams.AddIgnoredActor(this);
+    const FVector TraceStart(ActorLocation.X, ActorLocation.Y, ActorLocation.Z + 500.0f);
+    const FVector TraceEnd(ActorLocation.X, ActorLocation.Y, ActorLocation.Z - 1500.0f);
+    if (!World->LineTraceSingleByChannel(
+            GroundHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+    {
+        return false;
+    }
+
+    constexpr float TyreClearanceCm = 1.0f;
+    const float OffsetZ = GroundHit.ImpactPoint.Z + TyreClearanceCm - LowestTyreZ;
+    AddActorWorldOffset(
+        FVector(0.0f, 0.0f, OffsetZ), false, nullptr, ETeleportType::TeleportPhysics);
+
+    if (USkeletalMeshComponent* PhysicsMesh = GetMesh())
+    {
+        PhysicsMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        PhysicsMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    }
+    return true;
 }
 
 FName APinkCabChaosTatraPawn::GetVehicleVisualProfileId() const
