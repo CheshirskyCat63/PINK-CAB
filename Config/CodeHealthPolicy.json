@@ -46,7 +46,7 @@
   },
   "chaos_writes": {
     "allowed_files": [
-      "Source/PinkCab/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"
+      "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"
     ],
     "patterns": [
       "SetSteeringInput(",

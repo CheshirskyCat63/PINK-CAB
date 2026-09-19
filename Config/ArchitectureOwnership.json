@@ -11,8 +11,8 @@
     {
       "id": "vehicle_state_snapshot",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleStateSnapshot.h",
-      "implementation_root": "Source/PinkCab/Private/Vehicle/PinkCabVehicleStateSnapshot.cpp",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleStateSnapshot.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabVehicleStateSnapshot.cpp",
       "test_prefix": "PinkCab.Vehicle.LiveState"
     },
     {
@@ -60,43 +60,43 @@
     {
       "id": "steering",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime.Steering"
     },
     {
       "id": "gearbox",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime.Gearbox"
     },
     {
       "id": "clutch",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime"
     },
     {
       "id": "throttle",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabLaunchController.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabLaunchController.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime"
     },
     {
       "id": "brake",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabPedalDosingController.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabPedalDosingController.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime"
     },
     {
       "id": "handbrake",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabHandbrakeActuator.h",
-      "implementation_root": "Source/PinkCab/Public/Vehicle/PinkCabHandbrakeActuator.h",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime.Handbrake"
     },
     {
@@ -116,8 +116,8 @@
     {
       "id": "chaos_translation",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
-      "implementation_root": "Source/PinkCab/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
       "test_prefix": "PinkCab.Vehicle.ChaosBaseline"
     },
     {

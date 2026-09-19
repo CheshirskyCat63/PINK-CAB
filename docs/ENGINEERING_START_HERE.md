@@ -64,22 +64,22 @@ Hard rules:
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
 | `passenger_snapshot_state` | passenger snapshot data; persistence codec is external | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h` | `PinkCab.Taxi.PassengerSnapshot` |
-| `vehicle_state_snapshot` | current vehicle health/load runtime snapshot without schema | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleStateSnapshot.h` | `PinkCab.Vehicle.LiveState` |
+| `vehicle_state_snapshot` | current vehicle health/load runtime snapshot without schema | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleStateSnapshot.h` | `PinkCab.Vehicle.LiveState` |
 | `fare_runtime_state_snapshot` | fare/session/meter/manifest snapshot data without persistence schema | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h` | `PinkCab.Persistence.FareRuntimeSnapshot` |
 | `service_snapshot_state` | service/inventory/build/fuel snapshot data; persistence codec is external | Service | `Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h` | `PinkCab.Service.Snapshot` |
 | `runtime_composition` | possession/runtime wiring and compatibility shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h` | `PinkCab.Runtime.Composition` |
 | `vehicle_visual_presentation` | vehicle exterior/cabin/presentation profile and visual shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabVehicleVisualProfile.h` | `PinkCab.Vehicle.Visual` |
 | `driver_ui` | system menu, HUD, cursor/capture and input-mode presentation | Runtime | `Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h` | `PinkCab.UI.SystemMenu` |
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
-| `steering` | steering response/feel logic | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
-| `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
-| `clutch` | clutch coupling, heat/wear, stall coupling | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h` | `PinkCab.Vehicle.ControlRuntime` |
-| `throttle` | launch redose/target behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabLaunchController.h` | `PinkCab.Vehicle.ControlRuntime` |
-| `brake` | brake dosing target | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
-| `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |
+| `steering` | steering response/feel logic | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
+| `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
+| `clutch` | clutch coupling, heat/wear, stall coupling | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h` | `PinkCab.Vehicle.ControlRuntime` |
+| `throttle` | launch redose/target behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h` | `PinkCab.Vehicle.ControlRuntime` |
+| `brake` | brake dosing target | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
+| `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |
 | `device_input_sign` | OS/UE mouse axis -> driver-space sign | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `player_input_capture` | PlayerController/raw device capture -> semantic sample | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h` | `PinkCab.Interaction.PlayerInput` |
-| `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
+| `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
 | `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
 | `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
 | `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |

@@ -4,7 +4,7 @@
 
 class UChaosWheeledVehicleMovementComponent;
 
-class PINKCAB_API FPinkCabChaosVehicleDynamicsProvider final : public IPinkCabVehicleDynamicsProvider
+class PINKCABVEHICLE_API FPinkCabChaosVehicleDynamicsProvider final : public IPinkCabVehicleDynamicsProvider
 {
 public:
     explicit FPinkCabChaosVehicleDynamicsProvider(

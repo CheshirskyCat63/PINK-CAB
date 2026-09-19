@@ -53,7 +53,7 @@ struct FPinkCabChaosWheelPhysicalProfile
     TPinkCabPhysicalParameter<bool> bAffectedByBrake;
     TPinkCabPhysicalParameter<bool> bAffectedByHandbrake;
 };
-struct PINKCAB_API FPinkCabChaosPhysicalProfile
+struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
 {
     static FPinkCabChaosPhysicalProfile ForVariant(EPinkCabCalibrationVariant Variant);
 

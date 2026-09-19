@@ -24,14 +24,14 @@
     {
       "count": 1,
       "max_value": 22,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp",
+      "path": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp",
       "rule": "complexity",
       "symbol": "FPinkCabChaosPhysicalProfile::HasCompleteProvenance"
     },
     {
       "count": 1,
       "max_value": 18,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp",
+      "path": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp",
       "rule": "complexity",
       "symbol": "HasWheelProvenanceTail"
     },
@@ -108,14 +108,14 @@
     {
       "count": 1,
       "max_value": 19,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
       "rule": "complexity",
       "symbol": "Step"
     },
     {
       "count": 1,
       "max_value": 19,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleHealthService.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleHealthService.h",
       "rule": "complexity",
       "symbol": "ResolveSyntheticHitZone"
     },
@@ -143,7 +143,7 @@
     {
       "count": 1,
       "max_value": 258,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
       "rule": "file_loc",
       "symbol": ""
     },
@@ -640,28 +640,28 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabCockpitState.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabCockpitState.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabHandbrakeActuator.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -675,63 +675,63 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabLaunchController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabPedalDosingController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabThrottleResponse.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabThrottleResponse.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleDamageProfile.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDamageProfile.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleHealthBinding.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleHealthBinding.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleHealthService.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleHealthService.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleHealthState.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleHealthState.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -745,28 +745,28 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleInputResponse.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleInputResponse.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleLoadState.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleLoadState.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabVehicleMotionClassifier.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleMotionClassifier.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Vehicle/PinkCabWallrideController.h",
+      "path": "Source/PinkCabVehicle/Public/Vehicle/PinkCabWallrideController.h",
       "rule": "public_header_logic",
       "symbol": ""
     },

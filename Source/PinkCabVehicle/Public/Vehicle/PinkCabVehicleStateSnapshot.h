@@ -37,7 +37,7 @@ struct FPinkCabVehicleStateSnapshot
     FPinkCabVehicleLoadStateSnapshot Load;
 };
 
-class PINKCAB_API FPinkCabVehicleStateSnapshotCodec
+class PINKCABVEHICLE_API FPinkCabVehicleStateSnapshotCodec
 {
 public:
     static bool Capture(

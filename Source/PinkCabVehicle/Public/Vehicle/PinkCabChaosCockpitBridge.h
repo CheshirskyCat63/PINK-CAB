@@ -7,7 +7,7 @@ class FPinkCabChaosVehicleDynamicsProvider;
 struct FPinkCabCockpitState;
 struct FPinkCabVehicleControlState;
 
-struct PINKCAB_API FPinkCabChaosCockpitBridge
+struct PINKCABVEHICLE_API FPinkCabChaosCockpitBridge
 {
     static bool Apply(
         const FPinkCabCockpitState& Cockpit,
