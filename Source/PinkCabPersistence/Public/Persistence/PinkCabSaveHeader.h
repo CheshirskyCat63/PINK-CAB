@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-struct FPinkCabSaveHeader
+struct PINKCABPERSISTENCE_API FPinkCabSaveHeader
 {
     FString ProductName;
     FString SchemaVersion;
@@ -15,32 +15,20 @@ struct FPinkCabSaveHeader
         const FString& InSchema,
         const FString& InConfig,
         const FString& InGenerator,
-        const FString& InContent)
-    {
-        FPinkCabSaveHeader Header;
-        Header.ProductName = InProduct;
-        Header.SchemaVersion = InSchema;
-        Header.ConfigVersion = InConfig;
-        Header.GeneratorVersion = InGenerator;
-        Header.ContentSetVersion = InContent;
-        return Header;
-    }
+        const FString& InContent);
 };
 
-struct FPinkCabTerminalRecoveryPolicy
+struct PINKCABPERSISTENCE_API FPinkCabTerminalRecoveryPolicy
 {
     bool bFailActiveFare = true;
     bool bEndWorkday = true;
     bool bPreserveDamagedVehicle = true;
     bool bFreeReset = false;
 
-    static FPinkCabTerminalRecoveryPolicy Canonical()
-    {
-        return FPinkCabTerminalRecoveryPolicy();
-    }
+    static FPinkCabTerminalRecoveryPolicy Canonical();
 };
 
-struct FPinkCabPersistencePolicy
+struct PINKCABPERSISTENCE_API FPinkCabPersistencePolicy
 {
     static constexpr int32 CampaignSlotCount = 3;
     static constexpr int32 RollingCheckpointCount = 3;
@@ -50,29 +38,15 @@ struct FPinkCabPersistencePolicy
     static constexpr int32 WorkdayTimeScale = 6;
 
     static bool CanManualSaveExit(
-        const bool bActiveFare,
-        const bool bPassengerPresent,
-        const bool bFullStop)
-    {
-        return !bActiveFare && !bPassengerPresent && bFullStop;
-    }
+        bool bActiveFare,
+        bool bPassengerPresent,
+        bool bFullStop);
     static bool CanSleepEndDay(
-        const bool bInVehicle,
-        const bool bFullStop,
-        const bool bActiveFare)
-    {
-        return bInVehicle && bFullStop && !bActiveFare;
-    }
-
-    static bool ShouldHardPause(const bool bSystemMenu)
-    {
-        return bSystemMenu;
-    }
-
+        bool bInVehicle,
+        bool bFullStop,
+        bool bActiveFare);
+    static bool ShouldHardPause(bool bSystemMenu);
     static bool CanAdvanceToNextWorkday(
-        const bool bSummaryCommitted,
-        const int32 HouseholdTransactionCount)
-    {
-        return bSummaryCommitted && HouseholdTransactionCount == 1;
-    }
+        bool bSummaryCommitted,
+        int32 HouseholdTransactionCount);
 };
