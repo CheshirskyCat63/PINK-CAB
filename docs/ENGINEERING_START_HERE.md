@@ -36,19 +36,21 @@ Do not infer gameplay correctness from compilation alone. Parse the automation l
 
 ## 3. Current architecture
 
-The repository currently still builds production code through the `PinkCab` runtime module. Domain folders already define ownership; the approved normalization program will convert asset-safe boundaries into physical Unreal modules only after the dependency graph is acyclic.
+Production code now has eight asset-safe runtime modules plus the reflected compatibility/composition module. Pure contracts live in their domain module; reflected types whose serialized identity is still `/Script/PinkCab.*` remain in `PinkCab` until an asset-safe migration is independently proven.
 
 ```text
-Interaction -> semantic input / device normalization
-Vehicle     -> controls / drivetrain / Chaos adapter / vehicle state
-Taxi        -> fare / passenger product logic
-Economy     -> money / transaction ownership
-World       -> CityCode / graph / route / materialization
-Traffic     -> bounded traffic over World contracts
-Persistence -> snapshots / codecs / migrations / checkpoints
-Cockpit     -> interaction/presentation consumers, never vehicle/taxi truth
-PinkCab     -> current runtime composition / reflected compatibility shell
+PinkCabCore        -> stable IDs / result / schema / state-kernel contracts
+PinkCabInteraction -> semantic input / device normalization
+PinkCabVehicle     -> controls / drivetrain / Chaos adapter / vehicle state
+PinkCabEconomy     -> money / exactly-once transaction ownership
+PinkCabWorld       -> CityCode / graph / route / materialization contracts
+PinkCabTraffic     -> bounded traffic over World contracts
+PinkCabTaxi        -> fare / passenger product logic
+PinkCabPersistence -> asset-safe save DTOs / codecs / migrations / checkpoints
+PinkCab            -> reflected compatibility, Runtime/Cockpit/Service composition
 ```
+
+The module dependency graph and the folder-domain dependency graph are both required to remain acyclic. `Config/CodeHealthPolicy.json` is the executable module contract.
 
 Hard rules:
 
