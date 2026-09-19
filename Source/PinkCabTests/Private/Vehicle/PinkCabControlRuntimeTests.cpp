@@ -9,6 +9,7 @@
 #include "Vehicle/PinkCabHandbrakeActuator.h"
 #include "Vehicle/PinkCabGearboxController.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -116,6 +117,21 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("virtual cursor clamps positive"), Steering.GetVirtualCursor(), 1.0f);
     Steering.Step(-20000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
     TestEqual(TEXT("virtual cursor clamps negative"), Steering.GetVirtualCursor(), -1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringResponseLatencyTest,
+    "PinkCab.Vehicle.ControlRuntime.Steering.ResponseLatency",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabSteeringResponseLatencyTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringController Steering;
+    TestTrue(TEXT("standstill response no longer has heavy smoothing inertia"),
+        Steering.GetResponseRate(0.0f, EPinkCabVehicleMotionMode::Stationary) >= 6.0f);
+    TestTrue(TEXT("moving response follows mouse promptly"),
+        Steering.GetResponseRate(40.0f, EPinkCabVehicleMotionMode::Moving) >= 16.0f);
     return true;
 }
 
@@ -511,7 +527,7 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
         Gearbox.ApplyLeverMouseDelta(-160.0f, 0.0f));
-    TestTrue(TEXT("screen-space mouse up moves lever forward into first"),
+    TestTrue(TEXT("physical mouse up moves lever forward into first"),
         Gearbox.ApplyLeverMouseDelta(0.0f, -140.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
@@ -537,12 +553,31 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     FPinkCabGearboxController Reverse;
     TestFalse(TEXT("screen-space mouse right crosses neutral corridor toward reverse column"),
         Reverse.ApplyLeverMouseDelta(320.0f, 0.0f));
-    TestTrue(TEXT("screen-space mouse down enters rear-right reverse slot"),
+    TestTrue(TEXT("physical mouse down enters rear-right reverse slot"),
         Reverse.ApplyLeverMouseDelta(0.0f, 140.0f));
     TestEqual(TEXT("physical screen-space H-gate reaches reverse"),
         Reverse.GetRequestedGear(), -1);
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabThrottleResponseTest,
+    "PinkCab.Vehicle.ControlRuntime.Throttle.PedalLinkage",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabThrottleResponseTest::RunTest(const FString& Parameters)
+{
+    TestEqual(TEXT("released pedal remains zero"), FPinkCabThrottleResponse::ToEngineThrottle(0.0f), 0.0f);
+    TestEqual(TEXT("full pedal remains full"), FPinkCabThrottleResponse::ToEngineThrottle(1.0f), 1.0f);
+    const float Quarter = FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float Half = FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+    TestTrue(TEXT("quarter pedal reaches useful low-rpm linkage"), Quarter > 0.45f && Quarter < 0.49f);
+    TestTrue(TEXT("half pedal reaches deliberate power-oversteer range"), Half > 0.66f && Half < 0.70f);
+    TestTrue(TEXT("pedal response remains monotonic"), Quarter < Half && Half < 1.0f);
+    TestEqual(TEXT("negative input clamps to zero"), FPinkCabThrottleResponse::ToEngineThrottle(-1.0f), 0.0f);
+    TestEqual(TEXT("over-range input clamps to full"), FPinkCabThrottleResponse::ToEngineThrottle(2.0f), 1.0f);
+    return true;
+}
 
 #endif

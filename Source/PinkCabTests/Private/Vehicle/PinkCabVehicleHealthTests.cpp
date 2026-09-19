@@ -265,23 +265,73 @@ bool FPinkCabCoupledStallTest::RunTest(const FString& Parameters)
         FirstLug.bShouldStall);
     TestTrue(TEXT("fifth-at-30 enters explicit engine-lug state"),
         FirstLug.bEngineLugging);
-    TestTrue(TEXT("lug state pulses engine torque below full output"),
-        FirstLug.EngineTorqueFactor < 1.0f);
+    TestTrue(TEXT("lug shudder is obvious without cutting most engine torque"),
+        FirstLug.EngineTorqueFactor > 0.55f
+        && FirstLug.EngineTorqueFactor < 0.95f);
     TestTrue(TEXT("dashboard/tach RPM falls under impossible coupled load"),
         FirstLug.DisplayedEngineRpm > 0.0f
         && FirstLug.DisplayedEngineRpm < Lug.EngineRpm);
 
+    bool bStalledDuringCorrectionWindow = false;
+    FPinkCabDrivetrainConditionOutput FinalLug = FirstLug;
+    // Including FirstLug, 1.2 s of bad fifth-at-30 must remain recoverable.
+    for (int32 Index = 0; Index < 5; ++Index)
+    {
+        FinalLug = LugCondition.Step(Lug, Health);
+        bStalledDuringCorrectionWindow |= FinalLug.bShouldStall;
+    }
+    TestFalse(TEXT("wrong high gear gives at least a 1.2 second correction window"),
+        bStalledDuringCorrectionWindow);
+
     bool bEventuallyStalled = false;
-    FPinkCabDrivetrainConditionOutput FinalLug;
-    for (int32 Index = 0; Index < 6; ++Index)
+    for (int32 Index = 0; Index < 7; ++Index)
     {
         FinalLug = LugCondition.Step(Lug, Health);
         bEventuallyStalled |= FinalLug.bShouldStall;
     }
-    TestTrue(TEXT("sustained fully-coupled fifth at 30 eventually stalls despite throttle"),
+    TestTrue(TEXT("ignoring sustained fully-coupled fifth at 30 eventually stalls"),
         bEventuallyStalled);
     TestEqual(TEXT("dashboard/tach RPM is zero once engine stalls"),
         FinalLug.DisplayedEngineRpm, 0.0f);
+
+    FPinkCabDrivetrainCondition RescueCondition;
+    bool bStalledBeforeRescue = false;
+    for (int32 Index = 0; Index < 6; ++Index)
+    {
+        bStalledBeforeRescue |= RescueCondition.Step(Lug, Health).bShouldStall;
+    }
+    FPinkCabDrivetrainConditionInput ClutchRescue = Lug;
+    ClutchRescue.ClutchCoupling = 0.0f;
+    RescueCondition.Step(ClutchRescue, Health);
+    RescueCondition.Step(ClutchRescue, Health);
+    const FPinkCabDrivetrainConditionOutput RecoveredLug =
+        RescueCondition.Step(Lug, Health);
+    TestFalse(TEXT("driver can rescue the lug with clutch before the grace window expires"),
+        bStalledBeforeRescue || RecoveredLug.bShouldStall);
+
+    FPinkCabDrivetrainCondition ReverseCondition;
+    FPinkCabDrivetrainConditionInput ReverseCruise = Lug;
+    ReverseCruise.EngagedGear = -1;
+    ReverseCruise.SpeedKmh = -8.0f;
+    ReverseCruise.ExpectedCoupledRpm = 750.0f;
+    ReverseCruise.Throttle = 0.25f;
+    bool bReverseStalled = false;
+    for (int32 Index = 0; Index < 12; ++Index)
+    {
+        const FPinkCabDrivetrainConditionOutput Out =
+            ReverseCondition.Step(ReverseCruise, Health);
+        bReverseStalled |= Out.bShouldStall;
+        TestFalse(TEXT("reverse cruise never enters high-gear lug state"), Out.bEngineLugging);
+    }
+    TestFalse(TEXT("25% reverse cruise never stalls from high-gear lug logic"), bReverseStalled);
+
+    FPinkCabDrivetrainCondition FirstCondition;
+    FPinkCabDrivetrainConditionInput FirstPull = ReverseCruise;
+    FirstPull.EngagedGear = 1;
+    FirstPull.SpeedKmh = 8.0f;
+    FirstPull.Throttle = 1.0f;
+    TestFalse(TEXT("first gear full throttle is not treated as high-gear lugging"),
+        FirstCondition.Step(FirstPull, Health).bEngineLugging);
 
     FPinkCabDrivetrainConditionInput EngineOff;
     EngineOff.DeltaSeconds = 0.1f;

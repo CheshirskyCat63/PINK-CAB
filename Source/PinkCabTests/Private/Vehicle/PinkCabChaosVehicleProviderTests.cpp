@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosProviderControlMappingTest,
@@ -24,7 +25,8 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("provider accepts normalized controls"), Provider.ApplyControls(Controls));
     TestEqual(TEXT("Chaos vehicle-space steering inverts semantic right-positive exactly once"),
         Movement->GetSteeringInput(), -0.35f);
-    TestEqual(TEXT("throttle reaches Chaos"), Movement->GetThrottleInput(), 0.72f);
+    TestEqual(TEXT("pedal linkage response reaches Chaos"),
+        Movement->GetThrottleInput(), FPinkCabThrottleResponse::ToEngineThrottle(0.72f));
     TestEqual(TEXT("brake reaches Chaos"), Movement->GetBrakeInput(), 0.18f);
     TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
     TestEqual(TEXT("provider retains continuous analog handbrake command"),

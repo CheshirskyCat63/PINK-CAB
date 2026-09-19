@@ -1,4 +1,5 @@
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
@@ -48,10 +49,12 @@ bool FPinkCabChaosCockpitBridge::Apply(
         constexpr float IdleGovernorTorqueFraction = 0.18f;
         const bool bNearLaunchSpeed =
             FMath::Abs(Movement.GetForwardSpeed()) < LaunchSpeedCmPerSecond;
+        const float PedalLinkedThrottle =
+            FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
         const float EffectiveThrottle =
             bNearLaunchSpeed
-                ? FMath::Max(Controls.Throttle, IdleGovernorTorqueFraction)
-                : Controls.Throttle;
+                ? FMath::Max(PedalLinkedThrottle, IdleGovernorTorqueFraction)
+                : PedalLinkedThrottle;
         const float AxleTorqueNm =
             EngineTorqueNm
             * GearRatio

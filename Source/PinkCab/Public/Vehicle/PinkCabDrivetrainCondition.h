@@ -49,10 +49,12 @@ struct FPinkCabDrivetrainConditionConfig
     // state supplies the missing combustion-engine load behavior.
     float LugStartRpm = 1000.0f;
     float LugStallRpm = 800.0f;
-    float LugStallDelaySeconds = 0.90f;
-    float LugPulseHz = 4.0f;
-    float LugTorqueMinimum = 0.45f;
-    float LugTorqueMaximum = 0.72f;
+    // Wrong high gear should feel mechanically ugly before it becomes punitive:
+    // a slow, recoverable shudder gives the driver time to clutch/downshift.
+    float LugStallDelaySeconds = 1.80f;
+    float LugPulseHz = 2.5f;
+    float LugTorqueMinimum = 0.62f;
+    float LugTorqueMaximum = 0.90f;
 };
 
 class FPinkCabDrivetrainCondition
@@ -90,8 +92,11 @@ public:
             && Input.EngagedGear != 0
             && Input.ClutchCoupling > 0.80f
             && FMath::Abs(Input.SpeedKmh) >= 3.0f;
+        const bool bHighGearForLug =
+            Input.EngagedGear >= 3;
         const bool bLugging =
             bMovingFullyCoupled
+            && bHighGearForLug
             && Input.ExpectedCoupledRpm > 0.0f
             && Input.ExpectedCoupledRpm < Config.LugStartRpm;
 
@@ -117,7 +122,7 @@ public:
             const float CoupledRpm =
                 FMath::Min(Output.DisplayedEngineRpm, Input.ExpectedCoupledRpm);
             Output.DisplayedEngineRpm =
-                CoupledRpm * FMath::Lerp(1.0f, 0.65f, Exposure01 * Severity);
+                CoupledRpm * FMath::Lerp(1.0f, 0.72f, Exposure01 * Severity);
         }
         else
         {

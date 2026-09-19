@@ -11,9 +11,9 @@ struct FPinkCabSteeringControllerConfig
     float CenterExponent = 1.10f;
     // Response is intentionally heavier at rest and progressively quicker in motion.
     // These are exponential response rates, not fixed steering-units-per-second.
-    float StationaryResponsePerSecond = 3.0f;
-    float MovingResponseLowPerSecond = 8.0f;
-    float MovingResponseHighPerSecond = 12.0f;
+    float StationaryResponsePerSecond = 6.0f;
+    float MovingResponseLowPerSecond = 16.0f;
+    float MovingResponseHighPerSecond = 22.0f;
     float HighSpeedKmh = 160.0f;
     float HighSpeedTargetGain = 1.12f;
 };

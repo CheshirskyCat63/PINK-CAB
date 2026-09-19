@@ -135,8 +135,7 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         }
 
         // Physically traverse first -> neutral -> right corridor -> reverse.
-        // A shorter screen-down stroke stops in the neutral cross-gate instead
-        // of continuing into second.
+        // Physical mouse-down is positive screen-space Y and stops in the neutral cross-gate.
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 100.0f, 0.05f);
         Test->TestEqual(TEXT("first exits into neutral corridor before crossing right"),
             Pawn->GetRequestedGear(), 0);
@@ -232,9 +231,23 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
             ReverseTelemetry.NormalizedThrottle,
             ReverseTelemetry.EngineRpm));
         Test->TestTrue(TEXT("engaged reverse produces negative forward speed"),
-            ReverseTelemetry.SpeedKmh < -1.0f);
-        Test->TestTrue(TEXT("engaged reverse physically moves taxi backward"),
-            ReverseTravelCm > 20.0f);
+            ReverseTelemetry.SpeedKmh < -0.25f);
+        Test->TestTrue(TEXT("engaged reverse physically moves taxi backward while tires spin"),
+            ReverseTravelCm > 10.0f);
+        const bool bRearLeftBurnout =
+            ReverseTelemetry.Wheels.IsValidIndex(2)
+            && (ReverseTelemetry.Wheels[2].bIsSlipping
+                || ReverseTelemetry.Wheels[2].bIsSkidding
+                || ReverseTelemetry.Wheels[2].SlipMagnitude > 20.0f);
+        const bool bRearRightBurnout =
+            ReverseTelemetry.Wheels.IsValidIndex(3)
+            && (ReverseTelemetry.Wheels[3].bIsSlipping
+                || ReverseTelemetry.Wheels[3].bIsSkidding
+                || ReverseTelemetry.Wheels[3].SlipMagnitude > 20.0f);
+        Test->TestTrue(TEXT("full-throttle reverse spins left rear driven tire"),
+            bRearLeftBurnout);
+        Test->TestTrue(TEXT("full-throttle reverse spins right rear driven tire"),
+            bRearRightBurnout);
 
         const FPinkCabVehicleInputFrame BrakeFrame =
             FPinkCabVehicleInputFrame::FromDigital(false, false, true, false);
@@ -306,9 +319,21 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         TEXT("playable diagnostics travel=%.1fcm speed=%.2fkmh gear=%d rpm=%.1f throttle=%.2f handbrake=%.2f"),
         TravelCm, Telemetry.SpeedKmh, Telemetry.CurrentGear, Telemetry.EngineRpm,
         Telemetry.NormalizedThrottle, Telemetry.NormalizedHandbrake));
-    Test->TestTrue(TEXT("canonical E throttle moves taxi"), TravelCm > 100.0f);
+    Test->TestTrue(TEXT("canonical E throttle moves the heavy taxi without rocket acceleration"), TravelCm > 50.0f);
     Test->TestTrue(TEXT("live telemetry reports engine rpm"), Telemetry.EngineRpm > 750.0f);
     Test->TestEqual(TEXT("live telemetry exposes four wheels"), Telemetry.Wheels.Num(), 4);
+    const bool bForwardLeftBurnout =
+        Telemetry.Wheels.IsValidIndex(2)
+        && (Telemetry.Wheels[2].bIsSlipping
+            || Telemetry.Wheels[2].bIsSkidding
+            || Telemetry.Wheels[2].SlipMagnitude > 20.0f);
+    const bool bForwardRightBurnout =
+        Telemetry.Wheels.IsValidIndex(3)
+        && (Telemetry.Wheels[3].bIsSlipping
+            || Telemetry.Wheels[3].bIsSkidding
+            || Telemetry.Wheels[3].SlipMagnitude > 20.0f);
+    Test->TestTrue(TEXT("full-throttle first spins left rear driven tire"), bForwardLeftBurnout);
+    Test->TestTrue(TEXT("full-throttle first spins right rear driven tire"), bForwardRightBurnout);
 
     const FPinkCabVehicleInputFrame BrakeFrame = FPinkCabVehicleInputFrame::FromDigital(
         false, false, true, false);

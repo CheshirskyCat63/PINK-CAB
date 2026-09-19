@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPhysicalProfileAuthorityTest,
@@ -21,10 +22,42 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("Tatra 613 rear track source"), Profile.RearTrackMm.Value, 1520.0f);
     TestEqual(TEXT("wheelbase is source authority"), Profile.WheelbaseMm.Authority,
         EPinkCabPhysicalParameterAuthority::Source);
-    TestEqual(TEXT("Tatra torque target"), Profile.MaxTorqueNm.Value, 240.0f);
+    TestEqual(TEXT("FIRST EURO power authority remains 180 hp"), Profile.MaxPowerHp.Value, 180.0f);
+    TestEqual(TEXT("FIRST EURO torque authority remains 240 Nm"), Profile.MaxTorqueNm.Value, 240.0f);
     TestEqual(TEXT("torque is design target"), Profile.MaxTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::DesignTarget);
     TestEqual(TEXT("terminal speed target"), Profile.TerminalTargetKmh.Value, 195.0f);
+    TestEqual(TEXT("first ratio is short enough to turn excess launch torque into tire slip"),
+        Profile.ForwardGearRatios.Value[0], 4.6f);
+    TestEqual(TEXT("reverse ratio mirrors first for strong controllable reverse launch"),
+        Profile.ReverseGearRatios.Value[0], 4.6f);
+    TestTrue(TEXT("rear drive axle has lower grip than front for power oversteer"),
+        Profile.RearWheel.FrictionForceMultiplier.Value
+            < Profile.FrontWheel.FrictionForceMultiplier.Value);
+    TestEqual(TEXT("nominal rear grip targets progressive throttle wheelspin"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.50f);
+    // Use a conservative rear-heavy 60% static load budget. The actual Tatra
+    // is rear-engined, so a 50/50 estimate would understate rear grip and make
+    // the 50% wheelspin threshold look easier than it is in runtime.
+    const float RearGripBudgetN =
+        Profile.ReferenceMassKg.Value * 9.81f * 0.60f
+        * Profile.RearWheel.FrictionForceMultiplier.Value;
+    const float RadiusM = Profile.RearWheel.WheelRadiusCm.Value / 100.0f;
+    const float AxleDriveForceAt2000N =
+        Profile.MaxTorqueNm.Value * 0.90f
+        * Profile.ForwardGearRatios.Value[0]
+        * Profile.FinalDriveRatio.Value
+        / RadiusM;
+    const float QuarterPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float HalfPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+    TestTrue(TEXT("25 percent pedal remains below rear static grip budget after linkage response"),
+        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN);
+    TestTrue(TEXT("50 percent pedal can cross rear static grip budget after linkage response"),
+        AxleDriveForceAt2000N * HalfPedalEngineThrottle > RearGripBudgetN);
+    TestTrue(TEXT("full throttle substantially exceeds rear grip for burnout"),
+        AxleDriveForceAt2000N > RearGripBudgetN * 1.8f);
     TestEqual(TEXT("front steering lock target"), Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
     TestFalse(TEXT("front ABS disabled"), Profile.FrontWheel.bABSEnabled.Value);
     TestFalse(TEXT("rear ABS disabled"), Profile.RearWheel.bABSEnabled.Value);

@@ -48,10 +48,20 @@ bool HasWheelProvenanceTail(const FPinkCabChaosWheelPhysicalProfile& W)
         && HasAuthority(W.bAffectedByHandbrake.Authority);
 }
 
-float VariantFriction(const EPinkCabCalibrationVariant Variant)
+float VariantFriction(
+    const EPinkCabCalibrationVariant Variant,
+    const bool bFront)
 {
-    return Variant == EPinkCabCalibrationVariant::Low ? 1.8f
-        : Variant == EPinkCabCalibrationVariant::High ? 2.2f : 2.0f;
+    // Front axle stays planted/readable. Rear axle intentionally has a much
+    // smaller friction budget so RWD torque can produce progressive wheelspin
+    // instead of converting every extra Nm into rocket-like linear launch.
+    if (bFront)
+    {
+        return Variant == EPinkCabCalibrationVariant::Low ? 1.80f
+            : Variant == EPinkCabCalibrationVariant::High ? 2.20f : 2.00f;
+    }
+    return Variant == EPinkCabCalibrationVariant::Low ? 0.44f
+        : Variant == EPinkCabCalibrationVariant::High ? 0.56f : 0.50f;
 }
 
 float VariantSpring(const EPinkCabCalibrationVariant Variant)
@@ -69,7 +79,7 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.WheelWidthCm = P(20.5f, A::Source);
     W.WheelMassKg = P(20.0f, A::Calibration);
     W.CorneringStiffness = P(1000.0f, A::Calibration);
-    W.FrictionForceMultiplier = P(VariantFriction(Variant), A::Calibration);
+    W.FrictionForceMultiplier = P(VariantFriction(Variant, bFront), A::Calibration);
     W.SideSlipModifier = P(1.0f, A::Calibration);
     W.SlipThreshold = P(20.0f, A::Calibration);
     W.SkidThreshold = P(20.0f, A::Calibration);
@@ -113,13 +123,13 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.EngineIdleRpm = P(750.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.NormalizedTorqueCurve = P(TArray<FVector2D>{
-        FVector2D(0.0, 0.65), FVector2D(800.0, 0.72), FVector2D(2000.0, 0.90),
+        FVector2D(0.0, 0.90), FVector2D(800.0, 1.00), FVector2D(2000.0, 0.90),
         FVector2D(3500.0, 1.00), FVector2D(5000.0, 0.85), FVector2D(6000.0, 0.65)}, A::Calibration);
     R.bUseAutomaticGears = P(false, A::Calibration);
     R.bUseAutoReverse = P(false, A::Calibration);
     R.FinalDriveRatio = P(3.2f, A::Calibration);
-    R.ForwardGearRatios = P(TArray<float>{3.8f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
-    R.ReverseGearRatios = P(TArray<float>{3.5f}, A::Calibration);
+    R.ForwardGearRatios = P(TArray<float>{4.6f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
+    R.ReverseGearRatios = P(TArray<float>{4.6f}, A::Calibration);
     R.SteeringAngleRatio = P(0.72f, A::Calibration);
     R.FrontWheel = MakeWheel(true, Variant);
     R.RearWheel = MakeWheel(false, Variant);
