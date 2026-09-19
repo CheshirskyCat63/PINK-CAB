@@ -2,7 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Persistence/PinkCabVehicleSnapshot.h"
+#include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabVehicleVisualShellComponent.h"
@@ -25,10 +25,11 @@ bool FPinkCabChaosPawnIntegratedVehicleStateTest::RunTest(const FString& Paramet
     TestTrue(TEXT("pawn load is applied to Chaos mass"), FMath::IsNearlyEqual(
         Pawn->GetChaosMovement()->Mass, 1657.0f, 0.001f));
 
-    FPinkCabVehicleSnapshot Snapshot;
+    FPinkCabVehicleStateSnapshot Snapshot;
     TestTrue(TEXT("pawn vehicle state captures without visual asset identity"), Pawn->CaptureVehicleSnapshot(Snapshot));
-    TestEqual(TEXT("snapshot schema stays vehicle-state-only"),
-        Snapshot.SchemaVersion, FPinkCabVehicleSnapshot::CurrentSchemaVersion);
+    TestEqual(TEXT("runtime snapshot carries current vehicle health channels only"),
+        Snapshot.Health.ChannelHealth.Num(),
+        static_cast<int32>(EPinkCabVehicleHealthChannel::Count));
     return true;
 }
 

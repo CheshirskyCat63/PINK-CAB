@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Persistence/PinkCabGameSnapshot.h"
+#include "Persistence/PinkCabPassengerSnapshotCodec.h"
+#include "Persistence/PinkCabServiceSnapshotCodec.h"
 
 struct FPinkCabGamePersistenceOwners
 {

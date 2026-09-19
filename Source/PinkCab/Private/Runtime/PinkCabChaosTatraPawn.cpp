@@ -30,7 +30,7 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsEngine/BodySetup.h"
-#include "Persistence/PinkCabVehicleSnapshot.h"
+#include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Vehicle/PinkCabChaosLoadBridge.h"
 #include "Vehicle/PinkCabVehicleVisualShellComponent.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
@@ -561,16 +561,16 @@ bool APinkCabChaosTatraPawn::ApplyVehicleHit(const FPinkCabVehicleHitEvent& Even
     return true;
 }
 
-bool APinkCabChaosTatraPawn::CaptureVehicleSnapshot(FPinkCabVehicleSnapshot& OutSnapshot) const
+bool APinkCabChaosTatraPawn::CaptureVehicleSnapshot(FPinkCabVehicleStateSnapshot& OutSnapshot) const
 {
-    return FPinkCabVehicleSnapshotCodec::Capture(GetVehicleHealthState(), VehicleLoadState, OutSnapshot);
+    return FPinkCabVehicleStateSnapshotCodec::Capture(GetVehicleHealthState(), VehicleLoadState, OutSnapshot);
 }
 
-bool APinkCabChaosTatraPawn::RestoreVehicleSnapshot(const FPinkCabVehicleSnapshot& Snapshot)
+bool APinkCabChaosTatraPawn::RestoreVehicleSnapshot(const FPinkCabVehicleStateSnapshot& Snapshot)
 {
     FPinkCabVehicleHealthState RestoredHealth;
     FPinkCabVehicleLoadState RestoredLoad;
-    if (!FPinkCabVehicleSnapshotCodec::Restore(Snapshot, RestoredHealth, RestoredLoad)) return false;
+    if (!FPinkCabVehicleStateSnapshotCodec::Restore(Snapshot, RestoredHealth, RestoredLoad)) return false;
 
     FPinkCabVehicleHealthState& MutableHealth = GetMutableVehicleHealthState();
     const FPinkCabVehicleHealthState BeforeHealth = MutableHealth;

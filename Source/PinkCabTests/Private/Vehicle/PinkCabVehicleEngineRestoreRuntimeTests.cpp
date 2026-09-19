@@ -4,7 +4,7 @@
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
-#include "Persistence/PinkCabVehicleSnapshot.h"
+#include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 
 class FPinkCabEngineRestoreCommand final : public IAutomationLatentCommand
@@ -32,7 +32,7 @@ bool FPinkCabEngineRestoreCommand::Update()
         {FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
     Test->TestTrue(TEXT("mechanical sim running before damage"), Movement->bMechanicalSimEnabled);
 
-    FPinkCabVehicleSnapshot HealthySnapshot;
+    FPinkCabVehicleStateSnapshot HealthySnapshot;
     Test->TestTrue(TEXT("healthy running snapshot captures"), Pawn->CaptureVehicleSnapshot(HealthySnapshot));
     Test->TestTrue(TEXT("terminal engine-oil damage applies"), Pawn->ApplyVehicleHit(
         FPinkCabVehicleHitEvent(EPinkCabVehicleHealthChannel::EngineOil, 1.0f, false)));

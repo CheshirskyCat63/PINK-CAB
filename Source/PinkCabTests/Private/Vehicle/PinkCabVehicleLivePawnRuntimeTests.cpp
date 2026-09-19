@@ -5,7 +5,7 @@
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
-#include "Persistence/PinkCabVehicleSnapshot.h"
+#include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
@@ -76,7 +76,7 @@ bool FPinkCabVehicleLivePawnRoundTripCommand::Update()
     Test->TestEqual(TEXT("brake health is persistent state"),
         Pawn->GetVehicleHealthState().GetHealth(EPinkCabVehicleHealthChannel::Brake), 0.75f);
 
-    FPinkCabVehicleSnapshot Snapshot;
+    FPinkCabVehicleStateSnapshot Snapshot;
     Test->TestTrue(TEXT("live vehicle snapshot captures"), Pawn->CaptureVehicleSnapshot(Snapshot));
 
     FPinkCabVehicleVisualProfile VisualSwap = FPinkCabVehicleVisualProfile::Fallback();

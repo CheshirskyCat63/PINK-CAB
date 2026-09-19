@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Persistence/PinkCabServiceSnapshotCodec.h"
 #include "Service/PinkCabServiceSnapshot.h"
 
 namespace PinkCabServiceSnapshotTests

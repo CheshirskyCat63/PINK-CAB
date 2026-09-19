@@ -1,5 +1,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Misc/AutomationTest.h"
+#include "Persistence/PinkCabPassengerSnapshotCodec.h"
 #include "Taxi/PinkCabFareSession.h"
 #include "Taxi/PinkCabPassengerHistory.h"
 #include "Taxi/PinkCabPassengerRecord.h"

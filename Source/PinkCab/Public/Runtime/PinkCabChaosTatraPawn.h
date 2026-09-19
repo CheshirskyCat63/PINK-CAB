@@ -28,7 +28,7 @@ struct FPinkCabInteractionEvent;
 struct FPinkCabPlayerInputSample;
 struct FPinkCabCockpitPresentationState;
 struct FPinkCabVehicleInputFrame;
-struct FPinkCabVehicleSnapshot;
+struct FPinkCabVehicleStateSnapshot;
 struct FPinkCabVehicleVisualProfile;
 class FPinkCabTaximeter;
 
@@ -69,8 +69,8 @@ public:
     bool ApplyAuthoredVehicleHit(FName ZoneId, float CollisionSeverity);
     bool ApplyVehicleHit(const FPinkCabVehicleHitEvent& Event);
     bool IsVehicleTerminal() const { return VehicleHealthService.IsTerminal(GetVehicleHealthState()); }
-    bool CaptureVehicleSnapshot(FPinkCabVehicleSnapshot& OutSnapshot) const;
-    bool RestoreVehicleSnapshot(const FPinkCabVehicleSnapshot& Snapshot);
+    bool CaptureVehicleSnapshot(FPinkCabVehicleStateSnapshot& OutSnapshot) const;
+    bool RestoreVehicleSnapshot(const FPinkCabVehicleStateSnapshot& Snapshot);
 
     void ApplyMouseSteeringDelta(float DeltaX, bool bGazeHeld, float DeltaSeconds = 1.0f / 60.0f);
     void ApplyVehicleInputFrame(const FPinkCabVehicleInputFrame& InputFrame, float MouseDeltaX, float DeltaSeconds = 1.0f / 60.0f);

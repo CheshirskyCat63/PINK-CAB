@@ -128,10 +128,10 @@
     },
     {
       "count": 1,
-      "max_value": 5,
+      "max_value": 3,
       "path": "<domain-graph>",
       "rule": "dependency_cycle",
-      "symbol": "Cockpit|Persistence|Service|Taxi|Vehicle"
+      "symbol": "Cockpit|Taxi|Vehicle"
     },
     {
       "count": 1,

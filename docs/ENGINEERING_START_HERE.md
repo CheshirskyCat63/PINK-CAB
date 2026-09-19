@@ -63,6 +63,10 @@ Hard rules:
 
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
+| `passenger_snapshot_state` | passenger snapshot data; persistence codec is external | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h` | `PinkCab.Taxi.PassengerSnapshot` |
+| `vehicle_state_snapshot` | current vehicle health/load runtime snapshot without schema | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleStateSnapshot.h` | `PinkCab.Vehicle.LiveState` |
+| `fare_runtime_state_snapshot` | fare/session/meter/manifest snapshot data without persistence schema | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h` | `PinkCab.Persistence.FareRuntimeSnapshot` |
+| `service_snapshot_state` | service/inventory/build/fuel snapshot data; persistence codec is external | Service | `Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h` | `PinkCab.Service.Snapshot` |
 | `runtime_composition` | possession/runtime wiring and compatibility shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h` | `PinkCab.Runtime.Composition` |
 | `driver_ui` | system menu, HUD, cursor/capture and input-mode presentation | Runtime | `Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h` | `PinkCab.UI.SystemMenu` |
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
@@ -78,7 +82,7 @@ Hard rules:
 | `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
 | `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
 | `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCab/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
-| `vehicle_snapshot` | current vehicle save schema/capture codec | Persistence | `Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
+| `vehicle_snapshot_archive` | versioned vehicle save schema + legacy migration adapter | Persistence | `Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
 | `game_persistence` | save/checkpoint/restore orchestration | Persistence | `Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h` | `PinkCab.Persistence` |
 | `world_route` | route search/road graph routing | World | `Source/PinkCab/Public/World/PinkCabRouteService.h` | `PinkCab.World.Routing` |
 | `traffic` | logical traffic flow/gaps | Traffic | `Source/PinkCab/Public/Traffic/PinkCabTrafficFlow.h` | `PinkCab.Traffic` |

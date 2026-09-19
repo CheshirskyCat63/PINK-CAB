@@ -1,35 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Core/PinkCabStableId.h"
-#include "Vehicle/PinkCabVehicleHealthState.h"
-#include "Vehicle/PinkCabVehicleLoadState.h"
+#include "Vehicle/PinkCabVehicleStateSnapshot.h"
 
-struct FPinkCabVehicleHealthSnapshot
-{
-    TArray<float> ChannelHealth;
-    uint32 FunctionalDamageSerial = 0;
-    float ClutchTemperature01 = 0.0f;
-    float BrakeTemperature01 = 0.0f;
-};
-
-struct FPinkCabVehicleLoadItemSnapshot
-{
-    float MassKg = 0.0f;
-    float LongitudinalCm = 0.0f;
-};
-
-struct FPinkCabVehicleLoadSnapshot
-{
-    float FuelMassKg = 0.0f;
-    float FuelLongitudinalCm = 0.0f;
-    float HeroineMassKg = 0.0f;
-    float DaughterMassKg = 0.0f;
-    TArray<FPinkCabVehicleLoadItemSnapshot> Passengers;
-    TArray<FPinkCabVehicleLoadItemSnapshot> FarePassengers;
-    FString FarePassengerGroupId;
-    bool bFarePassengerGroupActive = false;
-};
+using FPinkCabVehicleHealthSnapshot = FPinkCabVehicleHealthStateSnapshot;
+using FPinkCabVehicleLoadItemSnapshot = FPinkCabVehicleLoadItemStateSnapshot;
+using FPinkCabVehicleLoadSnapshot = FPinkCabVehicleLoadStateSnapshot;
 
 struct FPinkCabVehicleSnapshot
 {
@@ -54,32 +30,14 @@ public:
         const FPinkCabVehicleLoadState& Load,
         FPinkCabVehicleSnapshot& OutSnapshot)
     {
+        FPinkCabVehicleStateSnapshot StateSnapshot;
+        if (!FPinkCabVehicleStateSnapshotCodec::Capture(Health, Load, StateSnapshot))
+        {
+            return false;
+        }
         FPinkCabVehicleSnapshot Snapshot;
-        for (int32 Index = 0;
-             Index < static_cast<int32>(EPinkCabVehicleHealthChannel::Count);
-             ++Index)
-        {
-            Snapshot.Health.ChannelHealth.Add(Health.Health[Index]);
-        }
-        Snapshot.Health.FunctionalDamageSerial = Health.FunctionalDamageSerial;
-        Snapshot.Health.ClutchTemperature01 = Health.ClutchTemperature01;
-        Snapshot.Health.BrakeTemperature01 = Health.BrakeTemperature01;
-
-        Snapshot.Load.FuelMassKg = Load.FuelMassKg;
-        Snapshot.Load.FuelLongitudinalCm = Load.FuelLongitudinalCm;
-        Snapshot.Load.HeroineMassKg = Load.HeroineMassKg;
-        Snapshot.Load.DaughterMassKg = Load.DaughterMassKg;
-        for (const FPinkCabVehicleLoadItem& Item : Load.Passengers)
-        {
-            Snapshot.Load.Passengers.Add({Item.MassKg, Item.LongitudinalCm});
-        }
-        for (const FPinkCabVehicleLoadItem& Item : Load.FarePassengers)
-        {
-            Snapshot.Load.FarePassengers.Add({Item.MassKg, Item.LongitudinalCm});
-        }
-        Snapshot.Load.FarePassengerGroupId = Load.FarePassengerGroupId.Serialize();
-        Snapshot.Load.bFarePassengerGroupActive = Load.bFarePassengerGroupActive;
-
+        Snapshot.Health = StateSnapshot.Health;
+        Snapshot.Load = StateSnapshot.Load;
         if (!Validate(Snapshot))
         {
             return false;
@@ -97,63 +55,40 @@ public:
         {
             return false;
         }
-
-        FPinkCabVehicleHealthState Health;
-        RestoreHealth(Snapshot, Health);
-        Health.FunctionalDamageSerial = Snapshot.Health.FunctionalDamageSerial;
-
-        FPinkCabVehicleLoadState Load;
-        Load.FuelMassKg = Snapshot.Load.FuelMassKg;
-        Load.FuelLongitudinalCm = Snapshot.Load.FuelLongitudinalCm;
-        Load.HeroineMassKg = Snapshot.Load.HeroineMassKg;
-        Load.DaughterMassKg = Snapshot.Load.DaughterMassKg;
-
-        for (const FPinkCabVehicleLoadItemSnapshot& Saved : Snapshot.Load.Passengers)
-        {
-            Load.Passengers.Add(
-                FPinkCabVehicleLoadItem(Saved.MassKg, Saved.LongitudinalCm));
-        }
-        for (const FPinkCabVehicleLoadItemSnapshot& Saved : Snapshot.Load.FarePassengers)
-        {
-            Load.FarePassengers.Add(
-                FPinkCabVehicleLoadItem(Saved.MassKg, Saved.LongitudinalCm));
-        }
-        if (Snapshot.Load.bFarePassengerGroupActive)
-        {
-            Load.FarePassengerGroupId =
-                FPinkCabStableId(Snapshot.Load.FarePassengerGroupId);
-            Load.bFarePassengerGroupActive = true;
-        }
-
-        OutHealth = MoveTemp(Health);
-        OutLoad = MoveTemp(Load);
-        return true;
+        FPinkCabVehicleStateSnapshot StateSnapshot;
+        StateSnapshot.Load = Snapshot.Load;
+        MigrateHealth(Snapshot, StateSnapshot.Health);
+        StateSnapshot.Health.FunctionalDamageSerial = Snapshot.Health.FunctionalDamageSerial;
+        return FPinkCabVehicleStateSnapshotCodec::Restore(
+            StateSnapshot, OutHealth, OutLoad);
     }
 
 private:
-    static void RestoreHealth(
+    static void MigrateHealth(
         const FPinkCabVehicleSnapshot& Snapshot,
-        FPinkCabVehicleHealthState& Health)
+        FPinkCabVehicleHealthStateSnapshot& Health)
     {
         const TArray<float>& Saved = Snapshot.Health.ChannelHealth;
+        Health.ChannelHealth.Init(
+            1.0f, static_cast<int32>(EPinkCabVehicleHealthChannel::Count));
 
         if (Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::LegacySchemaVersion)
         {
             // v1:
             // Wheel,Tire,Alignment,Suspension,Brake,Door,Lamp,EngineOil,
             // EngineFan,OilCooler,Airflow,CosmeticBody.
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[5];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[6];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[7];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[8];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[9];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[10];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[11];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[5];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[6];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[7];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[8];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[9];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[10];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[11];
             Health.ClutchTemperature01 = 0.0f;
             Health.BrakeTemperature01 = 0.0f;
             return;
@@ -165,20 +100,20 @@ private:
             // Runtime v2:
             // Wheel,Tire,Alignment,Suspension,Brake,Clutch,Gearbox,Door,Lamp,
             // EngineOil,EngineFan,OilCooler,Airflow,CosmeticBody.
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Clutch)] = Saved[5];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Gearbox)] = Saved[6];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[7];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[8];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[9];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[10];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[11];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[12];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[13];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Clutch)] = Saved[5];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Gearbox)] = Saved[6];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[7];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[8];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[9];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[10];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[11];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[12];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[13];
             Health.ClutchTemperature01 = Snapshot.Health.ClutchTemperature01;
             Health.BrakeTemperature01 = Snapshot.Health.BrakeTemperature01;
             return;
@@ -191,22 +126,22 @@ private:
             // Wheel,Tire,Alignment,Suspension,Brake,BrakeHeat,BrakeHydraulic,
             // Door,Lamp,Glass,EngineOil,EngineHead,EngineFan,OilCooler,Airflow,
             // CosmeticBody.
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::BrakeHeat)] = Saved[5];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::BrakeHydraulic)] = Saved[6];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[7];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[8];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Glass)] = Saved[9];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[10];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineHead)] = Saved[11];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[12];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[13];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[14];
-            Health.Health[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[15];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Wheel)] = Saved[0];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Tire)] = Saved[1];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Alignment)] = Saved[2];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Suspension)] = Saved[3];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Brake)] = Saved[4];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::BrakeHeat)] = Saved[5];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::BrakeHydraulic)] = Saved[6];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Door)] = Saved[7];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Lamp)] = Saved[8];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Glass)] = Saved[9];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineOil)] = Saved[10];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineHead)] = Saved[11];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::EngineFan)] = Saved[12];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::OilCooler)] = Saved[13];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::Airflow)] = Saved[14];
+            Health.ChannelHealth[static_cast<int32>(EPinkCabVehicleHealthChannel::CosmeticBody)] = Saved[15];
             Health.ClutchTemperature01 = 0.0f;
             Health.BrakeTemperature01 = 0.0f;
             return;
@@ -215,7 +150,7 @@ private:
         // Current v3 layout exactly matches the unified enum.
         for (int32 Index = 0; Index < Saved.Num(); ++Index)
         {
-            Health.Health[Index] = Saved[Index];
+            Health.ChannelHealth[Index] = Saved[Index];
         }
         Health.ClutchTemperature01 = Snapshot.Health.ClutchTemperature01;
         Health.BrakeTemperature01 = Snapshot.Health.BrakeTemperature01;

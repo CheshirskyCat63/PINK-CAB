@@ -106,6 +106,7 @@ struct FPinkCabVehicleLoadState
 
 private:
     friend class FPinkCabVehicleSnapshotCodec;
+    friend class FPinkCabVehicleStateSnapshotCodec;
 
     float FuelMassKg = 0.0f;
     float FuelLongitudinalCm = 0.0f;
