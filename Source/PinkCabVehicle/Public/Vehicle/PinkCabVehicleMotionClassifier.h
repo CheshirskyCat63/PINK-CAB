@@ -15,46 +15,14 @@ struct FPinkCabVehicleMotionClassifierConfig
     float DebounceSeconds = 0.12f;
 };
 
-class FPinkCabVehicleMotionClassifier
+class PINKCABVEHICLE_API FPinkCabVehicleMotionClassifier
 {
 public:
-    explicit FPinkCabVehicleMotionClassifier(
-        const FPinkCabVehicleMotionClassifierConfig& InConfig = {})
-        : Config(InConfig)
-    {
-    }
+    explicit FPinkCabVehicleMotionClassifier(const FPinkCabVehicleMotionClassifierConfig& InConfig = {});
 
-    EPinkCabVehicleMotionMode GetMode() const { return Mode; }
-    uint32 GetTransitionSerial() const { return TransitionSerial; }
-
-    EPinkCabVehicleMotionMode Update(float SpeedKmh, float DeltaSeconds)
-    {
-        const float Speed = FMath::Abs(SpeedKmh);
-        const bool bWantsMoving =
-            Mode == EPinkCabVehicleMotionMode::Stationary && Speed >= Config.EnterMovingKmh;
-        const bool bWantsStationary =
-            Mode == EPinkCabVehicleMotionMode::Moving && Speed <= Config.EnterStationaryKmh;
-        const bool bWantsTransition = bWantsMoving || bWantsStationary;
-
-        if (!bWantsTransition)
-        {
-            PendingSeconds = 0.0f;
-            return Mode;
-        }
-
-        PendingSeconds += FMath::Max(DeltaSeconds, 0.0f);
-        if (PendingSeconds + KINDA_SMALL_NUMBER < Config.DebounceSeconds)
-        {
-            return Mode;
-        }
-
-        Mode = bWantsMoving
-            ? EPinkCabVehicleMotionMode::Moving
-            : EPinkCabVehicleMotionMode::Stationary;
-        PendingSeconds = 0.0f;
-        ++TransitionSerial;
-        return Mode;
-    }
+    EPinkCabVehicleMotionMode GetMode() const;
+    uint32 GetTransitionSerial() const;
+    EPinkCabVehicleMotionMode Update(float SpeedKmh, float DeltaSeconds);
 
 private:
     FPinkCabVehicleMotionClassifierConfig Config;

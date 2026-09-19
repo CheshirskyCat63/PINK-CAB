@@ -5,90 +5,30 @@
 
 struct FPinkCabHandbrakeActuatorConfig
 {
-    // Short physical lever throw: a deliberate pull can reach hydraulic
-    // lock quickly, while torque remains continuous through LeverPosition.
     float MouseCountsForFullPull = 220.0f;
     float TorqueExponent = 1.65f;
     float AutoReturnPerSecond = 4.5f;
     float InitialParkingAmount = 1.0f;
 };
 
-class FPinkCabHandbrakeActuator
+class PINKCABVEHICLE_API FPinkCabHandbrakeActuator
 {
 public:
-    explicit FPinkCabHandbrakeActuator(
-        const FPinkCabHandbrakeActuatorConfig& InConfig = {})
-        : Config(InConfig)
-    {
-        Reset(InConfig.InitialParkingAmount, InConfig.InitialParkingAmount > KINDA_SMALL_NUMBER);
-    }
+    explicit FPinkCabHandbrakeActuator(const FPinkCabHandbrakeActuatorConfig& InConfig = {});
 
-    void Reset(float InLeverPosition, bool bLatched)
-    {
-        LeverPosition = FMath::Clamp(InLeverPosition, 0.0f, 1.0f);
-        bParkingLatched = bLatched;
-        bGripWasHeld = false;
-        BrakeCommand = EvaluateTorqueCommand(LeverPosition);
-    }
+    void Reset(float InLeverPosition, bool bLatched);
     float Step(
         EPinkCabVehicleMotionMode MotionMode,
         bool bGripHeld,
         float PullMouseDelta,
-        float DeltaSeconds)
-    {
-        const float SafeCounts = FMath::Max(Config.MouseCountsForFullPull, 1.0f);
+        float DeltaSeconds);
 
-        if (MotionMode == EPinkCabVehicleMotionMode::Stationary)
-        {
-            if (bGripHeld)
-            {
-                LeverPosition = FMath::Clamp(
-                    LeverPosition + PullMouseDelta / SafeCounts,
-                    0.0f,
-                    1.0f);
-                bParkingLatched = false;
-            }
-            else if (bGripWasHeld)
-            {
-                bParkingLatched = LeverPosition > KINDA_SMALL_NUMBER;
-            }
-        }
-        else
-        {
-            bParkingLatched = false;
-            if (bGripHeld)
-            {
-                LeverPosition = FMath::Clamp(
-                    LeverPosition + PullMouseDelta / SafeCounts,
-                    0.0f,
-                    1.0f);
-            }
-            else if (DeltaSeconds > 0.0f)
-            {
-                LeverPosition = FMath::FInterpConstantTo(
-                    LeverPosition,
-                    0.0f,
-                    DeltaSeconds,
-                    FMath::Max(Config.AutoReturnPerSecond, KINDA_SMALL_NUMBER));
-            }
-        }
-
-        bGripWasHeld = bGripHeld;
-        BrakeCommand = EvaluateTorqueCommand(LeverPosition);
-        return BrakeCommand;
-    }
-
-    float GetLeverPosition() const { return LeverPosition; }
-    float GetBrakeCommand() const { return BrakeCommand; }
-    bool IsParkingLatched() const { return bParkingLatched; }
+    float GetLeverPosition() const;
+    float GetBrakeCommand() const;
+    bool IsParkingLatched() const;
 
 private:
-    float EvaluateTorqueCommand(float Position) const
-    {
-        return FMath::Pow(
-            FMath::Clamp(Position, 0.0f, 1.0f),
-            FMath::Max(Config.TorqueExponent, 1.0f));
-    }
+    float EvaluateTorqueCommand(float Position) const;
 
     FPinkCabHandbrakeActuatorConfig Config;
     float LeverPosition = 1.0f;

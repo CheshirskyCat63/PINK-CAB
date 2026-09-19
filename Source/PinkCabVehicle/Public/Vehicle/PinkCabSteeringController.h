@@ -6,11 +6,7 @@
 struct FPinkCabSteeringControllerConfig
 {
     float MouseCountsForFullScale = 1400.0f;
-    // Keep the center close to linear: the driver's physical mouse circle already
-    // provides precision, so the steering curve must not manufacture a dead zone.
     float CenterExponent = 1.10f;
-    // Response is intentionally heavier at rest and progressively quicker in motion.
-    // These are exponential response rates, not fixed steering-units-per-second.
     float StationaryResponsePerSecond = 6.0f;
     float MovingResponseLowPerSecond = 16.0f;
     float MovingResponseHighPerSecond = 22.0f;
@@ -18,99 +14,23 @@ struct FPinkCabSteeringControllerConfig
     float HighSpeedTargetGain = 1.12f;
 };
 
-class FPinkCabSteeringController
+class PINKCABVEHICLE_API FPinkCabSteeringController
 {
 public:
-    explicit FPinkCabSteeringController(
-        const FPinkCabSteeringControllerConfig& InConfig = {})
-        : Config(InConfig)
-    {
-    }
+    explicit FPinkCabSteeringController(const FPinkCabSteeringControllerConfig& InConfig = {});
 
-    void Reset(float InCursor = 0.0f, float InSteering = 0.0f)
-    {
-        VirtualCursor = FMath::Clamp(InCursor, -1.0f, 1.0f);
-        Steering = FMath::Clamp(InSteering, -1.0f, 1.0f);
-        Target = Steering;
-    }
+    void Reset(float InCursor = 0.0f, float InSteering = 0.0f);
     float Step(
         float MouseDeltaX,
         bool bGazeHeld,
         float SpeedKmh,
         EPinkCabVehicleMotionMode MotionMode,
-        float DeltaSeconds)
-    {
-        if (bGazeHeld)
-        {
-            return Steering;
-        }
+        float DeltaSeconds);
 
-        // Parking/standstill steering deliberately needs more physical mouse
-        // travel. Once the car is moving, retain the compact learned workspace.
-        constexpr float StationaryTravelScale = 2.20f;
-        const float TravelScale =
-            MotionMode == EPinkCabVehicleMotionMode::Stationary
-                ? StationaryTravelScale
-                : 1.0f;
-        const float Counts =
-            FMath::Max(Config.MouseCountsForFullScale * TravelScale, 1.0f);
-        VirtualCursor = FMath::Clamp(
-            VirtualCursor + MouseDeltaX / Counts,
-            -1.0f,
-            1.0f);
-
-        const float AbsCursor = FMath::Abs(VirtualCursor);
-        const float Curve = FMath::Pow(
-            AbsCursor,
-            FMath::Max(Config.CenterExponent, 1.0f));
-        const float SpeedAlpha = FMath::Clamp(
-            FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
-            0.0f,
-            1.0f);
-        const float Gain = MotionMode == EPinkCabVehicleMotionMode::Moving
-            ? FMath::Lerp(1.0f, Config.HighSpeedTargetGain, SpeedAlpha)
-            : 1.0f;
-        Target = FMath::Clamp(
-            FMath::Sign(VirtualCursor) * Curve * Gain,
-            -1.0f,
-            1.0f);
-
-        if (DeltaSeconds <= 0.0f)
-        {
-            return Steering;
-        }
-
-        const float ResponseRate = FMath::Max(GetResponseRate(SpeedKmh, MotionMode), 0.0f);
-        const float ResponseAlpha = FMath::Clamp(
-            1.0f - FMath::Exp(-ResponseRate * DeltaSeconds),
-            0.0f,
-            1.0f);
-        Steering = FMath::Lerp(Steering, Target, ResponseAlpha);
-        Steering = FMath::Clamp(Steering, -1.0f, 1.0f);
-        return Steering;
-    }
-
-    float GetVirtualCursor() const { return VirtualCursor; }
-    float GetTarget() const { return Target; }
-    float GetSteering() const { return Steering; }
-    float GetResponseRate(
-        float SpeedKmh,
-        EPinkCabVehicleMotionMode MotionMode) const
-    {
-        if (MotionMode == EPinkCabVehicleMotionMode::Stationary)
-        {
-            return Config.StationaryResponsePerSecond;
-        }
-
-        const float SpeedAlpha = FMath::Clamp(
-            FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
-            0.0f,
-            1.0f);
-        return FMath::Lerp(
-            Config.MovingResponseLowPerSecond,
-            Config.MovingResponseHighPerSecond,
-            SpeedAlpha);
-    }
+    float GetVirtualCursor() const;
+    float GetTarget() const;
+    float GetSteering() const;
+    float GetResponseRate(float SpeedKmh, EPinkCabVehicleMotionMode MotionMode) const;
 
 private:
     FPinkCabSteeringControllerConfig Config;

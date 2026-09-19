@@ -3,52 +3,20 @@
 #include "CoreMinimal.h"
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
 
-class FPinkCabLaunchController
+class PINKCABVEHICLE_API FPinkCabLaunchController
 {
 public:
     static constexpr float ThrottleDoseStep = 0.05f;
 
-    bool BeginLaunchAttempt()
-    {
-        if (MotionMode != EPinkCabVehicleMotionMode::Stationary || bLaunchActive)
-        {
-            return false;
-        }
-        bLaunchActive = true;
-        bThrottleDoseRequired = true;
-        ThrottleTarget = 0.0f;
-        ++LaunchSerial;
-        return true;
-    }
+    bool BeginLaunchAttempt();
+    bool ApplyThrottleDoseSteps(int32 SignedSteps);
+    void NotifyMotionMode(EPinkCabVehicleMotionMode InMode);
 
-    bool ApplyThrottleDoseSteps(int32 SignedSteps)
-    {
-        if (SignedSteps == 0)
-        {
-            return false;
-        }
-        ThrottleTarget = FMath::Clamp(
-            ThrottleTarget + static_cast<float>(SignedSteps) * ThrottleDoseStep,
-            0.0f,
-            1.0f);
-        bThrottleDoseRequired = ThrottleTarget <= KINDA_SMALL_NUMBER;
-        return true;
-    }
-
-    void NotifyMotionMode(EPinkCabVehicleMotionMode InMode)
-    {
-        MotionMode = InMode;
-        if (MotionMode == EPinkCabVehicleMotionMode::Moving)
-        {
-            bLaunchActive = false;
-        }
-    }
-
-    EPinkCabVehicleMotionMode GetMotionMode() const { return MotionMode; }
-    uint32 GetLaunchSerial() const { return LaunchSerial; }
-    bool IsLaunchActive() const { return bLaunchActive; }
-    bool RequiresThrottleDose() const { return bThrottleDoseRequired; }
-    float GetThrottleTarget() const { return ThrottleTarget; }
+    EPinkCabVehicleMotionMode GetMotionMode() const;
+    uint32 GetLaunchSerial() const;
+    bool IsLaunchActive() const;
+    bool RequiresThrottleDose() const;
+    float GetThrottleTarget() const;
 
 private:
     EPinkCabVehicleMotionMode MotionMode = EPinkCabVehicleMotionMode::Stationary;

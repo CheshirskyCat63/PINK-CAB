@@ -24,15 +24,10 @@ struct FPinkCabPedalDosingControllerConfig
     float BrakeStep = 0.05f;
 };
 
-class FPinkCabPedalDosingController
+class PINKCABVEHICLE_API FPinkCabPedalDosingController
 {
 public:
-    explicit FPinkCabPedalDosingController(
-        const FPinkCabPedalDosingControllerConfig& InConfig = {})
-        : Config(InConfig)
-        , BrakeTarget(FMath::Clamp(InConfig.BrakeDefault, 0.0f, 1.0f))
-    {
-    }
+    explicit FPinkCabPedalDosingController(const FPinkCabPedalDosingControllerConfig& InConfig = {});
 
     EPinkCabPedalWheelRecipient ApplyWheelSteps(
         bool bClutchHeld,
@@ -40,47 +35,13 @@ public:
         bool bThrottleHeld,
         int32 SignedSteps,
         FPinkCabLaunchController& Launch,
-        FPinkCabCockpitState& Cockpit)
-    {
-        if (SignedSteps == 0)
-        {
-            return EPinkCabPedalWheelRecipient::None;
-        }
-
-        if (bThrottleHeld)
-        {
-            Launch.ApplyThrottleDoseSteps(SignedSteps);
-            return EPinkCabPedalWheelRecipient::Throttle;
-        }
-        if (bBrakeHeld)
-        {
-            BrakeTarget = FMath::Clamp(
-                BrakeTarget + static_cast<float>(SignedSteps) * Config.BrakeStep,
-                0.0f,
-                1.0f);
-            return EPinkCabPedalWheelRecipient::Brake;
-        }
-
-        if (bClutchHeld)
-        {
-            Cockpit.AdjustClutchReleaseSpeed(SignedSteps);
-            return EPinkCabPedalWheelRecipient::ClutchRelease;
-        }
-
-        return EPinkCabPedalWheelRecipient::None;
-    }
+        FPinkCabCockpitState& Cockpit);
 
     FPinkCabPedalTargets ResolveTargets(
         bool bBrakeHeld,
         bool bThrottleHeld,
-        float ThrottleTarget) const
-    {
-        FPinkCabPedalTargets Result;
-        Result.Brake = bBrakeHeld ? BrakeTarget : 0.0f;
-        Result.Throttle = bThrottleHeld ? FMath::Clamp(ThrottleTarget, 0.0f, 1.0f) : 0.0f;
-        return Result;
-    }
-    float GetBrakeTarget() const { return BrakeTarget; }
+        float ThrottleTarget) const;
+    float GetBrakeTarget() const;
 
 private:
     FPinkCabPedalDosingControllerConfig Config;
