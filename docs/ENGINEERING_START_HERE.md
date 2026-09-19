@@ -70,6 +70,7 @@ Hard rules:
 | `brake` | brake dosing target | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |
 | `device_input_sign` | OS/UE mouse axis -> driver-space sign | Interaction | `Source/PinkCab/Public/Interaction/PinkCabPhysicalInputConvention.h` | `PinkCab.Vehicle.ControlRuntime` |
+| `player_input_capture` | PlayerController/raw device capture -> semantic sample | Interaction | `Source/PinkCab/Public/Interaction/PinkCabPlayerInputAdapter.h` | `PinkCab.Interaction.PlayerInput` |
 | `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
 | `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
 | `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |

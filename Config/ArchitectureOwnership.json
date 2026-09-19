@@ -51,6 +51,13 @@
       "test_prefix": "PinkCab.Vehicle.ControlRuntime"
     },
     {
+      "id": "player_input_capture",
+      "owner_domain": "Interaction",
+      "public_contract": "Source/PinkCab/Public/Interaction/PinkCabPlayerInputAdapter.h",
+      "implementation_root": "Source/PinkCab/Private/Interaction/PinkCabPlayerInputAdapter.cpp",
+      "test_prefix": "PinkCab.Interaction.PlayerInput"
+    },
+    {
       "id": "chaos_translation",
       "owner_domain": "Vehicle",
       "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",

@@ -31,7 +31,9 @@
       "IsInputKeyDown(",
       "GetInputAnalogKeyState(",
       "GetRawKeyValue(",
-      "InputKey("
+      "InputKey(",
+      "GetInputMouseDelta(",
+      "WasInputKeyJustPressed("
     ]
   },
   "chaos_writes": {

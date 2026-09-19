@@ -20,15 +20,14 @@
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
-#include "GameFramework/PlayerInput.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/CoreDelegates.h"
 #include "Math/RotationMatrix.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabPhysicalInputConvention.h"
+#include "Interaction/PinkCabPlayerInputAdapter.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsEngine/BodySetup.h"
@@ -1095,45 +1094,36 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     {
         MountPlayableHud();
     }
-    if (PC && PC->WasInputKeyJustPressed(EKeys::Escape))
-    {
-        SetSystemMenuOpen(!bSystemMenuOpen);
-    }
-    if (!PC || UGameplayStatics::IsGamePaused(this))
+    if (!PC)
     {
         ResetTransientCockpitInput();
         return;
     }
 
-    float MouseX = 0.0f;
-    float MouseY = 0.0f;
-    PC->GetInputMouseDelta(MouseX, MouseY);
-
-    // GetInputMouseDelta is already multiplied by the project's 0.07 mouse
-    // sensitivity. That is appropriate for free-look, but it destroys the
-    // physical ±5 cm steering workspace. Feed steering the raw mouse delta
-    // while keeping gaze/cockpit look on the authored processed sensitivity.
-    float SteeringMouseX = MouseX;
-    float PhysicalMouseX = MouseX;
-    float PhysicalMouseY = MouseY;
-    if (PC->PlayerInput)
+    const FPinkCabPlayerInputSample PlayerInput =
+        FPinkCabPlayerInputAdapter().Capture(*PC, InputRouter);
+    if (PlayerInput.bSystemMenuToggleRequested)
     {
-        const float RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
-        const float RawMouseY = PC->PlayerInput->GetRawKeyValue(EKeys::MouseY);
-        const float DeviceX = FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(
-            MouseX, RawMouseX);
-        const float DeviceY = FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(
-            MouseY, RawMouseY);
-        SteeringMouseX = FPinkCabPhysicalInputConvention::SteeringRight(DeviceX);
-        // Physical controls use raw-device magnitude, but all sign ownership
-        // lives in FPinkCabPhysicalInputConvention rather than individual controls.
-        PhysicalMouseX = DeviceX;
-        PhysicalMouseY = DeviceY;
+        SetSystemMenuOpen(!bSystemMenuOpen);
+    }
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        ResetTransientCockpitInput();
+        return;
     }
 
-    FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
-        InputRouter,
-        [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
+    const float MouseX = PlayerInput.LookMouseX;
+    const float MouseY = PlayerInput.LookMouseY;
+    const float SteeringMouseX =
+        FPinkCabPhysicalInputConvention::SteeringRight(PlayerInput.DeviceX);
+    const float PhysicalMouseX = PlayerInput.DeviceX;
+    const float PhysicalMouseY = PlayerInput.DeviceY;
+
+    FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromDigital(
+        PlayerInput.bGazeHeld,
+        PlayerInput.bClutchHeld,
+        PlayerInput.bBrakeHeld,
+        PlayerInput.bThrottleHeld);
 
     const EPinkCabVehicleMotionMode PreviousMotionMode = MotionClassifier.GetMode();
     FPinkCabVehicleTelemetry MotionTelemetry;
@@ -1162,15 +1152,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         }
     }
 
-    const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)
-    {
-        const FKey Key = InputRouter.GetKeyForAction(Action);
-        return Key.IsValid() && PC->IsInputKeyDown(Key);
-    };
-
-    const FKey WheelKey = InputRouter.GetKeyForAction(EPinkCabSemanticAction::Wheel);
-    const float WheelAxis = WheelKey.IsValid() ? PC->GetInputAnalogKeyState(WheelKey) : 0.0f;
-    const int32 WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
+    const int32 WheelSteps = PlayerInput.WheelSteps;
     const EPinkCabPedalWheelRecipient WheelRecipient =
         PedalDosingController.ApplyWheelSteps(
             bClutchHeld,
@@ -1211,13 +1193,13 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InputFrame.Throttle = SmoothedThrottle;
 
     FPinkCabCockpitInteractionFrame InteractionFrame;
-    InteractionFrame.bGazeHeld = InputFrame.bGazeHeld;
-    InteractionFrame.bQuickRecall1Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall1);
-    InteractionFrame.bQuickRecall2Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall2);
-    InteractionFrame.bQuickRecall3Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall3);
-    InteractionFrame.bQuickRecall4Held = IsActionHeld(EPinkCabSemanticAction::QuickRecall4);
-    InteractionFrame.bGripHeld = IsActionHeld(EPinkCabSemanticAction::Grip);
-    InteractionFrame.bMomentaryHeld = IsActionHeld(EPinkCabSemanticAction::MomentaryPress);
+    InteractionFrame.bGazeHeld = PlayerInput.bGazeHeld;
+    InteractionFrame.bQuickRecall1Held = PlayerInput.bQuickRecall1Held;
+    InteractionFrame.bQuickRecall2Held = PlayerInput.bQuickRecall2Held;
+    InteractionFrame.bQuickRecall3Held = PlayerInput.bQuickRecall3Held;
+    InteractionFrame.bQuickRecall4Held = PlayerInput.bQuickRecall4Held;
+    InteractionFrame.bGripHeld = PlayerInput.bGripHeld;
+    InteractionFrame.bMomentaryHeld = PlayerInput.bMomentaryHeld;
     InteractionFrame.WheelSteps =
         WheelRecipient == EPinkCabPedalWheelRecipient::None ? WheelSteps : 0;
     InteractionFrame.NowSeconds = FPlatformTime::Seconds();
