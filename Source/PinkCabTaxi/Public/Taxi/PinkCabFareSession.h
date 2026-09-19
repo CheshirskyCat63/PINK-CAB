@@ -22,144 +22,51 @@ enum class EPinkCabFareTransitionResult : uint8
     PolicyRequired
 };
 
-struct FPinkCabFullStopGate
+struct PINKCABTAXI_API FPinkCabFullStopGate
 {
-    static bool IsSatisfied(const float SpeedKmh, const float DwellSeconds)
-    {
-        return SpeedKmh < 0.5f && DwellSeconds >= 0.4f;
-    }
+    static bool IsSatisfied(float SpeedKmh, float DwellSeconds);
 };
 
-struct FPinkCabFarePolicy
+struct PINKCABTAXI_API FPinkCabFarePolicy
 {
-    static EPinkCabFareTransitionResult ResolveOffMeterEconomy()
-    {
-        return EPinkCabFareTransitionResult::Applied;
-    }
+    static EPinkCabFareTransitionResult ResolveOffMeterEconomy();
 };
 
-struct FPinkCabActiveFareSlot
+struct PINKCABTAXI_API FPinkCabActiveFareSlot
 {
-    bool TryActivate(const FPinkCabStableId& FareId)
-    {
-        if (bOccupied || !FareId.IsValid()) return false;
-        ActiveFareId = FareId;
-        bOccupied = true;
-        return true;
-    }
-
-    void Clear()
-    {
-        ActiveFareId = FPinkCabStableId();
-        bOccupied = false;
-    }
-
-    bool IsOccupied() const { return bOccupied; }
+    bool TryActivate(const FPinkCabStableId& FareId);
+    void Clear();
+    bool IsOccupied() const;
 
 private:
     FPinkCabStableId ActiveFareId;
     bool bOccupied = false;
 };
 
-class FPinkCabFareSession
+class PINKCABTAXI_API FPinkCabFareSession
 {
 public:
-    explicit FPinkCabFareSession(const FPinkCabStableId& InFareId)
-        : FareId(InFareId) {}
+    explicit FPinkCabFareSession(const FPinkCabStableId& InFareId);
 
-    EPinkCabFareState GetState() const { return State; }
-    bool RequiresWorkdayEnd() const { return bRequiresWorkdayEnd; }
-    bool RequiresRepairRecovery() const { return bRequiresRepairRecovery; }
+    EPinkCabFareState GetState() const;
+    bool RequiresWorkdayEnd() const;
+    bool RequiresRepairRecovery() const;
 
-    EPinkCabFareTransitionResult TryStartMeter(const bool bAllPassengersSeated, const bool bDoorLatched)
-    {
-        if (State != EPinkCabFareState::Boarding || !bAllPassengersSeated || !bDoorLatched)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::Active;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult TryStopMeter(const bool bDestinationEligible, const bool bFullStop)
-    {
-        if (State != EPinkCabFareState::Active || !bDestinationEligible || !bFullStop)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::AwaitingPayment;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult CommitPaymentSwipe()
-    {
-        if (State != EPinkCabFareState::AwaitingPayment)
-            return EPinkCabFareTransitionResult::Blocked;
-        bPaymentCommitted = true;
-        State = EPinkCabFareState::Paid;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult ResolveReceipt(const bool bTaken)
-    {
-        if (State != EPinkCabFareState::Paid)
-            return EPinkCabFareTransitionResult::Blocked;
-        bReceiptResolved = true;
-        bReceiptTaken = bTaken;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult MarkPassengersExited()
-    {
-        if (State != EPinkCabFareState::Paid)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::ReadyToReset;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult ResetToIdle()
-    {
-        if (State != EPinkCabFareState::ReadyToReset)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::Idle;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult TryUnpaidEscape(const bool bExitPathOpen)
-    {
-        if (State != EPinkCabFareState::AwaitingPayment || bPaymentCommitted || !bExitPathOpen)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::Evaded;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult BeginPassengerStopover()
-    {
-        if (State != EPinkCabFareState::Active)
-            return EPinkCabFareTransitionResult::Blocked;
-        bStopoverActive = true;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    EPinkCabFareTransitionResult MarkStopoverNoReturn()
-    {
-        if (State != EPinkCabFareState::Active || !bStopoverActive)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::Evaded;
-        bStopoverActive = false;
-        return EPinkCabFareTransitionResult::Applied;
-    }
-
-    bool ShouldAccrueFareTime(const bool bHardPaused) const
-    {
-        return State == EPinkCabFareState::Active && !bHardPaused;
-    }
-
-    EPinkCabFareTransitionResult FailForSeriousCrash()
-    {
-        if (State != EPinkCabFareState::Active && State != EPinkCabFareState::AwaitingPayment)
-            return EPinkCabFareTransitionResult::Blocked;
-        State = EPinkCabFareState::Failed;
-        bRequiresWorkdayEnd = true;
-        bRequiresRepairRecovery = true;
-        return EPinkCabFareTransitionResult::Applied;
-    }
+    EPinkCabFareTransitionResult TryStartMeter(
+        bool bAllPassengersSeated,
+        bool bDoorLatched);
+    EPinkCabFareTransitionResult TryStopMeter(
+        bool bDestinationEligible,
+        bool bFullStop);
+    EPinkCabFareTransitionResult CommitPaymentSwipe();
+    EPinkCabFareTransitionResult ResolveReceipt(bool bTaken);
+    EPinkCabFareTransitionResult MarkPassengersExited();
+    EPinkCabFareTransitionResult ResetToIdle();
+    EPinkCabFareTransitionResult TryUnpaidEscape(bool bExitPathOpen);
+    EPinkCabFareTransitionResult BeginPassengerStopover();
+    EPinkCabFareTransitionResult MarkStopoverNoReturn();
+    bool ShouldAccrueFareTime(bool bHardPaused) const;
+    EPinkCabFareTransitionResult FailForSeriousCrash();
 
 private:
     friend class FPinkCabFareRuntimeSnapshotCodec;

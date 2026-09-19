@@ -29,7 +29,7 @@ struct FPinkCabPassengerRideMemory
     FName OutcomeTag = NAME_None;
 };
 
-struct FPinkCabPassengerRecord
+struct PINKCABTAXI_API FPinkCabPassengerRecord
 {
     FPinkCabStableId IdentityId;
     FName TemplateId = NAME_None;
@@ -44,108 +44,39 @@ struct FPinkCabPassengerRecord
 
     EPinkCabPassengerMutationResult RegisterPaidFareOnce(
         const FPinkCabStableId& EventId,
-        const FPinkCabPassengerRelationship& Delta)
-    {
-        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(EventId, Delta);
-        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
-        ++PaidFareCount;
-        ApplyRelationshipDelta(Delta);
-        if (PaidFareCount >= 2) bRepeatEligible = true;
-        return EPinkCabPassengerMutationResult::Applied;
-    }
-
+        const FPinkCabPassengerRelationship& Delta);
     EPinkCabPassengerMutationResult RegisterAuthoredEventOnce(
         const FPinkCabStableId& EventId,
-        const FPinkCabPassengerRelationship& Delta)
-    {
-        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(EventId, Delta);
-        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
-        ++AuthoredEventCount;
-        ApplyRelationshipDelta(Delta);
-        bRepeatEligible = true;
-        return EPinkCabPassengerMutationResult::Applied;
-    }
+        const FPinkCabPassengerRelationship& Delta);
     EPinkCabPassengerMutationResult AddRideMemoryOnce(
         const FPinkCabStableId& MemoryId,
         const FPinkCabStableId& FareId,
-        const FName OutcomeTag)
-    {
-        if (!MemoryId.IsValid() || !FareId.IsValid() || OutcomeTag.IsNone())
-            return EPinkCabPassengerMutationResult::Invalid;
-        const EPinkCabPassengerMutationResult Begin = TryBeginSocialEvent(MemoryId);
-        if (Begin != EPinkCabPassengerMutationResult::Applied) return Begin;
-        if (RideMemories.Num() >= MaxRideMemories) RideMemories.RemoveAt(0);
-        RideMemories.Add({MemoryId, FareId, OutcomeTag});
-        return EPinkCabPassengerMutationResult::Applied;
-    }
+        FName OutcomeTag);
 
-    int32 GetPaidFareCount() const { return PaidFareCount; }
-    int32 GetAuthoredEventCount() const { return AuthoredEventCount; }
-    bool IsRepeatEligible() const { return bRepeatEligible; }
-    const TArray<FPinkCabPassengerRideMemory>& GetRideMemories() const { return RideMemories; }
-    const TArray<FString>& GetAppliedSocialEventIds() const { return AppliedSocialEventIds; }
+    int32 GetPaidFareCount() const;
+    int32 GetAuthoredEventCount() const;
+    bool IsRepeatEligible() const;
+    const TArray<FPinkCabPassengerRideMemory>& GetRideMemories() const;
+    const TArray<FString>& GetAppliedSocialEventIds() const;
 
-    void SetNeuralPermission(bool bGranted) { bNeuralPermissionGranted = bGranted; }
-    bool HasNeuralPermission() const { return bNeuralPermissionGranted; }
-    void SetNeuralBlocked(bool bBlocked) { bNeuralBlocked = bBlocked; }
-    bool IsNeuralBlocked() const { return bNeuralBlocked; }
-
+    void SetNeuralPermission(bool bGranted);
+    bool HasNeuralPermission() const;
+    void SetNeuralBlocked(bool bBlocked);
+    bool IsNeuralBlocked() const;
     EPinkCabPassengerMutationResult AddMessageOnce(
         const FPinkCabStableId& MessageId,
-        const FString& Text)
-    {
-        const FString Normalized = Text.TrimStartAndEnd();
-        if (!IdentityId.IsValid() || !MessageId.IsValid() || Normalized.IsEmpty())
-            return EPinkCabPassengerMutationResult::Invalid;
-        if (!bNeuralPermissionGranted) return EPinkCabPassengerMutationResult::PermissionDenied;
-        if (bNeuralBlocked) return EPinkCabPassengerMutationResult::Blocked;
-
-        const FString Key = MessageId.Serialize();
-        if (AppliedNeuralMessageIds.Contains(Key)) return EPinkCabPassengerMutationResult::Duplicate;
-        if (AppliedNeuralMessageIds.Num() >= MaxNeuralReplayJournalEntries)
-            return EPinkCabPassengerMutationResult::CapacityExceeded;
-
-        AppliedNeuralMessageIds.Add(Key);
-        if (NeuralMessages.Num() >= MaxNeuralMessages) NeuralMessages.RemoveAt(0);
-        NeuralMessages.Add({MessageId, Normalized});
-        return EPinkCabPassengerMutationResult::Applied;
-    }
-
-    const TArray<FPinkCabPassengerNeuralMessage>& GetNeuralMessages() const { return NeuralMessages; }
-    const TArray<FString>& GetAppliedNeuralMessageIds() const { return AppliedNeuralMessageIds; }
+        const FString& Text);
+    const TArray<FPinkCabPassengerNeuralMessage>& GetNeuralMessages() const;
+    const TArray<FString>& GetAppliedNeuralMessageIds() const;
 
 private:
-    static bool IsRelationshipFinite(const FPinkCabPassengerRelationship& Value)
-    {
-        return FMath::IsFinite(Value.Trust)
-            && FMath::IsFinite(Value.Satisfaction)
-            && FMath::IsFinite(Value.RiskTolerance);
-    }
-    EPinkCabPassengerMutationResult TryBeginSocialEvent(const FPinkCabStableId& EventId)
-    {
-        if (!EventId.IsValid()) return EPinkCabPassengerMutationResult::Invalid;
-        const FString Key = EventId.Serialize();
-        if (AppliedSocialEventIds.Contains(Key)) return EPinkCabPassengerMutationResult::Duplicate;
-        if (AppliedSocialEventIds.Num() >= MaxReplayJournalEntries)
-            return EPinkCabPassengerMutationResult::CapacityExceeded;
-        AppliedSocialEventIds.Add(Key);
-        return EPinkCabPassengerMutationResult::Applied;
-    }
-
+    static bool IsRelationshipFinite(const FPinkCabPassengerRelationship& Value);
+    EPinkCabPassengerMutationResult TryBeginSocialEvent(
+        const FPinkCabStableId& EventId);
     EPinkCabPassengerMutationResult TryBeginSocialEvent(
         const FPinkCabStableId& EventId,
-        const FPinkCabPassengerRelationship& Delta)
-    {
-        if (!IsRelationshipFinite(Delta)) return EPinkCabPassengerMutationResult::Invalid;
-        return TryBeginSocialEvent(EventId);
-    }
-
-    void ApplyRelationshipDelta(const FPinkCabPassengerRelationship& Delta)
-    {
-        Relationship.Trust = FMath::Clamp(Relationship.Trust + Delta.Trust, -1.0f, 1.0f);
-        Relationship.Satisfaction = FMath::Clamp(Relationship.Satisfaction + Delta.Satisfaction, -1.0f, 1.0f);
-        Relationship.RiskTolerance = FMath::Clamp(Relationship.RiskTolerance + Delta.RiskTolerance, -1.0f, 1.0f);
-    }
+        const FPinkCabPassengerRelationship& Delta);
+    void ApplyRelationshipDelta(const FPinkCabPassengerRelationship& Delta);
 
     int32 MaxRideMemories = 32;
     int32 MaxReplayJournalEntries = 512;
@@ -167,15 +98,5 @@ private:
     friend class FPinkCabPassengerSnapshotArchive;
 };
 
-inline bool PinkCabPassengerRecordIsValid(const FPinkCabPassengerRecord& Record)
-{
-    return Record.IdentityId.IsValid()
-        && !Record.TemplateId.IsNone()
-        && !Record.ContextKey.IsEmpty()
-        && Record.IdentitySeed != 0
-        && Record.AppearanceSeed != 0
-        && !Record.AppearanceProfileId.IsNone()
-        && Record.AppearanceTraitIds.Num() >= 3
-        && FMath::IsFinite(Record.ResolvedMassKg)
-        && Record.ResolvedMassKg > 0.0f;
-}
+PINKCABTAXI_API bool PinkCabPassengerRecordIsValid(
+    const FPinkCabPassengerRecord& Record);

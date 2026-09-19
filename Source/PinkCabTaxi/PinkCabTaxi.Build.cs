@@ -5,6 +5,6 @@ public class PinkCabTaxi : ModuleRules
     public PinkCabTaxi(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "PinkCabCore", "PinkCabEconomy", "PinkCabVehicle", "PinkCabWorld" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "Engine", "PinkCabCore", "PinkCabEconomy", "PinkCabVehicle", "PinkCabWorld" });
     }
 }

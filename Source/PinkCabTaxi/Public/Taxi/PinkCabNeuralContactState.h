@@ -3,34 +3,19 @@
 #include "CoreMinimal.h"
 #include "Core/PinkCabStableId.h"
 
-struct FPinkCabNeuralContactState
+struct PINKCABTAXI_API FPinkCabNeuralContactState
 {
-    FPinkCabNeuralContactState() = default;
+    FPinkCabNeuralContactState();
     explicit FPinkCabNeuralContactState(
         const FPinkCabStableId& InIdentityId,
-        int32 InMaxMessages = 64)
-        : IdentityId(InIdentityId)
-        , MaxMessages(FMath::Max(1, InMaxMessages))
-        , bPermissionGranted(true)
-    {
-    }
+        int32 InMaxMessages = 64);
 
-    void SetPermission(bool bGranted) { bPermissionGranted = bGranted; }
-    bool HasPermission() const { return bPermissionGranted; }
-    void SetBlocked(bool bInBlocked) { bBlocked = bInBlocked; }
-    bool IsBlocked() const { return bBlocked; }
-
-    bool AddSimpleMessage(const FString& Message)
-    {
-        const FString Normalized = Message.TrimStartAndEnd();
-        if (!IdentityId.IsValid() || !bPermissionGranted || bBlocked || Normalized.IsEmpty())
-            return false;
-        if (Messages.Num() >= MaxMessages) Messages.RemoveAt(0);
-        Messages.Add(Normalized);
-        return true;
-    }
-
-    const TArray<FString>& GetMessages() const { return Messages; }
+    void SetPermission(bool bGranted);
+    bool HasPermission() const;
+    void SetBlocked(bool bInBlocked);
+    bool IsBlocked() const;
+    bool AddSimpleMessage(const FString& Message);
+    const TArray<FString>& GetMessages() const;
 
     FPinkCabStableId IdentityId;
 

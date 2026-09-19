@@ -4,25 +4,15 @@
 #include "Core/PinkCabStableId.h"
 #include "Taxi/PinkCabPassengerRecord.h"
 
-class FPinkCabConductorServiceHooks
+class PINKCABTAXI_API FPinkCabConductorServiceHooks
 {
 public:
-    explicit FPinkCabConductorServiceHooks(const FPinkCabPassengerRegistry& InRegistry)
-        : Registry(InRegistry)
-    {
-    }
+    explicit FPinkCabConductorServiceHooks(const FPinkCabPassengerRegistry& InRegistry);
 
-    int32 GetPassengerCount() const { return Registry.Num(); }
-    bool HasDrivingAuthority() const { return false; }
-    bool HasSteeringAuthority() const { return false; }
-
-    bool CanContact(const FPinkCabStableId& PassengerId) const
-    {
-        const FPinkCabPassengerRecord* Record = Registry.Find(PassengerId);
-        return Record != nullptr
-            && Record->HasNeuralPermission()
-            && !Record->IsNeuralBlocked();
-    }
+    int32 GetPassengerCount() const;
+    bool HasDrivingAuthority() const;
+    bool HasSteeringAuthority() const;
+    bool CanContact(const FPinkCabStableId& PassengerId) const;
 
 private:
     const FPinkCabPassengerRegistry& Registry;

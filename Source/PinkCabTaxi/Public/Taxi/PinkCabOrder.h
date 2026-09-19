@@ -9,7 +9,7 @@ enum class EPinkCabFareMode : uint8
     OffMeter
 };
 
-struct FPinkCabOrder
+struct PINKCABTAXI_API FPinkCabOrder
 {
     FPinkCabStableId OrderId;
     FPinkCabStableId PickupId;
@@ -17,9 +17,5 @@ struct FPinkCabOrder
     TArray<FPinkCabStableId> PassengerIdentityIds;
     EPinkCabFareMode FareMode = EPinkCabFareMode::Metered;
 
-    bool IsValid() const
-    {
-        return OrderId.IsValid() && PickupId.IsValid() && DestinationId.IsValid()
-            && PassengerIdentityIds.Num() >= 1 && PassengerIdentityIds.Num() <= 5;
-    }
+    bool IsValid() const;
 };

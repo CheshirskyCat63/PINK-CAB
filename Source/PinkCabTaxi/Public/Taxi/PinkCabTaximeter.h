@@ -3,28 +3,13 @@
 #include "CoreMinimal.h"
 #include "Taxi/PinkCabOrder.h"
 
-struct FPinkCabFarePricingTerms
+struct PINKCABTAXI_API FPinkCabFarePricingTerms
 {
     static FPinkCabFarePricingTerms Metered(
-        const int64 InBaseMinor,
-        const int64 InPerKmMinor,
-        const int64 InPerMinuteMinor)
-    {
-        FPinkCabFarePricingTerms Result;
-        Result.Mode = EPinkCabFareMode::Metered;
-        Result.BaseMinor = FMath::Max<int64>(0, InBaseMinor);
-        Result.PerKmMinor = FMath::Max<int64>(0, InPerKmMinor);
-        Result.PerMinuteMinor = FMath::Max<int64>(0, InPerMinuteMinor);
-        return Result;
-    }
-
-    static FPinkCabFarePricingTerms OffMeter(const int64 InAgreedMinor)
-    {
-        FPinkCabFarePricingTerms Result;
-        Result.Mode = EPinkCabFareMode::OffMeter;
-        Result.AgreedMinor = FMath::Max<int64>(0, InAgreedMinor);
-        return Result;
-    }
+        int64 InBaseMinor,
+        int64 InPerKmMinor,
+        int64 InPerMinuteMinor);
+    static FPinkCabFarePricingTerms OffMeter(int64 InAgreedMinor);
 
     EPinkCabFareMode Mode = EPinkCabFareMode::Metered;
     int64 BaseMinor = 0;
@@ -33,53 +18,21 @@ struct FPinkCabFarePricingTerms
     int64 AgreedMinor = 0;
 };
 
-class FPinkCabTaximeter
+class PINKCABTAXI_API FPinkCabTaximeter
 {
 public:
-    explicit FPinkCabTaximeter(const FPinkCabFarePricingTerms& InTerms)
-        : Terms(InTerms) {}
+    explicit FPinkCabTaximeter(const FPinkCabFarePricingTerms& InTerms);
 
-    bool Start()
-    {
-        if (bStarted) return false;
-        bStarted = true;
-        bRunning = true;
-        return true;
-    }
-
-    bool Stop()
-    {
-        if (!bRunning) return false;
-        bRunning = false;
-        return true;
-    }
-
-    void Tick(const double DistanceDeltaKm, const double DeltaSeconds, const bool bHardPaused)
-    {
-        if (!bRunning) return;
-        DistanceKm += FMath::Max(0.0, DistanceDeltaKm);
-        if (!bHardPaused)
-        {
-            FareSeconds += FMath::Max(0.0, DeltaSeconds);
-        }
-    }
-
-    int64 GetFareMinor() const
-    {
-        if (Terms.Mode == EPinkCabFareMode::OffMeter)
-        {
-            return Terms.AgreedMinor;
-        }
-
-        const double VariableMinor =
-            DistanceKm * static_cast<double>(Terms.PerKmMinor)
-            + (FareSeconds / 60.0) * static_cast<double>(Terms.PerMinuteMinor);
-        return Terms.BaseMinor + static_cast<int64>(FMath::FloorToDouble(VariableMinor + 1.e-9));
-    }
-
-    bool IsRunning() const { return bRunning; }
-    double GetDistanceKm() const { return DistanceKm; }
-    double GetFareSeconds() const { return FareSeconds; }
+    bool Start();
+    bool Stop();
+    void Tick(
+        double DistanceDeltaKm,
+        double DeltaSeconds,
+        bool bHardPaused);
+    int64 GetFareMinor() const;
+    bool IsRunning() const;
+    double GetDistanceKm() const;
+    double GetFareSeconds() const;
 
 private:
     friend class FPinkCabFareRuntimeSnapshotCodec;
