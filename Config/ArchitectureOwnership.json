@@ -165,8 +165,8 @@
     {
       "id": "traffic",
       "owner_domain": "Traffic",
-      "public_contract": "Source/PinkCab/Public/Traffic/PinkCabTrafficFlow.h",
-      "implementation_root": "Source/PinkCab/Public/Traffic/PinkCabTrafficFlow.h",
+      "public_contract": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h",
+      "implementation_root": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h",
       "test_prefix": "PinkCab.Traffic"
     },
     {

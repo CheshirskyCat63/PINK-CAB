@@ -598,35 +598,35 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Traffic/PinkCabTrafficEntity.h",
+      "path": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficEntity.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Traffic/PinkCabTrafficFlow.h",
+      "path": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Traffic/PinkCabTrafficIncident.h",
+      "path": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficIncident.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Traffic/PinkCabTrafficInteractionBubble.h",
+      "path": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficInteractionBubble.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Traffic/PinkCabTrafficMaterializationPolicy.h",
+      "path": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficMaterializationPolicy.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
