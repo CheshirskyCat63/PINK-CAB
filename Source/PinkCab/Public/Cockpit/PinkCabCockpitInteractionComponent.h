@@ -88,4 +88,5 @@ private:
     bool bGazeHeld = false;
     bool bGripActive = false;
     bool bMomentaryActive = false;
+    bool bCurrentTargetFromQuickRecall = false;
 };

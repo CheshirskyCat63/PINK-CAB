@@ -1,5 +1,35 @@
 #include "Vehicle/PinkCabHGateGeometry.h"
 
+namespace
+{
+constexpr float HGateColumnEngage = 0.50f;
+constexpr float HGateRowEngage = 0.65f;
+constexpr float HGateRowRelease = 0.35f;
+constexpr float HGateCountsX = 160.0f;
+constexpr float HGateCountsY = 140.0f;
+constexpr float HGateMaxSubstep = 0.20f;
+
+int32 ResolveColumn(const float X)
+{
+    return X < -HGateColumnEngage ? 0 : (X > HGateColumnEngage ? 2 : 1);
+}
+
+int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
+{
+    if (State.LastGateRow > 0)
+    {
+        if (Y < -HGateRowEngage) return -1;
+        return Y > HGateRowRelease ? 1 : 0;
+    }
+    if (State.LastGateRow < 0)
+    {
+        if (Y > HGateRowEngage) return 1;
+        return Y < -HGateRowRelease ? -1 : 0;
+    }
+    return Y > HGateRowEngage ? 1 : (Y < -HGateRowEngage ? -1 : 0);
+}
+}
+
 int32 FPinkCabHGateGeometry::GearColumn(const int32 Gear)
 {
     if (Gear == 1 || Gear == 2) return 0;
@@ -9,8 +39,8 @@ int32 FPinkCabHGateGeometry::GearColumn(const int32 Gear)
 
 bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, const float Y)
 {
-    const int32 NewRow = Y > 0.35f ? 1 : (Y < -0.35f ? -1 : 0);
-    const int32 Column = X < -0.33f ? 0 : (X > 0.33f ? 2 : 1);
+    const int32 NewRow = ResolveRow(State, Y);
+    const int32 Column = ResolveColumn(X);
     if (State.LastGateRow != 0 && NewRow != 0
         && (NewRow != State.LastGateRow || Column != State.LastGateColumn))
     {
@@ -38,13 +68,12 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
     const float DriverRightCounts,
     const float DriverForwardCounts)
 {
-    constexpr float CountsX = 160.0f;
-    constexpr float CountsY = 140.0f;
-    const float GateDx = DriverRightCounts / CountsX;
-    const float GateDy = DriverForwardCounts / CountsY;
+    const float GateDx = DriverRightCounts / HGateCountsX;
+    const float GateDy = DriverForwardCounts / HGateCountsY;
     const int32 Steps = FMath::Max(
         1,
-        FMath::CeilToInt(FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / 0.20f));
+        FMath::CeilToInt(
+            FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / HGateMaxSubstep));
     const float StepX = GateDx / static_cast<float>(Steps);
     const float StepY = GateDy / static_cast<float>(Steps);
     const int32 Before = State.RequestedGear;

@@ -78,6 +78,35 @@ bool FPinkCabQuickRecallComplianceTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabQuickRecallGripLatchTest,
+    "PinkCab.Cockpit.Input.QuickRecallGripLatch",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabQuickRecallGripLatchTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bQuickRecall4Held = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("4 recalls handbrake without actuation"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
+    const uint32 Before = Interaction->GetActuationSerial();
+
+    Frame.bQuickRecall4Held = false;
+    Frame.bGripHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB acquires the remembered quick-recall target"),
+        Interaction->IsGripActive());
+    TestEqual(TEXT("remembered quick-recall target is the handbrake"),
+        Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
+    TestEqual(TEXT("quick recall plus grip still does not actuate"),
+        Interaction->GetActuationSerial(), Before);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabGripComplianceTest,
     "PinkCab.Cockpit.Input.Compliance.PC_T_INP_003",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

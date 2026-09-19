@@ -53,31 +53,6 @@ bool FPinkCabCockpitVisualGearPoseTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabCockpitMouseGearLeverTest,
-    "PinkCab.Cockpit.VisualDriver.MouseGearLever",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabCockpitMouseGearLeverTest::RunTest(const FString& Parameters)
-{
-    FVector2D Cursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(0);
-    Cursor = UPinkCabCockpitVisualDriverComponent::IntegrateGearCursor(Cursor, 18.0f, -22.0f, 0.025f);
-    TestTrue(TEXT("mouse movement moves lever preview right"), Cursor.X > 0.0f);
-    TestTrue(TEXT("mouse movement moves lever preview forward"), Cursor.Y > 0.0f);
-    const FVector Preview = UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(Cursor);
-    TestTrue(TEXT("preview produces visible nonzero lever offset"), !Preview.IsNearlyZero());
-
-    TestEqual(TEXT("first gear gate resolves"),
-        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(-1.0f, 1.0f)), 1);
-    TestEqual(TEXT("second gear gate resolves"),
-        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(-1.0f, -1.0f)), 2);
-    TestEqual(TEXT("fifth gear gate resolves"),
-        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(1.0f, 1.0f)), 5);
-    TestEqual(TEXT("center corridor resolves neutral"),
-        UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D(0.0f, 0.05f)), 0);
-    return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCockpitVisualPawnCompositionTest,
     "PinkCab.Cockpit.VisualDriver.PawnComposition",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

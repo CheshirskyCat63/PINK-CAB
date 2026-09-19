@@ -565,6 +565,27 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGearboxHumanThrowTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.HumanThrow",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGearboxHumanThrowTest::RunTest(const FString& Parameters)
+{
+    FPinkCabGearboxController Gearbox;
+    TestFalse(TEXT("partial left cross-gate travel stays neutral"),
+        Gearbox.ApplyLeverDriverDelta(-90.0f, 0.0f));
+    TestFalse(TEXT("short fast forward flick must not snap into first"),
+        Gearbox.ApplyLeverDriverDelta(0.0f, 60.0f));
+    TestEqual(TEXT("short physical throw remains in neutral"),
+        Gearbox.GetRequestedGear(), 0);
+    TestTrue(TEXT("deliberate continuation reaches first detent"),
+        Gearbox.ApplyLeverDriverDelta(0.0f, 45.0f));
+    TestEqual(TEXT("full deliberate throw requests first"),
+        Gearbox.GetRequestedGear(), 1);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabThrottleResponseTest,
     "PinkCab.Vehicle.ControlRuntime.Throttle.PedalLinkage",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

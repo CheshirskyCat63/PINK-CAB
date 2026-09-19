@@ -73,24 +73,6 @@ FVector2D UPinkCabCockpitVisualDriverComponent::GearCursorForGear(const int32 Ge
     }
 }
 
-FVector2D UPinkCabCockpitVisualDriverComponent::IntegrateGearCursor(
-    FVector2D Current, const float MouseDeltaX, const float MouseDeltaY, const float Gain)
-{
-    Current.X = FMath::Clamp(Current.X + MouseDeltaX * Gain, -1.30f, 1.0f);
-    // Screen-space mouse Y grows downward while physical gearbox forward is +Y.
-    Current.Y = FMath::Clamp(Current.Y - MouseDeltaY * Gain, -1.0f, 1.0f);
-    if (FMath::Abs(Current.Y) < 0.22f)
-    {
-        Current.Y = FMath::Lerp(Current.Y, 0.0f, 0.35f);
-    }
-    else if (FMath::Abs(Current.Y) > 0.45f)
-    {
-        const float LaneX = Current.X < -0.35f ? -0.75f : (Current.X < 0.38f ? 0.0f : 0.75f);
-        Current.X = FMath::Lerp(Current.X, LaneX, 0.18f);
-    }
-    return Current;
-}
-
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(FVector2D Cursor)
 {
     Cursor.X = FMath::Clamp(Cursor.X, -1.30f, 1.0f);
@@ -98,16 +80,6 @@ FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(FVector2
     // Tatra cockpit local axes: X crosses the H gate left/right, while negative Y
     // points forward. Preserve the canonical 1/3/5 forward and 2/4/R rearward layout.
     return FVector(Cursor.X * 7.0f, -Cursor.Y * 6.0f, 0.0f);
-}
-
-int32 UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D Cursor)
-{
-    Cursor.X = FMath::Clamp(Cursor.X, -1.30f, 1.0f);
-    Cursor.Y = FMath::Clamp(Cursor.Y, -1.0f, 1.0f);
-    if (FMath::Abs(Cursor.Y) < 0.32f) return 0;
-    if (Cursor.X < -0.35f) return Cursor.Y > 0.0f ? 1 : 2;
-    if (Cursor.X < 0.38f) return Cursor.Y > 0.0f ? 3 : 4;
-    return Cursor.Y > 0.0f ? 5 : -1;
 }
 
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffset(const int32 Gear)

@@ -170,9 +170,8 @@ FText UPinkCabDriverUiComponent::BuildPromptText() const
 {
     if (State.bGearLeverDragging)
     {
-        const int32 PreviewGear =
-            UPinkCabCockpitVisualDriverComponent::GearForCursor(State.GearLeverCursor);
-        return FText::FromString(FString::Printf(TEXT("GEAR -> %s"), *GearLabel(PreviewGear)));
+        return FText::FromString(FString::Printf(
+            TEXT("GEAR -> %s"), *GearLabel(State.RequestedGear)));
     }
     return State.CurrentTargetId.IsNone() ? FText::GetEmpty() : FText::FromName(State.CurrentTargetId);
 }

@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 #include "InputKeyEventArgs.h"
+#include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 
@@ -217,6 +218,132 @@ private:
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabPlayerInputRuntimeState> State;
 };
+
+struct FPinkCabPhysicalPlayerInputState
+{
+    TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
+    TWeakObjectPtr<APlayerController> Controller;
+    int32 Phase = 0;
+};
+
+class FPinkCabPhysicalPlayerInputCommand final : public IAutomationLatentCommand
+{
+public:
+    FPinkCabPhysicalPlayerInputCommand(
+        FAutomationTestBase* InTest,
+        TSharedRef<FPinkCabPhysicalPlayerInputState> InState)
+        : Test(InTest), State(InState) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World) return false;
+        if (!State->Pawn.IsValid())
+        {
+            for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+            {
+                State->Pawn = *It;
+                break;
+            }
+        }
+        APinkCabChaosTatraPawn* Pawn = State->Pawn.Get();
+        if (!Pawn) return false;
+        if (!State->Controller.IsValid())
+        {
+            State->Controller = Cast<APlayerController>(Pawn->GetController());
+        }
+        APlayerController* PC = State->Controller.Get();
+        UPinkCabCockpitInteractionComponent* Interaction = Pawn->GetCockpitInteraction();
+        if (!PC || !Interaction) return false;
+
+        switch (State->Phase)
+        {
+        case 0:
+            Pawn->SetSystemMenuOpen(false);
+            Test->TestTrue(TEXT("ignition primed for physical input routing"),
+                Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+            InjectKey(*PC, EKeys::Four, IE_Pressed);
+            State->Phase = 1;
+            return false;
+        case 1:
+            Test->TestEqual(TEXT("4 quick recall selects handbrake"),
+                Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
+            InjectKey(*PC, EKeys::Four, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
+            State->Phase = 2;
+            return false;
+        case 2:
+            Test->TestEqual(TEXT("RMB grips recalled handbrake"),
+                Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 500.0f);
+            State->Phase = 3;
+            return false;
+        case 3:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("real mouse axis fully releases parking handbrake"),
+                Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::Three, IE_Pressed);
+            State->Phase = 4;
+            return false;
+        case 4:
+            Test->TestEqual(TEXT("3 quick recall selects gearbox"),
+                Interaction->GetCurrentTargetId(), FName(TEXT("Gearbox")));
+            InjectKey(*PC, EKeys::Three, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
+            State->Phase = 5;
+            return false;
+        case 5:
+            Test->TestEqual(TEXT("RMB grips recalled gearbox"),
+                Interaction->GetActiveGripTargetId(), FName(TEXT("Gearbox")));
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
+            State->Phase = 6;
+            return false;
+        case 6:
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, 0.0f);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 60.0f);
+            State->Phase = 7;
+            return false;
+        case 7:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("short real forward flick remains neutral"),
+                Pawn->GetRequestedGear(), 0);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 45.0f);
+            State->Phase = 8;
+            return false;
+        case 8:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("continued real forward throw requests first"),
+                Pawn->GetRequestedGear(), 1);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            State->Phase = 9;
+            return false;
+        default:
+            Test->TestFalse(TEXT("physical grip releases after RMB"),
+                Interaction->IsGripActive());
+            return true;
+        }
+    }
+
+private:
+    FAutomationTestBase* Test = nullptr;
+    TSharedRef<FPinkCabPhysicalPlayerInputState> State;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPhysicalPlayerInputRuntimeTest,
+    "PinkCab.Vehicle.PlayerInput.PhysicalControlRouting",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPhysicalPlayerInputRuntimeTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("physical-input map opens for PIE"), bOpened);
+    if (!bOpened) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabPhysicalPlayerInputCommand(
+        this, MakeShared<FPinkCabPhysicalPlayerInputState>()));
+    return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPlayerInputRuntimeTest,

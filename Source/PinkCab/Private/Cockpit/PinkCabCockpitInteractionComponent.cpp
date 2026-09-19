@@ -28,7 +28,12 @@ void UPinkCabCockpitInteractionComponent::SetQuickSlotHeld(const int32 Slot, con
 {
     if (Slot < 1 || Slot > QuickSlots.Num()) return;
     FQuickSlotState& State = QuickSlots[Slot - 1];
-    if (bHeld && !State.bHeld) State.PressSerial = NextPressSerial++;
+    if (bHeld && !State.bHeld)
+    {
+        State.PressSerial = NextPressSerial++;
+        CurrentTarget = SpecForTargetId(TargetForQuickSlot(Slot));
+        bCurrentTargetFromQuickRecall = !CurrentTarget.Id.IsNone();
+    }
     State.bHeld = bHeld;
 }
 
@@ -51,6 +56,7 @@ FName UPinkCabCockpitInteractionComponent::GetCurrentQuickTargetId() const
 void UPinkCabCockpitInteractionComponent::SetCurrentTarget(const FPinkCabInteractionControlSpec& Spec)
 {
     CurrentTarget = Spec;
+    bCurrentTargetFromQuickRecall = false;
 }
 
 FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiveSpec() const
@@ -135,7 +141,11 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
         SetCurrentTarget(SpecForTargetId(GazeTarget));
         return;
     }
-    if (!Frame.bGazeHeld && GetCurrentQuickTargetId().IsNone() && !bGripActive && !bMomentaryActive)
+    if (!Frame.bGazeHeld
+        && GetCurrentQuickTargetId().IsNone()
+        && !bGripActive
+        && !bMomentaryActive
+        && !bCurrentTargetFromQuickRecall)
     {
         SetCurrentTarget({});
     }
@@ -213,6 +223,7 @@ void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
     bGazeHeld = false;
     for (FQuickSlotState& Slot : QuickSlots) Slot.bHeld = false;
     CurrentTarget = {};
+    bCurrentTargetFromQuickRecall = false;
     bGripActive = false;
     ActiveGripTargetId = NAME_None;
     bMomentaryActive = false;
