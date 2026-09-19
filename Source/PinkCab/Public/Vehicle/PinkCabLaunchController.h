@@ -6,6 +6,7 @@
 class FPinkCabLaunchController
 {
 public:
+    static constexpr float DefaultThrottleTarget = 0.45f;
     static constexpr float ThrottleDoseStep = 0.05f;
 
     bool BeginLaunchAttempt()
@@ -15,8 +16,8 @@ public:
             return false;
         }
         bLaunchActive = true;
-        bThrottleDoseRequired = true;
-        ThrottleTarget = 0.0f;
+        bThrottleDoseRequired = false;
+        ThrottleTarget = DefaultThrottleTarget;
         ++LaunchSerial;
         return true;
     }

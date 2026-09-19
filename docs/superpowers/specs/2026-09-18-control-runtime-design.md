@@ -32,7 +32,7 @@ The vehicle is considered stationary below a calibrated enter threshold after hy
 Stationary behavior owns:
 - parking-handbrake latch behavior;
 - heavy steering response representing no power steering;
-- launch preparation and per-launch throttle-dose reset;
+- launch preparation and per-launch throttle-target initialization;
 - normal cockpit manipulation while stopped.
 
 ### MOVING
@@ -51,8 +51,7 @@ LAUNCH is a transient transition state, not a third persistent driving mode.
 
 It starts when a new departure attempt begins from STATIONARY and ends once the vehicle is stably MOVING or the attempt is cancelled/stalled back to STATIONARY.
 
-Each new LAUNCH requires E+wheel throttle dosing again exactly once.
-Speed jitter inside one launch must never retrigger the reset.
+**2026-09-19 CD-848 owner-gate supersession:** each new LAUNCH initializes held-E throttle to 45% exactly once. E+wheel is optional 5% fine adjustment, never a prerequisite for movement. Releasing E commands zero throttle. Speed jitter inside one launch must never retrigger the initialization.
 ## Steering model
 
 Mouse steering remains the default input. Holding Space transfers the mouse to gaze; releasing Space returns it to steering.
@@ -116,14 +115,12 @@ The existing owner grammar remains unchanged:
 - Q+wheel = clutch release-time adjustment;
 - W = brake;
 - W+wheel = brake target/dosing;
-- E = throttle;
-- E+wheel = throttle target/dosing;
+- E = immediate held throttle with a 45% fresh-launch default;
+- E+wheel = optional 5% throttle-target fine adjustment;
 - W+E may coexist;
 - simultaneous Q/W/E wheel ownership priority is E -> W -> Q.
 
-Throttle target must reset for every new LAUNCH from standstill and require new E+wheel dosing.
-
-The reset occurs once per launch event, not every frame, not from low-speed oscillation, and not repeatedly during one held E event.
+On every new LAUNCH from standstill, the held-E throttle target initializes to 45%; wheel input is optional. The initialization occurs once per launch event, not every frame, not from low-speed oscillation, and not repeatedly during one held E event. No E means zero throttle, so this remains manual pedal control rather than auto-throttle.
 
 Pedal application stays continuous and deterministic.
 
@@ -214,7 +211,7 @@ At minimum save/load preserves:
 
 Transient interaction ownership, moving handbrake pull, and an active launch throttle command are not restored as if the player were still holding controls.
 
-A loaded stationary car must require the normal per-launch E+wheel throttle dosing before a new departure.
+A loaded stationary car must be able to depart with the normal held-E 45% launch target without any wheel input; E+wheel may refine that target.
 
 ## Automated verification
 
@@ -222,7 +219,7 @@ Implementation follows TDD. Each behavior is introduced by a failing automation 
 
 Required automated coverage includes:
 - state hysteresis and launch edge detection;
-- one throttle reset per launch;
+- one 45% throttle-target initialization per launch with no zero-throttle/wheel prerequisite;
 - Q/W/E wheel routing priority;
 - stationary heavy steering vs faster moving response;
 - bounded virtual steering cursor and nonlinear curve;
