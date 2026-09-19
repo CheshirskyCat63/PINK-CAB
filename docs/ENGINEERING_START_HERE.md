@@ -82,7 +82,7 @@ Hard rules:
 | `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
 | `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
 | `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
-| `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCab/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
+| `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
 | `vehicle_snapshot_archive` | versioned vehicle save schema + legacy migration adapter | Persistence | `Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
 | `game_persistence` | save/checkpoint/restore orchestration | Persistence | `Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h` | `PinkCab.Persistence` |
 | `world_route` | route search/road graph routing | World | `Source/PinkCab/Public/World/PinkCabRouteService.h` | `PinkCab.World.Routing` |

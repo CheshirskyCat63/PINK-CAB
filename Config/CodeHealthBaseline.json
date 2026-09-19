@@ -45,7 +45,7 @@
     {
       "count": 1,
       "max_value": 16,
-      "path": "Source/PinkCab/Public/Economy/PinkCabFareSettlementService.h",
+      "path": "Source/PinkCabEconomy/Public/Economy/PinkCabFareSettlementService.h",
       "rule": "complexity",
       "symbol": "CommitPaid"
     },
@@ -241,21 +241,21 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Economy/PinkCabEconomyLedger.h",
+      "path": "Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Economy/PinkCabFareSettlementService.h",
+      "path": "Source/PinkCabEconomy/Public/Economy/PinkCabFareSettlementService.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Economy/PinkCabTransaction.h",
+      "path": "Source/PinkCabEconomy/Public/Economy/PinkCabTransaction.h",
       "rule": "public_header_logic",
       "symbol": ""
     },

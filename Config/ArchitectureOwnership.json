@@ -137,8 +137,8 @@
     {
       "id": "economy",
       "owner_domain": "Economy",
-      "public_contract": "Source/PinkCab/Public/Economy/PinkCabEconomyLedger.h",
-      "implementation_root": "Source/PinkCab/Public/Economy/PinkCabEconomyLedger.h",
+      "public_contract": "Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h",
+      "implementation_root": "Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h",
       "test_prefix": "PinkCab.Economy"
     },
     {
