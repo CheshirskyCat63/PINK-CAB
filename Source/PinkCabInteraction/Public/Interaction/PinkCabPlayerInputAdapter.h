@@ -7,7 +7,7 @@
 class APlayerController;
 struct FPinkCabSemanticInputRouter;
 
-class PINKCAB_API FPinkCabPlayerInputAdapter
+class PINKCABINTERACTION_API FPinkCabPlayerInputAdapter
 {
 public:
     FPinkCabPlayerInputSample Capture(

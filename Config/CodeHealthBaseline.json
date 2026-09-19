@@ -290,21 +290,21 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Interaction/PinkCabInteractionModel.h",
+      "path": "Source/PinkCabInteraction/Public/Interaction/PinkCabInteractionModel.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Interaction/PinkCabPhysicalInputConvention.h",
+      "path": "Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Interaction/PinkCabSemanticInputRouter.h",
+      "path": "Source/PinkCabInteraction/Public/Interaction/PinkCabSemanticInputRouter.h",
       "rule": "public_header_logic",
       "symbol": ""
     },

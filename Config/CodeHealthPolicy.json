@@ -32,8 +32,8 @@
   },
   "raw_input": {
     "allowed_prefixes": [
-      "Source/PinkCab/Public/Interaction",
-      "Source/PinkCab/Private/Interaction"
+      "Source/PinkCabInteraction/Public/Interaction",
+      "Source/PinkCabInteraction/Private/Interaction"
     ],
     "patterns": [
       "IsInputKeyDown(",

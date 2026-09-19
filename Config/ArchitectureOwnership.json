@@ -102,15 +102,15 @@
     {
       "id": "device_input_sign",
       "owner_domain": "Interaction",
-      "public_contract": "Source/PinkCab/Public/Interaction/PinkCabPhysicalInputConvention.h",
-      "implementation_root": "Source/PinkCab/Public/Interaction/PinkCabPhysicalInputConvention.h",
+      "public_contract": "Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h",
+      "implementation_root": "Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h",
       "test_prefix": "PinkCab.Vehicle.ControlRuntime"
     },
     {
       "id": "player_input_capture",
       "owner_domain": "Interaction",
-      "public_contract": "Source/PinkCab/Public/Interaction/PinkCabPlayerInputAdapter.h",
-      "implementation_root": "Source/PinkCab/Private/Interaction/PinkCabPlayerInputAdapter.cpp",
+      "public_contract": "Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h",
+      "implementation_root": "Source/PinkCabInteraction/Private/Interaction/PinkCabPlayerInputAdapter.cpp",
       "test_prefix": "PinkCab.Interaction.PlayerInput"
     },
     {
