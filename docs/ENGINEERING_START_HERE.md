@@ -63,9 +63,9 @@ Hard rules:
 
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
-| `passenger_snapshot_state` | passenger snapshot data; persistence codec is external | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h` | `PinkCab.Taxi.PassengerSnapshot` |
+| `passenger_snapshot_state` | passenger snapshot data; persistence codec is external | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h` | `PinkCab.Taxi.PassengerSnapshot` |
 | `vehicle_state_snapshot` | current vehicle health/load runtime snapshot without schema | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleStateSnapshot.h` | `PinkCab.Vehicle.LiveState` |
-| `fare_runtime_state_snapshot` | fare/session/meter/manifest snapshot data without persistence schema | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h` | `PinkCab.Persistence.FareRuntimeSnapshot` |
+| `fare_runtime_state_snapshot` | fare/session/meter/manifest snapshot data without persistence schema | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h` | `PinkCab.Persistence.FareRuntimeSnapshot` |
 | `service_snapshot_state` | service/inventory/build/fuel snapshot data; persistence codec is external | Service | `Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h` | `PinkCab.Service.Snapshot` |
 | `runtime_composition` | possession/runtime wiring and compatibility shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h` | `PinkCab.Runtime.Composition` |
 | `vehicle_visual_presentation` | vehicle exterior/cabin/presentation profile and visual shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabVehicleVisualProfile.h` | `PinkCab.Vehicle.Visual` |
@@ -80,10 +80,10 @@ Hard rules:
 | `device_input_sign` | OS/UE mouse axis -> driver-space sign | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `player_input_capture` | PlayerController/raw device capture -> semantic sample | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h` | `PinkCab.Interaction.PlayerInput` |
 | `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
-| `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
-| `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
+| `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
+| `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
 | `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
-| `vehicle_snapshot_archive` | versioned vehicle save schema + legacy migration adapter | Persistence | `Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
+| `vehicle_snapshot_archive` | versioned vehicle save schema + legacy migration adapter | Persistence | `Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
 | `game_persistence` | save/checkpoint/restore orchestration | Persistence | `Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h` | `PinkCab.Persistence` |
 | `world_route` | route search/road graph routing | World | `Source/PinkCabWorld/Public/World/PinkCabRouteService.h` | `PinkCab.World.Routing` |
 | `traffic` | logical traffic flow/gaps | Traffic | `Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h` | `PinkCab.Traffic` |

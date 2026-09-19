@@ -4,8 +4,8 @@
     {
       "id": "passenger_snapshot_state",
       "owner_domain": "Taxi",
-      "public_contract": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
-      "implementation_root": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
       "test_prefix": "PinkCab.Taxi.PassengerSnapshot"
     },
     {
@@ -18,8 +18,8 @@
     {
       "id": "fare_runtime_state_snapshot",
       "owner_domain": "Taxi",
-      "public_contract": "Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
-      "implementation_root": "Source/PinkCab/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
       "test_prefix": "PinkCab.Persistence.FareRuntimeSnapshot"
     },
     {
@@ -123,15 +123,15 @@
     {
       "id": "fare",
       "owner_domain": "Taxi",
-      "public_contract": "Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h",
-      "implementation_root": "Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h",
       "test_prefix": "PinkCab.Taxi"
     },
     {
       "id": "passenger",
       "owner_domain": "Taxi",
-      "public_contract": "Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h",
-      "implementation_root": "Source/PinkCab/Public/Taxi/PinkCabPassengerRecord.h",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h",
       "test_prefix": "PinkCab.Taxi.Passenger"
     },
     {
@@ -144,8 +144,8 @@
     {
       "id": "vehicle_snapshot_archive",
       "owner_domain": "Persistence",
-      "public_contract": "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h",
-      "implementation_root": "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "public_contract": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "implementation_root": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
       "test_prefix": "PinkCab.Persistence.VehicleSnapshot"
     },
     {

@@ -4,7 +4,7 @@
 #include "Taxi/PinkCabPassengerRegistry.h"
 #include "Taxi/PinkCabPassengerSnapshot.h"
 
-class PINKCAB_API FPinkCabPassengerSnapshotCodec
+class PINKCABPERSISTENCE_API FPinkCabPassengerSnapshotCodec
 {
 public:
     static bool Capture(

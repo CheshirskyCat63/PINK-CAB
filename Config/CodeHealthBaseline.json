@@ -52,35 +52,35 @@
     {
       "count": 1,
       "max_value": 19,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabEconomySnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabEconomySnapshot.h",
       "rule": "complexity",
       "symbol": "Validate"
     },
     {
       "count": 1,
       "max_value": 16,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
       "rule": "complexity",
       "symbol": "Validate"
     },
     {
       "count": 1,
       "max_value": 16,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
       "rule": "complexity",
       "symbol": "ValidateManifest"
     },
     {
       "count": 1,
       "max_value": 49,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
       "rule": "complexity",
       "symbol": "ValidateStateMachine"
     },
     {
       "count": 1,
       "max_value": 38,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
       "rule": "complexity",
       "symbol": "Validate"
     },
@@ -94,7 +94,7 @@
     {
       "count": 1,
       "max_value": 32,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
       "rule": "complexity",
       "symbol": "ValidateRecord"
     },
@@ -136,7 +136,7 @@
     {
       "count": 1,
       "max_value": 278,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
       "rule": "file_loc",
       "symbol": ""
     },
@@ -153,13 +153,6 @@
       "path": "Source/PinkCab/Public/Vehicle/PinkCabL1TraversalState.h",
       "rule": "file_loc",
       "symbol": ""
-    },
-    {
-      "count": 1,
-      "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
-      "rule": "forbidden_dependency",
-      "symbol": "Taxi->Persistence:Persistence/PinkCabPersistedLogicalState.h"
     },
     {
       "count": 1,
@@ -311,14 +304,14 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabCheckpointRing.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabCheckpointRing.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabEconomySnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabEconomySnapshot.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -332,7 +325,7 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabFareRuntimeSnapshotCodec.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -381,7 +374,7 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabSaveHeader.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabSaveHeader.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -395,7 +388,7 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -409,14 +402,14 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabWorkdaySessionState.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabWorkdaySessionState.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Persistence/PinkCabWorldSessionSnapshot.h",
+      "path": "Source/PinkCabPersistence/Public/Persistence/PinkCabWorldSessionSnapshot.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
@@ -500,98 +493,98 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabConductorServiceHooks.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabConductorServiceHooks.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabFareLoopCoordinator.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabFarePassengerManifest.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabFarePassengerManifest.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabFarePassengerPresentation.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabFarePassengerPresentation.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabFareSession.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareSession.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabNeuralContactState.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabNeuralContactState.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabOrder.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabOrder.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerHistory.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerHistory.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerIdentity.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerIdentity.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerRecordTypes.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecordTypes.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerRegistry.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRegistry.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerTemplate.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerTemplate.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Taxi/PinkCabTaximeter.h",
+      "path": "Source/PinkCabTaxi/Public/Taxi/PinkCabTaximeter.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
