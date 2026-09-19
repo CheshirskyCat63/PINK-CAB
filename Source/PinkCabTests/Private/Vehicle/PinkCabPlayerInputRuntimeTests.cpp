@@ -98,6 +98,10 @@ public:
             }
             Test->TestTrue(TEXT("PlayerController stores real Q held state after a frame"),
                 PC->IsInputKeyDown(EKeys::Q));
+            Test->TestEqual(TEXT("Q stages the right hand over the gearbox"),
+                Pawn->GetCockpitInteraction()->GetCurrentTargetId(), FName(TEXT("Gearbox")));
+            Test->TestFalse(TEXT("Q alone never grips gearbox so steering remains available"),
+                Pawn->GetCockpitInteraction()->IsGripActive());
             Test->TestEqual(TEXT("engine stays running with clutch disengaged"),
                 Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
 
