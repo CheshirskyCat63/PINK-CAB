@@ -157,7 +157,7 @@ Build/commit; UE/Chaos/PINK CAB profile versions; total mass/fuel/occupants; spe
 
 ## 2026-09-18 release-matrix overlay
 
-The canonical control/mechanics release checks `QA-01..QA-20` are defined in [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](../PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md). They include steering sign/FPS, 45% held-E launch initialization with optional E+wheel fine adjustment, wheel-recipient routing, continuous half-clutch, H-gate/N topology, requested-vs-engaged refusal behavior, analog handbrake, no hidden assist, stall/restart, drivetrain-damage persistence and the 30-minute normal-driving owner gate.
+The canonical control/mechanics release checks `QA-01..QA-20` are defined in [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](../PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md). They include steering sign/FPS, per-launch E+wheel reset, wheel-recipient routing, continuous half-clutch, H-gate/N topology, requested-vs-engaged refusal behavior, analog handbrake, no hidden assist, stall/restart, drivetrain-damage persistence and the 30-minute normal-driving owner gate.
 
 All are **NOT RUN** until exact executable evidence is captured.
 

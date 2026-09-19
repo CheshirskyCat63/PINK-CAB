@@ -252,7 +252,7 @@ current_canon:
     clutch_release_numeric_range_status: RECONCILE_CODE_VS_DOCS_NOT_OWNER_LOCKED_2026_09_18
     clutch_release_code_observed_range_seconds: [0.15, 2.50]
     clutch_release_legacy_doc_range_seconds: [0.20, 1.20]
-    throttle_wheel_semantics: optional_fine_adjustment_from_45_percent_launch_default
+    throttle_wheel_semantics: doses_target_required_again_each_new_launch
     brake_wheel_semantics: doses_target
     pedal_wheel_overlap_priority: [E, W, Q]
     pedal_wheel_single_recipient: true

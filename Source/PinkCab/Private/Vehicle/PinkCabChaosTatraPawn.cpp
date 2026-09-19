@@ -1153,7 +1153,10 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         && ((bThrottleHeld && !bThrottleHeldLastFrame)
             || (bReturnedToStationary && bThrottleHeld)))
     {
-        LaunchController.BeginLaunchAttempt();
+        if (LaunchController.BeginLaunchAttempt())
+        {
+            SmoothedThrottle = 0.0f;
+        }
     }
 
     const auto IsActionHeld = [this, PC](const EPinkCabSemanticAction Action)

@@ -17,8 +17,7 @@ This file mirrors the owner-approved 2026-09-18 release matrix into Git. It does
 | Hold Space | Gaze; releasing Space returns mouse to steering |
 | Q | Clutch |
 | Q + wheel | Adjust clutch release time/speed |
-| E | Hold throttle; a fresh standstill launch starts at the playable **45%** pedal target |
-| E + wheel | Optional fine adjustment of the held throttle target in 5% steps |
+| E + wheel | Dose throttle target; **required again for every new launch from standstill** |
 | W + wheel | Dose brake target |
 | W + E | Throttle and brake may coexist |
 | 1 / 2 / 3 / 4 | Quick recall: indicators / horn / gearbox / handbrake |
@@ -29,8 +28,8 @@ This file mirrors the owner-approved 2026-09-18 release matrix into Git. It does
 Hard rules:
 
 - quick recall, gaze and grip never actuate the control by themselves;
-- throttle-by-wheel is optional fine adjustment; it is never required to make the car move;
-- each new standstill launch initializes the held-E throttle target to 45% exactly once; it never resets the target to zero;
+- throttle-by-wheel on every new launch is a required mechanic, **not a defect**;
+- the launch reset occurs exactly once per new launch event, not every frame and not from speed jitter during one held E event;
 - no auto-throttle;
 - no auto-rev-match;
 - no auto-countersteer;
@@ -128,7 +127,7 @@ These are implementation tasks/findings, not runtime proof:
 - explicit steering-sign inversion exists in the Chaos provider path; trace the full sign chain and fix only the wrong conversion;
 - current steering gain changes strongly with speed; measure full transfer behavior and FPS sensitivity;
 - mouse delta clamp/interpolation may lose or accumulate fast motion; verify at 30/60/120 FPS;
-- per-launch throttle initialization is required at 45%, never 0%; verify exactly one initialization per new launch;
+- per-launch throttle target reset is required; verify exactly one reset per new launch;
 - current clutch bridge behaves like a binary threshold; replace with continuous torque transfer;
 - current target gear propagation is too immediate; separate requested vs engaged state;
 - retained ShiftBy/wheel shifting must not bypass the common engagement validator;
@@ -146,7 +145,7 @@ These are implementation tasks/findings, not runtime proof:
 No duplicate control/mechanics Jira task is created. Work is distributed through existing owners:
 
 - `CD-609` floor shifter / H-gate;
-- `CD-611` Q/W/E wheel routing; its old mandatory per-launch throttle-wheel dosing rule is superseded by the CD-848 owner gate decision of 2026-09-19;
+- `CD-611` Q/W/E wheel dosing and per-launch throttle reset;
 - `CD-643` H-gate topology / engagement validation;
 - `CD-644` clutch/load synchronization and deterministic engagement;
 - `CD-645` transmission/control telemetry + regression;
@@ -173,8 +172,8 @@ All checks below are **NOT RUN** until executable evidence is captured on an exa
 | QA-02 | Reverse steering geometry is physically consistent; no sign flip |
 | QA-03 | Same steering trace at 30/60/120 FPS stays within declared tolerance |
 | QA-04 | 20 fast lane changes show no lost/accumulated steering input |
-| QA-05 | 20 new launches move with held E alone from the 45% default; E+wheel remains optional fine adjustment and releasing E gives zero throttle |
-| QA-06 | Speed jitter during one launch event does not repeatedly reinitialize the 45% throttle target |
+| QA-05 | 20 new launches each require E+wheel dosing |
+| QA-06 | Speed jitter during one launch event does not repeatedly reset throttle |
 | QA-07 | Q+E+wheel changes throttle only |
 | QA-08 | W+E coexist; wheel has one clear recipient |
 | QA-09 | Clutch release profile follows selected release timing |

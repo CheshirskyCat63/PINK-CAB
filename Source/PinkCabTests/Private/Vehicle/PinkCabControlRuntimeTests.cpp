@@ -62,19 +62,14 @@ bool FPinkCabLaunchEdgeTest::RunTest(const FString& Parameters)
 {
     FPinkCabLaunchController Launch;
 
-    FPinkCabPedalDosingController Pedals;
-
     TestTrue(TEXT("first E press begins first launch"), Launch.BeginLaunchAttempt());
     TestEqual(TEXT("launch serial increments once"), Launch.GetLaunchSerial(), 1u);
-    TestFalse(TEXT("fresh launch does not require wheel dosing"), Launch.RequiresThrottleDose());
-    TestEqual(TEXT("fresh launch starts from the playable 45 percent throttle target"),
-        Launch.GetThrottleTarget(), 0.45f);
-    TestEqual(TEXT("holding E immediately produces non-zero throttle without wheel input"),
-        Pedals.ResolveTargets(false, true, Launch.GetThrottleTarget()).Throttle, 0.45f);
+    TestTrue(TEXT("fresh launch requires throttle wheel dose"), Launch.RequiresThrottleDose());
+    TestEqual(TEXT("fresh launch target is zero"), Launch.GetThrottleTarget(), 0.0f);
 
-    TestTrue(TEXT("E+wheel remains optional fine throttle adjustment"), Launch.ApplyThrottleDoseSteps(1));
-    TestEqual(TEXT("one wheel step raises 45 percent throttle to 50 percent"),
-        Launch.GetThrottleTarget(), 0.50f);
+    TestTrue(TEXT("E+wheel dose is accepted"), Launch.ApplyThrottleDoseSteps(3));
+    TestFalse(TEXT("dose clears required flag"), Launch.RequiresThrottleDose());
+    TestTrue(TEXT("dose creates positive target"), Launch.GetThrottleTarget() > 0.0f);
 
     TestFalse(TEXT("held/repeated E cannot begin same launch again"), Launch.BeginLaunchAttempt());
     TestEqual(TEXT("serial remains one during same launch"), Launch.GetLaunchSerial(), 1u);
@@ -84,9 +79,8 @@ bool FPinkCabLaunchEdgeTest::RunTest(const FString& Parameters)
     Launch.NotifyMotionMode(EPinkCabVehicleMotionMode::Stationary);
     TestTrue(TEXT("new E press after return to standstill begins new launch"), Launch.BeginLaunchAttempt());
     TestEqual(TEXT("new standstill departure gets new serial"), Launch.GetLaunchSerial(), 2u);
-    TestFalse(TEXT("new launch still does not require wheel dosing"), Launch.RequiresThrottleDose());
-    TestEqual(TEXT("new launch resets to the playable 45 percent default, never zero"),
-        Launch.GetThrottleTarget(), 0.45f);
+    TestTrue(TEXT("new launch requires fresh throttle dose again"), Launch.RequiresThrottleDose());
+    TestEqual(TEXT("new launch resets target exactly once"), Launch.GetThrottleTarget(), 0.0f);
 
     const uint32 SerialBeforeJitter = Launch.GetLaunchSerial();
     for (int32 Index = 0; Index < 30; ++Index)
