@@ -3,58 +3,22 @@
 #include "CoreMinimal.h"
 #include "Vehicle/PinkCabVehicleHitEvent.h"
 
-struct FPinkCabVehicleDamageZoneSpec
+struct PINKCABVEHICLE_API FPinkCabVehicleDamageZoneSpec
 {
     FName ZoneId = NAME_None;
     EPinkCabVehicleHealthChannel Channel = EPinkCabVehicleHealthChannel::CosmeticBody;
     float FunctionalThreshold = 1.0f;
 
-    bool IsValid() const
-    {
-        return !ZoneId.IsNone()
-            && Channel != EPinkCabVehicleHealthChannel::Count
-            && Channel != EPinkCabVehicleHealthChannel::CosmeticBody
-            && FMath::IsFinite(FunctionalThreshold)
-            && FunctionalThreshold >= 0.0f
-            && FunctionalThreshold <= 1.0f;
-    }
+    bool IsValid() const;
 };
 
-struct FPinkCabVehicleDamageProfile
+struct PINKCABVEHICLE_API FPinkCabVehicleDamageProfile
 {
-    explicit FPinkCabVehicleDamageProfile(FName InProfileId = NAME_None)
-        : ProfileId(InProfileId)
-    {
-    }
+    explicit FPinkCabVehicleDamageProfile(FName InProfileId = NAME_None);
 
-    FName GetProfileId() const { return ProfileId; }
-    bool TryAddZone(FName ZoneId, EPinkCabVehicleHealthChannel Channel, float FunctionalThreshold)
-    {
-        FPinkCabVehicleDamageZoneSpec Spec{ZoneId, Channel, FunctionalThreshold};
-        if (!Spec.IsValid()) return false;
-        for (const FPinkCabVehicleDamageZoneSpec& Existing : Zones)
-        {
-            if (Existing.ZoneId == ZoneId) return false;
-        }
-        Zones.Add(Spec);
-        return true;
-    }
-
-    bool ResolveFunctionalHit(FName ZoneId, float CollisionSeverity, FPinkCabVehicleHitEvent& OutEvent) const
-    {
-        if (!FMath::IsFinite(CollisionSeverity)) return false;
-        for (const FPinkCabVehicleDamageZoneSpec& Spec : Zones)
-        {
-            if (Spec.ZoneId != ZoneId) continue;
-            if (CollisionSeverity <= Spec.FunctionalThreshold) return false;
-            OutEvent = FPinkCabVehicleHitEvent(
-                Spec.Channel,
-                FMath::Clamp(CollisionSeverity, 0.0f, 1.0f),
-                false);
-            return true;
-        }
-        return false;
-    }
+    FName GetProfileId() const;
+    bool TryAddZone(FName ZoneId, EPinkCabVehicleHealthChannel Channel, float FunctionalThreshold);
+    bool ResolveFunctionalHit(FName ZoneId, float CollisionSeverity, FPinkCabVehicleHitEvent& OutEvent) const;
 
 private:
     FName ProfileId = NAME_None;

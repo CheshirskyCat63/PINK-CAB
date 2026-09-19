@@ -16,7 +16,7 @@ enum class EPinkCabMeterState : uint8
     Stopped
 };
 
-struct FPinkCabCockpitState
+struct PINKCABVEHICLE_API FPinkCabCockpitState
 {
     static constexpr float ClutchReleaseMinSeconds = 0.20f;
     static constexpr float ClutchReleaseMaxSeconds = 1.20f;
@@ -24,89 +24,36 @@ struct FPinkCabCockpitState
     static constexpr float ClutchReleaseStepSeconds =
         (ClutchReleaseMaxSeconds - ClutchReleaseMinSeconds) / static_cast<float>(ClutchReleaseIntervals);
 
-    EPinkCabIgnitionState GetIgnitionState() const { return IgnitionState; }
-    int32 GetSelectedGear() const { return SelectedGear; }
-    float GetClutchReleaseSeconds() const { return ClutchReleaseSeconds; }
-    float GetHandbrakeAmount() const { return HandbrakeAmount; }
-    bool IsHandbrakeEngaged() const { return HandbrakeAmount > KINDA_SMALL_NUMBER; }
-    bool IsPassengerDoorOpen() const { return bPassengerDoorOpen; }
-    EPinkCabMeterState GetMeterState() const { return MeterState; }
-    int32 GetTurnSignalDirection() const { return TurnSignalDirection; }
-    bool IsHornActive() const { return bHornActive; }
-    int32 GetLightMode() const { return LightMode; }
-    int32 GetWiperMode() const { return WiperMode; }
-    bool IsWasherActive() const { return bWasherActive; }
+    EPinkCabIgnitionState GetIgnitionState() const;
+    int32 GetSelectedGear() const;
+    float GetClutchReleaseSeconds() const;
+    float GetHandbrakeAmount() const;
+    bool IsHandbrakeEngaged() const;
+    bool IsPassengerDoorOpen() const;
+    EPinkCabMeterState GetMeterState() const;
+    int32 GetTurnSignalDirection() const;
+    bool IsHornActive() const;
+    int32 GetLightMode() const;
+    int32 GetWiperMode() const;
+    bool IsWasherActive() const;
 
-    bool StartEngine()
-    {
-        if (IgnitionState == EPinkCabIgnitionState::Running)
-        {
-            return false;
-        }
-        IgnitionState = EPinkCabIgnitionState::Running;
-        return true;
-    }
-
-    void StopEngine() { IgnitionState = EPinkCabIgnitionState::Off; }
-
-    void StallEngine()
-    {
-        if (IgnitionState == EPinkCabIgnitionState::Running)
-        {
-            IgnitionState = EPinkCabIgnitionState::Stalled;
-        }
-    }
-
-    int32 ShiftBy(int32 Delta)
-    {
-        SelectedGear = FMath::Clamp(SelectedGear + Delta, -1, 5);
-        return SelectedGear;
-    }
-
-    void SetSelectedGear(int32 Gear)
-    {
-        SelectedGear = FMath::Clamp(Gear, -1, 5);
-    }
-
-    float AdjustClutchReleaseSpeed(int32 SignedSteps)
-    {
-        ClutchReleaseSeconds = FMath::Clamp(
-            ClutchReleaseSeconds + static_cast<float>(SignedSteps) * ClutchReleaseStepSeconds,
-            ClutchReleaseMinSeconds,
-            ClutchReleaseMaxSeconds);
-        return ClutchReleaseSeconds;
-    }
-
-    void SetHandbrakeAmount(float Amount) { HandbrakeAmount = FMath::Clamp(Amount, 0.0f, 1.0f); }
-    void SetHandbrakeEngaged(bool bEngaged) { SetHandbrakeAmount(bEngaged ? 1.0f : 0.0f); }
-    void SetPassengerDoorOpen(bool bOpen) { bPassengerDoorOpen = bOpen; }
-    void SetTurnSignalDirection(int32 Direction) { TurnSignalDirection = FMath::Clamp(Direction, -1, 1); }
-    void SetHornActive(bool bActive) { bHornActive = bActive; }
-    void SetLightMode(int32 Mode) { LightMode = FMath::Clamp(Mode, 0, 2); }
-    void SetWiperMode(int32 Mode) { WiperMode = FMath::Clamp(Mode, 0, 2); }
-    void SetWasherActive(bool bActive) { bWasherActive = bActive; }
-
-    bool StartMeter()
-    {
-        if (MeterState == EPinkCabMeterState::Running)
-        {
-            return false;
-        }
-        MeterState = EPinkCabMeterState::Running;
-        return true;
-    }
-
-    bool StopMeter()
-    {
-        if (MeterState != EPinkCabMeterState::Running)
-        {
-            return false;
-        }
-        MeterState = EPinkCabMeterState::Stopped;
-        return true;
-    }
-
-    void ResetMeter() { MeterState = EPinkCabMeterState::Off; }
+    bool StartEngine();
+    void StopEngine();
+    void StallEngine();
+    int32 ShiftBy(int32 Delta);
+    void SetSelectedGear(int32 Gear);
+    float AdjustClutchReleaseSpeed(int32 SignedSteps);
+    void SetHandbrakeAmount(float Amount);
+    void SetHandbrakeEngaged(bool bEngaged);
+    void SetPassengerDoorOpen(bool bOpen);
+    void SetTurnSignalDirection(int32 Direction);
+    void SetHornActive(bool bActive);
+    void SetLightMode(int32 Mode);
+    void SetWiperMode(int32 Mode);
+    void SetWasherActive(bool bActive);
+    bool StartMeter();
+    bool StopMeter();
+    void ResetMeter();
 
 private:
     EPinkCabIgnitionState IgnitionState = EPinkCabIgnitionState::Off;

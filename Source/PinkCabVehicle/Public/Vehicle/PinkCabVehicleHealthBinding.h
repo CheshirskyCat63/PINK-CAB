@@ -2,34 +2,14 @@
 
 #include "Vehicle/PinkCabVehicleHealthState.h"
 
-class FPinkCabVehicleHealthBinding
+class PINKCABVEHICLE_API FPinkCabVehicleHealthBinding
 {
 public:
-    const FPinkCabVehicleHealthState& Get() const
-    {
-        return External ? *External : Fallback;
-    }
-
-    FPinkCabVehicleHealthState& GetMutable()
-    {
-        return External ? *External : Fallback;
-    }
-
-    void Bind(FPinkCabVehicleHealthState& InExternal)
-    {
-        External = &InExternal;
-    }
-
-    void UnbindPreservingState()
-    {
-        if (External)
-        {
-            Fallback = *External;
-            External = nullptr;
-        }
-    }
-
-    bool IsBound() const { return External != nullptr; }
+    const FPinkCabVehicleHealthState& Get() const;
+    FPinkCabVehicleHealthState& GetMutable();
+    void Bind(FPinkCabVehicleHealthState& InExternal);
+    void UnbindPreservingState();
+    bool IsBound() const;
 
 private:
     FPinkCabVehicleHealthState Fallback;

@@ -17,35 +17,56 @@ bool HasAuthority(const EPinkCabPhysicalParameterAuthority Authority)
     return Authority != EPinkCabPhysicalParameterAuthority::Unspecified;
 }
 
+template <int32 N>
+bool AllAuthoritiesSpecified(
+    const EPinkCabPhysicalParameterAuthority (&Authorities)[N])
+{
+    for (const EPinkCabPhysicalParameterAuthority Authority : Authorities)
+    {
+        if (!HasAuthority(Authority))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool HasWheelProvenance(const FPinkCabChaosWheelPhysicalProfile& W)
 {
-    return HasAuthority(W.WheelRadiusCm.Authority)
-        && HasAuthority(W.WheelWidthCm.Authority)
-        && HasAuthority(W.WheelMassKg.Authority)
-        && HasAuthority(W.CorneringStiffness.Authority)
-        && HasAuthority(W.FrictionForceMultiplier.Authority)
-        && HasAuthority(W.SideSlipModifier.Authority);
+    const EPinkCabPhysicalParameterAuthority Authorities[] = {
+        W.WheelRadiusCm.Authority,
+        W.WheelWidthCm.Authority,
+        W.WheelMassKg.Authority,
+        W.CorneringStiffness.Authority,
+        W.FrictionForceMultiplier.Authority,
+        W.SideSlipModifier.Authority,
+    };
+    return AllAuthoritiesSpecified(Authorities);
 }
+
 bool HasWheelProvenanceTail(const FPinkCabChaosWheelPhysicalProfile& W)
 {
-    return HasAuthority(W.SlipThreshold.Authority)
-        && HasAuthority(W.SkidThreshold.Authority)
-        && HasAuthority(W.MaxSteerAngleDeg.Authority)
-        && HasAuthority(W.MaxBrakeTorqueNm.Authority)
-        && HasAuthority(W.MaxHandBrakeTorqueNm.Authority)
-        && HasAuthority(W.SpringRate.Authority)
-        && HasAuthority(W.SpringPreload.Authority)
-        && HasAuthority(W.SuspensionMaxRaiseCm.Authority)
-        && HasAuthority(W.SuspensionMaxDropCm.Authority)
-        && HasAuthority(W.SuspensionDampingRatio.Authority)
-        && HasAuthority(W.WheelLoadRatio.Authority)
-        && HasAuthority(W.RollbarScaling.Authority)
-        && HasAuthority(W.bABSEnabled.Authority)
-        && HasAuthority(W.bTractionControlEnabled.Authority)
-        && HasAuthority(W.bAffectedBySteering.Authority)
-        && HasAuthority(W.bAffectedByEngine.Authority)
-        && HasAuthority(W.bAffectedByBrake.Authority)
-        && HasAuthority(W.bAffectedByHandbrake.Authority);
+    const EPinkCabPhysicalParameterAuthority Authorities[] = {
+        W.SlipThreshold.Authority,
+        W.SkidThreshold.Authority,
+        W.MaxSteerAngleDeg.Authority,
+        W.MaxBrakeTorqueNm.Authority,
+        W.MaxHandBrakeTorqueNm.Authority,
+        W.SpringRate.Authority,
+        W.SpringPreload.Authority,
+        W.SuspensionMaxRaiseCm.Authority,
+        W.SuspensionMaxDropCm.Authority,
+        W.SuspensionDampingRatio.Authority,
+        W.WheelLoadRatio.Authority,
+        W.RollbarScaling.Authority,
+        W.bABSEnabled.Authority,
+        W.bTractionControlEnabled.Authority,
+        W.bAffectedBySteering.Authority,
+        W.bAffectedByEngine.Authority,
+        W.bAffectedByBrake.Authority,
+        W.bAffectedByHandbrake.Authority,
+    };
+    return AllAuthoritiesSpecified(Authorities);
 }
 
 float VariantFriction(
@@ -138,24 +159,27 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
 
 bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
 {
-    return HasAuthority(ReferenceMassKg.Authority)
-        && HasAuthority(WheelbaseMm.Authority)
-        && HasAuthority(FrontTrackMm.Authority)
-        && HasAuthority(RearTrackMm.Authority)
-        && HasAuthority(MaxPowerHp.Authority)
-        && HasAuthority(MaxTorqueNm.Authority)
-        && HasAuthority(TerminalTargetKmh.Authority)
-        && HasAuthority(bRearWheelDrive.Authority)
-        && HasAuthority(EngineMaxRpm.Authority)
-        && HasAuthority(EngineIdleRpm.Authority)
-        && HasAuthority(EngineBrakeEffect.Authority)
-        && HasAuthority(NormalizedTorqueCurve.Authority)
-        && HasAuthority(bUseAutomaticGears.Authority)
-        && HasAuthority(bUseAutoReverse.Authority)
-        && HasAuthority(FinalDriveRatio.Authority)
-        && HasAuthority(ForwardGearRatios.Authority)
-        && HasAuthority(ReverseGearRatios.Authority)
-        && HasAuthority(SteeringAngleRatio.Authority)
+    const EPinkCabPhysicalParameterAuthority Authorities[] = {
+        ReferenceMassKg.Authority,
+        WheelbaseMm.Authority,
+        FrontTrackMm.Authority,
+        RearTrackMm.Authority,
+        MaxPowerHp.Authority,
+        MaxTorqueNm.Authority,
+        TerminalTargetKmh.Authority,
+        bRearWheelDrive.Authority,
+        EngineMaxRpm.Authority,
+        EngineIdleRpm.Authority,
+        EngineBrakeEffect.Authority,
+        NormalizedTorqueCurve.Authority,
+        bUseAutomaticGears.Authority,
+        bUseAutoReverse.Authority,
+        FinalDriveRatio.Authority,
+        ForwardGearRatios.Authority,
+        ReverseGearRatios.Authority,
+        SteeringAngleRatio.Authority,
+    };
+    return AllAuthoritiesSpecified(Authorities)
         && HasWheelProvenance(FrontWheel)
         && HasWheelProvenanceTail(FrontWheel)
         && HasWheelProvenance(RearWheel)

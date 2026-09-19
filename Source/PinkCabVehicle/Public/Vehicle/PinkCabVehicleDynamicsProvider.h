@@ -17,46 +17,24 @@ enum class EPinkCabMechanicalClutchCapability : uint8
     Native
 };
 
-class IPinkCabVehicleDynamicsProvider
+class PINKCABVEHICLE_API IPinkCabVehicleDynamicsProvider
 {
 public:
-    virtual ~IPinkCabVehicleDynamicsProvider() = default;
+    virtual ~IPinkCabVehicleDynamicsProvider();
 
-    // Sole gameplay-frame write seam for vehicle dynamics. Engine-specific
-    // steering signs, pedal mapping and wheel torque writes stay behind it.
     virtual bool ApplyControls(const FPinkCabVehicleControlState& Controls) = 0;
-
-    // Read-only normalized telemetry seam; never mutates engine state.
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const = 0;
-    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const
-    {
-        return EPinkCabMechanicalClutchCapability::Unsupported;
-    }
+    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const;
 };
 
-class FPinkCabVehicleDynamicsProviderHandle
+class PINKCABVEHICLE_API FPinkCabVehicleDynamicsProviderHandle
 {
 public:
-    explicit FPinkCabVehicleDynamicsProviderHandle(IPinkCabVehicleDynamicsProvider* InProvider = nullptr)
-        : Provider(InProvider)
-    {
-    }
+    explicit FPinkCabVehicleDynamicsProviderHandle(IPinkCabVehicleDynamicsProvider* InProvider = nullptr);
 
-    EPinkCabVehicleDynamicsProviderState GetState() const
-    {
-        return Provider ? EPinkCabVehicleDynamicsProviderState::Ready
-                        : EPinkCabVehicleDynamicsProviderState::NoProvider;
-    }
-
-    bool ApplyControls(const FPinkCabVehicleControlState& Controls)
-    {
-        return Provider ? Provider->ApplyControls(Controls) : false;
-    }
-
-    bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const
-    {
-        return Provider ? Provider->ReadTelemetry(OutTelemetry) : false;
-    }
+    EPinkCabVehicleDynamicsProviderState GetState() const;
+    bool ApplyControls(const FPinkCabVehicleControlState& Controls);
+    bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const;
 
 private:
     IPinkCabVehicleDynamicsProvider* Provider = nullptr;
