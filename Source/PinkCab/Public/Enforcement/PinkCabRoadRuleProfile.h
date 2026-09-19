@@ -13,7 +13,7 @@ enum class EPinkCabRoadRuleKind : uint8
     TransitRestriction
 };
 
-struct FPinkCabRoadRuleDefinition
+struct PINKCAB_API FPinkCabRoadRuleDefinition
 {
     EPinkCabRoadRuleKind Kind = EPinkCabRoadRuleKind::SpeedLimit;
     FName TypeId = NAME_None;
@@ -22,19 +22,10 @@ struct FPinkCabRoadRuleDefinition
     int32 ReputationDelta = 0;
     float BaseSeverity = 0.0f;
 
-    bool IsValid() const
-    {
-        if (TypeId == NAME_None || FineAmountMinor < 0
-            || BaseSeverity < 0.0f || BaseSeverity > 1.0f)
-        {
-            return false;
-        }
-        return Kind != EPinkCabRoadRuleKind::SpeedLimit
-            || (FMath::IsFinite(SpeedLimitCmPerSec) && SpeedLimitCmPerSec > 0.0);
-    }
+    bool IsValid() const;
 };
 
-struct FPinkCabRoadObservation
+struct PINKCAB_API FPinkCabRoadObservation
 {
     FString ObservationKey;
     FPinkCabLaneId LaneId;
@@ -47,70 +38,27 @@ struct FPinkCabRoadObservation
     bool bParkingViolation = false;
     bool bTransitViolation = false;
 
-    bool IsValid() const
-    {
-        return !ObservationKey.TrimStartAndEnd().IsEmpty()
-            && LaneId.IsValid() && CityLocationId.IsValid() && VehicleId.IsValid()
-            && FMath::IsFinite(SpeedCmPerSec) && SpeedCmPerSec >= 0.0;
-    }
+    bool IsValid() const;
 };
 
-class FPinkCabRoadRuleProfile
+class PINKCAB_API FPinkCabRoadRuleProfile
 {
 public:
-    bool TrySetRule(const FPinkCabLaneId& LaneId, const FPinkCabRoadRuleDefinition& Rule)
-    {
-        if (!LaneId.IsValid() || !Rule.IsValid())
-        {
-            return false;
-        }
-        const FString TypeKey = Rule.TypeId.ToString();
-        if (const FPinkCabRoadRuleDefinition* ExistingType = RulesByType.Find(TypeKey))
-        {
-            if (ExistingType->FineAmountMinor != Rule.FineAmountMinor
-                || ExistingType->ReputationDelta != Rule.ReputationDelta)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            RulesByType.Add(TypeKey, Rule);
-        }
-        RulesByLaneKind.Add(MakeKey(LaneId, Rule.Kind), Rule);
-        return true;
-    }
-
+    bool TrySetRule(
+        const FPinkCabLaneId& LaneId,
+        const FPinkCabRoadRuleDefinition& Rule);
     bool TryGetRule(
         const FPinkCabLaneId& LaneId,
         EPinkCabRoadRuleKind Kind,
-        FPinkCabRoadRuleDefinition& OutRule) const
-    {
-        const FPinkCabRoadRuleDefinition* Found = RulesByLaneKind.Find(MakeKey(LaneId, Kind));
-        if (!Found)
-        {
-            return false;
-        }
-        OutRule = *Found;
-        return true;
-    }
-
-    bool TryGetRuleByType(FName TypeId, FPinkCabRoadRuleDefinition& OutRule) const
-    {
-        const FPinkCabRoadRuleDefinition* Found = RulesByType.Find(TypeId.ToString());
-        if (!Found)
-        {
-            return false;
-        }
-        OutRule = *Found;
-        return true;
-    }
+        FPinkCabRoadRuleDefinition& OutRule) const;
+    bool TryGetRuleByType(
+        FName TypeId,
+        FPinkCabRoadRuleDefinition& OutRule) const;
 
 private:
-    static FString MakeKey(const FPinkCabLaneId& LaneId, EPinkCabRoadRuleKind Kind)
-    {
-        return FString::Printf(TEXT("%s|%d"), *LaneId.Serialize(), static_cast<int32>(Kind));
-    }
+    static FString MakeKey(
+        const FPinkCabLaneId& LaneId,
+        EPinkCabRoadRuleKind Kind);
 
     TMap<FString, FPinkCabRoadRuleDefinition> RulesByLaneKind;
     TMap<FString, FPinkCabRoadRuleDefinition> RulesByType;

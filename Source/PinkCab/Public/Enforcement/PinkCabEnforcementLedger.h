@@ -22,57 +22,35 @@ struct FPinkCabEnforcementRule
     int32 ReputationDelta = 0;
 };
 
-class FPinkCabEnforcementRuleProfile
+class PINKCAB_API FPinkCabEnforcementRuleProfile
 {
 public:
-    void SetRule(FName TypeId, const FPinkCabEnforcementRule& Rule)
-    {
-        if (TypeId != NAME_None) Rules.Add(TypeId, Rule);
-    }
-    bool TryGetRule(FName TypeId, FPinkCabEnforcementRule& OutRule) const
-    {
-        const FPinkCabEnforcementRule* Found = Rules.Find(TypeId);
-        if (!Found) return false;
-        OutRule = *Found;
-        return true;
-    }
+    void SetRule(
+        FName TypeId,
+        const FPinkCabEnforcementRule& Rule);
+    bool TryGetRule(
+        FName TypeId,
+        FPinkCabEnforcementRule& OutRule) const;
 
 private:
     TMap<FName, FPinkCabEnforcementRule> Rules;
 };
 
-class FPinkCabEnforcementLedger
+class PINKCAB_API FPinkCabEnforcementLedger
 {
 public:
-    explicit FPinkCabEnforcementLedger(int32 InRecentCapacity)
-        : RecentCapacity(FMath::Max(1, InRecentCapacity))
-    {
-    }
+    explicit FPinkCabEnforcementLedger(int32 InRecentCapacity);
 
-    bool Record(const FPinkCabEnforcementEvent& Event, int32 ReputationDelta)
-    {
-        if (!Event.IsValid() || RecordedEventIds.Contains(Event.EventId.Serialize())) return false;
-        RecordedEventIds.Add(Event.EventId.Serialize());
-        RecentEvents.Add(Event);
-        while (RecentEvents.Num() > RecentCapacity) RecentEvents.RemoveAt(0);
-        ++TotalEventCount;
-        ReputationScore += ReputationDelta;
-        return true;
-    }
-    int32 GetRecentCount() const { return RecentEvents.Num(); }
-    int32 GetTotalEventCount() const { return TotalEventCount; }
-    int32 GetReputationScore() const { return ReputationScore; }
-    bool HasRecordedEvent(const FPinkCabStableId& EventId) const
-    {
-        return EventId.IsValid() && RecordedEventIds.Contains(EventId.Serialize());
-    }
-
-    EPinkCabReputationBand ResolveBand(const FPinkCabReputationBandPolicy& Policy) const
-    {
-        if (ReputationScore >= Policy.CleanMinimum) return EPinkCabReputationBand::Clean;
-        if (ReputationScore >= Policy.WatchMinimum) return EPinkCabReputationBand::Watch;
-        return EPinkCabReputationBand::Problem;
-    }
+    bool Record(
+        const FPinkCabEnforcementEvent& Event,
+        int32 ReputationDelta);
+    int32 GetRecentCount() const;
+    int32 GetTotalEventCount() const;
+    int32 GetReputationScore() const;
+    bool HasRecordedEvent(
+        const FPinkCabStableId& EventId) const;
+    EPinkCabReputationBand ResolveBand(
+        const FPinkCabReputationBandPolicy& Policy) const;
 
 private:
     int32 RecentCapacity = 1;
