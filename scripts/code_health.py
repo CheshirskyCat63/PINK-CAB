@@ -16,6 +16,13 @@ FUNCTION_RE = re.compile(
     r"(?P<sig>[^#\n;{}]+?\b(?P<name>[A-Za-z_~][\w:~]*)\s*\([^;{}]*\)\s*"
     r"(?:const\s*)?(?:noexcept\s*)?(?:override\s*)?(?:final\s*)?)\{"
 )
+BUILD_DEP_RANGE_RE = re.compile(
+    r"(?s)(?:Public|Private)DependencyModuleNames\.AddRange\s*\(.*?\{(?P<body>.*?)\}\s*\)\s*;"
+)
+BUILD_DEP_ADD_RE = re.compile(
+    r'(?:Public|Private)DependencyModuleNames\.Add\s*\(\s*"([^"]+)"\s*\)'
+)
+QUOTED_STRING_RE = re.compile(r'"([^"]+)"')
 
 
 def _posix(path: Path) -> str:
@@ -206,6 +213,88 @@ def validate_ownership_manifest(root: Path, manifest: dict[str, Any], onboarding
     return violations
 
 
+def _parse_build_modules(root: Path) -> dict[str, dict[str, Any]]:
+    modules: dict[str, dict[str, Any]] = {}
+    source_root = root / "Source"
+    if not source_root.exists():
+        return modules
+    for path in sorted(source_root.rglob("*.Build.cs")):
+        module_name = path.name[:-len(".Build.cs")]
+        raw = path.read_text(encoding="utf-8-sig", errors="replace")
+        dependencies: set[str] = set()
+        for match in BUILD_DEP_RANGE_RE.finditer(raw):
+            dependencies.update(QUOTED_STRING_RE.findall(match.group("body")))
+        dependencies.update(BUILD_DEP_ADD_RE.findall(raw))
+        modules[module_name] = {
+            "path": _posix(path.relative_to(root)),
+            "dependencies": sorted(dependencies),
+        }
+    return modules
+
+
+def _analyze_module_contract(
+    root: Path,
+    policy: dict[str, Any],
+) -> tuple[dict[str, dict[str, Any]], list[str], list[list[str]], list[dict[str, Any]]]:
+    contract = policy.get("module_contract")
+    if not contract:
+        return {}, [], [], []
+    modules = _parse_build_modules(root)
+    required = set(contract.get("required_modules", []))
+    allowed_map = {
+        str(module): set(dependencies)
+        for module, dependencies in contract.get("allowed_project_dependencies", {}).items()
+    }
+    project_names = set(allowed_map) | set(modules)
+    missing = sorted(required - set(modules))
+    violations: list[dict[str, Any]] = [
+        _violation(
+            "module_missing",
+            "<module-graph>",
+            0,
+            f"required Unreal module is missing: {module}",
+            symbol=module,
+        )
+        for module in missing
+    ]
+
+    adjacency: dict[str, set[str]] = defaultdict(set)
+    vertices: set[str] = set()
+    for module, metadata in modules.items():
+        if module not in allowed_map:
+            continue
+        vertices.add(module)
+        allowed = allowed_map[module]
+        for dependency in metadata["dependencies"]:
+            if dependency not in project_names and not dependency.startswith("PinkCab"):
+                continue
+            if dependency.startswith("PinkCab") and dependency not in allowed:
+                violations.append(_violation(
+                    "module_dependency",
+                    metadata["path"],
+                    1,
+                    f"module dependency outside contract: {module} -> {dependency}",
+                    symbol=f"{module}->{dependency}",
+                ))
+            if dependency in allowed_map:
+                adjacency[module].add(dependency)
+                vertices.add(dependency)
+
+    components = _tarjan(vertices, adjacency)
+    cycles = [component for component in components if len(component) > 1]
+    for component in cycles:
+        violations.append(_violation(
+            "module_cycle",
+            "<module-graph>",
+            0,
+            f"Unreal module dependency cycle: {' -> '.join(component)}",
+            symbol="|".join(component),
+            value=len(component),
+            limit=1,
+        ))
+    return modules, missing, cycles, violations
+
+
 def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     validate_policy(policy)
     root = root.resolve()
@@ -215,6 +304,8 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     files: dict[str, dict[str, Any]] = {}
     edge_evidence: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     vertices: set[str] = set()
+    modules, missing_modules, module_sccs, module_violations = _analyze_module_contract(root, policy)
+    violations.extend(module_violations)
 
     candidates: list[Path] = []
     for source_root in policy["source_roots"]:
@@ -353,6 +444,9 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
         "files": files,
         "dependency_edges": edges,
         "dependency_sccs": cycles,
+        "modules": modules,
+        "missing_modules": missing_modules,
+        "module_sccs": module_sccs,
         "violations": active,
         "allowed_violations": allowed,
         "summary": {"files": len(files), "violations": len(active), "by_rule": dict(sorted(counts.items()))},
@@ -431,6 +525,8 @@ def main(argv: list[str] | None = None) -> int:
             "violations": report["summary"]["violations"],
             "by_rule": report["summary"]["by_rule"],
             "dependency_sccs": report["dependency_sccs"],
+            "module_sccs": report.get("module_sccs", []),
+            "missing_modules": report.get("missing_modules", []),
             "baseline_regressions": len(regressions),
         }, indent=2, sort_keys=True))
         if args.require_zero_debt and report["violations"]:

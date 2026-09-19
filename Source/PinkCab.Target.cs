@@ -8,6 +8,6 @@ public class PinkCabTarget : TargetRules
         Type = TargetType.Game;
         DefaultBuildSettings = BuildSettingsVersion.V7;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
-        ExtraModuleNames.Add("PinkCab");
+        ExtraModuleNames.AddRange(new string[] { "PinkCab", "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld", "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence" });
     }
 }

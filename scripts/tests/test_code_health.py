@@ -208,6 +208,55 @@ class CodeHealthAnalyzerTests(unittest.TestCase):
             violations = validate_ownership_manifest(root, manifest, onboarding_text="# Start here\n")
             self.assertTrue(any(item["rule"] == "ownership_doc_sync" for item in violations))
 
+    def test_module_contract_rejects_missing_required_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCab/PinkCab.Build.cs", 'PublicDependencyModuleNames.AddRange(new string[] { "Core" });\n')
+            config = policy()
+            config["module_contract"] = {
+                "required_modules": ["PinkCabCore", "PinkCabVehicle"],
+                "allowed_project_dependencies": {
+                    "PinkCabCore": [],
+                    "PinkCabVehicle": ["PinkCabCore"],
+                },
+            }
+            report = analyze_repository(root, config)
+            self.assertEqual(["PinkCabCore", "PinkCabVehicle"], report["missing_modules"])
+            self.assertIn("module_missing", self.rules(report))
+
+    def test_module_contract_rejects_dependency_outside_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCabCore/PinkCabCore.Build.cs", 'PublicDependencyModuleNames.AddRange(new string[] { "Core" });\n')
+            write(root, "Source/PinkCabVehicle/PinkCabVehicle.Build.cs", 'PublicDependencyModuleNames.AddRange(new string[] { "PinkCabCore", "PinkCabTaxi" });\n')
+            config = policy()
+            config["module_contract"] = {
+                "required_modules": ["PinkCabCore", "PinkCabVehicle"],
+                "allowed_project_dependencies": {
+                    "PinkCabCore": [],
+                    "PinkCabVehicle": ["PinkCabCore"],
+                },
+            }
+            report = analyze_repository(root, config)
+            self.assertIn("module_dependency", self.rules(report))
+
+    def test_module_contract_detects_project_module_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCabCore/PinkCabCore.Build.cs", 'PublicDependencyModuleNames.AddRange(new string[] { "PinkCabVehicle" });\n')
+            write(root, "Source/PinkCabVehicle/PinkCabVehicle.Build.cs", 'PublicDependencyModuleNames.AddRange(new string[] { "PinkCabCore" });\n')
+            config = policy()
+            config["module_contract"] = {
+                "required_modules": ["PinkCabCore", "PinkCabVehicle"],
+                "allowed_project_dependencies": {
+                    "PinkCabCore": ["PinkCabVehicle"],
+                    "PinkCabVehicle": ["PinkCabCore"],
+                },
+            }
+            report = analyze_repository(root, config)
+            self.assertEqual([["PinkCabCore", "PinkCabVehicle"]], report["module_sccs"])
+            self.assertIn("module_cycle", self.rules(report))
+
     def test_rejects_broad_or_unexplained_allowlist(self) -> None:
         bad = policy()
         bad["allowlist"] = [{"path": "Source/PinkCab/**", "rule": "file_loc", "reason": "legacy", "expires_when": "never"}]

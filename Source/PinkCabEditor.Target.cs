@@ -8,6 +8,6 @@ public class PinkCabEditorTarget : TargetRules
         Type = TargetType.Editor;
         DefaultBuildSettings = BuildSettingsVersion.V7;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
-        ExtraModuleNames.AddRange(new string[] { "PinkCab", "PinkCabTests" });
+        ExtraModuleNames.AddRange(new string[] { "PinkCab", "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld", "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence", "PinkCabTests" });
     }
 }

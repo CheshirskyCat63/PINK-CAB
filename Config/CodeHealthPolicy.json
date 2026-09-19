@@ -81,5 +81,60 @@
   ],
   "allowlist": [],
   "ownership_manifest": "Config/ArchitectureOwnership.json",
-  "onboarding_doc": "docs/ENGINEERING_START_HERE.md"
+  "onboarding_doc": "docs/ENGINEERING_START_HERE.md",
+  "module_contract": {
+    "required_modules": [
+      "PinkCabCore",
+      "PinkCabInteraction",
+      "PinkCabVehicle",
+      "PinkCabTaxi",
+      "PinkCabEconomy",
+      "PinkCabWorld",
+      "PinkCabTraffic",
+      "PinkCabPersistence"
+    ],
+    "allowed_project_dependencies": {
+      "PinkCabCore": [],
+      "PinkCabInteraction": [
+        "PinkCabCore"
+      ],
+      "PinkCabVehicle": [
+        "PinkCabCore"
+      ],
+      "PinkCabEconomy": [
+        "PinkCabCore"
+      ],
+      "PinkCabWorld": [
+        "PinkCabCore"
+      ],
+      "PinkCabTraffic": [
+        "PinkCabCore",
+        "PinkCabWorld"
+      ],
+      "PinkCabTaxi": [
+        "PinkCabCore",
+        "PinkCabEconomy",
+        "PinkCabVehicle",
+        "PinkCabWorld"
+      ],
+      "PinkCabPersistence": [
+        "PinkCabCore",
+        "PinkCabVehicle",
+        "PinkCabTaxi",
+        "PinkCabEconomy",
+        "PinkCabWorld",
+        "PinkCabTraffic"
+      ],
+      "PinkCab": [
+        "PinkCabCore",
+        "PinkCabInteraction",
+        "PinkCabVehicle",
+        "PinkCabTaxi",
+        "PinkCabEconomy",
+        "PinkCabWorld",
+        "PinkCabTraffic",
+        "PinkCabPersistence"
+      ]
+    }
+  }
 }
