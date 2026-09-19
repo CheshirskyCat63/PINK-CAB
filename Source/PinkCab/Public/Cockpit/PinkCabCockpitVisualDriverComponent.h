@@ -7,6 +7,7 @@
 class UPinkCabCockpitAssemblyComponent;
 class USceneComponent;
 struct FPinkCabCockpitPresentationState;
+enum class EPinkCabCockpitSlot : uint8;
 UCLASS(ClassGroup=(PinkCab), meta=(BlueprintSpawnableComponent))
 class PINKCAB_API UPinkCabCockpitVisualDriverComponent : public UActorComponent
 {
@@ -45,6 +46,25 @@ private:
     TObjectPtr<USceneComponent> SteeringVisualComponent;
     FTransform SteeringVisualBaseTransform = FTransform::Identity;
     bool bSteeringVisualBaseValid = false;
+
     void CacheBaseTransforms(UPinkCabCockpitAssemblyComponent& Assembly);
+    const FTransform* GetBaseTransform(EPinkCabCockpitSlot Slot) const;
+    void ApplyRotationOffset(
+        UPinkCabCockpitAssemblyComponent& Assembly,
+        EPinkCabCockpitSlot Slot,
+        const FRotator& Offset) const;
+    void ApplyLocationOffset(
+        UPinkCabCockpitAssemblyComponent& Assembly,
+        EPinkCabCockpitSlot Slot,
+        const FVector& Offset) const;
+    void ApplySteeringState(
+        UPinkCabCockpitAssemblyComponent& Assembly,
+        const FPinkCabCockpitPresentationState& State);
+    void ApplyControlMotion(
+        UPinkCabCockpitAssemblyComponent& Assembly,
+        const FPinkCabCockpitPresentationState& State) const;
+    void ApplyAvailabilityState(
+        UPinkCabCockpitAssemblyComponent& Assembly,
+        const FPinkCabCockpitPresentationState& State) const;
 };
 

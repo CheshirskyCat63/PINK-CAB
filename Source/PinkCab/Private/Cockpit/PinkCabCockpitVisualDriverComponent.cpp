@@ -136,35 +136,36 @@ void UPinkCabCockpitVisualDriverComponent::CacheBaseTransforms(
         }
     }
 }
-void UPinkCabCockpitVisualDriverComponent::Apply(
+const FTransform* UPinkCabCockpitVisualDriverComponent::GetBaseTransform(
+    const EPinkCabCockpitSlot Slot) const
+{
+    return BaseTransforms.Find(static_cast<uint8>(Slot));
+}
+
+void UPinkCabCockpitVisualDriverComponent::ApplyRotationOffset(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const EPinkCabCockpitSlot Slot,
+    const FRotator& Offset) const
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Slot);
+    const FTransform* Base = GetBaseTransform(Slot);
+    if (Component && Base) Component->SetRelativeRotation(Base->Rotator() + Offset);
+}
+
+void UPinkCabCockpitVisualDriverComponent::ApplyLocationOffset(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const EPinkCabCockpitSlot Slot,
+    const FVector& Offset) const
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Slot);
+    const FTransform* Base = GetBaseTransform(Slot);
+    if (Component && Base) Component->SetRelativeLocation(Base->GetLocation() + Offset);
+}
+
+void UPinkCabCockpitVisualDriverComponent::ApplySteeringState(
     UPinkCabCockpitAssemblyComponent& Assembly,
     const FPinkCabCockpitPresentationState& State)
 {
-    CacheBaseTransforms(Assembly);
-    const auto GetBase = [this](const EPinkCabCockpitSlot Slot) -> const FTransform*
-    {
-        return BaseTransforms.Find(static_cast<uint8>(Slot));
-    };
-    const auto SetRotOffset = [&Assembly, &GetBase](const EPinkCabCockpitSlot Slot, const FRotator Offset)
-    {
-        if (USceneComponent* Component = Assembly.GetSlotComponent(Slot))
-        {
-            if (const FTransform* Base = GetBase(Slot))
-            {
-                Component->SetRelativeRotation(Base->Rotator() + Offset);
-            }
-        }
-    };
-    const auto SetLocOffset = [&Assembly, &GetBase](const EPinkCabCockpitSlot Slot, const FVector Offset)
-    {
-        if (USceneComponent* Component = Assembly.GetSlotComponent(Slot))
-        {
-            if (const FTransform* Base = GetBase(Slot))
-            {
-                Component->SetRelativeLocation(Base->GetLocation() + Offset);
-            }
-        }
-    };
     if (USceneComponent* Steering = SteeringVisualComponent.Get())
     {
         if (!bSteeringVisualBaseValid)
@@ -172,71 +173,78 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
             SteeringVisualBaseTransform = Steering->GetRelativeTransform();
             bSteeringVisualBaseValid = true;
         }
-
-        // The source steering pivot is authored with local X along the
-        // steering-column axis. Rotate the pivot around that axis only.
         const float AngleRadians = FMath::DegreesToRadians(SteeringAngleDegrees(State.Steering));
         const FQuat LocalTurn(FVector::ForwardVector, AngleRadians);
         Steering->SetRelativeLocation(SteeringVisualBaseTransform.GetLocation());
         Steering->SetRelativeRotation(SteeringVisualBaseTransform.GetRotation() * LocalTurn);
+        return;
     }
-    else if (USceneComponent* FallbackSteering = Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel))
-    {
-        if (const FTransform* Base = GetBase(EPinkCabCockpitSlot::SteeringWheel))
-        {
-            const FRotator Offset(0.0f, 0.0f, SteeringAngleDegrees(State.Steering));
-            FallbackSteering->SetRelativeLocationAndRotation(Base->GetLocation(), Base->Rotator() + Offset);
-        }
-    }
-    SetRotOffset(EPinkCabCockpitSlot::ClutchPedal,
-        FRotator(PedalTravelDegrees(State.Clutch), 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::BrakePedal,
-        FRotator(PedalTravelDegrees(State.Brake), 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::ThrottlePedal,
-        FRotator(PedalTravelDegrees(State.Throttle), 0.0f, 0.0f));
-    SetLocOffset(EPinkCabCockpitSlot::Gearbox,
-        State.bGearLeverDragging ? GearLeverOffsetFromCursor(State.GearLeverCursor) : GearLeverOffset(State.SelectedGear));
-    SetRotOffset(EPinkCabCockpitSlot::Handbrake,
-        FRotator(HandbrakeAngleDegrees(State.Handbrake), 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::TemperatureNeedle,
-        FRotator(0.0f, 0.0f, TemperatureNeedleAngleDegrees(State.EngineTemperature01)));
-    SetRotOffset(EPinkCabCockpitSlot::FuelNeedle,
-        FRotator(0.0f, 0.0f, FuelNeedleAngleDegrees(State.Fuel01)));
-    SetRotOffset(EPinkCabCockpitSlot::SpeedometerNeedle,
-        FRotator(0.0f, 0.0f, SpeedometerNeedleAngleDegrees(State.SpeedKmh)));
-    SetRotOffset(EPinkCabCockpitSlot::TachometerNeedle,
-        FRotator(0.0f, 0.0f, TachometerNeedleAngleDegrees(State.EngineRpm)));
-    SetRotOffset(EPinkCabCockpitSlot::Ignition,
-        FRotator(0.0f, State.bIgnitionRunning ? 42.0f : 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::TurnSignals,
-        FRotator(0.0f, State.bTurnSignalLeft ? -24.0f : (State.bTurnSignalRight ? 24.0f : 0.0f), 0.0f));
-    SetLocOffset(EPinkCabCockpitSlot::Horn,
-        FVector(State.bHornActive ? -1.5f : 0.0f, 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::Lights,
-        FRotator(State.bLightsOn ? 32.0f : 0.0f, 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::Wipers,
-        FRotator(State.bWipersOn ? 32.0f : 0.0f, 0.0f, 0.0f));
-    SetLocOffset(EPinkCabCockpitSlot::Washer,
-        FVector(State.bWasherActive ? -1.0f : 0.0f, 0.0f, 0.0f));
-    SetRotOffset(EPinkCabCockpitSlot::PassengerDoor,
-        FRotator(0.0f, State.bPassengerDoorOpen ? 38.0f : 0.0f, 0.0f));
 
+    USceneComponent* FallbackSteering =
+        Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel);
+    const FTransform* Base = GetBaseTransform(EPinkCabCockpitSlot::SteeringWheel);
+    if (!FallbackSteering || !Base) return;
+    const FRotator Offset(0.0f, 0.0f, SteeringAngleDegrees(State.Steering));
+    FallbackSteering->SetRelativeLocationAndRotation(
+        Base->GetLocation(), Base->Rotator() + Offset);
+}
+
+void UPinkCabCockpitVisualDriverComponent::ApplyControlMotion(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitPresentationState& State) const
+{
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::ClutchPedal,
+        FRotator(PedalTravelDegrees(State.Clutch), 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::BrakePedal,
+        FRotator(PedalTravelDegrees(State.Brake), 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::ThrottlePedal,
+        FRotator(PedalTravelDegrees(State.Throttle), 0.0f, 0.0f));
+
+    const FVector GearOffset = State.bGearLeverDragging
+        ? GearLeverOffsetFromCursor(State.GearLeverCursor)
+        : GearLeverOffset(State.SelectedGear);
+    ApplyLocationOffset(Assembly, EPinkCabCockpitSlot::Gearbox, GearOffset);
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::Handbrake,
+        FRotator(HandbrakeAngleDegrees(State.Handbrake), 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::TemperatureNeedle,
+        FRotator(0.0f, 0.0f, TemperatureNeedleAngleDegrees(State.EngineTemperature01)));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::FuelNeedle,
+        FRotator(0.0f, 0.0f, FuelNeedleAngleDegrees(State.Fuel01)));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::SpeedometerNeedle,
+        FRotator(0.0f, 0.0f, SpeedometerNeedleAngleDegrees(State.SpeedKmh)));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::TachometerNeedle,
+        FRotator(0.0f, 0.0f, TachometerNeedleAngleDegrees(State.EngineRpm)));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::Ignition,
+        FRotator(0.0f, State.bIgnitionRunning ? 42.0f : 0.0f, 0.0f));
+
+    const float SignalAngle = State.bTurnSignalLeft ? -24.0f : (State.bTurnSignalRight ? 24.0f : 0.0f);
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::TurnSignals,
+        FRotator(0.0f, SignalAngle, 0.0f));
+    ApplyLocationOffset(Assembly, EPinkCabCockpitSlot::Horn,
+        FVector(State.bHornActive ? -1.5f : 0.0f, 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::Lights,
+        FRotator(State.bLightsOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::Wipers,
+        FRotator(State.bWipersOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    ApplyLocationOffset(Assembly, EPinkCabCockpitSlot::Washer,
+        FVector(State.bWasherActive ? -1.0f : 0.0f, 0.0f, 0.0f));
+    ApplyRotationOffset(Assembly, EPinkCabCockpitSlot::PassengerDoor,
+        FRotator(0.0f, State.bPassengerDoorOpen ? 38.0f : 0.0f, 0.0f));
+}
+
+void UPinkCabCockpitVisualDriverComponent::ApplyAvailabilityState(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitPresentationState& State) const
+{
     if (USceneComponent* Meter = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Taximeter))
-    {
         Meter->SetVisibility(State.bMeterAvailable, true);
-    }
     if (USceneComponent* Door = Assembly.GetSlotComponent(EPinkCabCockpitSlot::PassengerDoor))
-    {
         Door->SetVisibility(State.bPassengerDoorAvailable, true);
-    }
     if (USceneComponent* Navigation = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Navigation))
-    {
         Navigation->SetVisibility(State.bRouteAvailable, true);
-    }
     if (USceneComponent* Radio = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Radio))
-    {
         Radio->SetVisibility(State.bRadioAvailable, true);
-    }
+
     const EPinkCabCockpitSlot MirrorSlots[] = {
         EPinkCabCockpitSlot::RearViewMirror,
         EPinkCabCockpitSlot::LeftMirror,
@@ -244,12 +252,22 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
     for (const EPinkCabCockpitSlot MirrorSlot : MirrorSlots)
     {
         if (USceneComponent* Mirror = Assembly.GetSlotComponent(MirrorSlot))
-        {
             Mirror->SetVisibility(State.bMirrorsAvailable, true);
-        }
     }
+
     if (USceneComponent* Warnings = Assembly.GetSlotComponent(EPinkCabCockpitSlot::Warnings))
     {
-        Warnings->SetVisibility(State.bIgnitionRunning || State.bMeterRunning || State.bPassengerDoorOpen, true);
+        Warnings->SetVisibility(
+            State.bIgnitionRunning || State.bMeterRunning || State.bPassengerDoorOpen, true);
     }
+}
+
+void UPinkCabCockpitVisualDriverComponent::Apply(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitPresentationState& State)
+{
+    CacheBaseTransforms(Assembly);
+    ApplySteeringState(Assembly, State);
+    ApplyControlMotion(Assembly, State);
+    ApplyAvailabilityState(Assembly, State);
 }

@@ -15,6 +15,36 @@ void ApplyDefaultInteractionMetadata(FPinkCabCockpitSlotDefinition& Definition)
     Definition.bSupportsMomentary = Spec.bSupportsMomentary;
     Definition.bSupportsWheel = Spec.bSupportsWheel;
 }
+
+bool CanApplyVisualBinding(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitVisualBinding& Binding)
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Binding.Slot);
+    if (!Component) return false;
+    if ((!Binding.MeshOverride.IsNull() || !Binding.MaterialOverride.IsNull())
+        && !Cast<UStaticMeshComponent>(Component))
+    {
+        return false;
+    }
+    if (!Binding.MeshOverride.IsNull() && !Binding.MeshOverride.LoadSynchronous()) return false;
+    if (!Binding.MaterialOverride.IsNull() && !Binding.MaterialOverride.LoadSynchronous()) return false;
+    return true;
+}
+
+void ApplyVisualBinding(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitVisualBinding& Binding)
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Binding.Slot);
+    Component->SetRelativeTransform(Binding.LocalTransform);
+    if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
+    {
+        if (!Binding.MeshOverride.IsNull()) StaticMesh->SetStaticMesh(Binding.MeshOverride.Get());
+        if (!Binding.MaterialOverride.IsNull()) StaticMesh->SetMaterial(0, Binding.MaterialOverride.Get());
+        StaticMesh->SetHiddenInGame(!Binding.bShowAnchorMesh);
+    }
+}
 }
 
 
@@ -174,24 +204,13 @@ bool UPinkCabCockpitAssemblyComponent::ApplyVisualBindings(
     if (!bVisualBaselineCaptured) CaptureVisualBaseline();
     for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
     {
-        USceneComponent* Component = GetSlotComponent(Binding.Slot);
-        if (!Component) return false;
-        if ((!Binding.MeshOverride.IsNull() || !Binding.MaterialOverride.IsNull())
-            && !Cast<UStaticMeshComponent>(Component)) return false;
-        if (!Binding.MeshOverride.IsNull() && !Binding.MeshOverride.LoadSynchronous()) return false;
-        if (!Binding.MaterialOverride.IsNull() && !Binding.MaterialOverride.LoadSynchronous()) return false;
+        if (!CanApplyVisualBinding(*this, Binding)) return false;
     }
+
     ResetVisualBindings();
     for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
     {
-        USceneComponent* Component = GetSlotComponent(Binding.Slot);
-        Component->SetRelativeTransform(Binding.LocalTransform);
-        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
-        {
-            if (!Binding.MeshOverride.IsNull()) StaticMesh->SetStaticMesh(Binding.MeshOverride.Get());
-            if (!Binding.MaterialOverride.IsNull()) StaticMesh->SetMaterial(0, Binding.MaterialOverride.Get());
-            StaticMesh->SetHiddenInGame(!Binding.bShowAnchorMesh);
-        }
+        ApplyVisualBinding(*this, Binding);
     }
     return true;
 }

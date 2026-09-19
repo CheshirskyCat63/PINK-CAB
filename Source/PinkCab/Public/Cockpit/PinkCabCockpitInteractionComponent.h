@@ -64,6 +64,18 @@ private:
     struct FQuickSlotState { bool bHeld = false; uint32 PressSerial = 0; };
     static FName TargetForQuickSlot(int32 Slot);
     FPinkCabInteractionControlSpec ResolveActiveSpec() const;
+    void UpdateTargetSelection(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        const UPinkCabCockpitAssemblyComponent* Assembly);
+    bool IsPrimaryPointerGrip(const FPinkCabCockpitInteractionFrame& Frame) const;
+    void UpdateGripState(const FPinkCabCockpitInteractionFrame& Frame, bool bPrimaryPointerGrip);
+    void UpdateMomentaryState(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        bool bPrimaryPointerGrip,
+        TArray<FPinkCabInteractionEvent>& OutActuationEvents);
+    void AppendWheelEvent(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        TArray<FPinkCabInteractionEvent>& OutActuationEvents);
 
     TArray<FQuickSlotState> QuickSlots;
     uint32 NextPressSerial = 1;

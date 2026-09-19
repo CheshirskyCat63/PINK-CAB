@@ -124,6 +124,66 @@ bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(const int32 SignedStep
     return true;
 }
 
+void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const UPinkCabCockpitAssemblyComponent* Assembly)
+{
+    if (Frame.bGazeHeld && Assembly && !bGripActive && !bMomentaryActive)
+    {
+        const FName GazeTarget = Assembly->ResolveGazeTarget(
+            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+        SetCurrentTarget(SpecForTargetId(GazeTarget));
+        return;
+    }
+    if (!Frame.bGazeHeld && GetCurrentQuickTargetId().IsNone() && !bGripActive && !bMomentaryActive)
+    {
+        SetCurrentTarget({});
+    }
+}
+
+bool UPinkCabCockpitInteractionComponent::IsPrimaryPointerGrip(
+    const FPinkCabCockpitInteractionFrame& Frame) const
+{
+    const FPinkCabInteractionControlSpec PointerSpec = ResolveActiveSpec();
+    return Frame.bMomentaryHeld && PointerSpec.bSupportsGrip && !PointerSpec.bSupportsMomentary;
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateGripState(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const bool bPrimaryPointerGrip)
+{
+    FPinkCabInteractionEvent Event;
+    const bool bEffectiveGripHeld = Frame.bGripHeld || bPrimaryPointerGrip;
+    if (bEffectiveGripHeld && !bGripActive) BeginGrip(Event);
+    else if (!bEffectiveGripHeld && bGripActive) EndGrip(Event);
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateMomentaryState(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const bool bPrimaryPointerGrip,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    FPinkCabInteractionEvent Event;
+    if (!bPrimaryPointerGrip && Frame.bMomentaryHeld && !bMomentaryActive)
+    {
+        if (BeginMomentary(Frame.NowSeconds, Event)) OutActuationEvents.Add(Event);
+        return;
+    }
+    if ((!Frame.bMomentaryHeld || bPrimaryPointerGrip) && bMomentaryActive
+        && EndMomentary(Frame.NowSeconds, Event))
+    {
+        OutActuationEvents.Add(Event);
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::AppendWheelEvent(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    FPinkCabInteractionEvent Event;
+    if (BuildWheelEvent(Frame.WheelSteps, Event)) OutActuationEvents.Add(Event);
+}
+
 void UPinkCabCockpitInteractionComponent::ProcessFrame(
     const FPinkCabCockpitInteractionFrame& Frame,
     const UPinkCabCockpitAssemblyComponent* Assembly,
@@ -135,50 +195,11 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     SetQuickSlotHeld(3, Frame.bQuickRecall3Held);
     SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
 
-    if (Frame.bGazeHeld && Assembly && !bGripActive && !bMomentaryActive)
-    {
-        const FName GazeTarget = Assembly->ResolveGazeTarget(
-            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
-        SetCurrentTarget(SpecForTargetId(GazeTarget));
-    }
-    else if (!Frame.bGazeHeld && GetCurrentQuickTargetId().IsNone() && !bGripActive && !bMomentaryActive)
-    {
-        SetCurrentTarget({});
-    }
-
-    FPinkCabInteractionEvent Event;
-    const FPinkCabInteractionControlSpec PointerSpec = ResolveActiveSpec();
-    const bool bPrimaryPointerGrips = Frame.bMomentaryHeld
-        && PointerSpec.bSupportsGrip && !PointerSpec.bSupportsMomentary;
-    const bool bEffectiveGripHeld = Frame.bGripHeld || bPrimaryPointerGrips;
-    if (bEffectiveGripHeld && !bGripActive)
-    {
-        BeginGrip(Event);
-    }
-    else if (!bEffectiveGripHeld && bGripActive)
-    {
-        EndGrip(Event);
-    }
-
-    if (!bPrimaryPointerGrips && Frame.bMomentaryHeld && !bMomentaryActive)
-    {
-        if (BeginMomentary(Frame.NowSeconds, Event))
-        {
-            OutActuationEvents.Add(Event);
-        }
-    }
-    else if ((!Frame.bMomentaryHeld || bPrimaryPointerGrips) && bMomentaryActive)
-    {
-        if (EndMomentary(Frame.NowSeconds, Event))
-        {
-            OutActuationEvents.Add(Event);
-        }
-    }
-
-    if (BuildWheelEvent(Frame.WheelSteps, Event))
-    {
-        OutActuationEvents.Add(Event);
-    }
+    UpdateTargetSelection(Frame, Assembly);
+    const bool bPrimaryPointerGrip = IsPrimaryPointerGrip(Frame);
+    UpdateGripState(Frame, bPrimaryPointerGrip);
+    UpdateMomentaryState(Frame, bPrimaryPointerGrip, OutActuationEvents);
+    AppendWheelEvent(Frame, OutActuationEvents);
 }
 
 void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
