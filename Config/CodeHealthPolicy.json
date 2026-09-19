@@ -1,7 +1,15 @@
 {
   "version": 1,
   "source_roots": [
-    "Source/PinkCab"
+    "Source/PinkCab",
+    "Source/PinkCabCore",
+    "Source/PinkCabInteraction",
+    "Source/PinkCabVehicle",
+    "Source/PinkCabEconomy",
+    "Source/PinkCabWorld",
+    "Source/PinkCabTraffic",
+    "Source/PinkCabTaxi",
+    "Source/PinkCabPersistence"
   ],
   "domains": [
     "Core",

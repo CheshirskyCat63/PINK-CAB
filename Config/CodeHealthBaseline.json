@@ -206,35 +206,35 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Core/PinkCabDeterministicSeed.h",
+      "path": "Source/PinkCabCore/Public/Core/PinkCabDeterministicSeed.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Core/PinkCabEventEnvelope.h",
+      "path": "Source/PinkCabCore/Public/Core/PinkCabEventEnvelope.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Core/PinkCabExactlyOnceStore.h",
+      "path": "Source/PinkCabCore/Public/Core/PinkCabExactlyOnceStore.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Core/PinkCabSchemaVersion.h",
+      "path": "Source/PinkCabCore/Public/Core/PinkCabSchemaVersion.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Public/Core/PinkCabStableId.h",
+      "path": "Source/PinkCabCore/Public/Core/PinkCabStableId.h",
       "rule": "public_header_logic",
       "symbol": ""
     },
