@@ -7,14 +7,8 @@
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
 #include "Vehicle/PinkCabVehicleHealthService.h"
 #include "Vehicle/PinkCabVehicleLoadState.h"
-#include "Vehicle/PinkCabSteeringController.h"
-#include "Vehicle/PinkCabVehicleMotionClassifier.h"
-#include "Vehicle/PinkCabLaunchController.h"
-#include "Vehicle/PinkCabPedalDosingController.h"
-#include "Vehicle/PinkCabHandbrakeActuator.h"
-#include "Vehicle/PinkCabGearboxController.h"
-#include "Vehicle/PinkCabDrivetrainCondition.h"
 #include "Vehicle/PinkCabVehicleHealthBinding.h"
+#include "Vehicle/PinkCabVehicleControlRuntime.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
@@ -84,11 +78,11 @@ public:
         float MouseDeltaX,
         float MouseDeltaY,
         float DeltaSeconds = 1.0f / 60.0f);
-    float GetSteeringCommand() const { return SteeringCommand; }
+    float GetSteeringCommand() const { return VehicleControlRuntime.GetSteeringCommand(); }
     FVector2D GetGearLeverVisualCursor() const { return GearLeverCursor; }
-    int32 GetRequestedGear() const { return GearboxController.GetRequestedGear(); }
-    int32 GetEngagedGear() const { return GearboxController.GetEngagedGear(); }
-    EPinkCabVehicleMotionMode GetMotionMode() const { return MotionClassifier.GetMode(); }
+    int32 GetRequestedGear() const { return VehicleControlRuntime.GetRequestedGear(); }
+    int32 GetEngagedGear() const { return VehicleControlRuntime.GetEngagedGear(); }
+    EPinkCabVehicleMotionMode GetMotionMode() const { return VehicleControlRuntime.GetMotionMode(); }
     const FPinkCabVehicleHealthState& GetVehicleHealthState() const { return VehicleHealthBinding.Get(); }
     FPinkCabVehicleHealthState& GetMutableVehicleHealthState() { return VehicleHealthBinding.GetMutable(); }
     void BindVehicleHealthState(FPinkCabVehicleHealthState& ExternalHealth) { VehicleHealthBinding.Bind(ExternalHealth); }
@@ -136,7 +130,6 @@ private:
 
     void SyncCockpitToChaos();
     bool SyncLoadToChaos();
-    void ApplyHealthToControls();
     void HandleApplicationWillDeactivate();
     void MountPlayableHud();
     void UnmountPlayableHud();
@@ -155,16 +148,9 @@ private:
     FPinkCabVehicleDamageProfile VehicleDamageProfile{TEXT("PinkCab.Damage.Fallback")};
     FPinkCabVehicleHealthService VehicleHealthService;
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
-    FPinkCabVehicleControlState ControlState;
     FPinkCabCockpitState CockpitState;
     FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
-    FPinkCabVehicleMotionClassifier MotionClassifier;
-    FPinkCabSteeringController SteeringController;
-    FPinkCabLaunchController LaunchController;
-    FPinkCabPedalDosingController PedalDosingController;
-    FPinkCabHandbrakeActuator HandbrakeActuator;
-    FPinkCabGearboxController GearboxController;
-    FPinkCabDrivetrainCondition DrivetrainCondition;
+    FPinkCabVehicleControlRuntime VehicleControlRuntime;
     FPinkCabVehicleHealthBinding VehicleHealthBinding;
     const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
     TOptional<float> CockpitRouteProgress01;
@@ -182,19 +168,6 @@ private:
     UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
     float ThrottleReleaseSeconds = 0.22f;
 
-    float SmoothedClutch = 0.0f;
-    float SmoothedBrake = 0.0f;
-    float SmoothedThrottle = 0.0f;
-    float DisplayedClutchPedal = 0.0f;
-    float DisplayedBrakePedal = 0.0f;
-    float DisplayedThrottlePedal = 0.0f;
-    float SteeringCommand = 0.0f;
-    float LastSpeedKmh = 0.0f;
-    float LastEngineRpm = 0.0f;
-    float DisplayedEngineRpm = 0.0f;
-    float DrivetrainTorqueCapacity = 1.0f;
-    uint32 LastProcessedGearEventSerial = 0;
-    bool bThrottleHeldLastFrame = false;
     float SmoothedLookMouseX = 0.0f;
     float SmoothedLookMouseY = 0.0f;
     float VisualSteering = 0.0f;

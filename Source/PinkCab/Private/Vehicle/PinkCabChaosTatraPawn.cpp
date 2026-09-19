@@ -264,8 +264,13 @@ void APinkCabChaosTatraPawn::BeginPlay()
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();
-    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
-    ControlState.SetDriveline(0, 0, 0.0f);
+    FPinkCabVehicleControlRuntimeConfig ControlConfig;
+    ControlConfig.ClutchPressSeconds = ClutchPressSeconds;
+    ControlConfig.BrakePressSeconds = BrakePressSeconds;
+    ControlConfig.BrakeReleaseSeconds = BrakeReleaseSeconds;
+    ControlConfig.ThrottlePressSeconds = ThrottlePressSeconds;
+    ControlConfig.ThrottleReleaseSeconds = ThrottleReleaseSeconds;
+    VehicleControlRuntime.SetResponseConfig(ControlConfig);
     SyncCockpitToChaos();
 
     if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -362,7 +367,7 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("SPEED"))) ]
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
                     return WeakThis.IsValid()
-                        ? FText::FromString(FString::Printf(TEXT("%03d  km/h"), FMath::RoundToInt(FMath::Abs(WeakThis->LastSpeedKmh))))
+                        ? FText::FromString(FString::Printf(TEXT("%03d  km/h"), FMath::RoundToInt(FMath::Abs(WeakThis->VehicleControlRuntime.GetLastSpeedKmh()))))
                         : FText::GetEmpty();
                 }) ]
               ]
@@ -370,7 +375,7 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
               [ SNew(SVerticalBox)
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("GEAR"))) ]
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor(0.92f,0.95f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
-                    return WeakThis.IsValid() ? FText::FromString(GearLabel(WeakThis->GearboxController.GetEngagedGear())) : FText::GetEmpty();
+                    return WeakThis.IsValid() ? FText::FromString(GearLabel(WeakThis->VehicleControlRuntime.GetEngagedGear())) : FText::GetEmpty();
                 }) ]
               ]
               + SHorizontalBox::Slot().AutoWidth()
@@ -378,7 +383,7 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("ENGINE RPM"))) ]
                 + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),24)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
                     return WeakThis.IsValid()
-                        ? FText::FromString(FString::Printf(TEXT("%04d"), FMath::RoundToInt(FMath::Max(WeakThis->DisplayedEngineRpm, 0.0f))))
+                        ? FText::FromString(FString::Printf(TEXT("%04d"), FMath::RoundToInt(FMath::Max(WeakThis->VehicleControlRuntime.GetDisplayedEngineRpm(), 0.0f))))
                         : FText::GetEmpty();
                 }) ]
               ]
@@ -404,19 +409,19 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
                 return FText::FromString(FString::Printf(
                     TEXT("CLUTCH %s %3d%%    GAS %s %3d%%"),
-                    *GaugeBar(WeakThis->DisplayedClutchPedal),
-                    FMath::RoundToInt(WeakThis->DisplayedClutchPedal * 100.0f),
-                    *GaugeBar(WeakThis->DisplayedThrottlePedal),
-                    FMath::RoundToInt(WeakThis->DisplayedThrottlePedal * 100.0f)));
+                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedClutchPedal()),
+                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedClutchPedal() * 100.0f),
+                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedThrottlePedal()),
+                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedThrottlePedal() * 100.0f)));
             }) ]
             + SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)
             [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const float Handbrake = WeakThis->HandbrakeActuator.GetBrakeCommand();
+                const float Handbrake = WeakThis->VehicleControlRuntime.GetHandbrakeCommand();
                 return FText::FromString(FString::Printf(
                     TEXT("BRAKE  %s %3d%%    H-BRAKE %s %3d%%"),
-                    *GaugeBar(WeakThis->DisplayedBrakePedal),
-                    FMath::RoundToInt(WeakThis->DisplayedBrakePedal * 100.0f),
+                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedBrakePedal()),
+                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedBrakePedal() * 100.0f),
                     *GaugeBar(Handbrake),
                     FMath::RoundToInt(Handbrake * 100.0f)));
             }) ]
@@ -424,7 +429,7 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
             [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),10)).ColorAndOpacity(FLinearColor(1.0f,0.78f,0.30f,1.0f)).Text_Lambda([WeakThis]() {
                 if (!WeakThis.IsValid()) return FText::GetEmpty();
                 TArray<FString> Warnings;
-                const float Steering = WeakThis->ControlState.Steering;
+                const float Steering = WeakThis->VehicleControlRuntime.GetControlState().Steering;
                 const FString SteeringText = FMath::Abs(Steering) < 0.02f
                     ? TEXT("STEER CENTER")
                     : FString::Printf(
@@ -434,21 +439,21 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
                 Warnings.Add(SteeringText);
                 Warnings.Add(FString::Printf(
                     TEXT("REQ %s / ENG %s"),
-                    *GearLabel(WeakThis->GearboxController.GetRequestedGear()),
-                    *GearLabel(WeakThis->GearboxController.GetEngagedGear())));
+                    *GearLabel(WeakThis->VehicleControlRuntime.GetRequestedGear()),
+                    *GearLabel(WeakThis->VehicleControlRuntime.GetEngagedGear())));
                 if (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled) Warnings.Add(TEXT("STALL"));
-                if (WeakThis->LaunchController.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
-                if (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
+                if (WeakThis->VehicleControlRuntime.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
+                if (WeakThis->VehicleControlRuntime.GetHandbrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
                 if (WeakThis->GetVehicleHealthState().GetBrakeTemperature01() > 0.75f) Warnings.Add(TEXT("BRAKES HOT"));
                 if (WeakThis->GetVehicleHealthState().GetClutchTemperature01() > 0.75f) Warnings.Add(TEXT("CLUTCH HOT"));
-                const EPinkCabGearEngagementResult GearResult = WeakThis->GearboxController.GetLastResult();
+                const EPinkCabGearEngagementResult GearResult = WeakThis->VehicleControlRuntime.GetLastGearResult();
                 if (GearResult == EPinkCabGearEngagementResult::GrindRefused
                     || GearResult == EPinkCabGearEngagementResult::ReverseLockout
                     || GearResult == EPinkCabGearEngagementResult::DangerousOverrev)
                 {
                     Warnings.Add(EngagementLabel(GearResult));
                 }
-                if (WeakThis->HandbrakeActuator.IsParkingLatched()) Warnings.Add(TEXT("PARK LATCH"));
+                if (WeakThis->VehicleControlRuntime.IsParkingHandbrakeLatched()) Warnings.Add(TEXT("PARK LATCH"));
                 return FText::FromString(FString::Join(Warnings, TEXT("   |   ")));
             }) ]
             + SVerticalBox::Slot().AutoHeight().Padding(0,7,0,0)
@@ -683,9 +688,10 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
     {
         SetGearboxPointerCapture(PC, false);
     }
-    bThrottleHeldLastFrame = false;
+    VehicleControlRuntime.ResetThrottleInputLatch();
     bGearLeverDragging = false;
-    GearLeverCursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(CockpitState.GetSelectedGear());
+    GearLeverCursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
+        CockpitState.GetSelectedGear());
     if (!CockpitInteraction)
     {
         return;
@@ -696,15 +702,11 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
     {
         ApplyCockpitInteraction(ReleaseEvent);
     }
-
-    GearboxController.CancelPendingRequest();
-    CockpitState.SetSelectedGear(GearboxController.GetEngagedGear());
-
-    if (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving)
+    const bool bControlsChanged = VehicleControlRuntime.ResetTransient(CockpitState);
+    GearLeverCursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
+        CockpitState.GetSelectedGear());
+    if (bControlsChanged)
     {
-        HandbrakeActuator.Reset(0.0f, false);
-        CockpitState.SetHandbrakeAmount(0.0f);
-        ControlState.SetHandbrake(0.0f);
         SyncCockpitToChaos();
     }
 }
@@ -723,9 +725,15 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
 {
     if (UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
     {
-        ApplyHealthToControls();
-        FPinkCabChaosCockpitBridge::Apply(CockpitState, *Movement, ControlState, DynamicsProvider);
-        if (!VehicleHealthService.HasCapability(GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine))
+        VehicleControlRuntime.ApplyHealthCapabilities(
+            VehicleHealthService, GetVehicleHealthState());
+        FPinkCabChaosCockpitBridge::Apply(
+            CockpitState,
+            *Movement,
+            VehicleControlRuntime.GetMutableControlState(),
+            DynamicsProvider);
+        if (!VehicleHealthService.HasCapability(
+                GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine))
         {
             Movement->EnableMechanicalSim(false);
         }
@@ -853,11 +861,6 @@ bool APinkCabChaosTatraPawn::SyncLoadToChaos()
     return Movement && FPinkCabChaosLoadBridge::Apply(VehicleLoadState, TatraProfile, *Movement);
 }
 
-void APinkCabChaosTatraPawn::ApplyHealthToControls()
-{
-    VehicleHealthService.ApplyCapabilitiesToControls(GetVehicleHealthState(), ControlState);
-}
-
 bool APinkCabChaosTatraPawn::SetFuelMassKg(const float MassKg, const float LongitudinalCm)
 {
     if (!FMath::IsFinite(MassKg) || !FMath::IsFinite(LongitudinalCm) || MassKg < 0.0f)
@@ -911,7 +914,6 @@ bool APinkCabChaosTatraPawn::ApplyAuthoredVehicleHit(FName ZoneId, float Collisi
 bool APinkCabChaosTatraPawn::ApplyVehicleHit(const FPinkCabVehicleHitEvent& Event)
 {
     if (!VehicleHealthService.ApplyHit(GetMutableVehicleHealthState(), Event)) return false;
-    ApplyHealthToControls();
     SyncCockpitToChaos();
     if (!VehicleHealthService.HasCapability(GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine))
     {
@@ -946,7 +948,6 @@ bool APinkCabChaosTatraPawn::RestoreVehicleSnapshot(const FPinkCabVehicleSnapsho
         SyncLoadToChaos();
         return false;
     }
-    ApplyHealthToControls();
     SyncCockpitToChaos();
     return true;
 }
@@ -956,15 +957,8 @@ void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
     const bool bGazeHeld,
     const float DeltaSeconds)
 {
-    SteeringCommand = SteeringController.Step(
-        DeltaX,
-        bGazeHeld,
-        LastSpeedKmh,
-        MotionClassifier.GetMode(),
-        DeltaSeconds);
-    ControlState.SetSteering(SteeringCommand);
+    VehicleControlRuntime.ApplySteering(DeltaX, bGazeHeld, DeltaSeconds);
 }
-
 
 void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     const FName TargetId,
@@ -973,28 +967,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     const float MouseDeltaY,
     const float DeltaSeconds)
 {
-    if (TargetId == FName(TEXT("Gearbox")) && bGripHeld)
-    {
-        GearboxController.ApplyLeverDriverDelta(
-            FPinkCabPhysicalInputConvention::SteeringRight(MouseDeltaX),
-            FPinkCabPhysicalInputConvention::GearboxForward(MouseDeltaY));
-        CockpitState.SetSelectedGear(GearboxController.GetRequestedGear());
-        GearLeverCursor = FVector2D(
-            GearboxController.GetLeverX(),
-            GearboxController.GetLeverY());
-    }
-
-    const bool bHandbrakeGrip =
-        TargetId == FName(TEXT("Handbrake")) && bGripHeld;
-    HandbrakeActuator.Step(
-        MotionClassifier.GetMode(),
-        bHandbrakeGrip,
-        bHandbrakeGrip
-            ? FPinkCabPhysicalInputConvention::HandbrakePull(MouseDeltaY)
-            : 0.0f,
-        DeltaSeconds);
-    CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
-    ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
+    VehicleControlRuntime.ApplyPhysicalControl(
+        TargetId, bGripHeld, MouseDeltaX, MouseDeltaY, DeltaSeconds, CockpitState);
+    GearLeverCursor = VehicleControlRuntime.GetGearLeverCursor();
     SyncCockpitToChaos();
 }
 
@@ -1003,85 +978,12 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const float MouseDeltaX,
     const float DeltaSeconds)
 {
-    FPinkCabVehicleInputFrame EffectiveInput = InputFrame;
-    // Instrument/pedal visuals report what the driver is commanding. Physical
-    // effectiveness (lugging, brake fade, wear) is applied only after this
-    // snapshot and must not falsify pedal indication.
-    DisplayedClutchPedal = FMath::Clamp(InputFrame.Clutch, 0.0f, 1.0f);
-    DisplayedBrakePedal = FMath::Clamp(InputFrame.Brake, 0.0f, 1.0f);
-    DisplayedThrottlePedal = FMath::Clamp(InputFrame.Throttle, 0.0f, 1.0f);
-
-    FPinkCabGearEngagementContext GearContext;
-    GearContext.ClutchPedal = EffectiveInput.Clutch;
-    GearContext.EngineRpm = LastEngineRpm;
-    GearContext.SpeedKmh = LastSpeedKmh;
-    GearContext.Throttle = EffectiveInput.Throttle;
-    GearContext.Brake = EffectiveInput.Brake;
-    FPinkCabVehicleHealthState& Health = GetMutableVehicleHealthState();
-    GearContext.GearboxHealth =
-        Health.GetHealth(EPinkCabVehicleHealthChannel::Gearbox);
-
-    if (CockpitState.GetSelectedGear() != GearboxController.GetRequestedGear())
-    {
-        GearboxController.RequestGear(CockpitState.GetSelectedGear(), GearContext);
-    }
-    else
-    {
-        GearboxController.EvaluateCurrentEngagement(GearContext);
-    }
-
-    if (GearboxController.GetEventSerial() != LastProcessedGearEventSerial)
-    {
-        DrivetrainCondition.RecordGearEvent(
-            GearboxController.GetLastResult(),
-            Health);
-        LastProcessedGearEventSerial = GearboxController.GetEventSerial();
-    }
-
-    FPinkCabDrivetrainConditionInput ConditionInput;
-    ConditionInput.DeltaSeconds = DeltaSeconds;
-    ConditionInput.bEngineRunning =
-        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
-    ConditionInput.EngineRpm = LastEngineRpm;
-    ConditionInput.ExpectedCoupledRpm = GearboxController.GetExpectedCoupledRpm();
-    ConditionInput.SpeedKmh = LastSpeedKmh;
-    ConditionInput.Throttle = EffectiveInput.Throttle;
-    ConditionInput.Brake = EffectiveInput.Brake;
-    ConditionInput.Handbrake = HandbrakeActuator.GetBrakeCommand();
-    ConditionInput.ClutchCoupling =
-        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch);
-    ConditionInput.EngagedGear = GearboxController.GetEngagedGear();
-    const FPinkCabDrivetrainConditionOutput ConditionOutput =
-        DrivetrainCondition.Step(ConditionInput, Health);
-
-    EffectiveInput.Throttle *= ConditionOutput.EngineTorqueFactor;
-    EffectiveInput.Brake *= ConditionOutput.BrakeEffectiveness;
-    DisplayedEngineRpm = ConditionOutput.DisplayedEngineRpm;
-    const float EffectiveHandbrake =
-        HandbrakeActuator.GetBrakeCommand()
-        * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
-            ? ConditionOutput.HandbrakeEffectiveness
-            : 1.0f);
-    DrivetrainTorqueCapacity = ConditionOutput.DrivetrainTorqueCapacity;
-    if (ConditionOutput.bShouldStall)
-    {
-        CockpitState.StallEngine();
-        DisplayedEngineRpm = 0.0f;
-    }
-
+    VehicleControlRuntime.ResolveControlFrame(
+        InputFrame, MouseDeltaX, DeltaSeconds, CockpitState, GetMutableVehicleHealthState());
     if (CockpitInteraction)
     {
-        CockpitInteraction->SetGazeHeld(EffectiveInput.bGazeHeld);
+        CockpitInteraction->SetGazeHeld(InputFrame.bGazeHeld);
     }
-    ApplyMouseSteeringDelta(MouseDeltaX, EffectiveInput.bGazeHeld, DeltaSeconds);
-    ControlState = EffectiveInput.ToControlState(
-        SteeringCommand,
-        EffectiveHandbrake);
-    ControlState.SetDriveline(
-        GearboxController.GetRequestedGear(),
-        GearboxController.GetEngagedGear(),
-        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch)
-            * DrivetrainTorqueCapacity);
     SyncCockpitToChaos();
 }
 
@@ -1119,78 +1021,28 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     const float PhysicalMouseX = PlayerInput.DeviceX;
     const float PhysicalMouseY = PlayerInput.DeviceY;
 
-    FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromDigital(
+    const FPinkCabVehicleInputFrame RawInputFrame = FPinkCabVehicleInputFrame::FromDigital(
         PlayerInput.bGazeHeld,
         PlayerInput.bClutchHeld,
         PlayerInput.bBrakeHeld,
         PlayerInput.bThrottleHeld);
 
-    const EPinkCabVehicleMotionMode PreviousMotionMode = MotionClassifier.GetMode();
-    FPinkCabVehicleTelemetry MotionTelemetry;
-    if (DynamicsProvider.ReadTelemetry(MotionTelemetry))
+    TOptional<FPinkCabVehicleTelemetry> MotionTelemetry;
+    FPinkCabVehicleTelemetry TelemetrySample;
+    if (DynamicsProvider.ReadTelemetry(TelemetrySample))
     {
-        LastSpeedKmh = MotionTelemetry.SpeedKmh;
-        LastEngineRpm = MotionTelemetry.EngineRpm;
-        MotionClassifier.Update(LastSpeedKmh, DeltaSeconds);
+        MotionTelemetry = TelemetrySample;
     }
-    const EPinkCabVehicleMotionMode MotionMode = MotionClassifier.GetMode();
-    LaunchController.NotifyMotionMode(MotionMode);
-
-    const bool bClutchHeld = InputFrame.Clutch > 0.5f;
-    const bool bBrakeHeld = InputFrame.Brake > 0.5f;
-    const bool bThrottleHeld = InputFrame.Throttle > 0.5f;
-    const bool bReturnedToStationary =
-        PreviousMotionMode == EPinkCabVehicleMotionMode::Moving
-        && MotionMode == EPinkCabVehicleMotionMode::Stationary;
-    if (MotionMode == EPinkCabVehicleMotionMode::Stationary
-        && ((bThrottleHeld && !bThrottleHeldLastFrame)
-            || (bReturnedToStationary && bThrottleHeld)))
-    {
-        if (LaunchController.BeginLaunchAttempt())
-        {
-            SmoothedThrottle = 0.0f;
-        }
-    }
-
+    const FPinkCabPreparedVehicleControlFrame PreparedControl =
+        VehicleControlRuntime.PrepareInputFrame(
+            RawInputFrame,
+            PlayerInput.WheelSteps,
+            MotionTelemetry,
+            CockpitState,
+            DeltaSeconds);
+    const FPinkCabVehicleInputFrame& InputFrame = PreparedControl.Frame;
     const int32 WheelSteps = PlayerInput.WheelSteps;
-    const EPinkCabPedalWheelRecipient WheelRecipient =
-        PedalDosingController.ApplyWheelSteps(
-            bClutchHeld,
-            bBrakeHeld,
-            bThrottleHeld,
-            WheelSteps,
-            LaunchController,
-            CockpitState);
-
-    const FPinkCabPedalTargets PedalTargets =
-        PedalDosingController.ResolveTargets(
-            bBrakeHeld,
-            bThrottleHeld,
-            LaunchController.GetThrottleTarget());
-    InputFrame.Brake = PedalTargets.Brake;
-    InputFrame.Throttle = PedalTargets.Throttle;
-
-    SmoothedClutch = FPinkCabVehicleInputResponse::StepAxis(
-        SmoothedClutch,
-        InputFrame.Clutch,
-        DeltaSeconds,
-        ClutchPressSeconds,
-        CockpitState.GetClutchReleaseSeconds());
-    SmoothedBrake = FPinkCabVehicleInputResponse::StepAxis(
-        SmoothedBrake,
-        InputFrame.Brake,
-        DeltaSeconds,
-        BrakePressSeconds,
-        BrakeReleaseSeconds);
-    SmoothedThrottle = FPinkCabVehicleInputResponse::StepAxis(
-        SmoothedThrottle,
-        InputFrame.Throttle,
-        DeltaSeconds,
-        ThrottlePressSeconds,
-        ThrottleReleaseSeconds);
-    InputFrame.Clutch = SmoothedClutch;
-    InputFrame.Brake = SmoothedBrake;
-    InputFrame.Throttle = SmoothedThrottle;
+    const EPinkCabPedalWheelRecipient WheelRecipient = PreparedControl.WheelRecipient;
 
     FPinkCabCockpitInteractionFrame InteractionFrame;
     InteractionFrame.bGazeHeld = PlayerInput.bGazeHeld;
@@ -1235,7 +1087,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 
     bGearLeverDragging = bGearboxGripActive;
     GearLeverCursor = bGearLeverDragging
-        ? FVector2D(GearboxController.GetLeverX(), GearboxController.GetLeverY())
+        ? VehicleControlRuntime.GetGearLeverCursor()
         : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
             CockpitState.GetSelectedGear());
 
@@ -1243,7 +1095,6 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         InputFrame,
         bPhysicalGripActive ? 0.0f : SteeringMouseX,
         DeltaSeconds);
-    bThrottleHeldLastFrame = bThrottleHeld;
 
     const bool bGazeHeld =
         CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
@@ -1278,11 +1129,11 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     FPinkCabCockpitPresentationState Presentation;
     // The steering controller is already filtered for road feel. The visible
     // wheel must mirror that command exactly so its direction is immediately readable.
-    VisualSteering = ControlState.Steering;
+    VisualSteering = VehicleControlRuntime.GetControlState().Steering;
     Presentation.Steering = VisualSteering;
-    Presentation.Clutch = DisplayedClutchPedal;
-    Presentation.Brake = DisplayedBrakePedal;
-    Presentation.Throttle = DisplayedThrottlePedal;
+    Presentation.Clutch = VehicleControlRuntime.GetDisplayedClutchPedal();
+    Presentation.Brake = VehicleControlRuntime.GetDisplayedBrakePedal();
+    Presentation.Throttle = VehicleControlRuntime.GetDisplayedThrottlePedal();
     Presentation.SelectedGear = CockpitState.GetSelectedGear();
     Presentation.bGearLeverDragging = bGearLeverDragging;
     Presentation.GearLeverCursor = GearLeverCursor;
@@ -1312,7 +1163,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     {
         Presentation.SpeedKmh = Telemetry.SpeedKmh;
     }
-    Presentation.EngineRpm = DisplayedEngineRpm;
+    Presentation.EngineRpm = VehicleControlRuntime.GetDisplayedEngineRpm();
 
     const float Rpm01 =
         FMath::Clamp(Presentation.EngineRpm / 7000.0f, 0.0f, 1.0f);

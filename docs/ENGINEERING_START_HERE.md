@@ -63,6 +63,7 @@ Hard rules:
 
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
+| `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
 | `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
 | `clutch` | clutch coupling, heat/wear, stall coupling | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabDrivetrainCondition.h` | `PinkCab.Vehicle.ControlRuntime` |

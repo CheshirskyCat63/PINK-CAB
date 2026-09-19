@@ -2,6 +2,13 @@
   "version": 1,
   "concerns": [
     {
+      "id": "vehicle_control_orchestration",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h",
+      "implementation_root": "Source/PinkCab/Private/Vehicle/PinkCabVehicleControlRuntime.cpp",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime.Runtime"
+    },
+    {
       "id": "steering",
       "owner_domain": "Vehicle",
       "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h",
