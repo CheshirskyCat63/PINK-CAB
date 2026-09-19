@@ -14,8 +14,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabLockedDamageChannelsTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("CD-600 functional+cosmetic channel count"),
-        static_cast<int32>(EPinkCabVehicleHealthChannel::Count), 16);
+    // Unified integration keeps the 16 presentation channels and adds the
+    // dedicated clutch + gearbox channels required by the current mechanics contract.
+    TestEqual(TEXT("unified functional+cosmetic channel count"),
+        static_cast<int32>(EPinkCabVehicleHealthChannel::Count), 18);
 
     FPinkCabVehicleHealthService Service;
     const FName RequiredZones[] = {
@@ -58,28 +60,36 @@ bool FPinkCabDamageSymptomCeilingTest::RunTest(const FString& Parameters)
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabVehicleSnapshotV2Test,
-    "PinkCab.Persistence.VehicleSnapshot.DamageSchemaV2",
+    FPinkCabVehicleSnapshotV3Test,
+    "PinkCab.Persistence.VehicleSnapshot.DamageSchemaV3",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabVehicleSnapshotV2Test::RunTest(const FString& Parameters)
+bool FPinkCabVehicleSnapshotV3Test::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("expanded damage schema bumps vehicle snapshot version"),
-        FPinkCabVehicleSnapshot::CurrentSchemaVersion, 2);
+    TestEqual(TEXT("unified damage schema uses v3 after divergent v2 layouts"),
+        FPinkCabVehicleSnapshot::CurrentSchemaVersion, 3);
 
     FPinkCabVehicleHealthState Health;
     FPinkCabVehicleLoadState Load;
     FPinkCabVehicleSnapshot Snapshot;
-    TestTrue(TEXT("expanded health captures"),
+    TestTrue(TEXT("unified health captures"),
         FPinkCabVehicleSnapshotCodec::Capture(Health, Load, Snapshot));
-    TestEqual(TEXT("expanded channel array persists completely"),
-        Snapshot.Health.ChannelHealth.Num(), 16);
+    TestEqual(TEXT("all unified channels persist"),
+        Snapshot.Health.ChannelHealth.Num(), 18);
 
-    Snapshot.SchemaVersion = 1;
+    FPinkCabVehicleSnapshot Legacy;
+    Legacy.SchemaVersion = FPinkCabVehicleSnapshot::LegacySchemaVersion;
+    Legacy.Health.ChannelHealth.Init(
+        1.0f,
+        FPinkCabVehicleSnapshot::LegacySchema1HealthChannelCount);
     FPinkCabVehicleHealthState RestoredHealth;
     FPinkCabVehicleLoadState RestoredLoad;
-    TestFalse(TEXT("old v1 layout is rejected rather than misread"),
-        FPinkCabVehicleSnapshotCodec::Restore(Snapshot, RestoredHealth, RestoredLoad));
+    TestTrue(TEXT("legacy v1 layout migrates instead of becoming a free repair/reset"),
+        FPinkCabVehicleSnapshotCodec::Restore(Legacy, RestoredHealth, RestoredLoad));
+    TestEqual(TEXT("legacy migration initializes clutch health"),
+        RestoredHealth.GetHealth(EPinkCabVehicleHealthChannel::Clutch), 1.0f);
+    TestEqual(TEXT("legacy migration initializes gearbox health"),
+        RestoredHealth.GetHealth(EPinkCabVehicleHealthChannel::Gearbox), 1.0f);
     return true;
 }
 

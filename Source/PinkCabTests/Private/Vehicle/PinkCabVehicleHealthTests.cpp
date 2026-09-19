@@ -226,21 +226,121 @@ bool FPinkCabCoupledStallTest::RunTest(const FString& Parameters)
     FPinkCabDrivetrainConditionInput Input;
     Input.DeltaSeconds = 0.1f;
     Input.bEngineRunning = true;
-    Input.EngineRpm = 500.0f;
+    // Chaos reports at least its configured 750 RPM idle while mechanical sim is running.
+    // Stall detection therefore has to work at the live idle floor, not only for synthetic sub-idle RPM.
+    Input.EngineRpm = 750.0f;
     Input.SpeedKmh = 0.5f;
     Input.Brake = 0.8f;
     Input.Throttle = 0.0f;
     Input.ClutchCoupling = 1.0f;
     Input.EngagedGear = 1;
-    TestTrue(TEXT("coupled low-rpm braking requests stall"), Condition.Step(Input, Health).bShouldStall);
+    TestTrue(TEXT("coupled Chaos-idle braking requests stall"), Condition.Step(Input, Health).bShouldStall);
 
     Input.ClutchCoupling = 0.0f;
     TestFalse(TEXT("disengaged clutch prevents drivetrain stall"), Condition.Step(Input, Health).bShouldStall);
 
     Input.ClutchCoupling = 1.0f;
     Input.Brake = 0.0f;
-    TestTrue(TEXT("low-rpm coupled launch can stall without brake"),
+    TestTrue(TEXT("Chaos-idle coupled launch can stall without brake"),
         Condition.Step(Input, Health).bShouldStall);
+
+    Input.Throttle = 0.25f;
+    TestFalse(TEXT("driver throttle prevents idle launch stall"),
+        Condition.Step(Input, Health).bShouldStall);
+
+    FPinkCabDrivetrainCondition LugCondition;
+    FPinkCabDrivetrainConditionInput Lug;
+    Lug.DeltaSeconds = 0.20f;
+    Lug.bEngineRunning = true;
+    Lug.EngineRpm = 900.0f;
+    Lug.ExpectedCoupledRpm = 750.0f;
+    Lug.SpeedKmh = 30.0f;
+    Lug.Throttle = 0.85f;
+    Lug.ClutchCoupling = 1.0f;
+    Lug.EngagedGear = 5;
+
+    const FPinkCabDrivetrainConditionOutput FirstLug =
+        LugCondition.Step(Lug, Health);
+    TestFalse(TEXT("fifth at 30 first lugs instead of stalling instantly"),
+        FirstLug.bShouldStall);
+    TestTrue(TEXT("fifth-at-30 enters explicit engine-lug state"),
+        FirstLug.bEngineLugging);
+    TestTrue(TEXT("lug shudder is obvious without cutting most engine torque"),
+        FirstLug.EngineTorqueFactor > 0.55f
+        && FirstLug.EngineTorqueFactor < 0.95f);
+    TestTrue(TEXT("dashboard/tach RPM falls under impossible coupled load"),
+        FirstLug.DisplayedEngineRpm > 0.0f
+        && FirstLug.DisplayedEngineRpm < Lug.EngineRpm);
+
+    bool bStalledDuringCorrectionWindow = false;
+    FPinkCabDrivetrainConditionOutput FinalLug = FirstLug;
+    // Including FirstLug, 1.2 s of bad fifth-at-30 must remain recoverable.
+    for (int32 Index = 0; Index < 5; ++Index)
+    {
+        FinalLug = LugCondition.Step(Lug, Health);
+        bStalledDuringCorrectionWindow |= FinalLug.bShouldStall;
+    }
+    TestFalse(TEXT("wrong high gear gives at least a 1.2 second correction window"),
+        bStalledDuringCorrectionWindow);
+
+    bool bEventuallyStalled = false;
+    for (int32 Index = 0; Index < 7; ++Index)
+    {
+        FinalLug = LugCondition.Step(Lug, Health);
+        bEventuallyStalled |= FinalLug.bShouldStall;
+    }
+    TestTrue(TEXT("ignoring sustained fully-coupled fifth at 30 eventually stalls"),
+        bEventuallyStalled);
+    TestEqual(TEXT("dashboard/tach RPM is zero once engine stalls"),
+        FinalLug.DisplayedEngineRpm, 0.0f);
+
+    FPinkCabDrivetrainCondition RescueCondition;
+    bool bStalledBeforeRescue = false;
+    for (int32 Index = 0; Index < 6; ++Index)
+    {
+        bStalledBeforeRescue |= RescueCondition.Step(Lug, Health).bShouldStall;
+    }
+    FPinkCabDrivetrainConditionInput ClutchRescue = Lug;
+    ClutchRescue.ClutchCoupling = 0.0f;
+    RescueCondition.Step(ClutchRescue, Health);
+    RescueCondition.Step(ClutchRescue, Health);
+    const FPinkCabDrivetrainConditionOutput RecoveredLug =
+        RescueCondition.Step(Lug, Health);
+    TestFalse(TEXT("driver can rescue the lug with clutch before the grace window expires"),
+        bStalledBeforeRescue || RecoveredLug.bShouldStall);
+
+    FPinkCabDrivetrainCondition ReverseCondition;
+    FPinkCabDrivetrainConditionInput ReverseCruise = Lug;
+    ReverseCruise.EngagedGear = -1;
+    ReverseCruise.SpeedKmh = -8.0f;
+    ReverseCruise.ExpectedCoupledRpm = 750.0f;
+    ReverseCruise.Throttle = 0.25f;
+    bool bReverseStalled = false;
+    for (int32 Index = 0; Index < 12; ++Index)
+    {
+        const FPinkCabDrivetrainConditionOutput Out =
+            ReverseCondition.Step(ReverseCruise, Health);
+        bReverseStalled |= Out.bShouldStall;
+        TestFalse(TEXT("reverse cruise never enters high-gear lug state"), Out.bEngineLugging);
+    }
+    TestFalse(TEXT("25% reverse cruise never stalls from high-gear lug logic"), bReverseStalled);
+
+    FPinkCabDrivetrainCondition FirstCondition;
+    FPinkCabDrivetrainConditionInput FirstPull = ReverseCruise;
+    FirstPull.EngagedGear = 1;
+    FirstPull.SpeedKmh = 8.0f;
+    FirstPull.Throttle = 1.0f;
+    TestFalse(TEXT("first gear full throttle is not treated as high-gear lugging"),
+        FirstCondition.Step(FirstPull, Health).bEngineLugging);
+
+    FPinkCabDrivetrainConditionInput EngineOff;
+    EngineOff.DeltaSeconds = 0.1f;
+    EngineOff.bEngineRunning = false;
+    EngineOff.EngineRpm = 750.0f; // stale Chaos idle must never leak to instruments
+    const FPinkCabDrivetrainConditionOutput Off =
+        LugCondition.Step(EngineOff, Health);
+    TestEqual(TEXT("engine-off dashboard/tach suppresses stale Chaos idle RPM"),
+        Off.DisplayedEngineRpm, 0.0f);
     return true;
 }
 

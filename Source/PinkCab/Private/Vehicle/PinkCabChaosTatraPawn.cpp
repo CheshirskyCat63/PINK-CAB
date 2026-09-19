@@ -9,6 +9,7 @@
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -19,11 +20,13 @@
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerInput.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/CoreDelegates.h"
+#include "Math/RotationMatrix.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodyInstance.h"
@@ -113,6 +116,46 @@ bool BindChaosWheelsToTatraGeometry(
         Setup.AdditionalOffset = Part->LocalTransform.GetLocation() - BaseRestPosition;
     }
     return true;
+}
+
+FString GearLabel(const int32 Gear)
+{
+    return Gear < 0 ? TEXT("R")
+        : (Gear == 0 ? TEXT("N") : FString::FromInt(Gear));
+}
+
+const TCHAR* MotionLabel(const EPinkCabVehicleMotionMode Mode)
+{
+    return Mode == EPinkCabVehicleMotionMode::Moving ? TEXT("MOVING") : TEXT("STATIONARY");
+}
+
+const TCHAR* EngagementLabel(const EPinkCabGearEngagementResult Result)
+{
+    switch (Result)
+    {
+    case EPinkCabGearEngagementResult::Neutral: return TEXT("NEUTRAL");
+    case EPinkCabGearEngagementResult::ClutchDisengagedAccepted: return TEXT("CLUTCH");
+    case EPinkCabGearEngagementResult::MatchedClutchlessAccepted: return TEXT("MATCH");
+    case EPinkCabGearEngagementResult::GrindRefused: return TEXT("GRIND");
+    case EPinkCabGearEngagementResult::ReverseLockout: return TEXT("R-LOCK");
+    case EPinkCabGearEngagementResult::DangerousOverrev: return TEXT("OVERREV");
+    default: return TEXT("NONE");
+    }
+}
+
+FString GaugeBar(const float Value, const int32 Segments = 10)
+{
+    const float Clamped = FMath::Clamp(Value, 0.0f, 1.0f);
+    const int32 Filled = FMath::Clamp(FMath::RoundToInt(Clamped * Segments), 0, Segments);
+    FString Result;
+    Result.Reserve(Segments + 2);
+    Result.AppendChar(TEXT('['));
+    for (int32 Index = 0; Index < Segments; ++Index)
+    {
+        Result.AppendChar(Index < Filled ? TEXT('#') : TEXT('-'));
+    }
+    Result.AppendChar(TEXT(']'));
+    return Result;
 }
 }
 
@@ -224,6 +267,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
     ControlState.SetDriveline(0, 0, 0.0f);
     SyncCockpitToChaos();
+
     if (APlayerController* PC = Cast<APlayerController>(GetController()))
     {
         ApplyGameplayInputMode(PC);
@@ -308,16 +352,108 @@ void APinkCabChaosTatraPawn::MountPlayableHud()
             const FName Target = WeakThis->CockpitInteraction->GetCurrentTargetId();
             return Target.IsNone() ? FText::GetEmpty() : FText::FromName(Target);
         }) ]
-        + SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(FMargin(24,24,24,0))
-        [ SNew(SBorder).Padding(FMargin(12,9)).BorderBackgroundColor(FLinearColor(0,0,0,0.58f))
+        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(FMargin(20,0,20,28))
+        [ SNew(SBorder).Padding(FMargin(16,12)).BorderBackgroundColor(FLinearColor(0.015f,0.018f,0.022f,0.88f))
           [ SNew(SVerticalBox)
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),12)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() { if(!WeakThis.IsValid()) return FText::GetEmpty(); const FPinkCabCockpitState& State=WeakThis->CockpitState; const TCHAR* Engine=State.GetIgnitionState()==EPinkCabIgnitionState::Running?TEXT("ON"):TEXT("OFF"); const int32 Gear=State.GetSelectedGear(); const FString GearText=Gear<0?TEXT("R"):(Gear==0?TEXT("N"):FString::FromInt(Gear)); return FText::FromString(FString::Printf(TEXT("ENGINE %s   GEAR %s   HANDBRAKE %d%%"),Engine,*GearText,FMath::RoundToInt(State.GetHandbrakeAmount()*100.0f))); }) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),10)).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text_Lambda([WeakThis]() { if(!WeakThis.IsValid()) return FText::GetEmpty(); return FText::FromString(FString::Printf(TEXT("CLUTCH %d%%   BRAKE %d%%   THROTTLE %d%%"), FMath::RoundToInt(WeakThis->ControlState.Clutch*100.0f), FMath::RoundToInt(WeakThis->ControlState.Brake*100.0f), FMath::RoundToInt(WeakThis->ControlState.Throttle*100.0f))); }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("SPACE hold: LOOK   RMB: ready/control focus   LMB: use/capture   WHEEL: fine adjust"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("1 signal   2 horn   3 gearbox   4 handbrake"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("Q clutch   W brake   E throttle (smooth analog ramps)   MOUSE steer"))) ]
-            + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("GEAR: press 3 to target, hold RMB, move mouse through H-gate 1/3/5 - N - 2/4/R"))) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)[ SNew(STextBlock).ColorAndOpacity(FLinearColor(1,1,1,0.88f)).Text(FText::FromString(TEXT("HANDBRAKE: press 4 to target, hold RMB, mouse pull/push = analog lever"))) ]
+            + SVerticalBox::Slot().AutoHeight()
+            [ SNew(SHorizontalBox)
+              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("SPEED"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid()
+                        ? FText::FromString(FString::Printf(TEXT("%03d  km/h"), FMath::RoundToInt(FMath::Abs(WeakThis->LastSpeedKmh))))
+                        : FText::GetEmpty();
+                }) ]
+              ]
+              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("GEAR"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor(0.92f,0.95f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid() ? FText::FromString(GearLabel(WeakThis->GearboxController.GetEngagedGear())) : FText::GetEmpty();
+                }) ]
+              ]
+              + SHorizontalBox::Slot().AutoWidth()
+              [ SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("ENGINE RPM"))) ]
+                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),24)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
+                    return WeakThis.IsValid()
+                        ? FText::FromString(FString::Printf(TEXT("%04d"), FMath::RoundToInt(FMath::Max(WeakThis->DisplayedEngineRpm, 0.0f))))
+                        : FText::GetEmpty();
+                }) ]
+              ]
+            ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,6,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),11)).ColorAndOpacity(FLinearColor(0.88f,0.92f,0.96f,1.0f)).Text_Lambda([WeakThis]() {
+                if (!WeakThis.IsValid()) return FText::GetEmpty();
+                const EPinkCabIgnitionState Ignition = WeakThis->CockpitState.GetIgnitionState();
+                const TCHAR* Engine = Ignition == EPinkCabIgnitionState::Running ? TEXT("ENGINE ON")
+                    : (Ignition == EPinkCabIgnitionState::Stalled ? TEXT("ENGINE STALLED") : TEXT("ENGINE OFF"));
+                const float Fuel01 = WeakThis->TatraProfile.FullFuelMassKg > KINDA_SMALL_NUMBER
+                    ? FMath::Clamp(WeakThis->VehicleLoadState.GetFuelMassKg() / WeakThis->TatraProfile.FullFuelMassKg, 0.0f, 1.0f)
+                    : 0.0f;
+                return FText::FromString(FString::Printf(
+                    TEXT("%s   |   %s   |   FUEL %3d%%   |   TEMP %3d%%"),
+                    Engine,
+                    MotionLabel(WeakThis->GetMotionMode()),
+                    FMath::RoundToInt(Fuel01 * 100.0f),
+                    FMath::RoundToInt(FMath::Clamp(WeakThis->EngineTemperature01, 0.0f, 1.0f) * 100.0f)));
+            }) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
+                if (!WeakThis.IsValid()) return FText::GetEmpty();
+                return FText::FromString(FString::Printf(
+                    TEXT("CLUTCH %s %3d%%    GAS %s %3d%%"),
+                    *GaugeBar(WeakThis->DisplayedClutchPedal),
+                    FMath::RoundToInt(WeakThis->DisplayedClutchPedal * 100.0f),
+                    *GaugeBar(WeakThis->DisplayedThrottlePedal),
+                    FMath::RoundToInt(WeakThis->DisplayedThrottlePedal * 100.0f)));
+            }) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
+                if (!WeakThis.IsValid()) return FText::GetEmpty();
+                const float Handbrake = WeakThis->HandbrakeActuator.GetBrakeCommand();
+                return FText::FromString(FString::Printf(
+                    TEXT("BRAKE  %s %3d%%    H-BRAKE %s %3d%%"),
+                    *GaugeBar(WeakThis->DisplayedBrakePedal),
+                    FMath::RoundToInt(WeakThis->DisplayedBrakePedal * 100.0f),
+                    *GaugeBar(Handbrake),
+                    FMath::RoundToInt(Handbrake * 100.0f)));
+            }) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),10)).ColorAndOpacity(FLinearColor(1.0f,0.78f,0.30f,1.0f)).Text_Lambda([WeakThis]() {
+                if (!WeakThis.IsValid()) return FText::GetEmpty();
+                TArray<FString> Warnings;
+                const float Steering = WeakThis->ControlState.Steering;
+                const FString SteeringText = FMath::Abs(Steering) < 0.02f
+                    ? TEXT("STEER CENTER")
+                    : FString::Printf(
+                        TEXT("STEER %s %d%%"),
+                        Steering > 0.0f ? TEXT("R") : TEXT("L"),
+                        FMath::RoundToInt(FMath::Abs(Steering) * 100.0f));
+                Warnings.Add(SteeringText);
+                Warnings.Add(FString::Printf(
+                    TEXT("REQ %s / ENG %s"),
+                    *GearLabel(WeakThis->GearboxController.GetRequestedGear()),
+                    *GearLabel(WeakThis->GearboxController.GetEngagedGear())));
+                if (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled) Warnings.Add(TEXT("STALL"));
+                if (WeakThis->LaunchController.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
+                if (WeakThis->HandbrakeActuator.GetBrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
+                if (WeakThis->GetVehicleHealthState().GetBrakeTemperature01() > 0.75f) Warnings.Add(TEXT("BRAKES HOT"));
+                if (WeakThis->GetVehicleHealthState().GetClutchTemperature01() > 0.75f) Warnings.Add(TEXT("CLUTCH HOT"));
+                const EPinkCabGearEngagementResult GearResult = WeakThis->GearboxController.GetLastResult();
+                if (GearResult == EPinkCabGearEngagementResult::GrindRefused
+                    || GearResult == EPinkCabGearEngagementResult::ReverseLockout
+                    || GearResult == EPinkCabGearEngagementResult::DangerousOverrev)
+                {
+                    Warnings.Add(EngagementLabel(GearResult));
+                }
+                if (WeakThis->HandbrakeActuator.IsParkingLatched()) Warnings.Add(TEXT("PARK LATCH"));
+                return FText::FromString(FString::Join(Warnings, TEXT("   |   ")));
+            }) ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,7,0,0)
+            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.58f))
+              .Text(FText::FromString(TEXT("MOUSE STEER   Q CLUTCH   W BRAKE   E GAS   3 GEARBOX   4 HANDBRAKE   SPACE LOOK"))) ]
           ] ];
     GEngine->GameViewport->AddViewportWidgetContent(PlayableHudOverlay.ToSharedRef(),1000);
 }
@@ -601,17 +737,106 @@ FName APinkCabChaosTatraPawn::GetVehicleVisualProfileId() const
     return VehicleVisualShell ? VehicleVisualShell->GetProfileId() : NAME_None;
 }
 
+bool APinkCabChaosTatraPawn::ConfigureSourceSteeringVisual(
+    const FPinkCabVehicleVisualProfile& Profile)
+{
+    if (!VehicleVisualShell || !CockpitVisualDriver) return false;
+
+    CockpitVisualDriver->SetSteeringVisualComponent(nullptr);
+    if (SourceSteeringPivot)
+    {
+        SourceSteeringPivot->DestroyComponent();
+        SourceSteeringPivot = nullptr;
+    }
+
+    if (Profile.SteeringPresentationPartId.IsNone())
+    {
+        return true;
+    }
+
+    UStaticMeshComponent* SourceSteering =
+        VehicleVisualShell->GetPresentationPartComponent(Profile.SteeringPresentationPartId);
+    UStaticMesh* SteeringMesh = SourceSteering ? SourceSteering->GetStaticMesh() : nullptr;
+    if (!SourceSteering || !SteeringMesh)
+    {
+        return false;
+    }
+
+    // Derive the steering-column pivot from the actual visible source wheel,
+    // not camera/head-space or guessed scene coordinates. The preserved Tatra
+    // wheel is a thin disc; its thinnest local bounds axis is the column axis.
+    const FBoxSphereBounds LocalBounds = SteeringMesh->GetBounds();
+    const FVector Extent = LocalBounds.BoxExtent;
+    FVector LocalAxis = FVector::ForwardVector;
+    if (Extent.Y <= Extent.X && Extent.Y <= Extent.Z)
+    {
+        LocalAxis = FVector::RightVector;
+    }
+    else if (Extent.Z <= Extent.X && Extent.Z <= Extent.Y)
+    {
+        LocalAxis = FVector::UpVector;
+    }
+
+    const FTransform SteeringWorld = SourceSteering->GetComponentTransform();
+    const FVector PivotWorld = SteeringWorld.TransformPosition(LocalBounds.Origin);
+    const FVector AxisWorld =
+        SteeringWorld.TransformVectorNoScale(LocalAxis).GetSafeNormal();
+    const FTransform ShellWorld = VehicleVisualShell->GetComponentTransform();
+    const FVector PivotLocal = ShellWorld.InverseTransformPosition(PivotWorld);
+    const FVector AxisLocal =
+        ShellWorld.InverseTransformVectorNoScale(AxisWorld).GetSafeNormal();
+    if (AxisLocal.IsNearlyZero())
+    {
+        return false;
+    }
+
+    USceneComponent* Pivot = NewObject<USceneComponent>(this);
+    if (!Pivot) return false;
+    AddInstanceComponent(Pivot);
+    Pivot->SetupAttachment(VehicleVisualShell);
+    Pivot->SetMobility(EComponentMobility::Movable);
+    Pivot->SetRelativeLocation(PivotLocal);
+    Pivot->SetRelativeRotation(FRotationMatrix::MakeFromX(AxisLocal).Rotator());
+    Pivot->RegisterComponent();
+
+    // Keep the source wheel exactly where the artist put it; only its parent
+    // changes so subsequent rotation occurs around the wheel hub/column.
+    SourceSteering->AttachToComponent(Pivot, FAttachmentTransformRules::KeepWorldTransform);
+    SourceSteeringPivot = Pivot;
+    CockpitVisualDriver->SetSteeringVisualComponent(Pivot);
+    return true;
+}
+
 bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile)
 {
     if (!VehicleVisualShell || !CockpitAssembly || !CockpitVisualDriver || !Profile.IsValid()) return false;
     const FPinkCabVehicleVisualProfile Previous = VehicleVisualShell->GetProfile();
+
+    CockpitVisualDriver->SetSteeringVisualComponent(nullptr);
+    if (SourceSteeringPivot)
+    {
+        SourceSteeringPivot->DestroyComponent();
+        SourceSteeringPivot = nullptr;
+    }
+
     if (!VehicleVisualShell->ApplyProfile(Profile)) return false;
     if (!CockpitAssembly->ApplyVisualBindings(Profile.CockpitBindings))
     {
         VehicleVisualShell->ApplyProfile(Previous);
+        ConfigureSourceSteeringVisual(Previous);
         return false;
     }
     CockpitAssembly->SetGeneratedVisualMode(!Profile.HasVisualAsset(), Profile.CockpitBindings);
+
+    if (!ConfigureSourceSteeringVisual(Profile))
+    {
+        VehicleVisualShell->ApplyProfile(Previous);
+        CockpitAssembly->ApplyVisualBindings(Previous.CockpitBindings);
+        CockpitAssembly->SetGeneratedVisualMode(!Previous.HasVisualAsset(), Previous.CockpitBindings);
+        ConfigureSourceSteeringVisual(Previous);
+        return false;
+    }
+
     CockpitAssembly->SetRelativeTransform(Profile.CockpitRootTransform);
     DriverHeadRoot->SetRelativeTransform(Profile.DriverHeadTransform);
     CockpitVisualDriver->InvalidateBaseTransforms();
@@ -752,6 +977,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     {
         GearboxController.ApplyLeverMouseDelta(MouseDeltaX, MouseDeltaY);
         CockpitState.SetSelectedGear(GearboxController.GetRequestedGear());
+        GearLeverCursor = FVector2D(
+            GearboxController.GetLeverX(),
+            GearboxController.GetLeverY());
     }
 
     const bool bHandbrakeGrip =
@@ -759,7 +987,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     HandbrakeActuator.Step(
         MotionClassifier.GetMode(),
         bHandbrakeGrip,
-        bHandbrakeGrip ? MouseDeltaY : 0.0f,
+        // UE mouse Y is positive toward the dash and negative toward the
+        // driver in this cockpit path. Pull toward self must tighten.
+        bHandbrakeGrip ? -MouseDeltaY : 0.0f,
         DeltaSeconds);
     CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
     ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
@@ -772,6 +1002,12 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const float DeltaSeconds)
 {
     FPinkCabVehicleInputFrame EffectiveInput = InputFrame;
+    // Instrument/pedal visuals report what the driver is commanding. Physical
+    // effectiveness (lugging, brake fade, wear) is applied only after this
+    // snapshot and must not falsify pedal indication.
+    DisplayedClutchPedal = FMath::Clamp(InputFrame.Clutch, 0.0f, 1.0f);
+    DisplayedBrakePedal = FMath::Clamp(InputFrame.Brake, 0.0f, 1.0f);
+    DisplayedThrottlePedal = FMath::Clamp(InputFrame.Throttle, 0.0f, 1.0f);
 
     FPinkCabGearEngagementContext GearContext;
     GearContext.ClutchPedal = EffectiveInput.Clutch;
@@ -816,7 +1052,9 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const FPinkCabDrivetrainConditionOutput ConditionOutput =
         DrivetrainCondition.Step(ConditionInput, Health);
 
+    EffectiveInput.Throttle *= ConditionOutput.EngineTorqueFactor;
     EffectiveInput.Brake *= ConditionOutput.BrakeEffectiveness;
+    DisplayedEngineRpm = ConditionOutput.DisplayedEngineRpm;
     const float EffectiveHandbrake =
         HandbrakeActuator.GetBrakeCommand()
         * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
@@ -826,6 +1064,7 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     if (ConditionOutput.bShouldStall)
     {
         CockpitState.StallEngine();
+        DisplayedEngineRpm = 0.0f;
     }
 
     if (CockpitInteraction)
@@ -866,6 +1105,29 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     float MouseX = 0.0f;
     float MouseY = 0.0f;
     PC->GetInputMouseDelta(MouseX, MouseY);
+
+    // GetInputMouseDelta is already multiplied by the project's 0.07 mouse
+    // sensitivity. That is appropriate for free-look, but it destroys the
+    // physical ±5 cm steering workspace. Feed steering the raw mouse delta
+    // while keeping gaze/cockpit look on the authored processed sensitivity.
+    float SteeringMouseX = MouseX;
+    float PhysicalMouseX = MouseX;
+    float PhysicalMouseY = MouseY;
+    if (PC->PlayerInput)
+    {
+        const float RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
+        const float RawMouseY = PC->PlayerInput->GetRawKeyValue(EKeys::MouseY);
+        SteeringMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseX, RawMouseX);
+        // Gearbox and handbrake are physical lever gestures. Their authored
+        // counts are raw-device counts; using processed 0.07 sensitivity made
+        // the far-right/bottom reverse gate practically unreachable.
+        PhysicalMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseX, RawMouseX);
+        PhysicalMouseY = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+            MouseY, RawMouseY);
+    }
+
     FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(
         InputRouter,
         [PC](const FKey& Key) { return PC->IsInputKeyDown(Key); });
@@ -982,18 +1244,19 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     ApplyPhysicalControlMouseDelta(
         ActiveGripTarget,
         CockpitInteraction->IsGripActive(),
-        MouseX,
-        MouseY,
+        PhysicalMouseX,
+        PhysicalMouseY,
         DeltaSeconds);
 
     bGearLeverDragging = bGearboxGripActive;
-    GearLeverCursor =
-        UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
+    GearLeverCursor = bGearLeverDragging
+        ? FVector2D(GearboxController.GetLeverX(), GearboxController.GetLeverY())
+        : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
             CockpitState.GetSelectedGear());
 
     ApplyVehicleInputFrame(
         InputFrame,
-        bPhysicalGripActive ? 0.0f : MouseX,
+        bPhysicalGripActive ? 0.0f : SteeringMouseX,
         DeltaSeconds);
     bThrottleHeldLastFrame = bThrottleHeld;
 
@@ -1028,15 +1291,13 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     DriverHeadRoot->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
 
     FPinkCabCockpitPresentationState Presentation;
-    VisualSteering = FMath::FInterpTo(
-        VisualSteering,
-        ControlState.Steering,
-        DeltaSeconds,
-        7.0f);
+    // The steering controller is already filtered for road feel. The visible
+    // wheel must mirror that command exactly so its direction is immediately readable.
+    VisualSteering = ControlState.Steering;
     Presentation.Steering = VisualSteering;
-    Presentation.Clutch = ControlState.Clutch;
-    Presentation.Brake = ControlState.Brake;
-    Presentation.Throttle = ControlState.Throttle;
+    Presentation.Clutch = DisplayedClutchPedal;
+    Presentation.Brake = DisplayedBrakePedal;
+    Presentation.Throttle = DisplayedThrottlePedal;
     Presentation.SelectedGear = CockpitState.GetSelectedGear();
     Presentation.bGearLeverDragging = bGearLeverDragging;
     Presentation.GearLeverCursor = GearLeverCursor;
@@ -1065,8 +1326,8 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     if (DynamicsProvider.ReadTelemetry(Telemetry))
     {
         Presentation.SpeedKmh = Telemetry.SpeedKmh;
-        Presentation.EngineRpm = Telemetry.EngineRpm;
     }
+    Presentation.EngineRpm = DisplayedEngineRpm;
 
     const float Rpm01 =
         FMath::Clamp(Presentation.EngineRpm / 7000.0f, 0.0f, 1.0f);

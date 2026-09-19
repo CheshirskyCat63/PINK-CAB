@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
@@ -50,20 +51,53 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
         Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     Test->TestNotNull(TEXT("playable map starts with visible donor exterior"), Shell->GetExteriorPresentation());
     Test->TestNotNull(TEXT("playable map starts with owner-visible source scene"), Shell->GetCabinPresentation());
-    Test->TestEqual(TEXT("playable map renders 133 source meshes plus four donor wheels"),
+    Test->TestEqual(TEXT("playable map renders all 133 source meshes plus four donor wheels"),
         Shell->GetPresentationPartCount(), 137);
+
+    const FPinkCabVehicleVisualProfile& ActiveProfile = Shell->GetProfile();
+    Test->TestFalse(TEXT("active Tatra profile identifies its source steering part"),
+        ActiveProfile.SteeringPresentationPartId.IsNone());
+    UStaticMeshComponent* SourceSteering =
+        Shell->GetPresentationPartComponent(ActiveProfile.SteeringPresentationPartId);
+    Test->TestNotNull(TEXT("source t613 steering scene part is present"), SourceSteering);
+    if (SourceSteering && SourceSteering->GetStaticMesh())
+    {
+        Test->TestEqual(TEXT("visible steering is the preserved source mesh, not a replacement"),
+            SourceSteering->GetStaticMesh()->GetName(), FString(TEXT("t613_Black_material_021")));
+        Test->TestFalse(TEXT("source steering stays visible"), SourceSteering->bHiddenInGame);
+    }
 
     USceneComponent* Steering = Assembly->GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel);
     const FPinkCabCockpitSlotDefinition* Definition = Assembly->GetSlotDefinition(EPinkCabCockpitSlot::SteeringWheel);
-    Test->TestNotNull(TEXT("steering anchor exists"), Steering);
+    Test->TestNotNull(TEXT("generated steering anchor still exists for fallback semantics"), Steering);
     Test->TestNotNull(TEXT("steering definition exists"), Definition);
-    if (!Steering || !Definition) return true;
+    if (!Steering || !Definition || !SourceSteering) return true;
 
     const UPrimitiveComponent* SteeringPrimitive = Cast<UPrimitiveComponent>(Steering);
-    Test->TestTrue(TEXT("faithful Tatra hides generated cockpit visuals"),
+    Test->TestTrue(TEXT("generated/replacement steering primitive is hidden for Tatra"),
         SteeringPrimitive && SteeringPrimitive->bHiddenInGame);
 
-    const FTransform OriginalTransform = Steering->GetRelativeTransform();
+    USceneComponent* SteeringPivot = VisualDriver->GetSteeringVisualComponent();
+    Test->TestNotNull(TEXT("source steering is driven through an invisible authored pivot"), SteeringPivot);
+    if (!SteeringPivot) return true;
+    Test->TestTrue(TEXT("the actual source steering mesh is parented to the live pivot"),
+        SourceSteering->GetAttachParent() == SteeringPivot);
+    Test->TestTrue(TEXT("steering-column pivot lies inside the actual steering-wheel bounds"),
+        SourceSteering->Bounds.GetBox().IsInsideOrOn(SteeringPivot->GetComponentLocation()));
+
+    const FTransform OriginalPivot = SteeringPivot->GetRelativeTransform();
+    const FTransform OriginalSourceWorld = SourceSteering->GetComponentTransform();
+    FPinkCabCockpitPresentationState TurnState;
+    TurnState.Steering = 0.25f;
+    VisualDriver->Apply(*Assembly, TurnState);
+    Test->TestTrue(TEXT("source steering pivot does not translate while turning"),
+        SteeringPivot->GetRelativeLocation().Equals(OriginalPivot.GetLocation(), 0.01f));
+    Test->TestFalse(TEXT("source steering pivot rotates with steering command"),
+        SteeringPivot->GetRelativeRotation().Equals(OriginalPivot.Rotator(), 0.01f));
+    Test->TestFalse(TEXT("actual source steering mesh follows the pivot rotation"),
+        SourceSteering->GetComponentRotation().Equals(OriginalSourceWorld.Rotator(), 0.01f));
+    VisualDriver->Apply(*Assembly, FPinkCabCockpitPresentationState{});
+
     const FName StableIdBefore = Definition->StableId;
     const bool bGripBefore = Definition->bSupportsGrip;
     const bool bMomentaryBefore = Definition->bSupportsMomentary;

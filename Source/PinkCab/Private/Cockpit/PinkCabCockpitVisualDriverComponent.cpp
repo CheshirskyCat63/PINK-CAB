@@ -14,7 +14,9 @@ UPinkCabCockpitVisualDriverComponent::UPinkCabCockpitVisualDriverComponent()
 
 float UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(const float Steering)
 {
-    return FMath::Clamp(Steering, -1.0f, 1.0f) * 450.0f;
+    // Semantic steering stays +right. The preserved Tatra wheel mesh rotates
+    // rightward around its authored column on the negative local angle.
+    return FMath::Clamp(Steering, -1.0f, 1.0f) * -450.0f;
 }
 
 float UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(const float Value)
@@ -24,7 +26,7 @@ float UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(const float Value
 
 float UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(const float Amount)
 {
-    return FMath::Clamp(Amount, 0.0f, 1.0f) * -32.0f;
+    return FMath::Clamp(Amount, 0.0f, 1.0f) * -20.0f;
 }
 
 float UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(const float Temperature01)
@@ -93,7 +95,9 @@ FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(FVector2
 {
     Cursor.X = FMath::Clamp(Cursor.X, -1.30f, 1.0f);
     Cursor.Y = FMath::Clamp(Cursor.Y, -1.0f, 1.0f);
-    return FVector(Cursor.Y * 6.0f, Cursor.X * 7.0f, 0.0f);
+    // Tatra cockpit local axes: X crosses the H gate left/right, while negative Y
+    // points forward. Preserve the canonical 1/3/5 forward and 2/4/R rearward layout.
+    return FVector(Cursor.X * 7.0f, -Cursor.Y * 6.0f, 0.0f);
 }
 
 int32 UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D Cursor)
@@ -109,6 +113,12 @@ int32 UPinkCabCockpitVisualDriverComponent::GearForCursor(FVector2D Cursor)
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffset(const int32 Gear)
 {
     return GearLeverOffsetFromCursor(GearCursorForGear(Gear));
+}
+
+void UPinkCabCockpitVisualDriverComponent::SetSteeringVisualComponent(USceneComponent* Component)
+{
+    SteeringVisualComponent = Component;
+    bSteeringVisualBaseValid = false;
 }
 
 void UPinkCabCockpitVisualDriverComponent::CacheBaseTransforms(
@@ -155,14 +165,27 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
             }
         }
     };
-    if (USceneComponent* Steering = Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel))
+    if (USceneComponent* Steering = SteeringVisualComponent.Get())
+    {
+        if (!bSteeringVisualBaseValid)
+        {
+            SteeringVisualBaseTransform = Steering->GetRelativeTransform();
+            bSteeringVisualBaseValid = true;
+        }
+
+        // The source steering pivot is authored with local X along the
+        // steering-column axis. Rotate the pivot around that axis only.
+        const float AngleRadians = FMath::DegreesToRadians(SteeringAngleDegrees(State.Steering));
+        const FQuat LocalTurn(FVector::ForwardVector, AngleRadians);
+        Steering->SetRelativeLocation(SteeringVisualBaseTransform.GetLocation());
+        Steering->SetRelativeRotation(SteeringVisualBaseTransform.GetRotation() * LocalTurn);
+    }
+    else if (USceneComponent* FallbackSteering = Assembly.GetSlotComponent(EPinkCabCockpitSlot::SteeringWheel))
     {
         if (const FTransform* Base = GetBase(EPinkCabCockpitSlot::SteeringWheel))
         {
-            // Desktop Tatra mesh is authored relative to the exact t613_steer pivot.
-            // Rotate in place; never translate the wheel to compensate for mesh bounds.
             const FRotator Offset(0.0f, 0.0f, SteeringAngleDegrees(State.Steering));
-            Steering->SetRelativeLocationAndRotation(Base->GetLocation(), Base->Rotator() + Offset);
+            FallbackSteering->SetRelativeLocationAndRotation(Base->GetLocation(), Base->Rotator() + Offset);
         }
     }
     SetRotOffset(EPinkCabCockpitSlot::ClutchPedal,
@@ -185,6 +208,16 @@ void UPinkCabCockpitVisualDriverComponent::Apply(
         FRotator(0.0f, 0.0f, TachometerNeedleAngleDegrees(State.EngineRpm)));
     SetRotOffset(EPinkCabCockpitSlot::Ignition,
         FRotator(0.0f, State.bIgnitionRunning ? 42.0f : 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::TurnSignals,
+        FRotator(0.0f, State.bTurnSignalLeft ? -24.0f : (State.bTurnSignalRight ? 24.0f : 0.0f), 0.0f));
+    SetLocOffset(EPinkCabCockpitSlot::Horn,
+        FVector(State.bHornActive ? -1.5f : 0.0f, 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::Lights,
+        FRotator(State.bLightsOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    SetRotOffset(EPinkCabCockpitSlot::Wipers,
+        FRotator(State.bWipersOn ? 32.0f : 0.0f, 0.0f, 0.0f));
+    SetLocOffset(EPinkCabCockpitSlot::Washer,
+        FVector(State.bWasherActive ? -1.0f : 0.0f, 0.0f, 0.0f));
     SetRotOffset(EPinkCabCockpitSlot::PassengerDoor,
         FRotator(0.0f, State.bPassengerDoorOpen ? 38.0f : 0.0f, 0.0f));
 

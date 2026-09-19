@@ -85,6 +85,9 @@ public:
         float MouseDeltaY,
         float DeltaSeconds = 1.0f / 60.0f);
     float GetSteeringCommand() const { return SteeringCommand; }
+    FVector2D GetGearLeverVisualCursor() const { return GearLeverCursor; }
+    int32 GetRequestedGear() const { return GearboxController.GetRequestedGear(); }
+    int32 GetEngagedGear() const { return GearboxController.GetEngagedGear(); }
     EPinkCabVehicleMotionMode GetMotionMode() const { return MotionClassifier.GetMode(); }
     const FPinkCabVehicleHealthState& GetVehicleHealthState() const { return VehicleHealthBinding.Get(); }
     FPinkCabVehicleHealthState& GetMutableVehicleHealthState() { return VehicleHealthBinding.GetMutable(); }
@@ -122,6 +125,9 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UCameraComponent> DriverCamera;
 
+    UPROPERTY(Transient)
+    TObjectPtr<USceneComponent> SourceSteeringPivot;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -140,6 +146,7 @@ private:
     void ApplySystemMenuInputMode(APlayerController* PC);
     void EnsurePlayableLighting();
     void SetGearboxPointerCapture(APlayerController* PC, bool bCaptured);
+    bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
@@ -178,9 +185,13 @@ private:
     float SmoothedClutch = 0.0f;
     float SmoothedBrake = 0.0f;
     float SmoothedThrottle = 0.0f;
+    float DisplayedClutchPedal = 0.0f;
+    float DisplayedBrakePedal = 0.0f;
+    float DisplayedThrottlePedal = 0.0f;
     float SteeringCommand = 0.0f;
     float LastSpeedKmh = 0.0f;
     float LastEngineRpm = 0.0f;
+    float DisplayedEngineRpm = 0.0f;
     float DrivetrainTorqueCapacity = 1.0f;
     uint32 LastProcessedGearEventSerial = 0;
     bool bThrottleHeldLastFrame = false;

@@ -5,6 +5,7 @@
 #include "PinkCabCockpitVisualDriverComponent.generated.h"
 
 class UPinkCabCockpitAssemblyComponent;
+class USceneComponent;
 struct FPinkCabCockpitPresentationState;
 UCLASS(ClassGroup=(PinkCab), meta=(BlueprintSpawnableComponent))
 class PINKCAB_API UPinkCabCockpitVisualDriverComponent : public UActorComponent
@@ -30,10 +31,20 @@ public:
 
     void Apply(UPinkCabCockpitAssemblyComponent& Assembly,
         const FPinkCabCockpitPresentationState& State);
-    void InvalidateBaseTransforms() { BaseTransforms.Reset(); }
+    void SetSteeringVisualComponent(USceneComponent* Component);
+    USceneComponent* GetSteeringVisualComponent() const { return SteeringVisualComponent.Get(); }
+    void InvalidateBaseTransforms()
+    {
+        BaseTransforms.Reset();
+        bSteeringVisualBaseValid = false;
+    }
 
 private:
     TMap<uint8, FTransform> BaseTransforms;
+    UPROPERTY(Transient)
+    TObjectPtr<USceneComponent> SteeringVisualComponent;
+    FTransform SteeringVisualBaseTransform = FTransform::Identity;
+    bool bSteeringVisualBaseValid = false;
     void CacheBaseTransforms(UPinkCabCockpitAssemblyComponent& Assembly);
 };
 

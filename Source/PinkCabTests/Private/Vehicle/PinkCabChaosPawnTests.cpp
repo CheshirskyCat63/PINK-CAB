@@ -223,6 +223,12 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     FPinkCabVehicleControlState Controls;
     FPinkCabCockpitState Cockpit;
 
+    Controls.SetSteering(0.40f);
+    TestTrue(TEXT("semantic right-positive steering reaches Chaos adapter"),
+        Provider.ApplyControls(Controls));
+    TestTrue(TEXT("Chaos vehicle-space steering is inverted exactly once from player-facing right-positive"),
+        FMath::IsNearlyEqual(Movement->GetSteeringInput(), -0.40f, 1.e-4f));
+
     Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
@@ -241,14 +247,32 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
     TestFalse(TEXT("bool handbrake remains disabled after reapply"), Movement->GetHandbrakeInput());
     TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
+    TestFalse(TEXT("manual H-gate disables Chaos arcade reverse-as-brake override"),
+        Movement->bReverseAsBrake);
+    TestFalse(TEXT("manual H-gate disables throttle-as-brake companion behavior"),
+        Movement->bThrottleAsBrake);
     TestEqual(TEXT("fully coupled engaged first reaches Chaos"), Movement->GetTargetGear(), 1);
 
     Controls.SetClutch(0.5f);
     Controls.SetDriveline(1, 1, 0.5f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
     TestEqual(TEXT("partial coupling keeps Chaos transmission neutral"), Movement->GetTargetGear(), 0);
+    const float PoweredPartialTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
     TestTrue(TEXT("partial coupling produces continuous external rear torque"),
-        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm) > 0.0f);
+        PoweredPartialTorque > 0.0f);
+
+    // A real idling engine still has anti-stall/idle torque at the clutch bite point.
+    // This is what lets a careful no-throttle launch creep while a fast clutch dump
+    // can still hit the drivetrain stall gate.
+    Controls.SetThrottle(0.0f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    const float IdleBiteTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
+    TestTrue(TEXT("partial clutch carries idle bite torque with zero throttle"),
+        IdleBiteTorque > 0.0f);
+    TestTrue(TEXT("idle bite remains below powered partial-clutch torque"),
+        IdleBiteTorque < PoweredPartialTorque);
 
     Controls.SetClutch(1.0f);
     Controls.SetDriveline(1, 1, 0.0f);

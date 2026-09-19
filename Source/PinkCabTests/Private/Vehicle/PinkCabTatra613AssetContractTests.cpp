@@ -52,12 +52,25 @@ bool FPinkCabTatra613V12AssetContractTest::RunTest(const FString& Parameters)
     const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Tatra613Donor();
     const FPinkCabChaosPhysicalProfile Physical = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
 
-    TestEqual(TEXT("desktop TATRA613 does not replace any source cockpit geometry"),
+    TestEqual(TEXT("desktop TATRA613 does not replace source cockpit geometry"),
         Visual.CockpitBindings.Num(), 0);
     TestTrue(TEXT("scene-preserved profile does not use merged exterior mesh"),
         Visual.ExteriorStaticMesh.IsNull());
-    TestEqual(TEXT("scene-preserved profile has 133 source meshes plus four donor wheels"),
+    TestEqual(TEXT("scene-preserved profile keeps all 133 source meshes plus four donor wheels"),
         Visual.PresentationParts.Num(), 137);
+    TestFalse(TEXT("source steering presentation part is identified"),
+        Visual.SteeringPresentationPartId.IsNone());
+    const FPinkCabVehiclePresentationPart* SourceSteering =
+        FindPart(Visual, Visual.SteeringPresentationPartId);
+    TestNotNull(TEXT("source steering part exists in untouched scene"), SourceSteering);
+    if (SourceSteering)
+    {
+        TestTrue(TEXT("source steering is the actual preserved t613_steer mesh"),
+            SourceSteering->Mesh.ToSoftObjectPath().ToString().Contains(TEXT("t613_Black_material_021")));
+    }
+    TestTrue(TEXT("steering pivot axis is finite and normalized"),
+        !Visual.SteeringPresentationAxis.ContainsNaN()
+        && FMath::IsNearlyEqual(Visual.SteeringPresentationAxis.Size(), 1.0f, 0.001f));
 
     TestTrue(TEXT("Tatra visual profile is structurally valid"), Visual.IsValid());
     TestEqual(TEXT("source wheelbase is 2980 mm"), Physical.WheelbaseMm.Value, 2980.0f);

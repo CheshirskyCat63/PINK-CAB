@@ -98,6 +98,20 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     TArray<FPinkCabCockpitVisualBinding> CockpitBindings;
 
+    // Optional presentation part that is the authored steering wheel itself.
+    // The runtime promotes this exact scene part to a live pivot instead of
+    // replacing it with a second steering mesh.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FName SteeringPresentationPartId = NAME_None;
+
+    // Pivot and axis are in VehicleVisualShell local space. They come from the
+    // source steering object's authored transform, not from mesh bounds.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FVector SteeringPresentationPivot = FVector::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FVector SteeringPresentationAxis = FVector::ForwardVector;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform CockpitRootTransform = FTransform::Identity;
 

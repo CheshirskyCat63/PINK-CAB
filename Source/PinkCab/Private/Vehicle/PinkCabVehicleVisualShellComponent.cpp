@@ -38,6 +38,17 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::GetCabinPresentation()
     return PresentationPartComponents.Num() > 0 ? PresentationPartComponents[0].Get() : nullptr;
 }
 
+UStaticMeshComponent* UPinkCabVehicleVisualShellComponent::GetPresentationPartComponent(const FName PartId) const
+{
+    const int32 Index = Profile.PresentationParts.IndexOfByPredicate([PartId](const FPinkCabVehiclePresentationPart& Part)
+    {
+        return Part.PartId == PartId;
+    });
+    return PresentationPartComponents.IsValidIndex(Index)
+        ? PresentationPartComponents[Index].Get()
+        : nullptr;
+}
+
 void UPinkCabVehicleVisualShellComponent::DestroyPresentationComponent(
     TObjectPtr<UPrimitiveComponent>& Component)
 {

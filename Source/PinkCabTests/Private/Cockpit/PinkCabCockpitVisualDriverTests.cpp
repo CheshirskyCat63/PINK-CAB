@@ -12,16 +12,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabCockpitVisualMappingTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("full left steering maps to -450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), -450.0f);
-    TestEqual(TEXT("full right steering maps to 450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), 450.0f);
+    TestEqual(TEXT("semantic full left maps through Tatra wheel adapter to +450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), 450.0f);
+    TestEqual(TEXT("semantic full right maps through Tatra wheel adapter to -450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), -450.0f);
     TestEqual(TEXT("full pedal travel is bounded"),
         UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(1.0f), 18.0f);
     TestEqual(TEXT("half handbrake gets proportional lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -16.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -10.0f);
     TestEqual(TEXT("full handbrake gets bounded lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -32.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -20.0f);
     TestEqual(TEXT("cold temperature needle starts at low stop"),
         UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(0.0f), -60.0f);
     TestEqual(TEXT("full fuel needle reaches high stop"),
@@ -40,11 +40,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabCockpitVisualGearPoseTest::RunTest(const FString& Parameters)
 {
     const FVector Neutral = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(0);
-    const FVector Reverse = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(-1);
+    const FVector First = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(1);
+    const FVector Second = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(2);
     const FVector Fifth = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(5);
+    const FVector Reverse = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(-1);
     TestEqual(TEXT("neutral gear lever is centered"), Neutral, FVector::ZeroVector);
-    TestTrue(TEXT("reverse has distinct lever pose"), Reverse != Neutral);
-    TestTrue(TEXT("fifth has distinct lever pose"), Fifth != Neutral && Fifth != Reverse);
+    TestTrue(TEXT("first is physical forward-left"), First.X < 0.0f && First.Y < 0.0f);
+    TestTrue(TEXT("second is physical rear-left"), Second.X < 0.0f && Second.Y > 0.0f);
+    TestTrue(TEXT("fifth is physical forward-right"), Fifth.X > 0.0f && Fifth.Y < 0.0f);
+    TestTrue(TEXT("reverse is physical rear-right"), Reverse.X > 0.0f && Reverse.Y > 0.0f);
     return true;
 }
 

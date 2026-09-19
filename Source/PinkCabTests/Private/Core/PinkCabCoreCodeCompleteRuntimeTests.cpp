@@ -70,7 +70,7 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
             Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")),
                 EPinkCabInteractionGesture::PressHold, 1}));
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Handbrake")), true, 0.0f, -500.0f, 0.1f);
+            FName(TEXT("Handbrake")), true, 0.0f, 500.0f, 0.1f);
         Pawn->ApplyPhysicalControlMouseDelta(
             NAME_None, false, 0.0f, 0.0f, 0.1f);
         Test->TestEqual(TEXT("physical parking lever releases"),
@@ -116,13 +116,22 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
     const FVector EndLocation = Pawn->GetActorLocation();
     const float ForwardTravelCm = EndLocation.X - State->StartLocation.X;
     const float LateralTravelCm = FMath::Abs(EndLocation.Y - State->StartLocation.Y);
-    Test->TestTrue(TEXT("exact-head Chaos Tatra moved forward"), ForwardTravelCm > 100.0f);
-    Test->TestTrue(TEXT("exact-head steering produced lateral motion"), LateralTravelCm > 5.0f);
+    Test->AddInfo(FString::Printf(
+        TEXT("core PIE diagnostics forward=%.1fcm lateral=%.1fcm maxSpeed=%.2fkmh nativeForward=%.1fcm/s"),
+        ForwardTravelCm,
+        LateralTravelCm,
+        State->MaxObservedSpeedKmh,
+        Movement->GetForwardSpeed()));
+    // Full pedal is now traction-limited by design: the heavy RWD taxi should
+    // advance and steer while wasting substantial torque as rear wheelspin,
+    // not satisfy the old rocket-launch distance/speed thresholds.
+    Test->TestTrue(TEXT("exact-head heavy Chaos Tatra moved forward"), ForwardTravelCm > 50.0f);
+    Test->TestTrue(TEXT("exact-head steering produced lateral motion"), LateralTravelCm > 1.0f);
     Test->TestTrue(TEXT("live provider telemetry was observed"), State->bSawLiveTelemetry);
     Test->TestTrue(TEXT("live telemetry observed meaningful speed"),
         State->MaxObservedSpeedKmh > 1.0f);
     Test->TestTrue(TEXT("native movement still has forward speed"),
-        FMath::Abs(Movement->GetForwardSpeed()) > 100.0f);
+        FMath::Abs(Movement->GetForwardSpeed()) > 30.0f);
     Test->TestFalse(TEXT("torque arcade control remains off"), Movement->TorqueControl.Enabled);
     Test->TestFalse(TEXT("target rotation arcade control remains off"),
         Movement->TargetRotationControl.Enabled);

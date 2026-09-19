@@ -1,4 +1,5 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 
@@ -16,8 +17,12 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     }
 
     LastControls = Controls;
+    // PINK CAB semantic steering is permanently player-facing: + = right.
+    // This Chaos/Tatra chassis uses the opposite vehicle-space sign, so adapt
+    // exactly once here. Never invert the semantic controller/input path.
     Movement->SetSteeringInput(-Controls.Steering);
-    Movement->SetThrottleInput(Controls.Throttle);
+    Movement->SetThrottleInput(
+        FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle));
     Movement->SetBrakeInput(Controls.Brake);
 
     // PINK CAB owns a continuous parking/hydraulic handbrake actuator. Keep

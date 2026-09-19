@@ -24,6 +24,7 @@ public:
     UPrimitiveComponent* GetExteriorPresentation() const;
     UPrimitiveComponent* GetCabinPresentation() const;
     int32 GetPresentationPartCount() const { return PresentationPartComponents.Num(); }
+    UStaticMeshComponent* GetPresentationPartComponent(FName PartId) const;
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
     bool RebuildPresentation();
 
