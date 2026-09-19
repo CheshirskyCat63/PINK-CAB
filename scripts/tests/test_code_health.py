@@ -85,6 +85,14 @@ class CodeHealthAnalyzerTests(unittest.TestCase):
         report = self.run_analysis({"Source/PinkCab/Public/Vehicle/Thing.h": source})
         self.assertIn("public_header_logic", self.rules(report))
 
+    def test_allows_rvalue_reference_declaration_in_public_header(self) -> None:
+        source = (
+            "template <typename TCallable>\n"
+            "void Execute(TCallable&& Callable);\n"
+        )
+        report = self.run_analysis({"Source/PinkCab/Public/Core/Template.h": source})
+        self.assertNotIn("public_header_logic", self.rules(report))
+
     def test_detects_raw_input_outside_interaction(self) -> None:
         source = "bool Down(APlayerController& PC) { return PC.IsInputKeyDown(EKeys::E); }\n"
         report = self.run_analysis({"Source/PinkCab/Private/Vehicle/BadInput.cpp": source})

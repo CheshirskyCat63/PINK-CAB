@@ -22,33 +22,15 @@ class TPinkCabExactlyOnceStore
 {
 public:
     template <typename TCallable>
-    TPinkCabReplayOutcome<TResult> Execute(const FPinkCabStableId& OperationId, TCallable&& Callable)
-    {
-        if (!OperationId.IsValid())
-        {
-            return {EPinkCabReplayDisposition::InvalidId, TResult{}};
-        }
-        const FString Key = OperationId.Serialize();
-        if (const TResult* Existing = Results.Find(Key))
-        {
-            return {EPinkCabReplayDisposition::Replayed, *Existing};
-        }
+    TPinkCabReplayOutcome<TResult> Execute(
+        const FPinkCabStableId& OperationId,
+        TCallable&& Callable);
 
-        TResult Result = Forward<TCallable>(Callable)();
-        Results.Add(Key, Result);
-        return {EPinkCabReplayDisposition::Executed, MoveTemp(Result)};
-    }
-
-    void Clear()
-    {
-        Results.Reset();
-    }
-
-    int32 Num() const
-    {
-        return Results.Num();
-    }
+    void Clear();
+    int32 Num() const;
 
 private:
     TMap<FString, TResult> Results;
 };
+
+#include "Core/Detail/PinkCabExactlyOnceStore.inl"

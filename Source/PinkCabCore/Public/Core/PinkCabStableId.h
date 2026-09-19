@@ -2,38 +2,19 @@
 
 #include "CoreMinimal.h"
 
-struct FPinkCabStableId
+struct PINKCABCORE_API FPinkCabStableId
 {
     FPinkCabStableId() = default;
-    explicit FPinkCabStableId(const FString& InValue)
-        : Value(InValue)
-    {
-    }
+    explicit FPinkCabStableId(const FString& InValue);
 
-    bool IsValid() const
-    {
-        return !Value.IsEmpty();
-    }
+    bool IsValid() const;
+    const FString& Serialize() const;
+    bool operator==(const FPinkCabStableId& Other) const;
+    bool operator!=(const FPinkCabStableId& Other) const;
 
-    const FString& Serialize() const
-    {
-        return Value;
-    }
-
-    bool operator==(const FPinkCabStableId& Other) const { return Value == Other.Value; }
-    bool operator!=(const FPinkCabStableId& Other) const { return !(*this == Other); }
-
-    static bool TryParse(const FString& Serialized, FPinkCabStableId& OutId)
-    {
-        const FString Normalized = Serialized.TrimStartAndEnd();
-        if (Normalized.IsEmpty() || Normalized.Contains(TEXT("\n")) || Normalized.Contains(TEXT("\r")))
-        {
-            return false;
-        }
-
-        OutId = FPinkCabStableId(Normalized);
-        return true;
-    }
+    static bool TryParse(
+        const FString& Serialized,
+        FPinkCabStableId& OutId);
 
 private:
     FString Value;

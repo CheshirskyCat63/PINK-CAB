@@ -16,6 +16,12 @@ FUNCTION_RE = re.compile(
     r"(?P<sig>[^#\n;{}]+?\b(?P<name>[A-Za-z_~][\w:~]*)\s*\([^;{}]*\)\s*"
     r"(?:const\s*)?(?:noexcept\s*)?(?:override\s*)?(?:final\s*)?)\{"
 )
+PUBLIC_INLINE_FUNCTION_RE = re.compile(
+    r"(?P<name>(?:operator\s*[^\s(]+)|(?:[A-Za-z_~][\w:~]*))\s*"
+    r"\([^;{}]*\)\s*(?:const\s*)?(?:noexcept\s*)?"
+    r"(?:override\s*)?(?:final\s*)?\{"
+)
+CONTROL_NAMES = {"if", "for", "while", "switch", "catch"}
 BUILD_DEP_RANGE_RE = re.compile(
     r"(?s)(?:Public|Private)DependencyModuleNames\.AddRange\s*\(.*?\{(?P<body>.*?)\}\s*\)\s*;"
 )
@@ -329,6 +335,7 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
         if loc > file_limit:
             violations.append(_violation("file_loc", relative, 1, f"{loc} non-comment LOC exceeds {file_limit}", value=loc, limit=file_limit))
 
+        public_header_logic_line: int | None = None
         for match in FUNCTION_RE.finditer(sanitized):
             open_index = sanitized.find("{", match.start(), match.end() + 1)
             if open_index < 0:
@@ -343,15 +350,44 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
             function_loc = sum(1 for line in sanitized[match.start():close_index + 1].splitlines() if line.strip())
             complexity = 1 + len(CONTROL_TOKENS.findall(body))
             files[relative]["functions"].append({"name": name, "line": start_line, "loc": function_loc, "complexity": complexity})
+            if is_header and "/Public/" in f"/{relative}/" and public_header_logic_line is None:
+                logic = CONTROL_TOKENS.search(body)
+                if logic:
+                    public_header_logic_line = _line_number(
+                        sanitized,
+                        open_index + logic.start(),
+                    )
             if function_loc > limits["function_loc"]:
                 violations.append(_violation("function_loc", relative, start_line, f"function {name} is {function_loc} LOC", symbol=name, value=function_loc, limit=limits["function_loc"]))
             if complexity > limits["complexity"]:
                 violations.append(_violation("complexity", relative, start_line, f"function {name} complexity is {complexity}", symbol=name, value=complexity, limit=limits["complexity"]))
 
-        if is_header and "/Public/" in f"/{relative}/":
-            logic = CONTROL_TOKENS.search(sanitized)
-            if logic:
-                violations.append(_violation("public_header_logic", relative, _line_number(sanitized, logic.start()), "non-trivial control flow lives in a Public header"))
+        if is_header and "/Public/" in f"/{relative}/" and public_header_logic_line is None:
+            for inline_match in PUBLIC_INLINE_FUNCTION_RE.finditer(sanitized):
+                if inline_match.group("name") in CONTROL_NAMES:
+                    continue
+                open_index = sanitized.find("{", inline_match.start(), inline_match.end() + 1)
+                if open_index < 0:
+                    continue
+                close_index = _match_brace(sanitized, open_index)
+                if close_index is None:
+                    continue
+                body = sanitized[open_index:close_index + 1]
+                logic = CONTROL_TOKENS.search(body)
+                if logic:
+                    public_header_logic_line = _line_number(
+                        sanitized,
+                        open_index + logic.start(),
+                    )
+                    break
+
+        if public_header_logic_line is not None:
+            violations.append(_violation(
+                "public_header_logic",
+                relative,
+                public_header_logic_line,
+                "non-trivial control flow lives in a Public header",
+            ))
 
         raw_policy = policy.get("raw_input", {})
         raw_allowed = any(relative.startswith(prefix.rstrip("/")) for prefix in raw_policy.get("allowed_prefixes", []))
