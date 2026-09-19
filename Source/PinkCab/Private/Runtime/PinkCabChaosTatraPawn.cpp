@@ -1,4 +1,5 @@
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabDriverUiComponent.h"
 
 #include "Camera/CameraComponent.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
@@ -22,8 +23,6 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Misc/CoreDelegates.h"
 #include "Math/RotationMatrix.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabPhysicalInputConvention.h"
@@ -35,12 +34,6 @@
 #include "Vehicle/PinkCabChaosLoadBridge.h"
 #include "Vehicle/PinkCabVehicleVisualShellComponent.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
-#include "Styling/CoreStyle.h"
-#include "Widgets/Input/SButton.h"
-#include "Widgets/Layout/SBorder.h"
-#include "Widgets/SBoxPanel.h"
-#include "Widgets/SOverlay.h"
-#include "Widgets/Text/STextBlock.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
@@ -52,6 +45,26 @@
 
 namespace
 {
+
+void ConfigurePhysicsVehicleMesh(
+    USkeletalMeshComponent& VehicleMesh,
+    const FPinkCabPrototypeVisualProfile& PrototypeVisualProfile)
+{
+    if (USkeletalMesh* VehicleAsset = Cast<USkeletalMesh>(
+            PrototypeVisualProfile.VehicleMeshPath.TryLoad()))
+    {
+        VehicleMesh.SetSkeletalMesh(VehicleAsset);
+    }
+    if (UPhysicsAsset* PhysicsAsset = Cast<UPhysicsAsset>(
+            PrototypeVisualProfile.PhysicsAssetPath.TryLoad()))
+    {
+        VehicleMesh.SetPhysicsAsset(PhysicsAsset, false);
+    }
+    VehicleMesh.SetCollisionProfileName(TEXT("Vehicle"));
+    VehicleMesh.SetSimulatePhysics(true);
+    VehicleMesh.SetOwnerNoSee(true);
+}
+
 FVector ResolveWheelBoneLocalPosition(
     const USkeletalMeshComponent& Mesh,
     const FName BoneName)
@@ -118,45 +131,6 @@ bool BindChaosWheelsToTatraGeometry(
     return true;
 }
 
-FString GearLabel(const int32 Gear)
-{
-    return Gear < 0 ? TEXT("R")
-        : (Gear == 0 ? TEXT("N") : FString::FromInt(Gear));
-}
-
-const TCHAR* MotionLabel(const EPinkCabVehicleMotionMode Mode)
-{
-    return Mode == EPinkCabVehicleMotionMode::Moving ? TEXT("MOVING") : TEXT("STATIONARY");
-}
-
-const TCHAR* EngagementLabel(const EPinkCabGearEngagementResult Result)
-{
-    switch (Result)
-    {
-    case EPinkCabGearEngagementResult::Neutral: return TEXT("NEUTRAL");
-    case EPinkCabGearEngagementResult::ClutchDisengagedAccepted: return TEXT("CLUTCH");
-    case EPinkCabGearEngagementResult::MatchedClutchlessAccepted: return TEXT("MATCH");
-    case EPinkCabGearEngagementResult::GrindRefused: return TEXT("GRIND");
-    case EPinkCabGearEngagementResult::ReverseLockout: return TEXT("R-LOCK");
-    case EPinkCabGearEngagementResult::DangerousOverrev: return TEXT("OVERREV");
-    default: return TEXT("NONE");
-    }
-}
-
-FString GaugeBar(const float Value, const int32 Segments = 10)
-{
-    const float Clamped = FMath::Clamp(Value, 0.0f, 1.0f);
-    const int32 Filled = FMath::Clamp(FMath::RoundToInt(Clamped * Segments), 0, Segments);
-    FString Result;
-    Result.Reserve(Segments + 2);
-    Result.AppendChar(TEXT('['));
-    for (int32 Index = 0; Index < Segments; ++Index)
-    {
-        Result.AppendChar(Index < Filled ? TEXT('#') : TEXT('-'));
-    }
-    Result.AppendChar(TEXT(']'));
-    return Result;
-}
 }
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
@@ -165,19 +139,10 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     PrimaryActorTick.bTickEvenWhenPaused = true;
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-    USkeletalMeshComponent* VehicleMesh = GetMesh();
-    if (USkeletalMesh* VehicleAsset = Cast<USkeletalMesh>(PrototypeVisualProfile.VehicleMeshPath.TryLoad()))
-    {
-        VehicleMesh->SetSkeletalMesh(VehicleAsset);
-    }
-    if (UPhysicsAsset* PhysicsAsset = Cast<UPhysicsAsset>(PrototypeVisualProfile.PhysicsAssetPath.TryLoad()))
-    {
-        VehicleMesh->SetPhysicsAsset(PhysicsAsset, false);
-    }
+    DriverUi = CreateDefaultSubobject<UPinkCabDriverUiComponent>(TEXT("DriverUi"));
 
-    VehicleMesh->SetCollisionProfileName(TEXT("Vehicle"));
-    VehicleMesh->SetSimulatePhysics(true);
-    VehicleMesh->SetOwnerNoSee(true);
+    USkeletalMeshComponent* VehicleMesh = GetMesh();
+    ConfigurePhysicsVehicleMesh(*VehicleMesh, PrototypeVisualProfile);
 
     VehicleVisualShell = CreateDefaultSubobject<UPinkCabVehicleVisualShellComponent>(TEXT("VehicleVisualShell"));
     VehicleVisualShell->SetupAttachment(VehicleMesh);
@@ -229,8 +194,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     check(Movement);
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(Movement);
 
-    const FPinkCabChaosPhysicalProfile Profile =
-        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const FPinkCabChaosPhysicalProfile Profile = FPinkCabChaosPhysicalProfile::ForVariant(
+        EPinkCabCalibrationVariant::Nominal);
     Profile.ApplyToMovement(*Movement);
 
     VehicleLoadState.SetFuelMassKg(TatraProfile.FullFuelMassKg);
@@ -247,8 +212,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = PrototypeVisualProfile.WheelBones[3];
 
-    const FPinkCabVehicleVisualProfile TatraVisual = FPinkCabVehicleVisualProfile::Tatra613Donor();
-    if (!BindChaosWheelsToTatraGeometry(*Movement, *VehicleMesh, TatraVisual))
+    if (!BindChaosWheelsToTatraGeometry(
+            *Movement, *VehicleMesh, FPinkCabVehicleVisualProfile::Tatra613Donor()))
     {
         UE_LOG(LogTemp, Error, TEXT("PinkCab Tatra wheel geometry contract could not be bound; disabling Chaos wheel setups."));
         Movement->WheelSetups.Reset();
@@ -273,26 +238,21 @@ void APinkCabChaosTatraPawn::BeginPlay()
     VehicleControlRuntime.SetResponseConfig(ControlConfig);
     SyncCockpitToChaos();
 
-    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (DriverUi)
     {
-        ApplyGameplayInputMode(PC);
+        DriverUi->BeginRuntime(PC);
     }
-    MountPlayableHud();
     SetSystemMenuOpen(true);
-    ApplicationWillDeactivateHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
-        this, &APinkCabChaosTatraPawn::HandleApplicationWillDeactivate);
 }
 
 void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (ApplicationWillDeactivateHandle.IsValid())
-    {
-        FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(ApplicationWillDeactivateHandle);
-        ApplicationWillDeactivateHandle.Reset();
-    }
     ResetTransientCockpitInput();
-    UnmountSystemMenu();
-    UnmountPlayableHud();
+    if (DriverUi)
+    {
+        DriverUi->EndRuntime(Cast<APlayerController>(GetController()));
+    }
     Super::EndPlay(EndPlayReason);
 }
 
@@ -338,355 +298,31 @@ void APinkCabChaosTatraPawn::EnsurePlayableLighting()
     SkyLight->RegisterComponent();
 }
 
-void APinkCabChaosTatraPawn::MountPlayableHud()
-{
-    if (PlayableHudOverlay.IsValid() || !GEngine || !GEngine->GameViewport) return;
-    TWeakObjectPtr<APinkCabChaosTatraPawn> WeakThis(this);
-    PlayableHudOverlay = SNew(SOverlay).Visibility(EVisibility::HitTestInvisible)
-        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
-        [ SNew(STextBlock).Text(FText::FromString(FString::Chr(0x2022))).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 22)).ColorAndOpacity(FLinearColor::White) ]
-        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin(0,34,0,0))
-        [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 10)).ColorAndOpacity(FLinearColor(1,1,1,0.82f)).Text_Lambda([WeakThis]() {
-            if (!WeakThis.IsValid() || !WeakThis->CockpitInteraction) return FText::GetEmpty();
-            if (WeakThis->bGearLeverDragging)
-            {
-                const int32 PreviewGear = UPinkCabCockpitVisualDriverComponent::GearForCursor(WeakThis->GearLeverCursor);
-                const FString GearText = PreviewGear < 0 ? TEXT("R") : (PreviewGear == 0 ? TEXT("N") : FString::FromInt(PreviewGear));
-                return FText::FromString(FString::Printf(TEXT("GEAR -> %s"), *GearText));
-            }
-            const FName Target = WeakThis->CockpitInteraction->GetCurrentTargetId();
-            return Target.IsNone() ? FText::GetEmpty() : FText::FromName(Target);
-        }) ]
-        + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(FMargin(20,0,20,28))
-        [ SNew(SBorder).Padding(FMargin(16,12)).BorderBackgroundColor(FLinearColor(0.015f,0.018f,0.022f,0.88f))
-          [ SNew(SVerticalBox)
-            + SVerticalBox::Slot().AutoHeight()
-            [ SNew(SHorizontalBox)
-              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
-              [ SNew(SVerticalBox)
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("SPEED"))) ]
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
-                    return WeakThis.IsValid()
-                        ? FText::FromString(FString::Printf(TEXT("%03d  km/h"), FMath::RoundToInt(FMath::Abs(WeakThis->VehicleControlRuntime.GetLastSpeedKmh()))))
-                        : FText::GetEmpty();
-                }) ]
-              ]
-              + SHorizontalBox::Slot().AutoWidth().Padding(0,0,28,0)
-              [ SNew(SVerticalBox)
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("GEAR"))) ]
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),30)).ColorAndOpacity(FLinearColor(0.92f,0.95f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
-                    return WeakThis.IsValid() ? FText::FromString(GearLabel(WeakThis->VehicleControlRuntime.GetEngagedGear())) : FText::GetEmpty();
-                }) ]
-              ]
-              + SHorizontalBox::Slot().AutoWidth()
-              [ SNew(SVerticalBox)
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.62f)).Text(FText::FromString(TEXT("ENGINE RPM"))) ]
-                + SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),24)).ColorAndOpacity(FLinearColor::White).Text_Lambda([WeakThis]() {
-                    return WeakThis.IsValid()
-                        ? FText::FromString(FString::Printf(TEXT("%04d"), FMath::RoundToInt(FMath::Max(WeakThis->VehicleControlRuntime.GetDisplayedEngineRpm(), 0.0f))))
-                        : FText::GetEmpty();
-                }) ]
-              ]
-            ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,6,0,0)
-            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),11)).ColorAndOpacity(FLinearColor(0.88f,0.92f,0.96f,1.0f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const EPinkCabIgnitionState Ignition = WeakThis->CockpitState.GetIgnitionState();
-                const TCHAR* Engine = Ignition == EPinkCabIgnitionState::Running ? TEXT("ENGINE ON")
-                    : (Ignition == EPinkCabIgnitionState::Stalled ? TEXT("ENGINE STALLED") : TEXT("ENGINE OFF"));
-                const float Fuel01 = WeakThis->TatraProfile.FullFuelMassKg > KINDA_SMALL_NUMBER
-                    ? FMath::Clamp(WeakThis->VehicleLoadState.GetFuelMassKg() / WeakThis->TatraProfile.FullFuelMassKg, 0.0f, 1.0f)
-                    : 0.0f;
-                return FText::FromString(FString::Printf(
-                    TEXT("%s   |   %s   |   FUEL %3d%%   |   TEMP %3d%%"),
-                    Engine,
-                    MotionLabel(WeakThis->GetMotionMode()),
-                    FMath::RoundToInt(Fuel01 * 100.0f),
-                    FMath::RoundToInt(FMath::Clamp(WeakThis->EngineTemperature01, 0.0f, 1.0f) * 100.0f)));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
-            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                return FText::FromString(FString::Printf(
-                    TEXT("CLUTCH %s %3d%%    GAS %s %3d%%"),
-                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedClutchPedal()),
-                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedClutchPedal() * 100.0f),
-                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedThrottlePedal()),
-                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedThrottlePedal() * 100.0f)));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)
-            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),11)).ColorAndOpacity(FLinearColor(0.82f,0.9f,1.0f,1.0f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                const float Handbrake = WeakThis->VehicleControlRuntime.GetHandbrakeCommand();
-                return FText::FromString(FString::Printf(
-                    TEXT("BRAKE  %s %3d%%    H-BRAKE %s %3d%%"),
-                    *GaugeBar(WeakThis->VehicleControlRuntime.GetDisplayedBrakePedal()),
-                    FMath::RoundToInt(WeakThis->VehicleControlRuntime.GetDisplayedBrakePedal() * 100.0f),
-                    *GaugeBar(Handbrake),
-                    FMath::RoundToInt(Handbrake * 100.0f)));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,5,0,0)
-            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"),10)).ColorAndOpacity(FLinearColor(1.0f,0.78f,0.30f,1.0f)).Text_Lambda([WeakThis]() {
-                if (!WeakThis.IsValid()) return FText::GetEmpty();
-                TArray<FString> Warnings;
-                const float Steering = WeakThis->VehicleControlRuntime.GetControlState().Steering;
-                const FString SteeringText = FMath::Abs(Steering) < 0.02f
-                    ? TEXT("STEER CENTER")
-                    : FString::Printf(
-                        TEXT("STEER %s %d%%"),
-                        Steering > 0.0f ? TEXT("R") : TEXT("L"),
-                        FMath::RoundToInt(FMath::Abs(Steering) * 100.0f));
-                Warnings.Add(SteeringText);
-                Warnings.Add(FString::Printf(
-                    TEXT("REQ %s / ENG %s"),
-                    *GearLabel(WeakThis->VehicleControlRuntime.GetRequestedGear()),
-                    *GearLabel(WeakThis->VehicleControlRuntime.GetEngagedGear())));
-                if (WeakThis->CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled) Warnings.Add(TEXT("STALL"));
-                if (WeakThis->VehicleControlRuntime.RequiresThrottleDose()) Warnings.Add(TEXT("SET THROTTLE"));
-                if (WeakThis->VehicleControlRuntime.GetHandbrakeCommand() > 0.02f) Warnings.Add(TEXT("HANDBRAKE"));
-                if (WeakThis->GetVehicleHealthState().GetBrakeTemperature01() > 0.75f) Warnings.Add(TEXT("BRAKES HOT"));
-                if (WeakThis->GetVehicleHealthState().GetClutchTemperature01() > 0.75f) Warnings.Add(TEXT("CLUTCH HOT"));
-                const EPinkCabGearEngagementResult GearResult = WeakThis->VehicleControlRuntime.GetLastGearResult();
-                if (GearResult == EPinkCabGearEngagementResult::GrindRefused
-                    || GearResult == EPinkCabGearEngagementResult::ReverseLockout
-                    || GearResult == EPinkCabGearEngagementResult::DangerousOverrev)
-                {
-                    Warnings.Add(EngagementLabel(GearResult));
-                }
-                if (WeakThis->VehicleControlRuntime.IsParkingHandbrakeLatched()) Warnings.Add(TEXT("PARK LATCH"));
-                return FText::FromString(FString::Join(Warnings, TEXT("   |   ")));
-            }) ]
-            + SVerticalBox::Slot().AutoHeight().Padding(0,7,0,0)
-            [ SNew(STextBlock).Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"),9)).ColorAndOpacity(FLinearColor(1,1,1,0.58f))
-              .Text(FText::FromString(TEXT("MOUSE STEER   Q CLUTCH   W BRAKE   E GAS   3 GEARBOX   4 HANDBRAKE   SPACE LOOK"))) ]
-          ] ];
-    GEngine->GameViewport->AddViewportWidgetContent(PlayableHudOverlay.ToSharedRef(),1000);
-}
-
-void APinkCabChaosTatraPawn::UnmountPlayableHud()
-{
-    if (!PlayableHudOverlay.IsValid()) return;
-    if (GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(PlayableHudOverlay.ToSharedRef());
-    PlayableHudOverlay.Reset();
-}
-
-void APinkCabChaosTatraPawn::ApplyGameplayInputMode(APlayerController* PC)
-{
-    if (!PC) return;
-    FInputModeGameOnly InputMode;
-    InputMode.SetConsumeCaptureMouseDown(false);
-    PC->SetInputMode(InputMode);
-    PC->bShowMouseCursor = false;
-    if (GEngine && GEngine->GameViewport)
-    {
-        GEngine->GameViewport->SetMouseCaptureMode(EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown);
-        GEngine->GameViewport->SetMouseLockMode(EMouseLockMode::LockOnCapture);
-        GEngine->GameViewport->SetHideCursorDuringCapture(true);
-    }
-}
-
-void APinkCabChaosTatraPawn::ApplySystemMenuInputMode(APlayerController* PC)
-{
-    if (!PC) return;
-    FInputModeGameAndUI InputMode;
-    InputMode.SetHideCursorDuringCapture(false);
-    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    if (SystemMenuOverlay.IsValid())
-    {
-        InputMode.SetWidgetToFocus(SystemMenuOverlay);
-    }
-    PC->SetInputMode(InputMode);
-    PC->bShowMouseCursor = true;
-    if (GEngine && GEngine->GameViewport)
-    {
-        GEngine->GameViewport->SetMouseCaptureMode(EMouseCaptureMode::NoCapture);
-        GEngine->GameViewport->SetMouseLockMode(EMouseLockMode::DoNotLock);
-        GEngine->GameViewport->SetHideCursorDuringCapture(false);
-    }
-}
-
-void APinkCabChaosTatraPawn::MountSystemMenu()
-{
-    if (SystemMenuOverlay.IsValid() || !GEngine || !GEngine->GameViewport) return;
-
-    TWeakObjectPtr<APinkCabChaosTatraPawn> WeakThis(this);
-    const FLinearColor Pink(1.0f, 0.05f, 0.42f, 1.0f);
-    SystemMenuOverlay = SNew(SOverlay)
-        + SOverlay::Slot()
-        [
-            SNew(SBorder)
-            .BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.015f, 0.90f))
-        ]
-        + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(FMargin(96.0f, 0.0f, 0.0f, 0.0f))
-        [
-            SNew(SBorder)
-            .Padding(FMargin(30.0f, 26.0f))
-            .BorderBackgroundColor(FLinearColor(0.025f, 0.025f, 0.035f, 0.97f))
-            [
-                SNew(SVerticalBox)
-                + SVerticalBox::Slot().AutoHeight()
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("PINK CAB")))
-                    .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 42))
-                    .ColorAndOpacity(Pink)
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 24)
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("SYSTEM MENU")))
-                    .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 12))
-                    .ColorAndOpacity(FLinearColor(1, 1, 1, 0.62f))
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 4)
-                [
-                    SNew(SButton)
-                    .ContentPadding(FMargin(22, 10))
-                    .ButtonColorAndOpacity(Pink)
-                    .OnClicked_Lambda([WeakThis]()
-                    {
-                        if (WeakThis.IsValid()) WeakThis->SetSystemMenuOpen(false);
-                        return FReply::Handled();
-                    })
-                    [
-                        SNew(STextBlock).Text(FText::FromString(TEXT("DRIVE")))
-                        .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 18))
-                        .ColorAndOpacity(FLinearColor::White)
-                    ]
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 4)
-                [
-                    SNew(SButton)
-                    .ContentPadding(FMargin(22, 10))
-                    .OnClicked_Lambda([WeakThis]()
-                    {
-                        if (WeakThis.IsValid()) WeakThis->bSystemMenuSettingsOpen = !WeakThis->bSystemMenuSettingsOpen;
-                        return FReply::Handled();
-                    })
-                    [
-                        SNew(STextBlock).Text(FText::FromString(TEXT("SETTINGS")))
-                        .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 18))
-                    ]
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 4)
-                [
-                    SNew(SButton)
-                    .ContentPadding(FMargin(22, 10))
-                    .OnClicked_Lambda([WeakThis]()
-                    {
-                        if (WeakThis.IsValid())
-                        {
-                            if (APlayerController* PC = Cast<APlayerController>(WeakThis->GetController()))
-                            {
-                                UKismetSystemLibrary::QuitGame(WeakThis.Get(), PC, EQuitPreference::Quit, false);
-                            }
-                        }
-                        return FReply::Handled();
-                    })
-                    [
-                        SNew(STextBlock).Text(FText::FromString(TEXT("QUIT")))
-                        .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 18))
-                    ]
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 18, 0, 0)
-                [
-                    SNew(SBorder)
-                    .Padding(FMargin(14, 12))
-                    .BorderBackgroundColor(FLinearColor(1, 1, 1, 0.055f))
-                    .Visibility_Lambda([WeakThis]()
-                    {
-                        return WeakThis.IsValid() && WeakThis->bSystemMenuSettingsOpen
-                            ? EVisibility::Visible : EVisibility::Collapsed;
-                    })
-                    [
-                        SNew(SVerticalBox)
-                        + SVerticalBox::Slot().AutoHeight()
-                        [
-                            SNew(STextBlock).Text(FText::FromString(TEXT("SETTINGS / CONTROLS")))
-                            .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13))
-                            .ColorAndOpacity(Pink)
-                        ]
-                        + SVerticalBox::Slot().AutoHeight().Padding(0, 6, 0, 0)
-                        [
-                            SNew(STextBlock)
-                            .Text(FText::FromString(TEXT("ESC  menu   MOUSE  steer   SPACE  look\nQ clutch   W brake   E throttle\nFull settings panel comes after the playable foundation.")))
-                            .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 11))
-                            .ColorAndOpacity(FLinearColor(1, 1, 1, 0.78f))
-                        ]
-                    ]
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 20, 0, 0)
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("ESC TO RESUME")))
-                    .Font(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 10))
-                    .ColorAndOpacity(FLinearColor(1, 1, 1, 0.45f))
-                ]
-            ]
-        ];
-
-    GEngine->GameViewport->AddViewportWidgetContent(SystemMenuOverlay.ToSharedRef(), 2000);
-}
-
-void APinkCabChaosTatraPawn::UnmountSystemMenu()
-{
-    if (!SystemMenuOverlay.IsValid()) return;
-    if (GEngine && GEngine->GameViewport)
-    {
-        GEngine->GameViewport->RemoveViewportWidgetContent(SystemMenuOverlay.ToSharedRef());
-    }
-    SystemMenuOverlay.Reset();
-}
-
 void APinkCabChaosTatraPawn::SetSystemMenuOpen(const bool bOpen)
 {
-    if (bSystemMenuOpen == bOpen && SystemMenuOverlay.IsValid() == bOpen) return;
-
     ResetTransientCockpitInput();
-    bSystemMenuOpen = bOpen;
-    bSystemMenuSettingsOpen = false;
-
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (bOpen)
+    if (DriverUi)
     {
-        MountSystemMenu();
-        UGameplayStatics::SetGamePaused(this, true);
-        ApplySystemMenuInputMode(PC);
-        return;
-    }
-
-    UnmountSystemMenu();
-    UGameplayStatics::SetGamePaused(this, false);
-    ApplyGameplayInputMode(PC);
-}
-
-void APinkCabChaosTatraPawn::SetGearboxPointerCapture(APlayerController* PC, const bool bCaptured)
-{
-    if (!PC || bGearboxPointerCaptured == bCaptured) return;
-    bGearboxPointerCaptured = bCaptured;
-
-    FInputModeGameOnly InputMode;
-    InputMode.SetConsumeCaptureMouseDown(false);
-    PC->SetInputMode(InputMode);
-    PC->bShowMouseCursor = false;
-    if (GEngine && GEngine->GameViewport)
-    {
-        GEngine->GameViewport->SetMouseCaptureMode(EMouseCaptureMode::CapturePermanently_IncludingInitialMouseDown);
-        GEngine->GameViewport->SetMouseLockMode(bCaptured ? EMouseLockMode::LockAlways : EMouseLockMode::LockOnCapture);
-        GEngine->GameViewport->SetHideCursorDuringCapture(true);
+        if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        {
+            DriverUi->SetSystemMenuOpen(*PC, bOpen);
+        }
     }
 }
 
-void APinkCabChaosTatraPawn::HandleApplicationWillDeactivate()
+bool APinkCabChaosTatraPawn::IsSystemMenuOpen() const
 {
-    ResetTransientCockpitInput();
+    return DriverUi && DriverUi->IsSystemMenuOpen();
 }
 
 void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
 {
-    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+    if (DriverUi)
     {
-        SetGearboxPointerCapture(PC, false);
+        if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        {
+            DriverUi->ResetTransientInput(*PC);
+        }
     }
     VehicleControlRuntime.ResetThrottleInputLatch();
     bGearLeverDragging = false;
@@ -987,46 +623,37 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     SyncCockpitToChaos();
 }
 
-void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
+bool APinkCabChaosTatraPawn::BeginDriverFrame(
+    APlayerController& PC,
+    FPinkCabPlayerInputSample& OutInput)
 {
-    Super::Tick(DeltaSeconds);
-
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (PC && !PlayableHudOverlay.IsValid())
+    if (DriverUi)
     {
-        MountPlayableHud();
+        DriverUi->EnsurePlayableHudMounted();
     }
-    if (!PC)
+    OutInput = FPinkCabPlayerInputAdapter().Capture(PC, InputRouter);
+    if (OutInput.bSystemMenuToggleRequested)
     {
-        ResetTransientCockpitInput();
-        return;
+        SetSystemMenuOpen(!IsSystemMenuOpen());
     }
-
-    const FPinkCabPlayerInputSample PlayerInput =
-        FPinkCabPlayerInputAdapter().Capture(*PC, InputRouter);
-    if (PlayerInput.bSystemMenuToggleRequested)
+    if (!UGameplayStatics::IsGamePaused(this))
     {
-        SetSystemMenuOpen(!bSystemMenuOpen);
+        return true;
     }
-    if (UGameplayStatics::IsGamePaused(this))
-    {
-        ResetTransientCockpitInput();
-        return;
-    }
+    ResetTransientCockpitInput();
+    return false;
+}
 
-    const float MouseX = PlayerInput.LookMouseX;
-    const float MouseY = PlayerInput.LookMouseY;
-    const float SteeringMouseX =
-        FPinkCabPhysicalInputConvention::SteeringRight(PlayerInput.DeviceX);
-    const float PhysicalMouseX = PlayerInput.DeviceX;
-    const float PhysicalMouseY = PlayerInput.DeviceY;
-
+FPinkCabVehicleInputFrame APinkCabChaosTatraPawn::PrepareVehicleFrame(
+    const FPinkCabPlayerInputSample& PlayerInput,
+    const float DeltaSeconds,
+    EPinkCabPedalWheelRecipient& OutWheelRecipient)
+{
     const FPinkCabVehicleInputFrame RawInputFrame = FPinkCabVehicleInputFrame::FromDigital(
         PlayerInput.bGazeHeld,
         PlayerInput.bClutchHeld,
         PlayerInput.bBrakeHeld,
         PlayerInput.bThrottleHeld);
-
     TOptional<FPinkCabVehicleTelemetry> MotionTelemetry;
     FPinkCabVehicleTelemetry TelemetrySample;
     if (DynamicsProvider.ReadTelemetry(TelemetrySample))
@@ -1040,10 +667,16 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
             MotionTelemetry,
             CockpitState,
             DeltaSeconds);
-    const FPinkCabVehicleInputFrame& InputFrame = PreparedControl.Frame;
-    const int32 WheelSteps = PlayerInput.WheelSteps;
-    const EPinkCabPedalWheelRecipient WheelRecipient = PreparedControl.WheelRecipient;
+    OutWheelRecipient = PreparedControl.WheelRecipient;
+    return PreparedControl.Frame;
+}
 
+bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
+    APlayerController& PC,
+    const FPinkCabPlayerInputSample& PlayerInput,
+    const EPinkCabPedalWheelRecipient WheelRecipient,
+    const float DeltaSeconds)
+{
     FPinkCabCockpitInteractionFrame InteractionFrame;
     InteractionFrame.bGazeHeld = PlayerInput.bGazeHeld;
     InteractionFrame.bQuickRecall1Held = PlayerInput.bQuickRecall1Held;
@@ -1053,7 +686,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     InteractionFrame.bGripHeld = PlayerInput.bGripHeld;
     InteractionFrame.bMomentaryHeld = PlayerInput.bMomentaryHeld;
     InteractionFrame.WheelSteps =
-        WheelRecipient == EPinkCabPedalWheelRecipient::None ? WheelSteps : 0;
+        WheelRecipient == EPinkCabPedalWheelRecipient::None ? PlayerInput.WheelSteps : 0;
     InteractionFrame.NowSeconds = FPlatformTime::Seconds();
     if (DriverCamera)
     {
@@ -1076,48 +709,37 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         CockpitInteraction->IsGripActive()
         && ActiveGripTarget == FName(TEXT("Gearbox"));
     const bool bPhysicalGripActive = bHandbrakeGripActive || bGearboxGripActive;
-
-    SetGearboxPointerCapture(PC, bPhysicalGripActive);
+    if (DriverUi)
+    {
+        DriverUi->SetPointerCapture(PC, bPhysicalGripActive);
+    }
     ApplyPhysicalControlMouseDelta(
         ActiveGripTarget,
         CockpitInteraction->IsGripActive(),
-        PhysicalMouseX,
-        PhysicalMouseY,
+        PlayerInput.DeviceX,
+        PlayerInput.DeviceY,
         DeltaSeconds);
-
     bGearLeverDragging = bGearboxGripActive;
     GearLeverCursor = bGearLeverDragging
         ? VehicleControlRuntime.GetGearLeverCursor()
-        : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
-            CockpitState.GetSelectedGear());
+        : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(CockpitState.GetSelectedGear());
+    return bPhysicalGripActive;
+}
 
-    ApplyVehicleInputFrame(
-        InputFrame,
-        bPhysicalGripActive ? 0.0f : SteeringMouseX,
-        DeltaSeconds);
-
-    const bool bGazeHeld =
-        CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
+void APinkCabChaosTatraPawn::UpdateDriverLook(
+    const FPinkCabPlayerInputSample& PlayerInput,
+    const bool bPhysicalGripActive,
+    const float DeltaSeconds)
+{
+    const bool bGazeHeld = CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
     SmoothedLookMouseX = FMath::FInterpTo(
-        SmoothedLookMouseX,
-        bGazeHeld ? MouseX : 0.0f,
-        DeltaSeconds,
-        12.0f);
+        SmoothedLookMouseX, bGazeHeld ? PlayerInput.LookMouseX : 0.0f, DeltaSeconds, 12.0f);
     SmoothedLookMouseY = FMath::FInterpTo(
-        SmoothedLookMouseY,
-        bGazeHeld ? MouseY : 0.0f,
-        DeltaSeconds,
-        12.0f);
+        SmoothedLookMouseY, bGazeHeld ? PlayerInput.LookMouseY : 0.0f, DeltaSeconds, 12.0f);
     if (bGazeHeld)
     {
-        LookYaw = FMath::Clamp(
-            LookYaw + SmoothedLookMouseX * 0.58f,
-            -130.0f,
-            130.0f);
-        LookPitch = FMath::Clamp(
-            LookPitch + SmoothedLookMouseY * 0.46f,
-            -58.0f,
-            48.0f);
+        LookYaw = FMath::Clamp(LookYaw + SmoothedLookMouseX * 0.58f, -130.0f, 130.0f);
+        LookPitch = FMath::Clamp(LookPitch + SmoothedLookMouseY * 0.46f, -58.0f, 48.0f);
     }
     else
     {
@@ -1125,10 +747,12 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         LookPitch = FMath::FInterpTo(LookPitch, 0.0f, DeltaSeconds, 3.2f);
     }
     DriverHeadRoot->SetRelativeRotation(FRotator(LookPitch, LookYaw, 0.0f));
+}
 
+FPinkCabCockpitPresentationState APinkCabChaosTatraPawn::BuildCockpitPresentation(
+    const float DeltaSeconds)
+{
     FPinkCabCockpitPresentationState Presentation;
-    // The steering controller is already filtered for road feel. The visible
-    // wheel must mirror that command exactly so its direction is immediately readable.
     VisualSteering = VehicleControlRuntime.GetControlState().Steering;
     Presentation.Steering = VisualSteering;
     Presentation.Clutch = VehicleControlRuntime.GetDisplayedClutchPedal();
@@ -1137,8 +761,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     Presentation.SelectedGear = CockpitState.GetSelectedGear();
     Presentation.bGearLeverDragging = bGearLeverDragging;
     Presentation.GearLeverCursor = GearLeverCursor;
-    Presentation.bIgnitionRunning =
-        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    Presentation.bIgnitionRunning = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
     Presentation.Handbrake = CockpitState.GetHandbrakeAmount();
     Presentation.bHandbrakeEngaged = CockpitState.IsHandbrakeEngaged();
 
@@ -1149,8 +772,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     ServiceSources.bRadioAvailable = bCockpitRadioAvailable;
     ServiceSources.bMirrorsAvailable = bCockpitMirrorsAvailable;
     FPinkCabCockpitServiceBridge::ApplyToPresentation(
-        FPinkCabCockpitServiceBridge::Read(ServiceSources),
-        Presentation);
+        FPinkCabCockpitServiceBridge::Read(ServiceSources), Presentation);
     Presentation.bTurnSignalLeft = CockpitState.GetTurnSignalDirection() < 0;
     Presentation.bTurnSignalRight = CockpitState.GetTurnSignalDirection() > 0;
     Presentation.bHornActive = CockpitState.IsHornActive();
@@ -1164,9 +786,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         Presentation.SpeedKmh = Telemetry.SpeedKmh;
     }
     Presentation.EngineRpm = VehicleControlRuntime.GetDisplayedEngineRpm();
-
-    const float Rpm01 =
-        FMath::Clamp(Presentation.EngineRpm / 7000.0f, 0.0f, 1.0f);
+    const float Rpm01 = FMath::Clamp(Presentation.EngineRpm / 7000.0f, 0.0f, 1.0f);
     const float TemperatureTarget = Presentation.bIgnitionRunning
         ? FMath::Lerp(0.62f, 0.90f, Rpm01)
         : 0.12f;
@@ -1177,13 +797,73 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         Presentation.bIgnitionRunning ? 0.08f : 0.03f);
     Presentation.EngineTemperature01 = EngineTemperature01;
     Presentation.Fuel01 = TatraProfile.FullFuelMassKg > KINDA_SMALL_NUMBER
-        ? FMath::Clamp(
-            VehicleLoadState.GetFuelMassKg() / TatraProfile.FullFuelMassKg,
-            0.0f,
-            1.0f)
+        ? FMath::Clamp(VehicleLoadState.GetFuelMassKg() / TatraProfile.FullFuelMassKg, 0.0f, 1.0f)
         : 0.0f;
+    return Presentation;
+}
 
+void APinkCabChaosTatraPawn::UpdateDriverUiState(
+    const FPinkCabCockpitPresentationState& Presentation)
+{
+    if (!DriverUi)
+    {
+        return;
+    }
+    FPinkCabDriverUiState UiState;
+    UiState.CurrentTargetId = CockpitInteraction ? CockpitInteraction->GetCurrentTargetId() : NAME_None;
+    UiState.GearLeverCursor = GearLeverCursor;
+    UiState.SpeedKmh = Presentation.SpeedKmh;
+    UiState.EngineRpm = Presentation.EngineRpm;
+    UiState.Clutch = Presentation.Clutch;
+    UiState.Brake = Presentation.Brake;
+    UiState.Throttle = Presentation.Throttle;
+    UiState.Handbrake = VehicleControlRuntime.GetHandbrakeCommand();
+    UiState.Steering = Presentation.Steering;
+    UiState.Fuel01 = Presentation.Fuel01;
+    UiState.EngineTemperature01 = Presentation.EngineTemperature01;
+    UiState.BrakeTemperature01 = GetVehicleHealthState().GetBrakeTemperature01();
+    UiState.ClutchTemperature01 = GetVehicleHealthState().GetClutchTemperature01();
+    UiState.RequestedGear = VehicleControlRuntime.GetRequestedGear();
+    UiState.EngagedGear = VehicleControlRuntime.GetEngagedGear();
+    UiState.bGearLeverDragging = bGearLeverDragging;
+    UiState.bEngineRunning = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    UiState.bEngineStalled = CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Stalled;
+    UiState.bMoving = GetMotionMode() == EPinkCabVehicleMotionMode::Moving;
+    UiState.bRequiresThrottleDose = VehicleControlRuntime.RequiresThrottleDose();
+    UiState.bParkingHandbrakeLatched = VehicleControlRuntime.IsParkingHandbrakeLatched();
+    UiState.GearResult = VehicleControlRuntime.GetLastGearResult();
+    DriverUi->UpdateState(UiState);
+}
+
+void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        ResetTransientCockpitInput();
+        return;
+    }
+
+    FPinkCabPlayerInputSample PlayerInput;
+    if (!BeginDriverFrame(*PC, PlayerInput))
+    {
+        return;
+    }
+    EPinkCabPedalWheelRecipient WheelRecipient = EPinkCabPedalWheelRecipient::None;
+    const FPinkCabVehicleInputFrame InputFrame =
+        PrepareVehicleFrame(PlayerInput, DeltaSeconds, WheelRecipient);
+    const bool bPhysicalGripActive =
+        ProcessCockpitFrame(*PC, PlayerInput, WheelRecipient, DeltaSeconds);
+    const float SteeringMouseX = FPinkCabPhysicalInputConvention::SteeringRight(PlayerInput.DeviceX);
+    ApplyVehicleInputFrame(
+        InputFrame,
+        bPhysicalGripActive ? 0.0f : SteeringMouseX,
+        DeltaSeconds);
+    UpdateDriverLook(PlayerInput, bPhysicalGripActive, DeltaSeconds);
+    const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
+    UpdateDriverUiState(Presentation);
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const

@@ -7,7 +7,7 @@
 #include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 #include "InputKeyEventArgs.h"
 #include "Interaction/PinkCabInteractionModel.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 namespace
 {

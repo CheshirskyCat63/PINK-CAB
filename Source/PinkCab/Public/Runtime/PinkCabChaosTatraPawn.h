@@ -23,12 +23,14 @@ class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
 class UPinkCabVehicleVisualShellComponent;
+class UPinkCabDriverUiComponent;
 struct FPinkCabInteractionEvent;
+struct FPinkCabPlayerInputSample;
+struct FPinkCabCockpitPresentationState;
 struct FPinkCabVehicleInputFrame;
 struct FPinkCabVehicleSnapshot;
 struct FPinkCabVehicleVisualProfile;
 class FPinkCabTaximeter;
-class SWidget;
 
 UCLASS()
 class PINKCAB_API APinkCabChaosTatraPawn : public AWheeledVehiclePawn
@@ -90,7 +92,8 @@ public:
     bool IsVehicleHealthStateBound() const { return VehicleHealthBinding.IsBound(); }
     void ResetTransientCockpitInput();
     void SetSystemMenuOpen(bool bOpen);
-    bool IsSystemMenuOpen() const { return bSystemMenuOpen; }
+    bool IsSystemMenuOpen() const;
+    UPinkCabDriverUiComponent* GetDriverUi() const { return DriverUi; }
 
     void SetCockpitTaximeterSource(const FPinkCabTaximeter* InTaximeter) { CockpitTaximeterSource = InTaximeter; }
     void SetCockpitRouteProgress(TOptional<float> InRouteProgress01) { CockpitRouteProgress01 = InRouteProgress01; }
@@ -98,6 +101,9 @@ public:
     void SetCockpitMirrorsAvailable(bool bAvailable) { bCockpitMirrorsAvailable = bAvailable; }
 
 private:
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Runtime")
+    TObjectPtr<UPinkCabDriverUiComponent> DriverUi;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Visual")
     TObjectPtr<UPinkCabVehicleVisualShellComponent> VehicleVisualShell;
 
@@ -130,15 +136,23 @@ private:
 
     void SyncCockpitToChaos();
     bool SyncLoadToChaos();
-    void HandleApplicationWillDeactivate();
-    void MountPlayableHud();
-    void UnmountPlayableHud();
-    void MountSystemMenu();
-    void UnmountSystemMenu();
-    void ApplyGameplayInputMode(APlayerController* PC);
-    void ApplySystemMenuInputMode(APlayerController* PC);
+    bool BeginDriverFrame(APlayerController& PC, FPinkCabPlayerInputSample& OutInput);
+    FPinkCabVehicleInputFrame PrepareVehicleFrame(
+        const FPinkCabPlayerInputSample& PlayerInput,
+        float DeltaSeconds,
+        EPinkCabPedalWheelRecipient& OutWheelRecipient);
+    bool ProcessCockpitFrame(
+        APlayerController& PC,
+        const FPinkCabPlayerInputSample& PlayerInput,
+        EPinkCabPedalWheelRecipient WheelRecipient,
+        float DeltaSeconds);
+    void UpdateDriverLook(
+        const FPinkCabPlayerInputSample& PlayerInput,
+        bool bPhysicalGripActive,
+        float DeltaSeconds);
+    FPinkCabCockpitPresentationState BuildCockpitPresentation(float DeltaSeconds);
+    void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
     void EnsurePlayableLighting();
-    void SetGearboxPointerCapture(APlayerController* PC, bool bCaptured);
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
@@ -175,11 +189,5 @@ private:
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
     bool bGearLeverDragging = false;
-    bool bGearboxPointerCaptured = false;
     FVector2D GearLeverCursor = FVector2D::ZeroVector;
-    FDelegateHandle ApplicationWillDeactivateHandle;
-    TSharedPtr<SWidget> PlayableHudOverlay;
-    TSharedPtr<SWidget> SystemMenuOverlay;
-    bool bSystemMenuOpen = false;
-    bool bSystemMenuSettingsOpen = false;
 };

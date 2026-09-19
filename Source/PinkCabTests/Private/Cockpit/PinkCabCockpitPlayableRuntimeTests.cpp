@@ -8,7 +8,7 @@
 #include "GameFramework/Controller.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 
 struct FPinkCabPlayableCockpitRuntimeState

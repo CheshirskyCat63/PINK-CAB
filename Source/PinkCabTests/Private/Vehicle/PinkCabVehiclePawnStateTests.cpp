@@ -3,7 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Persistence/PinkCabVehicleSnapshot.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabVehicleVisualShellComponent.h"
 

@@ -9,7 +9,7 @@
 #include "Cockpit/PinkCabCockpitPresentationState.h"
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
 #include "Vehicle/PinkCabVehicleVisualShellComponent.h"
 

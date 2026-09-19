@@ -6,7 +6,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Persistence/PinkCabVehicleSnapshot.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
 

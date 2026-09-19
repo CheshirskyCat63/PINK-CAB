@@ -63,6 +63,8 @@ Hard rules:
 
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
+| `runtime_composition` | possession/runtime wiring and compatibility shell | Runtime | `Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h` | `PinkCab.Runtime.Composition` |
+| `driver_ui` | system menu, HUD, cursor/capture and input-mode presentation | Runtime | `Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h` | `PinkCab.UI.SystemMenu` |
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
 | `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |

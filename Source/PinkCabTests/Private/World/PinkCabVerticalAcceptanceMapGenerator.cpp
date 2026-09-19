@@ -3,7 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
 #include "World/PinkCabVerticalAcceptanceCourse.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "FileHelpers.h"
 #include "Editor.h"
 #include "Engine/World.h"

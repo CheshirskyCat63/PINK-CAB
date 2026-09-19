@@ -4,7 +4,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/SkinnedAsset.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"

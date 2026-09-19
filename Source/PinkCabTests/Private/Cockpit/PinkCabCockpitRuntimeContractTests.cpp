@@ -5,7 +5,7 @@
 #include "EngineUtils.h"
 #include "Camera/CameraComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 class FPinkCabCockpitRuntimeContractCommand final : public IAutomationLatentCommand
 {

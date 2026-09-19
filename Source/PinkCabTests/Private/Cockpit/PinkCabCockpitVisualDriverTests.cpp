@@ -1,9 +1,9 @@
-﻿#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCockpitVisualMappingTest,

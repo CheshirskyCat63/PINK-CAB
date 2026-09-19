@@ -37,20 +37,6 @@
     },
     {
       "count": 1,
-      "max_value": 31,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "complexity",
-      "symbol": "APinkCabChaosTatraPawn::MountPlayableHud"
-    },
-    {
-      "count": 1,
-      "max_value": 36,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "complexity",
-      "symbol": "APinkCabChaosTatraPawn::Tick"
-    },
-    {
-      "count": 1,
       "max_value": 28,
       "path": "Source/PinkCab/Public/Cockpit/PinkCabCockpitSlot.h",
       "rule": "complexity",
@@ -150,7 +136,7 @@
     {
       "count": 1,
       "max_value": 1226,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
+      "path": "Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp",
       "rule": "file_loc",
       "symbol": ""
     },
@@ -178,13 +164,6 @@
     {
       "count": 1,
       "max_value": null,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "forbidden_dependency",
-      "symbol": "Vehicle->Persistence:Persistence/PinkCabVehicleSnapshot.h"
-    },
-    {
-      "count": 1,
-      "max_value": null,
       "path": "Source/PinkCab/Public/Taxi/PinkCabPassengerSnapshot.h",
       "rule": "forbidden_dependency",
       "symbol": "Taxi->Persistence:Persistence/PinkCabPersistedLogicalState.h"
@@ -195,27 +174,6 @@
       "path": "Source/PinkCab/Private/Cockpit/PinkCabCockpitVisualDriverComponent.cpp",
       "rule": "function_loc",
       "symbol": "UPinkCabCockpitVisualDriverComponent::Apply"
-    },
-    {
-      "count": 1,
-      "max_value": 124,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "function_loc",
-      "symbol": "APinkCabChaosTatraPawn::MountPlayableHud"
-    },
-    {
-      "count": 1,
-      "max_value": 120,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "function_loc",
-      "symbol": "APinkCabChaosTatraPawn::MountSystemMenu"
-    },
-    {
-      "count": 1,
-      "max_value": 236,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "function_loc",
-      "symbol": "APinkCabChaosTatraPawn::Tick"
     },
     {
       "count": 1,
@@ -902,27 +860,6 @@
       "path": "Source/PinkCab/Public/World/PinkCabWorldMaterializationPolicy.h",
       "rule": "public_header_logic",
       "symbol": ""
-    },
-    {
-      "count": 1,
-      "max_value": null,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "raw_input_ownership",
-      "symbol": "GetInputAnalogKeyState("
-    },
-    {
-      "count": 1,
-      "max_value": null,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "raw_input_ownership",
-      "symbol": "GetRawKeyValue("
-    },
-    {
-      "count": 1,
-      "max_value": null,
-      "path": "Source/PinkCab/Private/Vehicle/PinkCabChaosTatraPawn.cpp",
-      "rule": "raw_input_ownership",
-      "symbol": "IsInputKeyDown("
     }
   ],
   "version": 1

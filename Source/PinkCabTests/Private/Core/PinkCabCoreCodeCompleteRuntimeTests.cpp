@@ -6,7 +6,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "Interaction/PinkCabInteractionModel.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "World/PinkCabVerticalAcceptanceCourse.h"
 

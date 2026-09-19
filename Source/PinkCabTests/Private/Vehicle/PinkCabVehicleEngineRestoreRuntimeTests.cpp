@@ -5,7 +5,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Persistence/PinkCabVehicleSnapshot.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 class FPinkCabEngineRestoreCommand final : public IAutomationLatentCommand
 {

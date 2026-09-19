@@ -5,7 +5,7 @@
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"

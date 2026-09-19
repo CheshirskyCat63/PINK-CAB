@@ -116,7 +116,7 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 

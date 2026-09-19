@@ -4,7 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Camera/CameraComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "EngineUtils.h"
 
 class FPinkCabPrototypeVisualRuntimeCommand final : public IAutomationLatentCommand

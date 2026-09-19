@@ -10,7 +10,7 @@
 #include "Materials/Material.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleVisualProfile.h"
 
 namespace

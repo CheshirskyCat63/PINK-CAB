@@ -2,6 +2,20 @@
   "version": 1,
   "concerns": [
     {
+      "id": "runtime_composition",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp",
+      "test_prefix": "PinkCab.Runtime.Composition"
+    },
+    {
+      "id": "driver_ui",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabDriverUiComponent.cpp",
+      "test_prefix": "PinkCab.UI.SystemMenu"
+    },
+    {
       "id": "vehicle_control_orchestration",
       "owner_domain": "Vehicle",
       "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h",
