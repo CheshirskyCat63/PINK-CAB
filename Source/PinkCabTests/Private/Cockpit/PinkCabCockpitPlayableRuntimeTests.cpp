@@ -15,8 +15,11 @@ struct FPinkCabPlayableCockpitRuntimeState
 {
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
     FVector StartLocation = FVector::ZeroVector;
+    FVector ReverseStartLocation = FVector::ZeroVector;
     double DriveStartSeconds = -1.0;
+    double ReverseDriveStartSeconds = -1.0;
     double ReadyWaitStartSeconds = -1.0;
+    bool bReverseProved = false;
     bool bPrimed = false;
 };
 
@@ -104,7 +107,7 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
             Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 0.0f), 0.01f));
         Test->TestEqual(TEXT("neutral cross-gate does not engage a gear"),
             Pawn->GetEngagedGear(), 0);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
         Test->TestTrue(TEXT("visible lever reaches first through the same physical cursor"),
             Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 1.0f), 0.01f));
         Test->TestEqual(TEXT("physical H-gate requests first"),
@@ -132,9 +135,13 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         }
 
         // Physically traverse first -> neutral -> right corridor -> reverse.
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        // A shorter screen-down stroke stops in the neutral cross-gate instead
+        // of continuing into second.
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 100.0f, 0.05f);
+        Test->TestEqual(TEXT("first exits into neutral corridor before crossing right"),
+            Pawn->GetRequestedGear(), 0);
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 320.0f, 0.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
         Test->TestEqual(TEXT("physical bottom-right gate requests reverse"), Pawn->GetRequestedGear(), -1);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
@@ -143,14 +150,6 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         {
             Test->TestEqual(TEXT("validated reverse reaches Chaos target gear"), Movement->GetTargetGear(), -1);
         }
-
-        // Return through neutral to first so the existing forward-drive proof remains unchanged.
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -320.0f, 0.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
-        Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
-        Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
-        Test->TestEqual(TEXT("first is restored after reverse proof"), Pawn->GetEngagedGear(), 1);
 
         const FPinkCabVehicleInputFrame GazeThrottleFrame = FPinkCabVehicleInputFrame::FromRouter(
             Router, [](const FKey& Key) { return Key == EKeys::E || Key == EKeys::SpaceBar; });
@@ -174,6 +173,89 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
 
         State->ReadyWaitStartSeconds = FPlatformTime::Seconds();
         State->bPrimed = true;
+    }
+
+    if (!State->bReverseProved)
+    {
+        FPinkCabVehicleTelemetry ReverseTelemetry;
+        Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(ReverseTelemetry);
+        int32 ReverseContactCount = 0;
+        for (const FPinkCabWheelTelemetry& Wheel : ReverseTelemetry.Wheels)
+        {
+            ReverseContactCount += Wheel.bInContact ? 1 : 0;
+        }
+        if (ReverseContactCount < 2)
+        {
+            if ((FPlatformTime::Seconds() - State->ReadyWaitStartSeconds) > 2.0)
+            {
+                Test->TestTrue(TEXT("taxi reaches stable road contact before reverse proof"), false);
+                return true;
+            }
+            const FPinkCabVehicleInputFrame HoldFrame =
+                FPinkCabVehicleInputFrame::FromDigital(false, false, true, false);
+            Pawn->ApplyVehicleInputFrame(HoldFrame, 0.0f);
+            return false;
+        }
+
+        if (State->ReverseDriveStartSeconds < 0.0)
+        {
+            State->ReverseStartLocation = Pawn->GetActorLocation();
+            State->ReverseDriveStartSeconds = FPlatformTime::Seconds();
+        }
+
+        const FPinkCabVehicleInputFrame ReverseThrottleFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, false, false, true);
+        Pawn->ApplyVehicleInputFrame(ReverseThrottleFrame, 0.0f);
+        if ((FPlatformTime::Seconds() - State->ReverseDriveStartSeconds) < 1.5)
+        {
+            return false;
+        }
+
+        Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(ReverseTelemetry);
+        const float ReverseTravelCm = FVector::Dist2D(
+            Pawn->GetActorLocation(), State->ReverseStartLocation);
+        UChaosWheeledVehicleMovementComponent* ReverseMovement = Pawn->GetChaosMovement();
+        const float RearLeftDriveTorque =
+            ReverseTelemetry.Wheels.IsValidIndex(2) ? ReverseTelemetry.Wheels[2].DriveTorque : 0.0f;
+        const float RearRightDriveTorque =
+            ReverseTelemetry.Wheels.IsValidIndex(3) ? ReverseTelemetry.Wheels[3].DriveTorque : 0.0f;
+        Test->AddInfo(FString::Printf(
+            TEXT("reverse diagnostics requested=%d engaged=%d current=%d target=%d speed=%.2f travel=%.1f rearTorque=(%.1f,%.1f) throttle=%.2f rpm=%.1f"),
+            Pawn->GetRequestedGear(),
+            Pawn->GetEngagedGear(),
+            ReverseMovement ? ReverseMovement->GetCurrentGear() : 99,
+            ReverseMovement ? ReverseMovement->GetTargetGear() : 99,
+            ReverseTelemetry.SpeedKmh,
+            ReverseTravelCm,
+            RearLeftDriveTorque,
+            RearRightDriveTorque,
+            ReverseTelemetry.NormalizedThrottle,
+            ReverseTelemetry.EngineRpm));
+        Test->TestTrue(TEXT("engaged reverse produces negative forward speed"),
+            ReverseTelemetry.SpeedKmh < -1.0f);
+        Test->TestTrue(TEXT("engaged reverse physically moves taxi backward"),
+            ReverseTravelCm > 20.0f);
+
+        const FPinkCabVehicleInputFrame BrakeFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, false, true, false);
+        Pawn->ApplyVehicleInputFrame(BrakeFrame, 0.0f);
+
+        // Return R -> neutral -> left corridor -> first after actual reverse motion.
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -100.0f, 0.05f);
+        Test->TestEqual(TEXT("reverse exits into neutral corridor before crossing left"),
+            Pawn->GetRequestedGear(), 0);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -320.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        const FPinkCabVehicleInputFrame ClutchFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+        Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+        const FPinkCabVehicleInputFrame CoupledFrame =
+            FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
+        Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+        Test->TestEqual(TEXT("first is restored after physical reverse motion proof"),
+            Pawn->GetEngagedGear(), 1);
+        State->bReverseProved = true;
+        State->ReadyWaitStartSeconds = FPlatformTime::Seconds();
     }
 
     if (State->DriveStartSeconds < 0.0)

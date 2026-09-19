@@ -14,7 +14,9 @@ UPinkCabCockpitVisualDriverComponent::UPinkCabCockpitVisualDriverComponent()
 
 float UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(const float Steering)
 {
-    return FMath::Clamp(Steering, -1.0f, 1.0f) * 450.0f;
+    // Semantic steering stays +right. The preserved Tatra wheel mesh rotates
+    // rightward around its authored column on the negative local angle.
+    return FMath::Clamp(Steering, -1.0f, 1.0f) * -450.0f;
 }
 
 float UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(const float Value)

@@ -81,13 +81,13 @@ public:
             Test->TestTrue(TEXT("ignition interaction reaches live Chaos pawn"),
                 Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
 
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, -500.0f, 0.1f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, 500.0f, 0.1f);
             Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
             Test->TestEqual(TEXT("mouse actuator releases parking lever"),
                 Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
 
             Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
             const FPinkCabVehicleInputFrame ClutchFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
             Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);

@@ -12,16 +12,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabCockpitVisualMappingTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("full left steering maps to -450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), -450.0f);
-    TestEqual(TEXT("full right steering maps to 450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), 450.0f);
+    TestEqual(TEXT("semantic full left maps through Tatra wheel adapter to +450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), 450.0f);
+    TestEqual(TEXT("semantic full right maps through Tatra wheel adapter to -450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), -450.0f);
     TestEqual(TEXT("full pedal travel is bounded"),
         UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(1.0f), 18.0f);
     TestEqual(TEXT("half handbrake gets proportional lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -16.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -10.0f);
     TestEqual(TEXT("full handbrake gets bounded lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -32.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -20.0f);
     TestEqual(TEXT("cold temperature needle starts at low stop"),
         UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(0.0f), -60.0f);
     TestEqual(TEXT("full fuel needle reaches high stop"),

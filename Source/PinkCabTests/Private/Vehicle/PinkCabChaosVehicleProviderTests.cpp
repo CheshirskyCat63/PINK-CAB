@@ -22,7 +22,8 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     Controls.SetHandbrake(0.80f);
 
     TestTrue(TEXT("provider accepts normalized controls"), Provider.ApplyControls(Controls));
-    TestEqual(TEXT("semantic right-positive steering stays right-positive at Chaos provider boundary"), Movement->GetSteeringInput(), 0.35f);
+    TestEqual(TEXT("Chaos vehicle-space steering inverts semantic right-positive exactly once"),
+        Movement->GetSteeringInput(), -0.35f);
     TestEqual(TEXT("throttle reaches Chaos"), Movement->GetThrottleInput(), 0.72f);
     TestEqual(TEXT("brake reaches Chaos"), Movement->GetBrakeInput(), 0.18f);
     TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());

@@ -70,7 +70,7 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
             Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")),
                 EPinkCabInteractionGesture::PressHold, 1}));
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Handbrake")), true, 0.0f, -500.0f, 0.1f);
+            FName(TEXT("Handbrake")), true, 0.0f, 500.0f, 0.1f);
         Pawn->ApplyPhysicalControlMouseDelta(
             NAME_None, false, 0.0f, 0.0f, 0.1f);
         Test->TestEqual(TEXT("physical parking lever releases"),
@@ -82,7 +82,7 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
         Pawn->ApplyPhysicalControlMouseDelta(
             FName(TEXT("Gearbox")), true, -160.0f, 0.0f, 0.05f);
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Gearbox")), true, 0.0f, 140.0f, 0.05f);
+            FName(TEXT("Gearbox")), true, 0.0f, -140.0f, 0.05f);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyVehicleInputFrame(
             FPinkCabVehicleInputFrame::FromDigital(false, false, false, false), 0.0f);

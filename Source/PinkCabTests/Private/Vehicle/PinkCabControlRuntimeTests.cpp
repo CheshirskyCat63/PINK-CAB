@@ -8,6 +8,7 @@
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabHandbrakeActuator.h"
 #include "Vehicle/PinkCabGearboxController.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -412,6 +413,48 @@ bool FPinkCabGearEngagementValidatorTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGearRatioRpmContractTest,
+    "PinkCab.Vehicle.ControlRuntime.Gearbox.PhysicalRatios",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGearRatioRpmContractTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosPhysicalProfile Physical =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    FPinkCabGearboxController Gearbox;
+
+    const float WheelRadiusM = Physical.RearWheel.WheelRadiusCm.Value / 100.0f;
+    const float WheelRpmPerKmh =
+        (1000.0f / 60.0f) / (2.0f * PI * WheelRadiusM);
+    const float ExpectedFifthAt30 =
+        FMath::Max(
+            Physical.EngineIdleRpm.Value,
+            30.0f * WheelRpmPerKmh
+                * Physical.FinalDriveRatio.Value
+                * Physical.ForwardGearRatios.Value[4]);
+    const float ExpectedReverseAt10 =
+        FMath::Max(
+            Physical.EngineIdleRpm.Value,
+            10.0f * WheelRpmPerKmh
+                * Physical.FinalDriveRatio.Value
+                * Physical.ReverseGearRatios.Value[0]);
+
+    TestTrue(TEXT("fifth-at-30 RPM is derived from the physical transmission contract"),
+        FMath::IsNearlyEqual(
+            Gearbox.ExpectedEngineRpmForGear(5, 30.0f),
+            ExpectedFifthAt30,
+            1.0f));
+    TestTrue(TEXT("reverse RPM is derived from the same physical transmission contract"),
+        FMath::IsNearlyEqual(
+            Gearbox.ExpectedEngineRpmForGear(-1, -10.0f),
+            ExpectedReverseAt10,
+            1.0f));
+    TestTrue(TEXT("30 km/h in fifth is below the healthy loaded operating range"),
+        ExpectedFifthAt30 <= Physical.EngineIdleRpm.Value + 1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabContinuousClutchTest,
     "PinkCab.Vehicle.ControlRuntime.Gearbox.ContinuousClutch",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -468,8 +511,8 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
         Gearbox.ApplyLeverMouseDelta(-160.0f, 0.0f));
-    TestTrue(TEXT("UE raw MouseY positive/up moves lever forward into first"),
-        Gearbox.ApplyLeverMouseDelta(0.0f, 140.0f));
+    TestTrue(TEXT("screen-space mouse up moves lever forward into first"),
+        Gearbox.ApplyLeverMouseDelta(0.0f, -140.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
     Gearbox.ApplyLeverMouseDelta(160.0f, 0.0f);
@@ -490,6 +533,14 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
         Gearbox.GetRequestedGear(), 1);
     TestEqual(TEXT("focus cleanup never changes actual engaged gear"),
         Gearbox.GetEngagedGear(), 1);
+
+    FPinkCabGearboxController Reverse;
+    TestFalse(TEXT("screen-space mouse right crosses neutral corridor toward reverse column"),
+        Reverse.ApplyLeverMouseDelta(320.0f, 0.0f));
+    TestTrue(TEXT("screen-space mouse down enters rear-right reverse slot"),
+        Reverse.ApplyLeverMouseDelta(0.0f, 140.0f));
+    TestEqual(TEXT("physical screen-space H-gate reaches reverse"),
+        Reverse.GetRequestedGear(), -1);
     return true;
 }
 

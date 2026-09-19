@@ -31,9 +31,13 @@ struct FPinkCabGearboxControllerConfig
     float ClutchlessLoadThreshold = 0.15f;
     float ReverseLockoutSpeedKmh = 5.0f;
     float MaxSafeEngineRpm = 6500.0f;
-    float IdleRpm = 850.0f;
-    float RpmPerKmh[6] = {0.0f, 145.0f, 95.0f, 70.0f, 55.0f, 45.0f};
-    float ReverseRpmPerKmh = 130.0f;
+    float IdleRpm = 750.0f;
+    // Derived from the canonical physical profile:
+    // wheel radius 32.13 cm, final drive 3.2,
+    // forward 3.8/2.2/1.5/1.1/0.85, reverse 3.5.
+    float RpmPerKmh[6] = {
+        0.0f, 100.3903f, 58.1207f, 39.6277f, 29.0603f, 22.4557f};
+    float ReverseRpmPerKmh = 92.4647f;
 };
 
 class FPinkCabGearboxController
@@ -108,7 +112,9 @@ public:
         constexpr float CountsX = 160.0f;
         constexpr float CountsY = 140.0f;
         const float GateDx = MouseDeltaX / CountsX;
-        const float GateDy = MouseDeltaY / CountsY;
+        // Screen-space mouse Y grows downward, while logical H-gate +Y is
+        // forward (1/3/5). Convert once at this physical-input boundary.
+        const float GateDy = -MouseDeltaY / CountsY;
         const int32 Steps = FMath::Max(
             1,
             FMath::CeilToInt(FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / 0.20f));

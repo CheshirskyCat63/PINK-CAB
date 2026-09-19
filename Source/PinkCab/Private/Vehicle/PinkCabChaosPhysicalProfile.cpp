@@ -170,6 +170,11 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
 
     Movement.TransmissionSetup.bUseAutomaticGears = bUseAutomaticGears.Value;
     Movement.TransmissionSetup.bUseAutoReverse = bUseAutoReverse.Value;
+    // PINK CAB owns a physical H-pattern manual gearbox. Chaos' arcade
+    // Reverse-As-Brake path otherwise forces +1 whenever throttle is applied
+    // while reverse is selected, overriding the driver's engaged R gear.
+    Movement.bReverseAsBrake = false;
+    Movement.bThrottleAsBrake = false;
     Movement.TransmissionSetup.FinalRatio = FinalDriveRatio.Value;
     Movement.TransmissionSetup.ForwardGearRatios = ForwardGearRatios.Value;
     Movement.TransmissionSetup.ReverseGearRatios = ReverseGearRatios.Value;

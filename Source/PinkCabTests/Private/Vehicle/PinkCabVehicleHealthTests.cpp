@@ -247,6 +247,50 @@ bool FPinkCabCoupledStallTest::RunTest(const FString& Parameters)
     Input.Throttle = 0.25f;
     TestFalse(TEXT("driver throttle prevents idle launch stall"),
         Condition.Step(Input, Health).bShouldStall);
+
+    FPinkCabDrivetrainCondition LugCondition;
+    FPinkCabDrivetrainConditionInput Lug;
+    Lug.DeltaSeconds = 0.20f;
+    Lug.bEngineRunning = true;
+    Lug.EngineRpm = 900.0f;
+    Lug.ExpectedCoupledRpm = 750.0f;
+    Lug.SpeedKmh = 30.0f;
+    Lug.Throttle = 0.85f;
+    Lug.ClutchCoupling = 1.0f;
+    Lug.EngagedGear = 5;
+
+    const FPinkCabDrivetrainConditionOutput FirstLug =
+        LugCondition.Step(Lug, Health);
+    TestFalse(TEXT("fifth at 30 first lugs instead of stalling instantly"),
+        FirstLug.bShouldStall);
+    TestTrue(TEXT("fifth-at-30 enters explicit engine-lug state"),
+        FirstLug.bEngineLugging);
+    TestTrue(TEXT("lug state pulses engine torque below full output"),
+        FirstLug.EngineTorqueFactor < 1.0f);
+    TestTrue(TEXT("dashboard/tach RPM falls under impossible coupled load"),
+        FirstLug.DisplayedEngineRpm > 0.0f
+        && FirstLug.DisplayedEngineRpm < Lug.EngineRpm);
+
+    bool bEventuallyStalled = false;
+    FPinkCabDrivetrainConditionOutput FinalLug;
+    for (int32 Index = 0; Index < 6; ++Index)
+    {
+        FinalLug = LugCondition.Step(Lug, Health);
+        bEventuallyStalled |= FinalLug.bShouldStall;
+    }
+    TestTrue(TEXT("sustained fully-coupled fifth at 30 eventually stalls despite throttle"),
+        bEventuallyStalled);
+    TestEqual(TEXT("dashboard/tach RPM is zero once engine stalls"),
+        FinalLug.DisplayedEngineRpm, 0.0f);
+
+    FPinkCabDrivetrainConditionInput EngineOff;
+    EngineOff.DeltaSeconds = 0.1f;
+    EngineOff.bEngineRunning = false;
+    EngineOff.EngineRpm = 750.0f; // stale Chaos idle must never leak to instruments
+    const FPinkCabDrivetrainConditionOutput Off =
+        LugCondition.Step(EngineOff, Health);
+    TestEqual(TEXT("engine-off dashboard/tach suppresses stale Chaos idle RPM"),
+        Off.DisplayedEngineRpm, 0.0f);
     return true;
 }
 

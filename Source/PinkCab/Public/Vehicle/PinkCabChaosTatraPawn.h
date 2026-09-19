@@ -185,9 +185,13 @@ private:
     float SmoothedClutch = 0.0f;
     float SmoothedBrake = 0.0f;
     float SmoothedThrottle = 0.0f;
+    float DisplayedClutchPedal = 0.0f;
+    float DisplayedBrakePedal = 0.0f;
+    float DisplayedThrottlePedal = 0.0f;
     float SteeringCommand = 0.0f;
     float LastSpeedKmh = 0.0f;
     float LastEngineRpm = 0.0f;
+    float DisplayedEngineRpm = 0.0f;
     float DrivetrainTorqueCapacity = 1.0f;
     uint32 LastProcessedGearEventSerial = 0;
     bool bThrottleHeldLastFrame = false;

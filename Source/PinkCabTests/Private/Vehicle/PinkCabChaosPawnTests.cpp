@@ -224,10 +224,10 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     FPinkCabCockpitState Cockpit;
 
     Controls.SetSteering(0.40f);
-    TestTrue(TEXT("semantic right-positive steering reaches Chaos without a second inversion"),
+    TestTrue(TEXT("semantic right-positive steering reaches Chaos adapter"),
         Provider.ApplyControls(Controls));
-    TestTrue(TEXT("Chaos raw steering keeps player-facing right-positive sign"),
-        FMath::IsNearlyEqual(Movement->GetSteeringInput(), 0.40f, 1.e-4f));
+    TestTrue(TEXT("Chaos vehicle-space steering is inverted exactly once from player-facing right-positive"),
+        FMath::IsNearlyEqual(Movement->GetSteeringInput(), -0.40f, 1.e-4f));
 
     Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
@@ -247,6 +247,10 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
     TestFalse(TEXT("bool handbrake remains disabled after reapply"), Movement->GetHandbrakeInput());
     TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
+    TestFalse(TEXT("manual H-gate disables Chaos arcade reverse-as-brake override"),
+        Movement->bReverseAsBrake);
+    TestFalse(TEXT("manual H-gate disables throttle-as-brake companion behavior"),
+        Movement->bThrottleAsBrake);
     TestEqual(TEXT("fully coupled engaged first reaches Chaos"), Movement->GetTargetGear(), 1);
 
     Controls.SetClutch(0.5f);
