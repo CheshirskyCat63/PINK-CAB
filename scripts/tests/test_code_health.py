@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.code_health import analyze_repository, build_baseline, compare_baseline, validate_policy
+from scripts.code_health import analyze_repository, build_baseline, compare_baseline, validate_ownership_manifest, validate_policy
 
 
 def write(root: Path, relative: str, text: str) -> None:
@@ -126,6 +126,46 @@ class CodeHealthAnalyzerTests(unittest.TestCase):
         })
         regressions = compare_baseline(second, baseline)
         self.assertTrue(any(item["rule"] == "baseline_regression" for item in regressions))
+
+    def test_ownership_manifest_rejects_missing_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCab/Public/Vehicle/Good.h", "#pragma once\n")
+            manifest = {"version": 1, "concerns": [{
+                "id": "steering",
+                "owner_domain": "Vehicle",
+                "public_contract": "Source/PinkCab/Public/Vehicle/Good.h",
+                "implementation_root": "Source/PinkCab/Private/Vehicle/Missing.cpp",
+                "test_prefix": "PinkCab.Vehicle.Steering",
+            }]}
+            violations = validate_ownership_manifest(root, manifest)
+            self.assertTrue(any(item["rule"] == "ownership_manifest" and "implementation_root" in item["detail"] for item in violations))
+
+    def test_ownership_manifest_rejects_duplicate_concern_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCab/Public/Vehicle/Good.h", "#pragma once\n")
+            entry = {
+                "id": "steering", "owner_domain": "Vehicle",
+                "public_contract": "Source/PinkCab/Public/Vehicle/Good.h",
+                "implementation_root": "Source/PinkCab/Public/Vehicle/Good.h",
+                "test_prefix": "PinkCab.Vehicle.Steering",
+            }
+            violations = validate_ownership_manifest(root, {"version": 1, "concerns": [entry, dict(entry)]})
+            self.assertTrue(any("duplicate concern id" in item["detail"] for item in violations))
+
+    def test_ownership_doc_sync_requires_every_concern_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCab/Public/Vehicle/Good.h", "#pragma once\n")
+            manifest = {"version": 1, "concerns": [{
+                "id": "steering", "owner_domain": "Vehicle",
+                "public_contract": "Source/PinkCab/Public/Vehicle/Good.h",
+                "implementation_root": "Source/PinkCab/Public/Vehicle/Good.h",
+                "test_prefix": "PinkCab.Vehicle.Steering",
+            }]}
+            violations = validate_ownership_manifest(root, manifest, onboarding_text="# Start here\n")
+            self.assertTrue(any(item["rule"] == "ownership_doc_sync" for item in violations))
 
     def test_rejects_broad_or_unexplained_allowlist(self) -> None:
         bad = policy()

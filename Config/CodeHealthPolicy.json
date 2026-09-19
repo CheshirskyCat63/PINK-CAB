@@ -1,9 +1,20 @@
-﻿{
+{
   "version": 1,
-  "source_roots": ["Source/PinkCab"],
+  "source_roots": [
+    "Source/PinkCab"
+  ],
   "domains": [
-    "Core", "Interaction", "Vehicle", "Taxi", "Economy",
-    "World", "Traffic", "Persistence", "Service", "Cockpit", "Enforcement"
+    "Core",
+    "Interaction",
+    "Vehicle",
+    "Taxi",
+    "Economy",
+    "World",
+    "Traffic",
+    "Persistence",
+    "Service",
+    "Cockpit",
+    "Enforcement"
   ],
   "thresholds": {
     "cpp_loc": 350,
@@ -40,11 +51,23 @@
   "forbidden_dependencies": [
     {
       "from": [
-        "Core", "Interaction", "Vehicle", "Taxi", "Economy",
-        "World", "Traffic", "Service", "Cockpit", "Enforcement"
+        "Core",
+        "Interaction",
+        "Vehicle",
+        "Taxi",
+        "Economy",
+        "World",
+        "Traffic",
+        "Service",
+        "Cockpit",
+        "Enforcement"
       ],
-      "to": ["Persistence"]
+      "to": [
+        "Persistence"
+      ]
     }
   ],
-  "allowlist": []
+  "allowlist": [],
+  "ownership_manifest": "Config/ArchitectureOwnership.json",
+  "onboarding_doc": "docs/ENGINEERING_START_HERE.md"
 }

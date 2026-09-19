@@ -177,6 +177,35 @@ def _tarjan(vertices: set[str], adjacency: dict[str, set[str]]) -> list[list[str
     return sorted(components, key=lambda item: (len(item), item))
 
 
+def validate_ownership_manifest(root: Path, manifest: dict[str, Any], onboarding_text: str | None = None) -> list[dict[str, Any]]:
+    root = root.resolve()
+    violations: list[dict[str, Any]] = []
+    concerns = manifest.get("concerns")
+    if manifest.get("version") != 1 or not isinstance(concerns, list) or not concerns:
+        return [_violation("ownership_manifest", "<ownership-manifest>", 0, "manifest requires version=1 and a non-empty concerns list")]
+    seen: set[str] = set()
+    required = ("id", "owner_domain", "public_contract", "implementation_root", "test_prefix")
+    for index, entry in enumerate(concerns, start=1):
+        if not isinstance(entry, dict):
+            violations.append(_violation("ownership_manifest", "<ownership-manifest>", index, "concern entry must be an object"))
+            continue
+        missing = [field for field in required if not isinstance(entry.get(field), str) or not entry[field].strip()]
+        concern_id = str(entry.get("id", "")).strip()
+        if missing:
+            violations.append(_violation("ownership_manifest", "<ownership-manifest>", index, f"concern {concern_id or index} missing fields: {', '.join(missing)}", symbol=concern_id))
+            continue
+        if concern_id in seen:
+            violations.append(_violation("ownership_manifest", "<ownership-manifest>", index, f"duplicate concern id: {concern_id}", symbol=concern_id))
+        seen.add(concern_id)
+        for field in ("public_contract", "implementation_root"):
+            relative = entry[field].replace("\\", "/")
+            if not (root / relative).exists():
+                violations.append(_violation("ownership_manifest", relative, 0, f"{concern_id} {field} does not exist: {relative}", symbol=concern_id))
+        if onboarding_text is not None and f"`{concern_id}`" not in onboarding_text:
+            violations.append(_violation("ownership_doc_sync", "docs/ENGINEERING_START_HERE.md", 0, f"onboarding is missing concern id: {concern_id}", symbol=concern_id))
+    return violations
+
+
 def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     validate_policy(policy)
     root = root.resolve()
@@ -272,6 +301,23 @@ def analyze_repository(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     for component in cycles:
         symbol = "|".join(component)
         violations.append(_violation("dependency_cycle", "<domain-graph>", 0, f"domain dependency cycle: {' -> '.join(component)}", symbol=symbol, value=len(component), limit=1))
+
+    ownership_manifest = policy.get("ownership_manifest")
+    if ownership_manifest:
+        manifest_path = root / str(ownership_manifest)
+        if not manifest_path.exists():
+            violations.append(_violation("ownership_manifest", str(ownership_manifest), 0, "configured ownership manifest is missing"))
+        else:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+            onboarding_text: str | None = None
+            onboarding_doc = policy.get("onboarding_doc")
+            if onboarding_doc:
+                onboarding_path = root / str(onboarding_doc)
+                if onboarding_path.exists():
+                    onboarding_text = onboarding_path.read_text(encoding="utf-8-sig", errors="replace")
+                else:
+                    violations.append(_violation("ownership_doc_sync", str(onboarding_doc), 0, "configured onboarding document is missing"))
+            violations.extend(validate_ownership_manifest(root, manifest, onboarding_text))
 
     allowed: list[dict[str, Any]] = []
     active: list[dict[str, Any]] = []
