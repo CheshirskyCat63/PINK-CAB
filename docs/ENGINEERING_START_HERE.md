@@ -85,7 +85,7 @@ Hard rules:
 | `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
 | `vehicle_snapshot_archive` | versioned vehicle save schema + legacy migration adapter | Persistence | `Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshot.h` | `PinkCab.Persistence.VehicleSnapshot` |
 | `game_persistence` | save/checkpoint/restore orchestration | Persistence | `Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h` | `PinkCab.Persistence` |
-| `world_route` | route search/road graph routing | World | `Source/PinkCab/Public/World/PinkCabRouteService.h` | `PinkCab.World.Routing` |
+| `world_route` | route search/road graph routing | World | `Source/PinkCabWorld/Public/World/PinkCabRouteService.h` | `PinkCab.World.Routing` |
 | `traffic` | logical traffic flow/gaps | Traffic | `Source/PinkCab/Public/Traffic/PinkCabTrafficFlow.h` | `PinkCab.Traffic` |
 | `cockpit_presentation` | instrument/lever/visual projection | Cockpit | `Source/PinkCab/Public/Cockpit/PinkCabCockpitPresentationState.h` | `PinkCab.Cockpit.VisualDriver` |
 

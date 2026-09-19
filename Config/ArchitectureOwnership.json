@@ -158,8 +158,8 @@
     {
       "id": "world_route",
       "owner_domain": "World",
-      "public_contract": "Source/PinkCab/Public/World/PinkCabRouteService.h",
-      "implementation_root": "Source/PinkCab/Public/World/PinkCabRouteService.h",
+      "public_contract": "Source/PinkCabWorld/Public/World/PinkCabRouteService.h",
+      "implementation_root": "Source/PinkCabWorld/Public/World/PinkCabRouteService.h",
       "test_prefix": "PinkCab.World.Routing"
     },
     {
