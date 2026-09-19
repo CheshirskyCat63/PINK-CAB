@@ -3,20 +3,13 @@
 #include "CoreMinimal.h"
 #include "Core/PinkCabStableId.h"
 
-struct FPinkCabTransactionId
+struct PINKCABECONOMY_API FPinkCabTransactionId
 {
     FPinkCabTransactionId() = default;
-    explicit FPinkCabTransactionId(const FString& InValue)
-    {
-        FPinkCabStableId Parsed;
-        if (FPinkCabStableId::TryParse(InValue, Parsed))
-        {
-            StableId = Parsed;
-        }
-    }
+    explicit FPinkCabTransactionId(const FString& InValue);
 
-    bool IsValid() const { return StableId.IsValid(); }
-    const FString& GetValue() const { return StableId.Serialize(); }
+    bool IsValid() const;
+    const FString& GetValue() const;
 
 private:
     FPinkCabStableId StableId;
@@ -43,7 +36,7 @@ enum class EPinkCabEconomyPurpose : uint8
     DiscretionaryTuning
 };
 
-struct FPinkCabEconomyTransaction
+struct PINKCABECONOMY_API FPinkCabEconomyTransaction
 {
     FPinkCabTransactionId Id;
     EPinkCabTransactionType Type = EPinkCabTransactionType::FareIncome;
@@ -55,17 +48,11 @@ struct FPinkCabEconomyTransaction
         const FPinkCabTransactionId& InId,
         EPinkCabTransactionType InType,
         int64 InAmountMinor,
-        EPinkCabEconomyPurpose InPurpose = EPinkCabEconomyPurpose::General)
-    {
-        return FPinkCabEconomyTransaction{InId, InType, InPurpose, InAmountMinor, true};
-    }
+        EPinkCabEconomyPurpose InPurpose = EPinkCabEconomyPurpose::General);
 
     static FPinkCabEconomyTransaction Debit(
         const FPinkCabTransactionId& InId,
         EPinkCabTransactionType InType,
         int64 InAmountMinor,
-        EPinkCabEconomyPurpose InPurpose = EPinkCabEconomyPurpose::General)
-    {
-        return FPinkCabEconomyTransaction{InId, InType, InPurpose, InAmountMinor, false};
-    }
+        EPinkCabEconomyPurpose InPurpose = EPinkCabEconomyPurpose::General);
 };
