@@ -9,6 +9,8 @@
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabHandbrakeActuator.h"
 #include "Vehicle/PinkCabGearboxController.h"
+#include "Vehicle/PinkCabHGateGeometry.h"
+#include "Vehicle/PinkCabGearEngagementValidator.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabThrottleResponse.h"
 
