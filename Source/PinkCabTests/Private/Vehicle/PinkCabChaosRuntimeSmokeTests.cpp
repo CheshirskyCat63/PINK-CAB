@@ -87,7 +87,7 @@ public:
                 Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
 
             Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
             const FPinkCabVehicleInputFrame ClutchFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
             Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);

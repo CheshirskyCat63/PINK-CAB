@@ -33,21 +33,6 @@ public:
         Steering = FMath::Clamp(InSteering, -1.0f, 1.0f);
         Target = Steering;
     }
-    static float ResolveHorizontalMouseDelta(
-        const float ProcessedMouseX,
-        const float RawMouseX)
-    {
-        if (!FMath::IsFinite(ProcessedMouseX) || !FMath::IsFinite(RawMouseX))
-        {
-            return 0.0f;
-        }
-
-        // Raw X preserves the authored physical steering workspace, but it can
-        // remain cached while only MouseY moves. Require horizontal motion in
-        // this frame before accepting the raw X magnitude.
-        return FMath::IsNearlyZero(ProcessedMouseX, 0.0001f) ? 0.0f : RawMouseX;
-    }
-
     float Step(
         float MouseDeltaX,
         bool bGazeHeld,

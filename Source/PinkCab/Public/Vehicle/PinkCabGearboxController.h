@@ -107,15 +107,14 @@ public:
         return true;
     }
 
-    bool ApplyLeverMouseDelta(float MouseDeltaX, float MouseDeltaY)
+    bool ApplyLeverDriverDelta(float DriverRightCounts, float DriverForwardCounts)
     {
         constexpr float CountsX = 160.0f;
         constexpr float CountsY = 140.0f;
-        const float GateDx = MouseDeltaX / CountsX;
-        // UE mouse Y is screen-space here: moving the physical mouse away/up
-        // produces a negative delta. Convert exactly once so the top H row
-        // (1/3/5) remains logical +Y and the bottom row is 2/4/R.
-        const float GateDy = -MouseDeltaY / CountsY;
+        // This controller owns only the logical H-gate. Device/OS sign
+        // conventions are normalized before this boundary.
+        const float GateDx = DriverRightCounts / CountsX;
+        const float GateDy = DriverForwardCounts / CountsY;
         const int32 Steps = FMath::Max(
             1,
             FMath::CeilToInt(FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / 0.20f));

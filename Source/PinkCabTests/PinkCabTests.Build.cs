@@ -7,7 +7,7 @@ public class PinkCabTests : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateDependencyModuleNames.AddRange(new string[]
         {
-            "Core", "CoreUObject", "Engine", "InputCore", "UnrealEd", "PinkCab",
+            "Core", "CoreUObject", "ApplicationCore", "Engine", "InputCore", "UnrealEd", "PinkCab",
             "ChaosVehicles", "PhysicsCore"
         });
     }

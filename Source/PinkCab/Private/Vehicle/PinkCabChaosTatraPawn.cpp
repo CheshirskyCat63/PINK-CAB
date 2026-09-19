@@ -28,6 +28,7 @@
 #include "Misc/CoreDelegates.h"
 #include "Math/RotationMatrix.h"
 #include "Interaction/PinkCabInteractionModel.h"
+#include "Interaction/PinkCabPhysicalInputConvention.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsEngine/BodySetup.h"
@@ -975,7 +976,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
 {
     if (TargetId == FName(TEXT("Gearbox")) && bGripHeld)
     {
-        GearboxController.ApplyLeverMouseDelta(MouseDeltaX, MouseDeltaY);
+        GearboxController.ApplyLeverDriverDelta(
+            FPinkCabPhysicalInputConvention::SteeringRight(MouseDeltaX),
+            FPinkCabPhysicalInputConvention::GearboxForward(MouseDeltaY));
         CockpitState.SetSelectedGear(GearboxController.GetRequestedGear());
         GearLeverCursor = FVector2D(
             GearboxController.GetLeverX(),
@@ -987,9 +990,9 @@ void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     HandbrakeActuator.Step(
         MotionClassifier.GetMode(),
         bHandbrakeGrip,
-        // UE mouse Y is positive toward the dash and negative toward the
-        // driver in this cockpit path. Pull toward self must tighten.
-        bHandbrakeGrip ? -MouseDeltaY : 0.0f,
+        bHandbrakeGrip
+            ? FPinkCabPhysicalInputConvention::HandbrakePull(MouseDeltaY)
+            : 0.0f,
         DeltaSeconds);
     CockpitState.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
     ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
@@ -1117,15 +1120,15 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     {
         const float RawMouseX = PC->PlayerInput->GetRawKeyValue(EKeys::MouseX);
         const float RawMouseY = PC->PlayerInput->GetRawKeyValue(EKeys::MouseY);
-        SteeringMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+        const float DeviceX = FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(
             MouseX, RawMouseX);
-        // Gearbox and handbrake are physical lever gestures. Their authored
-        // counts are raw-device counts; using processed 0.07 sensitivity made
-        // the far-right/bottom reverse gate practically unreachable.
-        PhysicalMouseX = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
-            MouseX, RawMouseX);
-        PhysicalMouseY = FPinkCabSteeringController::ResolveHorizontalMouseDelta(
+        const float DeviceY = FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(
             MouseY, RawMouseY);
+        SteeringMouseX = FPinkCabPhysicalInputConvention::SteeringRight(DeviceX);
+        // Physical controls use raw-device magnitude, but all sign ownership
+        // lives in FPinkCabPhysicalInputConvention rather than individual controls.
+        PhysicalMouseX = DeviceX;
+        PhysicalMouseY = DeviceY;
     }
 
     FPinkCabVehicleInputFrame InputFrame = FPinkCabVehicleInputFrame::FromRouter(

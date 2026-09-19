@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Interaction/PinkCabPhysicalInputConvention.h"
 #include "Vehicle/PinkCabVehicleMotionClassifier.h"
 #include "Vehicle/PinkCabLaunchController.h"
 #include "Vehicle/PinkCabSteeringController.h"
@@ -164,14 +165,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabSteeringHorizontalMouseOnlyTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("vertical-only frame rejects stale raw MouseX"),
-        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.0f, 18.0f), 0.0f);
-    TestEqual(TEXT("tiny horizontal noise is treated as no steering motion"),
-        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.00001f, -22.0f), 0.0f);
-    TestEqual(TEXT("real horizontal frame keeps raw steering magnitude"),
-        FPinkCabSteeringController::ResolveHorizontalMouseDelta(0.35f, 18.0f), 18.0f);
-    TestEqual(TEXT("leftward horizontal frame keeps raw sign"),
-        FPinkCabSteeringController::ResolveHorizontalMouseDelta(-0.35f, -18.0f), -18.0f);
+    TestEqual(TEXT("inactive processed axis rejects stale raw value"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.0f, 18.0f), 0.0f);
+    TestEqual(TEXT("tiny processed axis noise is treated as inactive"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.00001f, -22.0f), 0.0f);
+    TestEqual(TEXT("active positive axis keeps raw magnitude"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.35f, 18.0f), 18.0f);
+    TestEqual(TEXT("active negative axis keeps raw sign"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(-0.35f, -18.0f), -18.0f);
     return true;
 }
 
@@ -526,12 +527,12 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
 {
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
-        Gearbox.ApplyLeverMouseDelta(-160.0f, 0.0f));
-    TestTrue(TEXT("physical mouse up moves lever forward into first"),
-        Gearbox.ApplyLeverMouseDelta(0.0f, -140.0f));
+        Gearbox.ApplyLeverDriverDelta(-160.0f, 0.0f));
+    TestTrue(TEXT("owner-calibrated positive driver-forward moves lever into first"),
+        Gearbox.ApplyLeverDriverDelta(0.0f, 140.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
-    Gearbox.ApplyLeverMouseDelta(160.0f, 0.0f);
+    Gearbox.ApplyLeverDriverDelta(160.0f, 0.0f);
     TestEqual(TEXT("horizontal mouse cannot cut across top H wall"),
         Gearbox.GetRequestedGear(), 1);
 
@@ -552,10 +553,10 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
 
     FPinkCabGearboxController Reverse;
     TestFalse(TEXT("screen-space mouse right crosses neutral corridor toward reverse column"),
-        Reverse.ApplyLeverMouseDelta(320.0f, 0.0f));
-    TestTrue(TEXT("physical mouse down enters rear-right reverse slot"),
-        Reverse.ApplyLeverMouseDelta(0.0f, 140.0f));
-    TestEqual(TEXT("physical screen-space H-gate reaches reverse"),
+        Reverse.ApplyLeverDriverDelta(320.0f, 0.0f));
+    TestTrue(TEXT("owner-calibrated negative driver-forward enters rear-right reverse slot"),
+        Reverse.ApplyLeverDriverDelta(0.0f, -140.0f));
+    TestEqual(TEXT("owner-calibrated H-gate reaches reverse"),
         Reverse.GetRequestedGear(), -1);
     return true;
 }
