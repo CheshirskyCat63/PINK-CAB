@@ -406,6 +406,19 @@ bool FPinkCabGearEngagementValidatorTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("requested gear records first"), Gearbox.GetRequestedGear(), 1);
     TestEqual(TEXT("engaged gear becomes first"), Gearbox.GetEngagedGear(), 1);
 
+    FPinkCabGearboxController StationaryNoClutch;
+    FPinkCabGearEngagementContext StationaryContext;
+    StationaryContext.ClutchPedal = 0.0f;
+    StationaryContext.EngineRpm = 750.0f;
+    StationaryContext.SpeedKmh = 0.0f;
+    StationaryContext.Throttle = 0.0f;
+    TestFalse(TEXT("standstill N-to-first without clutch is not a false rev-match"),
+        StationaryNoClutch.RequestGear(1, StationaryContext));
+    TestEqual(TEXT("standstill no-clutch request is refused as grind"),
+        StationaryNoClutch.GetLastResult(), EPinkCabGearEngagementResult::GrindRefused);
+    TestEqual(TEXT("standstill no-clutch refusal keeps neutral engaged"),
+        StationaryNoClutch.GetEngagedGear(), 0);
+
     Context.ClutchPedal = 0.0f;
     Context.EngineRpm = 4000.0f;
     Context.SpeedKmh = 35.0f;
@@ -446,17 +459,13 @@ bool FPinkCabGearRatioRpmContractTest::RunTest(const FString& Parameters)
     const float WheelRpmPerKmh =
         (1000.0f / 60.0f) / (2.0f * PI * WheelRadiusM);
     const float ExpectedFifthAt30 =
-        FMath::Max(
-            Physical.EngineIdleRpm.Value,
-            30.0f * WheelRpmPerKmh
-                * Physical.FinalDriveRatio.Value
-                * Physical.ForwardGearRatios.Value[4]);
+        30.0f * WheelRpmPerKmh
+            * Physical.FinalDriveRatio.Value
+            * Physical.ForwardGearRatios.Value[4];
     const float ExpectedReverseAt10 =
-        FMath::Max(
-            Physical.EngineIdleRpm.Value,
-            10.0f * WheelRpmPerKmh
-                * Physical.FinalDriveRatio.Value
-                * Physical.ReverseGearRatios.Value[0]);
+        10.0f * WheelRpmPerKmh
+            * Physical.FinalDriveRatio.Value
+            * Physical.ReverseGearRatios.Value[0];
 
     TestTrue(TEXT("fifth-at-30 RPM is derived from the physical transmission contract"),
         FMath::IsNearlyEqual(
@@ -468,8 +477,8 @@ bool FPinkCabGearRatioRpmContractTest::RunTest(const FString& Parameters)
             Gearbox.ExpectedEngineRpmForGear(-1, -10.0f),
             ExpectedReverseAt10,
             1.0f));
-    TestTrue(TEXT("30 km/h in fifth is below the healthy loaded operating range"),
-        ExpectedFifthAt30 <= Physical.EngineIdleRpm.Value + 1.0f);
+    TestTrue(TEXT("30 km/h in fifth is below idle and therefore a lugging case"),
+        ExpectedFifthAt30 < Physical.EngineIdleRpm.Value);
     return true;
 }
 
