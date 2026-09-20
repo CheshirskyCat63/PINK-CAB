@@ -24,7 +24,7 @@ Fixed denominator: 10 technical items.
 A single chained local run was started as PID 16392. Intended gate root:
 `E:\CHESHIRE_DIVISION\Builds\PINKCAB\G1_TBASE_8a70dfa_2026-09-20`
 
-Desktop Commander monthly quota exhausted while the already-running process was executing. Do not treat this as a project failure. Do not rerun blindly when access returns: inspect existing evidence/package/shortcut first.
+Desktop Commander monthly quota exhausted while the already-running process was executing. This is BLOCKED_ACCESS, not a project failure. Do not rerun blindly when access returns: inspect existing evidence/package/shortcut first.
 
 ## Resume checks
 - parse `_evidence\automation.log` for final queue + failures;
@@ -34,7 +34,26 @@ Desktop Commander monthly quota exhausted while the already-running process was 
 - resolve both `PINKCAB Latest.lnk` and `PINKCAB G1 T-BASE.lnk`;
 - only then close T-BASE at 100%.
 
-## Gate order
-T-BASE (ADM-01) -> H-INP (INP-01..07) -> H-VEH (VEH-01..09) -> H-CAB (CAB-01..09 + CAM-01..03) -> H-AUD (AUD-01..05) -> H-ROAD (CITY-01..10) -> T-WORLD (STR-01..07 + TRA-01..06) -> T-RC (SYS-01..04 + QA-01..06) -> H-G1 (QA-07).
+## Original recovered gate order
+1. **T-BASE** — ADM-01..04 — exact workspace/build provenance, accepted scope/authority.
+2. **T-MOVE** — VEH-01..03 — physical wheels grounded, forward/reverse movement, no spawn fall.
+3. **H-INP** — INP-01..07 — typed control grammar proven on lever/button/rotary.
+4. **H-VEH** — VEH-04..09 — owner-accepted steering/mass/suspension/transmission; no hidden assists.
+5. **H-CAB** — CAB-01..09 + CAM-01..03 — adopted cockpit parity + rear-seat→driver camera.
+6. **H-AUD** — AUD-01..05 — functional vehicle/cabin sound and accepted mix.
+7. **H-ROAD** — CITY-01..07 — cross-section, bumps, right entry, parking, pipe through building.
+8. **T-WORLD** — STR-01..07 + TRA-01..06 + CITY-08..10 — deterministic infinite/reverse city, traffic, rules, bounded counters.
+9. **H-PERF** — QA-02..05 — hardware/budget, packaged performance, 30min + 2h evidence.
+10. **T-RC** — SYS + ASSET + ADM release tasks — reproducible candidate, save/migration/license/credits/review.
+11. **H-G1** — all mandatory G1 + prior gates — owner accepts shareholder build, then STOP.
 
-Total G1 task denominator = 75. POST-01..08 are excluded. A Jira DONE state alone does not count as fresh runtime PASS; human gates count only after explicit owner acceptance.
+Runtime gates are sequential. Recovery/document extraction may continue in parallel because it does not mutate gameplay/runtime.
+
+## Percentage policy
+- Current gate % = fresh PASS items / frozen gate denominator.
+- Total G1 task denominator = 75; POST-01..08 excluded.
+- City G1 has separate fixed 50/100 mandatory score.
+- AUTO_VERIFIED and HUMAN_ACCEPTED are separate.
+- Jira DONE alone is not fresh runtime PASS.
+- BLOCKED/NOT_RUN = 0, not partial credit.
+- Human gates count only after explicit owner acceptance.
