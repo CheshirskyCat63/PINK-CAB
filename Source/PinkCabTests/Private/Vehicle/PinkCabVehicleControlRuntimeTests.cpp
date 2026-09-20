@@ -73,7 +73,8 @@ bool FPinkCabVehicleControlRuntimeWheelPriorityTest::RunTest(const FString& Para
 
     Runtime.Update(Digital(true, true, true, 1), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("E owns wheel before W/Q"), Runtime.GetLastWheelRecipient(), EPinkCabPedalWheelRecipient::Throttle);
-    TestEqual(TEXT("E dose increments 5%"), Runtime.GetThrottleTarget(), 0.05f);
+    TestEqual(TEXT("E wheel-up fine-adjusts the 45 percent launch target to 50 percent"),
+        Runtime.GetThrottleTarget(), 0.50f);
 
     const float BrakeBefore = Runtime.GetBrakeTarget();
     Runtime.Update(Digital(true, true, false, -1), Telemetry(), Cockpit, Health);
