@@ -134,36 +134,37 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
     }
 
     const FName ActiveGripTarget = CockpitInteraction->GetActiveGripTargetId();
-    const bool bHandbrakeGripActive =
-        CockpitInteraction->IsGripActive()
-        && ActiveGripTarget == FName(TEXT("Handbrake"));
-    const bool bGearboxGripActive =
-        CockpitInteraction->IsGripActive()
-        && ActiveGripTarget == FName(TEXT("Gearbox"));
-    const bool bPhysicalGripActive = CockpitInteraction->IsGripActive();
+    const bool bManipulationActive = CockpitInteraction->IsManipulationActive();
+    const bool bGearboxManipulationActive =
+        bManipulationActive && ActiveGripTarget == FName(TEXT("Gearbox"));
+
+    // RMB only acquires/retains the selected physical control. Steering stays
+    // mouse-owned until LMB starts an authored lever manipulation. During that
+    // manipulation mouse XY belongs to exactly one lever and the existing
+    // steering angle is held rather than reset.
     if (DriverUi)
     {
-        DriverUi->SetPointerCapture(PC, bPhysicalGripActive);
+        DriverUi->SetPointerCapture(PC, bManipulationActive);
     }
     ApplyPhysicalControlMouseDelta(
         ActiveGripTarget,
-        CockpitInteraction->IsGripActive(),
+        bManipulationActive,
         PlayerInput.DeviceX,
         PlayerInput.DeviceY,
         DeltaSeconds);
-    bGearLeverDragging = bGearboxGripActive;
+    bGearLeverDragging = bGearboxManipulationActive;
     GearLeverCursor = bGearLeverDragging
         ? VehicleControlRuntime.GetGearLeverCursor()
         : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(CockpitState.GetSelectedGear());
-    return bPhysicalGripActive;
+    return bManipulationActive;
 }
 
 void APinkCabChaosTatraPawn::UpdateDriverLook(
     const FPinkCabPlayerInputSample& PlayerInput,
-    const bool bPhysicalGripActive,
+    const bool bManipulationActive,
     const float DeltaSeconds)
 {
-    const bool bGazeHeld = CockpitInteraction->IsGazeHeld() && !bPhysicalGripActive;
+    const bool bGazeHeld = CockpitInteraction->IsGazeHeld() && !bManipulationActive;
     SmoothedLookMouseX = FMath::FInterpTo(
         SmoothedLookMouseX, bGazeHeld ? PlayerInput.LookMouseX : 0.0f, DeltaSeconds, 12.0f);
     SmoothedLookMouseY = FMath::FInterpTo(
