@@ -43,20 +43,24 @@ bool FPinkCabVehicleControlRuntimeLaunchTest::RunTest(const FString& Parameters)
 
     Runtime.Update(Digital(true, false, true), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("first E press starts exactly one launch"), Runtime.GetLaunchSerial(), 1u);
-    TestFalse(TEXT("fresh launch never requires wheel permission"), Runtime.RequiresThrottleDose());
-    TestEqual(TEXT("fresh E press immediately gives the authored 45 percent throttle target"),
-        Runtime.GetThrottleTarget(), 0.45f);
-    TestTrue(TEXT("Q and E coexist in the same smoothed control frame"),
-        Runtime.GetControlState().Clutch > 0.0f && Runtime.GetControlState().Throttle > 0.0f);
+    TestTrue(TEXT("fresh launch requires explicit E+wheel throttle dose"), Runtime.RequiresThrottleDose());
+    TestEqual(TEXT("fresh E press alone keeps throttle target at zero"),
+        Runtime.GetThrottleTarget(), 0.0f);
+    TestTrue(TEXT("Q remains active while E owns throttle dosing"),
+        Runtime.GetControlState().Clutch > 0.0f);
+    TestEqual(TEXT("E without wheel does not invent throttle"),
+        Runtime.GetControlState().Throttle, 0.0f);
 
     Runtime.Update(Digital(true, false, true, 1), Telemetry(), Cockpit, Health);
-    TestEqual(TEXT("one E+wheel step fine-adjusts throttle by five percent"),
-        Runtime.GetThrottleTarget(), 0.50f);
-    TestFalse(TEXT("wheel adjustment is never mandatory launch permission"), Runtime.RequiresThrottleDose());
+    TestEqual(TEXT("one E+wheel step sets exactly five percent throttle"),
+        Runtime.GetThrottleTarget(), 0.05f);
+    TestFalse(TEXT("positive throttle dose satisfies new-launch requirement"), Runtime.RequiresThrottleDose());
+    TestTrue(TEXT("Q and dosed E coexist in the same smoothed control frame"),
+        Runtime.GetControlState().Clutch > 0.0f && Runtime.GetControlState().Throttle > 0.0f);
 
     Runtime.Update(Digital(true, false, true), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("held E never resets launch again"), Runtime.GetLaunchSerial(), 1u);
-    TestEqual(TEXT("held E preserves adjusted throttle target"), Runtime.GetThrottleTarget(), 0.50f);
+    TestEqual(TEXT("held E preserves the explicit wheel-set dose"), Runtime.GetThrottleTarget(), 0.05f);
     return true;
 }
 
@@ -73,8 +77,8 @@ bool FPinkCabVehicleControlRuntimeWheelPriorityTest::RunTest(const FString& Para
 
     Runtime.Update(Digital(true, true, true, 1), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("E owns wheel before W/Q"), Runtime.GetLastWheelRecipient(), EPinkCabPedalWheelRecipient::Throttle);
-    TestEqual(TEXT("E wheel-up fine-adjusts the 45 percent launch target to 50 percent"),
-        Runtime.GetThrottleTarget(), 0.50f);
+    TestEqual(TEXT("E wheel-up owns the new-launch dose and sets five percent"),
+        Runtime.GetThrottleTarget(), 0.05f);
 
     const float BrakeBefore = Runtime.GetBrakeTarget();
     Runtime.Update(Digital(true, true, false, -1), Telemetry(), Cockpit, Health);
