@@ -42,7 +42,7 @@ jobs:
           & .\scripts\build.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: RED gate - RMB-only gearbox grip contract
+      - name: RMB-only gearbox grip contract
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -56,6 +56,21 @@ jobs:
           $fail = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
           if ($queue.Count -eq 0 -or $fail.Count -gt 0) { throw "RMB-only gearbox contract failed." }
           Write-Host "RMB-only gearbox contract PASS"
+
+
+      - name: RED gate - canonical control hints
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $log = Join-Path $env:GITHUB_WORKSPACE "Saved\G1HInp\CANONICAL_HINTS.log"
+          & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.UI.SystemMenu.CanonicalControlHints" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $fail = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($queue.Count -eq 0 -or $fail.Count -gt 0) { throw "Canonical control hints contract failed." }
+          Write-Host "Canonical control hints PASS"
 
       - name: Upload H-INP evidence
         if: always()
