@@ -22,13 +22,13 @@ void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
 
 void APinkCabChaosTatraPawn::ApplyPhysicalControlMouseDelta(
     const FName TargetId,
-    const bool bGripHeld,
+    const bool bManipulationActive,
     const float MouseDeltaX,
     const float MouseDeltaY,
     const float DeltaSeconds)
 {
     VehicleControlRuntime.ApplyPhysicalControl(
-        TargetId, bGripHeld, MouseDeltaX, MouseDeltaY, DeltaSeconds, CockpitState);
+        TargetId, bManipulationActive, MouseDeltaX, MouseDeltaY, DeltaSeconds, CockpitState);
     GearLeverCursor = VehicleControlRuntime.GetGearLeverCursor();
     SyncCockpitToChaos();
 }
