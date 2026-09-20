@@ -3,6 +3,8 @@
 #include "Misc/AutomationTest.h"
 #include "InputCoreTypes.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
+#include "Cockpit/PinkCabCockpitAssemblyComponent.h"
+#include "Components/SceneComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -328,15 +330,59 @@ bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("LMB never grips the gearbox"), Interaction->IsGripActive());
     TestEqual(TEXT("LMB on grip-only gearbox does not actuate"), Events.Num(), 0);
 
+    Events.Reset();
     Frame.bMomentaryHeld = false;
     Frame.bGripHeld = true;
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestTrue(TEXT("RMB grips the gearbox"), Interaction->IsGripActive());
-    TestEqual(TEXT("RMB grip alone does not actuate gearbox"), Events.Num(), 0);
+    TestEqual(TEXT("RMB emits one contextual grip-begin event"), Events.Num(), 1);
+    if (Events.Num() == 1)
+    {
+        TestEqual(TEXT("grip begin keeps gearbox target"), Events[0].TargetId, FName(TEXT("Gearbox")));
+        TestEqual(TEXT("grip begin uses grip gesture"), Events[0].Gesture, EPinkCabInteractionGesture::GripBegin);
+        TestEqual(TEXT("grip begin signed value is positive"), Events[0].SignedValue, 1);
+    }
 
+    Events.Reset();
     Frame.bGripHeld = false;
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestFalse(TEXT("RMB release returns gearbox grip ownership"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB release emits one contextual grip-end event"), Events.Num(), 1);
+    if (Events.Num() == 1)
+    {
+        TestEqual(TEXT("grip release keeps gearbox target"), Events[0].TargetId, FName(TEXT("Gearbox")));
+        TestEqual(TEXT("grip release is signed negative"), Events[0].SignedValue, -1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContextualRmbPickTest,
+    "PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabContextualRmbPickTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    UPinkCabCockpitAssemblyComponent* Assembly = NewObject<UPinkCabCockpitAssemblyComponent>();
+    USceneComponent* DoorControl = NewObject<USceneComponent>();
+    DoorControl->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+    Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::PassengerDoor, DoorControl);
+
+    FPinkCabCockpitInteractionFrame Frame;
+    Frame.bGripHeld = true;
+    Frame.bGazeHeld = false;
+    Frame.GazeOrigin = FVector::ZeroVector;
+    Frame.GazeForward = FVector::ForwardVector;
+    Frame.GazeMaxDistanceCm = 250.0f;
+    Frame.NowSeconds = 2.0;
+
+    TArray<FPinkCabInteractionEvent> Events;
+    Interaction->ProcessFrame(Frame, Assembly, Events);
+
+    TestEqual(TEXT("RMB alone picks the centered contextual physical target"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("PassengerDoor")));
+    TestTrue(TEXT("RMB alone acquires contextual grip without Space"), Interaction->IsGripActive());
+    TestEqual(TEXT("contextual RMB emits grip-begin event"), Events.Num(), 1);
     return true;
 }
 #endif
