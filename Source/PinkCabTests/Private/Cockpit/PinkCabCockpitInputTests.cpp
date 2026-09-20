@@ -157,6 +157,34 @@ bool FPinkCabConsumedRecallLifecycleTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchGearboxStageLifecycleTest,
+    "PinkCab.Cockpit.Input.Recovery.ClutchGearboxStageLifecycle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchGearboxStageLifecycleTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bGearboxStageFromClutchHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("Q held stages gearbox without actuation"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Gearbox")));
+    TestFalse(TEXT("Q staging never grips"), Interaction->IsGripActive());
+    TestEqual(TEXT("Q staging emits no action event"), Events.Num(), 0);
+
+    Frame.bGearboxStageFromClutchHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("Q release removes ephemeral gearbox stage"),
+        Interaction->GetCurrentTargetId().IsNone());
+    TestEqual(TEXT("Q release emits no action event"), Events.Num(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabGripComplianceTest,
     "PinkCab.Cockpit.Input.Compliance.PC_T_INP_003",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
