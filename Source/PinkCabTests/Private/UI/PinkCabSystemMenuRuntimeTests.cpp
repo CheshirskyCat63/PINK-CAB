@@ -5,6 +5,8 @@
 #include "EngineUtils.h"
 #include "Runtime/PinkCabDriverUiComponent.h"
 #include "Misc/CoreDelegates.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/Engine.h"
@@ -162,6 +164,47 @@ bool FPinkCabDriverUiInputModeTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("driver UI input-mode map opens"), bOpened);
     if (!bOpened) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabDriverUiInputModeCommand(this));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabDriverUiCanonicalControlHintsTest,
+    "PinkCab.UI.SystemMenu.CanonicalControlHints",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabDriverUiCanonicalControlHintsTest::RunTest(const FString& Parameters)
+{
+    FString Source;
+    const FString SourcePath = FPaths::Combine(
+        FPaths::ProjectDir(),
+        TEXT("Source/PinkCab/Private/Runtime/PinkCabDriverUiComponent.cpp"));
+    TestTrue(TEXT("driver UI source is readable for canonical hint contract"),
+        FFileHelper::LoadFileToString(Source, *SourcePath));
+    if (Source.IsEmpty())
+    {
+        return false;
+    }
+
+    const TCHAR* RequiredTokens[] = {
+        TEXT("MOUSE STEER"),
+        TEXT("SPACE LOOK"),
+        TEXT("Q CLUTCH"),
+        TEXT("Q+WHEEL CLUTCH RELEASE"),
+        TEXT("W+WHEEL BRAKE"),
+        TEXT("E+WHEEL THROTTLE"),
+        TEXT("1 SIGNALS"),
+        TEXT("2 HORN"),
+        TEXT("3 GEARBOX"),
+        TEXT("4 HANDBRAKE"),
+        TEXT("RMB GRIP"),
+        TEXT("LMB ACTION")
+    };
+    for (const TCHAR* Token : RequiredTokens)
+    {
+        TestTrue(
+            *FString::Printf(TEXT("canonical control hint contains %s"), Token),
+            Source.Contains(Token));
+    }
     return true;
 }
 
