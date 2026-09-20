@@ -148,7 +148,7 @@ private:
         float DeltaSeconds);
     void UpdateDriverLook(
         const FPinkCabPlayerInputSample& PlayerInput,
-        bool bPhysicalGripActive,
+        bool bManipulationActive,
         float DeltaSeconds);
     FPinkCabCockpitPresentationState BuildCockpitPresentation(float DeltaSeconds);
     void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
