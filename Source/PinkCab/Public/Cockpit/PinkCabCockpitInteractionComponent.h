@@ -47,6 +47,7 @@ public:
     bool IsGripActive() const { return bGripActive; }
     FName GetActiveGripTargetId() const { return ActiveGripTargetId; }
     bool IsManipulationActive() const { return bManipulationActive; }
+    bool IsGearboxStageFromClutchHeld() const { return bGearboxStageFromClutchHeld; }
 
     bool BeginMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
     bool EndMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
