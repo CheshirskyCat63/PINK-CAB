@@ -41,18 +41,22 @@ bool FPinkCabVehicleControlRuntimeLaunchTest::RunTest(const FString& Parameters)
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleHealthState Health;
 
-    Runtime.Update(Digital(false, false, true), Telemetry(), Cockpit, Health);
+    Runtime.Update(Digital(true, false, true), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("first E press starts exactly one launch"), Runtime.GetLaunchSerial(), 1u);
-    TestTrue(TEXT("fresh launch requires wheel dose"), Runtime.RequiresThrottleDose());
-    TestEqual(TEXT("fresh launch throttle target is zero"), Runtime.GetThrottleTarget(), 0.0f);
+    TestFalse(TEXT("fresh launch never requires wheel permission"), Runtime.RequiresThrottleDose());
+    TestEqual(TEXT("fresh E press immediately gives the authored 45 percent throttle target"),
+        Runtime.GetThrottleTarget(), 0.45f);
+    TestTrue(TEXT("Q and E coexist in the resolved control state"),
+        Runtime.GetControlState().Clutch > 0.90f && Runtime.GetControlState().Throttle > 0.40f);
 
-    Runtime.Update(Digital(false, false, true, 1), Telemetry(), Cockpit, Health);
-    TestEqual(TEXT("one E+wheel step doses exactly five percent"), Runtime.GetThrottleTarget(), 0.05f);
-    TestFalse(TEXT("positive dose clears required flag"), Runtime.RequiresThrottleDose());
+    Runtime.Update(Digital(true, false, true, 1), Telemetry(), Cockpit, Health);
+    TestEqual(TEXT("one E+wheel step fine-adjusts throttle by five percent"),
+        Runtime.GetThrottleTarget(), 0.50f);
+    TestFalse(TEXT("wheel adjustment is never mandatory launch permission"), Runtime.RequiresThrottleDose());
 
-    Runtime.Update(Digital(false, false, true), Telemetry(), Cockpit, Health);
+    Runtime.Update(Digital(true, false, true), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("held E never resets launch again"), Runtime.GetLaunchSerial(), 1u);
-    TestEqual(TEXT("held E preserves dose"), Runtime.GetThrottleTarget(), 0.05f);
+    TestEqual(TEXT("held E preserves adjusted throttle target"), Runtime.GetThrottleTarget(), 0.50f);
     return true;
 }
 
