@@ -14,6 +14,7 @@ struct FPinkCabCockpitInteractionFrame
     bool bQuickRecall2Held = false;
     bool bQuickRecall3Held = false;
     bool bQuickRecall4Held = false;
+    bool bGearboxStageFromClutchHeld = false;
     bool bGripHeld = false;
     bool bMomentaryHeld = false;
     int32 WheelSteps = 0;
@@ -96,4 +97,5 @@ private:
     bool bMomentaryActive = false;
     bool bCurrentTargetFromQuickRecall = false;
     bool bCurrentTargetRecallConsumed = false;
+    bool bGearboxStageFromClutchHeld = false;
 };
