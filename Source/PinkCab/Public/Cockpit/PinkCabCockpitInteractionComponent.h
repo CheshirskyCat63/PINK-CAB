@@ -67,11 +67,9 @@ private:
     void UpdateTargetSelection(
         const FPinkCabCockpitInteractionFrame& Frame,
         const UPinkCabCockpitAssemblyComponent* Assembly);
-    bool IsPrimaryPointerGrip(const FPinkCabCockpitInteractionFrame& Frame) const;
-    void UpdateGripState(const FPinkCabCockpitInteractionFrame& Frame, bool bPrimaryPointerGrip);
+    void UpdateGripState(const FPinkCabCockpitInteractionFrame& Frame);
     void UpdateMomentaryState(
         const FPinkCabCockpitInteractionFrame& Frame,
-        bool bPrimaryPointerGrip,
         TArray<FPinkCabInteractionEvent>& OutActuationEvents);
     void AppendWheelEvent(
         const FPinkCabCockpitInteractionFrame& Frame,
