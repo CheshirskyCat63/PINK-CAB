@@ -256,7 +256,7 @@ bool FPinkCabPedalWheelPriorityTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Q owns wheel when alone"),
         Pedals.ApplyWheelSteps(true, false, false, 1, Launch, Cockpit),
         EPinkCabPedalWheelRecipient::ClutchRelease);
-    TestTrue(TEXT("Q wheel changes release setting"), Cockpit.GetClutchReleaseSeconds() > ReleaseBefore);
+    TestTrue(TEXT("Q wheel-up makes clutch release faster"), Cockpit.GetClutchReleaseSeconds() < ReleaseBefore);
     return true;
 }
 
