@@ -1,0 +1,243 @@
+{
+  "schema": "pinkcab.g1.recovery.sources.v1",
+  "generated_at": "2026-09-20",
+  "rule": "Current Git/Jira/Confluence/runtime supersedes historical snapshots. Local/private references are indexed, not copied into Git.",
+  "source_snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+  "count": 32,
+  "sources": [
+    {
+      "id": "FILELIB-MASTER",
+      "type": "file_library",
+      "locator": "file_00000000c19881fd8bd8899125ca2545",
+      "title": "PINKCAB_G1_Master_Plan.md",
+      "captured_at": "2026-09-19T23:51:54Z",
+      "authority": "historical_planning_source",
+      "state": "RECOVERED_SOURCE"
+    },
+    {
+      "id": "FILELIB-HANDOFF",
+      "type": "file_library",
+      "locator": "file_0000000070b481fdb71ab9ade103a83b",
+      "title": "PINKCAB_G1_Sol56_Handoff.md",
+      "captured_at": "2026-09-19T23:51:54Z",
+      "authority": "historical_planning_handoff",
+      "state": "RECOVERED_SOURCE"
+    },
+    {
+      "id": "GIT-SNAPSHOT",
+      "type": "git",
+      "locator": "CheshirskyCat63/PINK-CAB@8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+      "captured_at": "2026-09-20",
+      "authority": "historical_technical_snapshot",
+      "state": "VERIFIED"
+    },
+    {
+      "id": "GIT-AUTHORITY",
+      "type": "git_file",
+      "locator": "docs/AUTHORITY.yaml",
+      "snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+      "authority": "technical_authority_input",
+      "state": "RECHECK_CURRENT_BEFORE_EDIT"
+    },
+    {
+      "id": "GIT-ENGINEERING",
+      "type": "git_file",
+      "locator": "docs/ENGINEERING_START_HERE.md",
+      "snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+      "authority": "engineering_onboarding",
+      "state": "VERIFIED_IN_PREFLIGHT"
+    },
+    {
+      "id": "GIT-OWNERSHIP",
+      "type": "git_file",
+      "locator": "Config/ArchitectureOwnership.json",
+      "snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+      "authority": "architecture_owner_map",
+      "state": "VERIFIED_IN_PREFLIGHT"
+    },
+    {
+      "id": "GIT-CODEHEALTH",
+      "type": "git_file",
+      "locator": "Config/CodeHealthPolicy.json",
+      "snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+      "authority": "code_health_policy",
+      "state": "VERIFIED_IN_TBASE"
+    },
+    {
+      "id": "CONF-47",
+      "type": "confluence",
+      "locator": "page:16744449",
+      "url": "https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/16744449/47+PINK+CAB+Control+Vehicle+Mechanics+Release+Contract",
+      "authority": "CURRENT_CONTROL_MECHANICS_AUTHORITY",
+      "state": "CURRENT_VERIFIED_2026-09-20"
+    },
+    {
+      "id": "CONF-COCKPIT",
+      "type": "confluence",
+      "locator": "page:6619137",
+      "authority": "cockpit_identity_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-PARITY",
+      "type": "confluence",
+      "locator": "page:5931070",
+      "authority": "cockpit_parity_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-CROSSSECTION",
+      "type": "confluence",
+      "locator": "page:6455318",
+      "authority": "city_cross_section",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-L1",
+      "type": "confluence",
+      "locator": "page:8388630",
+      "authority": "level1_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-GRAMMAR",
+      "type": "confluence",
+      "locator": "page:6651905",
+      "authority": "road_grammar",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-PIPE",
+      "type": "confluence",
+      "locator": "page:8421388",
+      "authority": "pipe_interchange",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-CITY",
+      "type": "confluence",
+      "locator": "page:5931050",
+      "authority": "city_identity_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-PRESENTATION",
+      "type": "confluence",
+      "locator": "page:8323081",
+      "authority": "presentation_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-BUDGETS",
+      "type": "confluence",
+      "locator": "page:6717461",
+      "authority": "performance_budgets",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-QA",
+      "type": "confluence",
+      "locator": "page:6750209",
+      "authority": "qa_evidence_contract",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "CONF-SALVAGE",
+      "type": "confluence",
+      "locator": "page:6488086",
+      "authority": "legacy_salvage_map",
+      "state": "HISTORICAL_PLAN_SOURCE"
+    },
+    {
+      "id": "CONF-SCOPE",
+      "type": "confluence",
+      "locator": "page:15237121",
+      "authority": "scope_exclusions",
+      "state": "HISTORICAL_PLAN_SOURCE_RECHECK_CURRENT"
+    },
+    {
+      "id": "JIRA-PRODUCT",
+      "type": "jira",
+      "locator": "CD-519",
+      "authority": "CURRENT_PRODUCT_ROOT",
+      "state": "CURRENT_VERIFIED_2026-09-20"
+    },
+    {
+      "id": "JIRA-MECHANICS",
+      "type": "jira",
+      "locator": "CD-848",
+      "authority": "CURRENT_G1_IMPLEMENTATION_LANE",
+      "state": "CURRENT_VERIFIED_2026-09-20"
+    },
+    {
+      "id": "JIRA-MODEL",
+      "type": "jira",
+      "locator": "CD-855",
+      "authority": "CURRENT_MODEL_PRESENTATION_LANE",
+      "state": "IN_PROGRESS_VERIFIED_2026-09-20"
+    },
+    {
+      "id": "JIRA-PREMODEL",
+      "type": "jira",
+      "locator": "CD-856",
+      "authority": "HISTORICAL_PREMODEL_HANDOFF",
+      "state": "DONE_HISTORICAL_ONLY"
+    },
+    {
+      "id": "JIRA-RECOVERY",
+      "type": "jira",
+      "locator": "CD-860",
+      "authority": "CURRENT_RECOVERY_REGISTRY",
+      "state": "IN_PROGRESS"
+    },
+    {
+      "id": "GH-PR5",
+      "type": "github_pr",
+      "locator": "CheshirskyCat63/PINK-CAB#5",
+      "authority": "implementation_pr",
+      "state": "OPEN_DRAFT_HEAD_8a70dfa"
+    },
+    {
+      "id": "GH-PR6",
+      "type": "github_pr",
+      "locator": "CheshirskyCat63/PINK-CAB#6",
+      "authority": "recovery_pr",
+      "state": "OPEN_DRAFT"
+    },
+    {
+      "id": "LOCAL-SIGNS",
+      "type": "local_reference",
+      "locator": "D:\\Новая папка\\дорожные знаки",
+      "authority": "candidate_asset_source",
+      "state": "INVENTORY_ONLY_NO_COPY"
+    },
+    {
+      "id": "LOCAL-FENCE",
+      "type": "local_reference",
+      "locator": "D:\\Новая папка\\заборы\\po_2_fence.glb",
+      "authority": "candidate_asset_source",
+      "state": "INVENTORY_ONLY_NO_COPY"
+    },
+    {
+      "id": "LOCAL-DEADRACE",
+      "type": "local_reference",
+      "locator": "E:\\Development\\дедкорн\\DESKTOP_SNAPSHOT\\DEADRACE",
+      "authority": "legacy_salvage_reference",
+      "state": "READ_ONLY_NO_MASS_COPY"
+    },
+    {
+      "id": "LOCAL-MARATHON-README",
+      "type": "local_reference",
+      "locator": "...\\tatra-603-2-b5-marathon\\content\\cars\\tmm_tatra_603\\ReadMe.pdf#page=2",
+      "authority": "rights_evidence",
+      "state": "RIGHTS_BLOCKED_PERMISSION_REQUIRED"
+    },
+    {
+      "id": "LOCAL-MARATHON-UI",
+      "type": "local_reference",
+      "locator": "...\\tmm_tatra_603\\ui\\ui_car.json",
+      "authority": "asset_identity_evidence",
+      "state": "TM_MODDING_V1_2_HISTORICAL_PLAN_READ"
+    }
+  ]
+}
