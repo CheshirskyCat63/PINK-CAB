@@ -1,0 +1,889 @@
+{
+  "schema": "pinkcab.g1.recovery.task-index.v1",
+  "source_snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+  "recovery_date": "2026-09-20",
+  "count": 83,
+  "note": "Recovered row-level task identity/dependencies. Detailed task bodies remain partially recoverable from the File Library master; do not infer missing body text.",
+  "tasks": [
+    {
+      "id": "ADM-01",
+      "result": "Exact runtime baseline",
+      "depends": [],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ADM-02",
+      "result": "Authority / superseded rules reconciliation",
+      "depends": [
+        "ADM-01"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ADM-03",
+      "result": "Legacy + source folders inventory",
+      "depends": [
+        "ADM-01"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ADM-04",
+      "result": "Freeze G1 scope + Jira mapping",
+      "depends": [
+        "ADM-02"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ASSET-01",
+      "result": "Admission ledger of downloaded assets",
+      "depends": [
+        "ADM-03"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ASSET-02",
+      "result": "Marathon rights or legal fallback",
+      "depends": [
+        "ASSET-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ASSET-03",
+      "result": "Replaceable Tatra contract",
+      "depends": [
+        "ASSET-02"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "ASSET-04",
+      "result": "Future material-supply contract",
+      "depends": [
+        "ASSET-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-01",
+      "result": "Characterize physical input",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-02",
+      "result": "Single XY + wheel arbiter",
+      "depends": [
+        "INP-01"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-03",
+      "result": "Typed button/toggle/rotary contract",
+      "depends": [
+        "INP-02"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-04",
+      "result": "Q staging + active-hand priority",
+      "depends": [
+        "INP-02"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-05",
+      "result": "Capture cancellation + focus recovery",
+      "depends": [
+        "INP-03",
+        "INP-04"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-06",
+      "result": "Real H-gate + input direction",
+      "depends": [
+        "INP-05"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "INP-07",
+      "result": "Control hints + parameters",
+      "depends": [
+        "INP-06"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-01",
+      "result": "Reproduce immobility in packaged build",
+      "depends": [
+        "ADM-01",
+        "INP-01"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-02",
+      "result": "Align physical + visible wheels",
+      "depends": [
+        "VEH-01",
+        "ASSET-03"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-03",
+      "result": "Spawn readiness + settled menu car",
+      "depends": [
+        "VEH-02"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-04",
+      "result": "250 hp / 8500 RPM torque + gearing",
+      "depends": [
+        "VEH-03"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-05",
+      "result": "Stationary→rolling steering feel",
+      "depends": [
+        "VEH-04"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-06",
+      "result": "Continuous clutch + honest launch",
+      "depends": [
+        "VEH-04",
+        "INP-06"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-07",
+      "result": "Brakes + dual-mode handbrake",
+      "depends": [
+        "VEH-06"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-08",
+      "result": "Suspension, mass + road test course",
+      "depends": [
+        "VEH-05",
+        "VEH-07"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "VEH-09",
+      "result": "Vehicle-health normal-drive balance",
+      "depends": [
+        "VEH-08"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-01",
+      "result": "Finalize fitted control inventory",
+      "depends": [
+        "ASSET-03",
+        "INP-03"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-02",
+      "result": "Stable pivots + local animations",
+      "depends": [
+        "CAB-01"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-03",
+      "result": "Hands reach/grip/operate/release",
+      "depends": [
+        "CAB-02",
+        "INP-04"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-04",
+      "result": "Instruments + telltales",
+      "depends": [
+        "CAB-02",
+        "VEH-04"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-05",
+      "result": "Vehicle lighting + road signals",
+      "depends": [
+        "CAB-02"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-06",
+      "result": "Glass/windows/wipers",
+      "depends": [
+        "CAB-02"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-07",
+      "result": "Mirrors + fixed optics",
+      "depends": [
+        "CAB-06"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-08",
+      "result": "Doors/HVAC/radio/secondary controls",
+      "depends": [
+        "CAB-03",
+        "CAB-05",
+        "CAB-06",
+        "INP-07"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAB-09",
+      "result": "Full cabin parity acceptance",
+      "depends": [
+        "CAB-04",
+        "CAB-07",
+        "CAB-08"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAM-01",
+      "result": "Measured rear-seat camera path",
+      "depends": [
+        "VEH-03",
+        "ASSET-03"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAM-02",
+      "result": "Intro blend + input handoff",
+      "depends": [
+        "CAM-01",
+        "INP-05"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CAM-03",
+      "result": "Pause/Continue/Load camera integration",
+      "depends": [
+        "CAM-02",
+        "SYS-01"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "AUD-01",
+      "result": "Audio-event inventory + rights",
+      "depends": [
+        "CAB-01",
+        "ASSET-02"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "AUD-02",
+      "result": "Engine load/RPM/compressor mix",
+      "depends": [
+        "AUD-01",
+        "VEH-04"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "AUD-03",
+      "result": "Tires/road/suspension/transmission sounds",
+      "depends": [
+        "AUD-02",
+        "VEH-08"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "AUD-04",
+      "result": "Cabin/radio/acoustic transitions",
+      "depends": [
+        "AUD-03",
+        "CAB-08",
+        "CAM-02"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "AUD-05",
+      "result": "Mix gate + asset substitution test",
+      "depends": [
+        "AUD-04",
+        "CAB-09"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-01",
+      "result": "Approve lower-level road section",
+      "depends": [
+        "ADM-04",
+        "VEH-08"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-02",
+      "result": "Road kit + smooth seams",
+      "depends": [
+        "CITY-01"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-03",
+      "result": "Physical defects + surface library",
+      "depends": [
+        "CITY-02",
+        "VEH-08"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-04",
+      "result": "Signs/markings + rule records",
+      "depends": [
+        "CITY-03",
+        "ASSET-01"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-05",
+      "result": "Right exits/local road/parking loop",
+      "depends": [
+        "CITY-04"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-06",
+      "result": "Spider/loop/oval/figure-eight graph family",
+      "depends": [
+        "CITY-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-07",
+      "result": "Pipe through panel building",
+      "depends": [
+        "CITY-06"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-08",
+      "result": "Facades/median/infrastructure/density",
+      "depends": [
+        "CITY-07",
+        "ASSET-04"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-09",
+      "result": "PINK CAB night lighting + weather",
+      "depends": [
+        "CITY-08",
+        "CAB-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "CITY-10",
+      "result": "City audio + VFX theatre",
+      "depends": [
+        "CITY-09",
+        "AUD-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-01",
+      "result": "Characterize existing generator contracts",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-02",
+      "result": "Versioned recipes + chunk lifecycle",
+      "depends": [
+        "STR-01",
+        "CITY-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-03",
+      "result": "Speed/route-aware lookahead + pooling",
+      "depends": [
+        "STR-02",
+        "CITY-06"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-04",
+      "result": "Reverse reconstruction + world deltas",
+      "depends": [
+        "STR-03",
+        "SYS-01"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-05",
+      "result": "Long-range precision + origin contract",
+      "depends": [
+        "STR-04"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-06",
+      "result": "Fault injection + resource cleanup",
+      "depends": [
+        "STR-05",
+        "TRA-04",
+        "CITY-10"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "STR-07",
+      "result": "Infinite-city acceptance",
+      "depends": [
+        "STR-06",
+        "TRA-06"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-01",
+      "result": "Choose one admitted traffic model",
+      "depends": [
+        "ASSET-01",
+        "CITY-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-02",
+      "result": "Lane following/headway + bounded entities",
+      "depends": [
+        "TRA-01",
+        "STR-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-03",
+      "result": "Lane change/right merge/exits",
+      "depends": [
+        "TRA-02",
+        "CITY-05"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-04",
+      "result": "Near/far handoff/collision/cleanup",
+      "depends": [
+        "TRA-03",
+        "STR-03"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-05",
+      "result": "Rules/camera/fines/service boundaries",
+      "depends": [
+        "TRA-04",
+        "CITY-04",
+        "SYS-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TRA-06",
+      "result": "Provisional AI demonstration gate",
+      "depends": [
+        "TRA-05"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "SYS-01",
+      "result": "Baseline save schemas + cabin state",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "SYS-02",
+      "result": "Taxi economy/workday reconciliation",
+      "depends": [
+        "SYS-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "SYS-03",
+      "result": "Vehicle/cabin persistence integration",
+      "depends": [
+        "SYS-02",
+        "CAB-09",
+        "VEH-09"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "SYS-04",
+      "result": "Service/recovery practical loop",
+      "depends": [
+        "SYS-03",
+        "CITY-05"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-01",
+      "result": "Strict zero-debt architecture + regression map",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-02",
+      "result": "Hardware + production budgets",
+      "depends": [
+        "VEH-08",
+        "CITY-08",
+        "TRA-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-03",
+      "result": "Packaged integration regression",
+      "depends": [
+        "CAM-03",
+        "AUD-05",
+        "SYS-04",
+        "STR-07",
+        "QA-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-04",
+      "result": "30 min + 2 h soak with resource series",
+      "depends": [
+        "QA-03",
+        "QA-02"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-05",
+      "result": "Independent review + findings closure",
+      "depends": [
+        "QA-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-06",
+      "result": "Release manifest/notes/rollback",
+      "depends": [
+        "QA-05",
+        "ASSET-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "QA-07",
+      "result": "Human shareholder gate + STOP",
+      "depends": [
+        "QA-06"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-01",
+      "result": "Asset swap wave after G1",
+      "depends": [
+        "QA-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-02",
+      "result": "L1 debris wallride seven-band mechanics",
+      "depends": [
+        "QA-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-03",
+      "result": "Five-lane opposite freight ceiling magnet",
+      "depends": [
+        "POST-02"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-04",
+      "result": "Practice Hangar/incidents/city life",
+      "depends": [
+        "POST-03"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-05",
+      "result": "Level 2 transit + vertical links",
+      "depends": [
+        "POST-04"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-06",
+      "result": "Final traffic AI roster + city art",
+      "depends": [
+        "POST-05",
+        "POST-01"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-07",
+      "result": "FIRST EURO release hardening",
+      "depends": [
+        "POST-06"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "POST-08",
+      "result": "Full Neural/L3/online future discovery",
+      "depends": [
+        "POST-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "state": "PLANNED_NOT_RUN"
+    }
+  ]
+}
