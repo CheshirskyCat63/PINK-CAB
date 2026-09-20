@@ -105,9 +105,10 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
     InteractionFrame.bGazeHeld = PlayerInput.bGazeHeld;
     InteractionFrame.bQuickRecall1Held = PlayerInput.bQuickRecall1Held;
     InteractionFrame.bQuickRecall2Held = PlayerInput.bQuickRecall2Held;
-    // Q owns the clutch pedal and also stages the driver's right hand over the
-    // H-gate. This reuses the same non-actuating quick-recall path as key 3:
-    // steering remains mouse-owned until RMB actually grips the gearbox.
+    // Q owns the clutch pedal and stages the driver's right hand over the
+    // H-gate through the same non-actuating quick-recall path as key 3.
+    // RMB only retains that control; steering stays mouse-owned until LMB
+    // starts the explicit lever manipulation.
     const bool bCanStageGearboxFromClutch =
         !CockpitInteraction->IsGripActive()
         && CockpitInteraction->GetCurrentTargetId().IsNone();
