@@ -323,12 +323,20 @@ bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
     Frame.bMomentaryHeld = true;
     Frame.NowSeconds = 1.0;
     TArray<FPinkCabInteractionEvent> Events;
+
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestTrue(TEXT("LMB owns grip-only gearbox while held"), Interaction->IsGripActive());
-    TestEqual(TEXT("gearbox pointer grip does not actuate by itself"), Events.Num(), 0);
+    TestFalse(TEXT("LMB never grips the gearbox"), Interaction->IsGripActive());
+    TestEqual(TEXT("LMB on grip-only gearbox does not actuate"), Events.Num(), 0);
+
     Frame.bMomentaryHeld = false;
+    Frame.bGripHeld = true;
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestFalse(TEXT("LMB release returns gearbox grip ownership"), Interaction->IsGripActive());
+    TestTrue(TEXT("RMB grips the gearbox"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB grip alone does not actuate gearbox"), Events.Num(), 0);
+
+    Frame.bGripHeld = false;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release returns gearbox grip ownership"), Interaction->IsGripActive());
     return true;
 }
 #endif
