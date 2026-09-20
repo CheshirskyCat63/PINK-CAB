@@ -375,14 +375,18 @@ bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
     TArray<FPinkCabInteractionEvent> Events;
 
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestFalse(TEXT("LMB never grips the gearbox"), Interaction->IsGripActive());
-    TestEqual(TEXT("LMB on grip-only gearbox does not actuate"), Events.Num(), 0);
+    TestFalse(TEXT("LMB without RMB never grips the gearbox"), Interaction->IsGripActive());
+    TestFalse(TEXT("LMB without RMB never starts lever manipulation"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("LMB without grip does not actuate grip-only gearbox"), Events.Num(), 0);
 
     Events.Reset();
     Frame.bMomentaryHeld = false;
     Frame.bGripHeld = true;
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestTrue(TEXT("RMB grips the gearbox"), Interaction->IsGripActive());
+    TestFalse(TEXT("RMB alone only holds the gearbox ready"),
+        Interaction->IsManipulationActive());
     TestEqual(TEXT("RMB emits one contextual grip-begin event"), Events.Num(), 1);
     if (Events.Num() == 1)
     {
@@ -392,9 +396,26 @@ bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
     }
 
     Events.Reset();
+    Frame.bMomentaryHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB while RMB holds gearbox starts manipulation"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("lever manipulation itself does not emit a duplicate momentary action"),
+        Events.Num(), 0);
+
+    Frame.bMomentaryHeld = false;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("LMB release stops manipulation while RMB keeps grip"),
+        Interaction->IsManipulationActive());
+    TestTrue(TEXT("RMB still retains gearbox after LMB release"),
+        Interaction->IsGripActive());
+
+    Events.Reset();
     Frame.bGripHeld = false;
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestFalse(TEXT("RMB release returns gearbox grip ownership"), Interaction->IsGripActive());
+    TestFalse(TEXT("RMB release leaves no manipulation active"),
+        Interaction->IsManipulationActive());
     TestEqual(TEXT("RMB release emits one contextual grip-end event"), Events.Num(), 1);
     if (Events.Num() == 1)
     {
