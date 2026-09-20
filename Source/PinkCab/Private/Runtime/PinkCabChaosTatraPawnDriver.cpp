@@ -112,10 +112,10 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
     const bool bCanStageGearboxFromClutch =
         !CockpitInteraction->IsGripActive()
         && CockpitInteraction->GetCurrentTargetId().IsNone();
-    InteractionFrame.bQuickRecall3Held =
-        PlayerInput.bQuickRecall3Held
-        || (PlayerInput.bClutchHeld && bCanStageGearboxFromClutch);
+    InteractionFrame.bQuickRecall3Held = PlayerInput.bQuickRecall3Held;
     InteractionFrame.bQuickRecall4Held = PlayerInput.bQuickRecall4Held;
+    InteractionFrame.bGearboxStageFromClutchHeld =
+        PlayerInput.bClutchHeld && bCanStageGearboxFromClutch;
     InteractionFrame.bGripHeld = PlayerInput.bGripHeld;
     InteractionFrame.bMomentaryHeld = PlayerInput.bMomentaryHeld;
     InteractionFrame.WheelSteps =
