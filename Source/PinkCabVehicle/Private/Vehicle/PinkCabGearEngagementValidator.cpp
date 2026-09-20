@@ -19,7 +19,10 @@ float FPinkCabGearEngagementValidator::ExpectedEngineRpmForGear(
     {
         RpmPerKmh = Config.RpmPerKmh[Gear];
     }
-    return FMath::Max(Config.IdleRpm, FMath::Abs(SpeedKmh) * RpmPerKmh);
+    // For a non-neutral gear the mechanically coupled shaft speed follows
+    // road speed. At standstill it is zero, not engine idle; treating idle as
+    // a floor makes N->gear at 0 km/h look falsely rev-matched without clutch.
+    return FMath::Abs(SpeedKmh) * RpmPerKmh;
 }
 
 FPinkCabGearEngagementDecision FPinkCabGearEngagementValidator::EvaluateRequest(
