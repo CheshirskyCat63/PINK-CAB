@@ -134,7 +134,7 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
     const FPinkCabCockpitInteractionFrame& Frame,
     const UPinkCabCockpitAssemblyComponent* Assembly)
 {
-    if (Frame.bGazeHeld && Assembly && !bGripActive && !bMomentaryActive)
+    if ((Frame.bGazeHeld || Frame.bGripHeld) && Assembly && !bGripActive && !bMomentaryActive)
     {
         const FName GazeTarget = Assembly->ResolveGazeTarget(
             Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
@@ -152,11 +152,18 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
 }
 
 void UPinkCabCockpitInteractionComponent::UpdateGripState(
-    const FPinkCabCockpitInteractionFrame& Frame)
+    const FPinkCabCockpitInteractionFrame& Frame,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
 {
     FPinkCabInteractionEvent Event;
-    if (Frame.bGripHeld && !bGripActive) BeginGrip(Event);
-    else if (!Frame.bGripHeld && bGripActive) EndGrip(Event);
+    if (Frame.bGripHeld && !bGripActive)
+    {
+        if (BeginGrip(Event)) OutActuationEvents.Add(Event);
+    }
+    else if (!Frame.bGripHeld && bGripActive)
+    {
+        if (EndGrip(Event)) OutActuationEvents.Add(Event);
+    }
 }
 
 void UPinkCabCockpitInteractionComponent::UpdateMomentaryState(
@@ -196,7 +203,7 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
 
     UpdateTargetSelection(Frame, Assembly);
-    UpdateGripState(Frame);
+    UpdateGripState(Frame, OutActuationEvents);
     UpdateMomentaryState(Frame, OutActuationEvents);
     AppendWheelEvent(Frame, OutActuationEvents);
 }
