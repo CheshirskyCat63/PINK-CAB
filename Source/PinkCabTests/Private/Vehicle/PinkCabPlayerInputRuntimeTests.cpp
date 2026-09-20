@@ -141,12 +141,12 @@ public:
             Test->TestTrue(TEXT("Q remains physically held while E is pressed"),
                 PC->IsInputKeyDown(EKeys::Q));
 
-            if (Telemetry.NormalizedThrottle < 0.35f)
+            if (Telemetry.NormalizedThrottle < 0.35f || Telemetry.EngineRpm <= 1100.0f)
             {
                 if ((FPlatformTime::Seconds() - State->PhaseStartSeconds) > 2.0)
                 {
                     Test->AddError(FString::Printf(
-                        TEXT("real Q+E path never produced immediate throttle without wheel; throttle=%.3f rpm=%.1f"),
+                        TEXT("real Q+E path never produced usable throttle/RPM without wheel; throttle=%.3f rpm=%.1f"),
                         Telemetry.NormalizedThrottle, Telemetry.EngineRpm));
                     return true;
                 }
