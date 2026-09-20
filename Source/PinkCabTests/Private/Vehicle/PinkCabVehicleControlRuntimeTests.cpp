@@ -181,4 +181,28 @@ bool FPinkCabVehicleControlRuntimeTransientResetTest::RunTest(const FString& Par
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabVehicleControlRuntimeSteeringHoldTest,
+    "PinkCab.Vehicle.ControlRuntime.Runtime.SteeringHoldDuringGrip",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabVehicleControlRuntimeSteeringHoldTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleHealthState Health;
+
+    FPinkCabVehicleInputFrame Frame =
+        FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
+    Runtime.ResolveControlFrame(Frame, 900.0f, 0.05f, Cockpit, Health);
+    const float BeforeGrip = Runtime.GetSteeringCommand();
+    TestTrue(TEXT("precondition produces nonzero steering"), FMath::Abs(BeforeGrip) > KINDA_SMALL_NUMBER);
+
+    Frame.bSteeringHeld = true;
+    Runtime.ResolveControlFrame(Frame, 0.0f, 0.50f, Cockpit, Health);
+    TestTrue(TEXT("RMB grip preserves exact current steering angle"),
+        FMath::IsNearlyEqual(Runtime.GetSteeringCommand(), BeforeGrip, 1.0e-6f));
+    return true;
+}
+
 #endif
