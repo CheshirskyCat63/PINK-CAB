@@ -109,6 +109,54 @@ bool FPinkCabQuickRecallGripLatchTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabConsumedRecallLifecycleTest,
+    "PinkCab.Cockpit.Input.Recovery.ConsumedRecallLifecycle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabConsumedRecallLifecycleTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bQuickRecall4Held = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    Frame.bQuickRecall4Held = false;
+    Frame.bGripHeld = true;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB acquires recalled handbrake"), Interaction->IsGripActive());
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release ends handbrake grip"), Interaction->IsGripActive());
+    TestTrue(TEXT("consumed recalled handbrake is no longer an eligible target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Interaction->ResetTransientInputState();
+    Frame = {};
+    Frame.bQuickRecall2Held = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    Frame.bQuickRecall2Held = false;
+    Frame.bMomentaryHeld = true;
+    Frame.NowSeconds = 1.0;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB starts recalled horn action"), Interaction->IsMomentaryActive());
+
+    Frame.bMomentaryHeld = false;
+    Frame.NowSeconds = 1.1;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("LMB release ends horn action"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("consumed recalled horn is no longer an eligible target"),
+        Interaction->GetCurrentTargetId().IsNone());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabGripComplianceTest,
     "PinkCab.Cockpit.Input.Compliance.PC_T_INP_003",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
