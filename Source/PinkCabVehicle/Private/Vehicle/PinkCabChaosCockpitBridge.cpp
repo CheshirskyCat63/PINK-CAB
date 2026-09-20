@@ -60,7 +60,8 @@ bool FPinkCabChaosCockpitBridge::Apply(
             * GearRatio
             * Movement.TransmissionSetup.TransmissionEfficiency
             * EffectiveThrottle
-            * Controls.ClutchCoupling;
+            * Controls.ClutchCoupling
+            * Controls.DrivetrainTorqueCapacity;
         ExternalRearDriveTorquePerWheelNm = AxleTorqueNm * 0.5f;
     }
     Controls.SetExternalRearDriveTorquePerWheel(ExternalRearDriveTorquePerWheelNm);
