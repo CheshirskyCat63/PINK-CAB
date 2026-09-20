@@ -67,7 +67,9 @@ private:
     void UpdateTargetSelection(
         const FPinkCabCockpitInteractionFrame& Frame,
         const UPinkCabCockpitAssemblyComponent* Assembly);
-    void UpdateGripState(const FPinkCabCockpitInteractionFrame& Frame);
+    void UpdateGripState(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        TArray<FPinkCabInteractionEvent>& OutActuationEvents);
     void UpdateMomentaryState(
         const FPinkCabCockpitInteractionFrame& Frame,
         TArray<FPinkCabInteractionEvent>& OutActuationEvents);
