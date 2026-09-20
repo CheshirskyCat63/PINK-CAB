@@ -150,6 +150,36 @@ jobs:
           $summary | Set-Content (Join-Path $ev "RECOVERY_R1_MATRIX.txt")
           Write-Host "RECOVERY R1 INPUT 3/3 PASS"
 
+      - name: R2 physical foundation matrix
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix"
+          $filters=@(
+            'PinkCab.Vehicle.AssetContract.Tatra613V12',
+            'PinkCab.Vehicle.Visual.PresentationBindingRuntime',
+            'PinkCab.UI.SystemMenu.StartupHardPause',
+            'PinkCab.Vehicle.ChaosBaseline.Runtime.DriveSmoke',
+            'PinkCab.Vehicle.ChaosBaseline.Runtime.ReverseDriveSmoke'
+          )
+          $summary=@()
+          foreach($filter in $filters){
+            $log=Join-Path $ev (("R2_"+$filter).Replace(".","_")+".log")
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+            $q=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $critical=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+            if($q.Count -eq 0 -or $f.Count -gt 0 -or $critical.Count -gt 0){throw "R2 failed: $filter"}
+            $summary += "PASS $filter | $($q[-1].Line)"
+            Write-Host "PASS $filter"
+          }
+          if($summary.Count -ne 5){throw "R2 denominator mismatch"}
+          $summary | Set-Content (Join-Path $ev "R2_PHYSICAL_FOUNDATION_MATRIX.txt")
+          Write-Host "R2 PHYSICAL FOUNDATION 5/5 PASS"
+
       - name: Full PinkCab automation regression
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -230,6 +260,7 @@ jobs:
             "canonical_progress=7/7",
             "owner_regression=4/4",
             "recovery_r1=3/3",
+            "r2_physical_foundation=5/5",
             "human_status=HUMAN_PENDING",
             "source_sha=$sha",
             "workflow_run_id=$env:GITHUB_RUN_ID",
