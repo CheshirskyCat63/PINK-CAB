@@ -1,9 +1,6 @@
 name: PINK CAB Owner Rejection TDD
 
 on:
-  push:
-    branches:
-      - fix/CD-848-owner-rejection-runtime
   workflow_dispatch:
 
 concurrency:
