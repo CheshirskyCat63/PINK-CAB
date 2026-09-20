@@ -27,7 +27,9 @@ struct FPinkCabPlayerInputRuntimeState
     FVector StartLocation = FVector::ZeroVector;
     int32 Phase = 0;
     int32 WheelPulsesApplied = 0;
+    int32 WheelDownPulsesApplied = 0;
     bool bWheelPulsePendingTick = false;
+    bool bWheelDownPulsePendingTick = false;
     bool bFullThrottleWaitStarted = false;
     double PhaseStartSeconds = 0.0;
     double FullThrottleStartSeconds = 0.0;
@@ -208,15 +210,50 @@ public:
             Test->TestTrue(TEXT("clutch remains disengaged during free rev proof"),
                 Telemetry.NormalizedClutch >= 0.85f);
 
-            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
-            State->DriveStartSeconds = FPlatformTime::Seconds();
+            // Redline proof and launch proof are intentionally separate. At 100%
+            // in first gear the authored car is a burnout case. Return to the
+            // normal 45% launch dose while Q is still held, then release clutch.
             State->Phase = 5;
             return false;
         }
 
         if (State->Phase == 5)
         {
-            if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 2.0)
+            if (State->WheelDownPulsesApplied < 11)
+            {
+                if (!State->bWheelDownPulsePendingTick)
+                {
+                    InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, -1.0f);
+                    State->bWheelDownPulsePendingTick = true;
+                    return false;
+                }
+
+                InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 0.0f);
+                State->bWheelDownPulsePendingTick = false;
+                ++State->WheelDownPulsesApplied;
+                return false;
+            }
+
+            if (Telemetry.NormalizedThrottle > 0.55f)
+            {
+                return false;
+            }
+
+            Test->TestTrue(TEXT("Q remains held while throttle is returned to launch dose"),
+                PC->IsInputKeyDown(EKeys::Q));
+            Test->TestTrue(TEXT("wheel-down restores a sane launch throttle before clutch release"),
+                Telemetry.NormalizedThrottle >= 0.35f && Telemetry.NormalizedThrottle <= 0.55f);
+
+            State->StartLocation = Pawn->GetActorLocation();
+            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
+            State->DriveStartSeconds = FPlatformTime::Seconds();
+            State->Phase = 6;
+            return false;
+        }
+
+        if (State->Phase == 6)
+        {
+            if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 2.5)
             {
                 return false;
             }
@@ -231,10 +268,11 @@ public:
             Test->TestEqual(TEXT("controller path keeps first engaged"), Telemetry.CurrentGear, 1);
             Test->TestEqual(TEXT("engine remains running through launch"),
                 Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
-            Test->TestTrue(TEXT("real PlayerController launch moves the taxi"), TravelCm > 20.0f);
+            Test->TestTrue(TEXT("real PlayerController 45 percent launch moves the taxi decisively"),
+                TravelCm > 40.0f);
 
             InjectKey(*PC, EKeys::E, IE_Released, 0.0f);
-            State->Phase = 6;
+            State->Phase = 7;
             return false;
         }
 
