@@ -273,10 +273,11 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         return;
     }
     EPinkCabPedalWheelRecipient WheelRecipient = EPinkCabPedalWheelRecipient::None;
-    const FPinkCabVehicleInputFrame InputFrame =
+    FPinkCabVehicleInputFrame InputFrame =
         PrepareVehicleFrame(PlayerInput, DeltaSeconds, WheelRecipient);
     const bool bPhysicalGripActive =
         ProcessCockpitFrame(*PC, PlayerInput, WheelRecipient, DeltaSeconds);
+    InputFrame.bSteeringHeld = bPhysicalGripActive;
     const float SteeringMouseX = FPinkCabPhysicalInputConvention::SteeringRight(PlayerInput.DeviceX);
     ApplyVehicleInputFrame(
         InputFrame,
