@@ -6,6 +6,10 @@ on:
       - fix/CD-848-owner-rejection-runtime
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 concurrency:
   group: pinkcab-g1-hinp-owner-fix-final
   cancel-in-progress: true
@@ -118,6 +122,34 @@ jobs:
           Write-Host "OWNER-REJECTION REAL PATH 4/4 PASS"
           Write-Host $diag[-1].Line
 
+      - name: Recovery R1 input contract matrix
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix"
+          $filters=@(
+            'PinkCab.Cockpit.Input.Recovery',
+            'PinkCab.Vehicle.PlayerInput.PhysicalControlRouting',
+            'PinkCab.UI.SystemMenu.CanonicalControlHints'
+          )
+          $summary=@()
+          foreach($filter in $filters){
+            $log=Join-Path $ev (("RECOVERY_R1_"+$filter).Replace(".","_")+".log")
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+            $q=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $critical=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+            if($q.Count -eq 0 -or $f.Count -gt 0 -or $critical.Count -gt 0){throw "Recovery R1 failed: $filter"}
+            $summary += "PASS $filter | $($q[-1].Line)"
+            Write-Host "PASS $filter"
+          }
+          if($summary.Count -ne 3){throw "Recovery R1 denominator mismatch"}
+          $summary | Set-Content (Join-Path $ev "RECOVERY_R1_MATRIX.txt")
+          Write-Host "RECOVERY R1 INPUT 3/3 PASS"
+
       - name: Full PinkCab automation regression
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -182,20 +214,31 @@ jobs:
           $outer=Join-Path $gateRoot "Windows\PinkCab.exe"
           if(-not(Test-Path $outer)){throw "Delivered exe missing"}
           $hash=(Get-FileHash -Algorithm SHA256 $outer).Hash
+          $inner=Join-Path $gateRoot "Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          if(-not(Test-Path $inner)){throw "Delivered inner game exe missing"}
+          $innerHash=(Get-FileHash -Algorithm SHA256 $inner).Hash
+          $pakFiles=@(Get-ChildItem -Path (Join-Path $gateRoot "Windows\PinkCab\Content\Paks") -File -ErrorAction Stop | Where-Object { $_.Extension -in '.pak','.utoc','.ucas' })
+          if($pakFiles.Count -lt 3){throw "Expected packaged pak/utoc/ucas provenance files"}
+          $contentHashes=@()
+          foreach($file in $pakFiles){
+            $contentHashes += "$($file.Name)_sha256=$((Get-FileHash -Algorithm SHA256 $file.FullName).Hash)"
+          }
           @(
             "gate=H-INP",
             "owner_rejection_fix=true",
             "auto_status=PASS",
             "canonical_progress=7/7",
             "owner_regression=4/4",
+            "recovery_r1=3/3",
             "human_status=HUMAN_PENDING",
             "source_sha=$sha",
             "workflow_run_id=$env:GITHUB_RUN_ID",
             "build_root=$gateRoot",
             "exe=$outer",
             "exe_sha256=$hash",
+            "inner_exe_sha256=$innerHash",
             "map=/Game/Dev/Maps/L_PinkCab_ChaosWeave"
-          ) | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
+          ) + $contentHashes | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
 
           $desktop=[Environment]::GetFolderPath("Desktop")
           Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File -ErrorAction SilentlyContinue | Remove-Item -Force
@@ -211,11 +254,36 @@ jobs:
 
           "GATE_ROOT=$gateRoot" | Set-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
           "EXE_SHA256=$hash" | Add-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
+          "INNER_EXE_SHA256=$innerHash" | Add-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
+          $contentHashes | Add-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
           Write-Host "H-INP OWNER FIX AUTO PASS"
           Write-Host "H-INP HUMAN_PENDING"
           Write-Host "DELIVERY=$gateRoot"
           Write-Host "EXE_SHA256=$hash"
           Write-Host "DESKTOP=$latest"
+
+      - name: Publish exact-head final status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $body = @{
+            state = $state
+            context = 'cheshire/recovery-r1-final'
+            description = "Recovery R1 final gate $($env:JOB_STATUS)"
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          } -ContentType 'application/json' -Body $body | Out-Null
+          Write-Host "RECOVERY_FINAL_STATUS=$state"
+          Write-Host "RECOVERY_FINAL_RUN=$runUrl"
 
       - name: Upload final evidence
         if: always()
