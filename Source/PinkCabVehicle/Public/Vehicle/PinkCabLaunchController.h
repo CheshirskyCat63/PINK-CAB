@@ -7,7 +7,6 @@ class PINKCABVEHICLE_API FPinkCabLaunchController
 {
 public:
     static constexpr float ThrottleDoseStep = 0.05f;
-    static constexpr float InitialThrottleTarget = 0.45f;
 
     bool BeginLaunchAttempt();
     bool ApplyThrottleDoseSteps(int32 SignedSteps);
@@ -22,7 +21,7 @@ public:
 private:
     EPinkCabVehicleMotionMode MotionMode = EPinkCabVehicleMotionMode::Stationary;
     uint32 LaunchSerial = 0;
-    float ThrottleTarget = InitialThrottleTarget;
+    float ThrottleTarget = 0.0f;
     bool bLaunchActive = false;
     bool bThrottleDoseRequired = false;
 };
