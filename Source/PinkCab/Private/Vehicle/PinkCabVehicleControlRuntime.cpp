@@ -227,24 +227,25 @@ FPinkCabVehicleControlOutput FPinkCabVehicleControlRuntime::Update(
 
 void FPinkCabVehicleControlRuntime::ApplyPhysicalControl(
     const FName TargetId,
-    const bool bGripHeld,
+    const bool bManipulationActive,
     const float DeviceX,
     const float DeviceY,
     const float DeltaSeconds,
     FPinkCabCockpitState& Cockpit)
 {
-    if (TargetId == FName(TEXT("Gearbox")) && bGripHeld)
+    if (TargetId == FName(TEXT("Gearbox")) && bManipulationActive)
     {
         GearboxController.ApplyLeverDriverDelta(
             FPinkCabPhysicalInputConvention::SteeringRight(DeviceX),
             FPinkCabPhysicalInputConvention::GearboxForward(DeviceY));
         Cockpit.SetSelectedGear(GearboxController.GetRequestedGear());
     }
-    const bool bHandbrakeGrip = TargetId == FName(TEXT("Handbrake")) && bGripHeld;
+    const bool bHandbrakeManipulation =
+        TargetId == FName(TEXT("Handbrake")) && bManipulationActive;
     HandbrakeActuator.Step(
         MotionClassifier.GetMode(),
-        bHandbrakeGrip,
-        bHandbrakeGrip ? FPinkCabPhysicalInputConvention::HandbrakePull(DeviceY) : 0.0f,
+        bHandbrakeManipulation,
+        bHandbrakeManipulation ? FPinkCabPhysicalInputConvention::HandbrakePull(DeviceY) : 0.0f,
         DeltaSeconds);
     Cockpit.SetHandbrakeAmount(HandbrakeActuator.GetLeverPosition());
     ControlState.SetHandbrake(HandbrakeActuator.GetBrakeCommand());
