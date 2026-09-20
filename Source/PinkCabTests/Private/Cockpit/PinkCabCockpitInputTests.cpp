@@ -185,6 +185,85 @@ bool FPinkCabClutchGearboxStageLifecycleTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabLeverReleaseOrderRecoveryTest,
+    "PinkCab.Cockpit.Input.Recovery.LeverReleaseOrder",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabLeverReleaseOrderRecoveryTest::RunTest(const FString& Parameters)
+{
+    auto StartGearboxSession = [](
+        UPinkCabCockpitInteractionComponent& Interaction,
+        FPinkCabCockpitInteractionFrame& Frame,
+        TArray<FPinkCabInteractionEvent>& Events)
+    {
+        Frame = {};
+        Frame.bQuickRecall3Held = true;
+        Interaction.ProcessFrame(Frame, nullptr, Events);
+        Frame.bQuickRecall3Held = false;
+        Frame.bGripHeld = true;
+        Frame.bMomentaryHeld = true;
+        Events.Reset();
+        Interaction.ProcessFrame(Frame, nullptr, Events);
+    };
+
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    StartGearboxSession(*Interaction, Frame, Events);
+    TestTrue(TEXT("precondition RMB grip is active"), Interaction->IsGripActive());
+    TestTrue(TEXT("precondition LMB manipulation is active"), Interaction->IsManipulationActive());
+
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB release keeps RMB grip"), Interaction->IsGripActive());
+    TestFalse(TEXT("LMB release ends lever manipulation"), Interaction->IsManipulationActive());
+    TestEqual(TEXT("LMB release creates no duplicate gearbox action"), Events.Num(), 0);
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release ends remaining grip"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB release emits exactly one grip-end event"), Events.Num(), 1);
+    TestTrue(TEXT("complete release clears consumed gearbox target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Interaction->ResetTransientInputState();
+    Events.Reset();
+    StartGearboxSession(*Interaction, Frame, Events);
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB-first release immediately ends manipulation"),
+        Interaction->IsManipulationActive());
+    TestFalse(TEXT("RMB-first release ends grip"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB-first release emits one grip-end event"), Events.Num(), 1);
+    TestTrue(TEXT("RMB-first release consumes and clears gearbox target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("late LMB release cannot create a second commit"), Events.Num(), 0);
+
+    Interaction->ResetTransientInputState();
+    Events.Reset();
+    StartGearboxSession(*Interaction, Frame, Events);
+    Frame.bGripHeld = false;
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("same-frame LMB+RMB release emits one release event"), Events.Num(), 1);
+    TestFalse(TEXT("same-frame release leaves no grip"), Interaction->IsGripActive());
+    TestFalse(TEXT("same-frame release leaves no manipulation"), Interaction->IsManipulationActive());
+    TestTrue(TEXT("same-frame release leaves no ghost target"),
+        Interaction->GetCurrentTargetId().IsNone());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabGripComplianceTest,
     "PinkCab.Cockpit.Input.Compliance.PC_T_INP_003",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
