@@ -1,0 +1,79 @@
+name: PINK CAB Owner Rejection TDD
+
+on:
+  push:
+    branches:
+      - fix/CD-848-owner-rejection-runtime
+  workflow_dispatch:
+
+concurrency:
+  group: pinkcab-owner-rejection-tdd
+  cancel-in-progress: true
+
+jobs:
+  tdd:
+    name: Owner rejection real input path
+    runs-on: [self-hosted, Windows, X64, pinkcab, ue58, cheshire, gui]
+    timeout-minutes: 120
+    env:
+      PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: fix/CD-848-owner-rejection-runtime
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Strict code-health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          git lfs pull
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\build.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Owner rejection focused tests
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          New-Item -ItemType Directory -Force -Path "Saved\OwnerRejection" | Out-Null
+          $filters = @(
+            'PinkCab.Vehicle.ControlRuntime.Runtime.LaunchDoseAndReset',
+            'PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip',
+            'PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace',
+            'PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive'
+          )
+          foreach ($filter in $filters) {
+            $safe = $filter.Replace('.','_')
+            $log = Join-Path $env:GITHUB_WORKSPACE "Saved\OwnerRejection\$safe.log"
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $fail = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            if ($queue.Count -eq 0 -or $fail.Count -gt 0) {
+              $fail | ForEach-Object { Write-Host $_.Line }
+              throw "Focused owner-rejection test failed: $filter"
+            }
+            Write-Host "PASS $filter"
+          }
+
+      - name: Upload owner-rejection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-owner-rejection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Saved/OwnerRejection
+          if-no-files-found: warn
+          retention-days: 14
