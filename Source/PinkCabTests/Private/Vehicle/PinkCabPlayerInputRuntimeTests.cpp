@@ -28,7 +28,9 @@ struct FPinkCabPlayerInputRuntimeState
     int32 Phase = 0;
     int32 WheelPulsesApplied = 0;
     bool bWheelPulsePendingTick = false;
+    bool bFullThrottleWaitStarted = false;
     double PhaseStartSeconds = 0.0;
+    double FullThrottleStartSeconds = 0.0;
     double DriveStartSeconds = 0.0;
 };
 
@@ -127,6 +129,7 @@ public:
             }
             Test->TestEqual(TEXT("owner-forward H-gate gesture engages first"), Pawn->GetEngagedGear(), 1);
             InjectKey(*PC, EKeys::E, IE_Pressed, 1.0f);
+            State->PhaseStartSeconds = FPlatformTime::Seconds();
             State->Phase = 3;
             return false;
         }
@@ -135,22 +138,40 @@ public:
         {
             Test->TestTrue(TEXT("PlayerController stores real E held state after a frame"),
                 PC->IsInputKeyDown(EKeys::E));
-            Test->TestEqual(TEXT("engine is still running before throttle dosing"),
+            Test->TestTrue(TEXT("Q remains physically held while E is pressed"),
+                PC->IsInputKeyDown(EKeys::Q));
+
+            if (Telemetry.NormalizedThrottle < 0.35f)
+            {
+                if ((FPlatformTime::Seconds() - State->PhaseStartSeconds) > 2.0)
+                {
+                    Test->AddError(FString::Printf(
+                        TEXT("real Q+E path never produced immediate throttle without wheel; throttle=%.3f rpm=%.1f"),
+                        Telemetry.NormalizedThrottle, Telemetry.EngineRpm));
+                    return true;
+                }
+                return false;
+            }
+
+            Test->TestEqual(TEXT("engine remains running with clutch down and direct E throttle"),
                 Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
-            State->PhaseStartSeconds = FPlatformTime::Seconds();
+            Test->TestTrue(TEXT("direct E produces useful throttle before any wheel pulse"),
+                Telemetry.NormalizedThrottle >= 0.35f);
+            Test->TestTrue(TEXT("clutch remains disengaged while revving"),
+                Telemetry.NormalizedClutch >= 0.85f);
+            Test->TestTrue(TEXT("direct E raises engine above idle before wheel adjustment"),
+                Telemetry.EngineRpm > 1100.0f);
+
             State->Phase = 4;
             return false;
         }
 
         if (State->Phase == 4)
         {
-            if (State->WheelPulsesApplied < 5)
+            if (State->WheelPulsesApplied < 11)
             {
                 if (!State->bWheelPulsePendingTick)
                 {
-                    // Axis injection is consumed by the next Unreal input frame.
-                    // The gameplay assertion is the resulting 5% throttle dose,
-                    // not an immediate analog-key-state read in this latent callback.
                     InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 1.0f);
                     State->bWheelPulsePendingTick = true;
                     return false;
@@ -162,23 +183,29 @@ public:
                 return false;
             }
 
-            if (Telemetry.NormalizedThrottle < 0.20f)
+            if (!State->bFullThrottleWaitStarted)
             {
-                if ((FPlatformTime::Seconds() - State->PhaseStartSeconds) > 2.0)
+                State->bFullThrottleWaitStarted = true;
+                State->FullThrottleStartSeconds = FPlatformTime::Seconds();
+            }
+
+            if (Telemetry.NormalizedThrottle < 0.95f || Telemetry.EngineRpm < 7990.0f)
+            {
+                if ((FPlatformTime::Seconds() - State->FullThrottleStartSeconds) > 3.0)
                 {
                     Test->AddError(FString::Printf(
-                        TEXT("five real wheel pulses did not build throttle target; throttle=%.3f rpm=%.1f"),
+                        TEXT("real 100%% Q+E path did not reach redline band; throttle=%.3f rpm=%.1f"),
                         Telemetry.NormalizedThrottle, Telemetry.EngineRpm));
                     return true;
                 }
                 return false;
             }
 
-            Test->TestEqual(TEXT("engine remains running while throttle is dosed with clutch down"),
-                Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
-            Test->TestTrue(TEXT("real E plus five wheel pulses reaches useful throttle"),
-                Telemetry.NormalizedThrottle >= 0.20f);
-            Test->TestTrue(TEXT("clutch remains disengaged until throttle is prepared"),
+            Test->TestTrue(TEXT("E+wheel can fine-adjust direct throttle to full"),
+                Telemetry.NormalizedThrottle >= 0.95f);
+            Test->TestTrue(TEXT("100 percent real PlayerController throttle reaches the 8500 rpm band"),
+                Telemetry.EngineRpm >= 7990.0f);
+            Test->TestTrue(TEXT("clutch remains disengaged during free rev proof"),
                 Telemetry.NormalizedClutch >= 0.85f);
 
             InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
@@ -189,7 +216,7 @@ public:
 
         if (State->Phase == 5)
         {
-            if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 2.5)
+            if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 2.0)
             {
                 return false;
             }
