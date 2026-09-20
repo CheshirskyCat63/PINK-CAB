@@ -1,0 +1,227 @@
+name: PINK CAB G1 H-INP Owner Fix Final
+
+on:
+  push:
+    branches:
+      - fix/CD-848-owner-rejection-runtime
+  workflow_dispatch:
+
+concurrency:
+  group: pinkcab-g1-hinp-owner-fix-final
+  cancel-in-progress: true
+
+jobs:
+  final:
+    name: H-INP owner-rejection final human-gate candidate
+    runs-on: [self-hosted, Windows, X64, pinkcab, ue58, cheshire, gui]
+    timeout-minutes: 240
+    env:
+      PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      GATE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: fix/CD-848-owner-rejection-runtime
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Preflight exact candidate / clean / LFS
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          git lfs pull
+          $head = (git rev-parse HEAD).Trim()
+          if (@(git status --porcelain).Count -gt 0) { throw "Candidate checkout dirty." }
+          New-Item -ItemType Directory -Force -Path "Saved\HInpOwnerFix" | Out-Null
+          Set-Content "Saved\HInpOwnerFix\CANDIDATE_SHA.txt" $head -NoNewline
+          Write-Host "OWNER_FIX_CANDIDATE=$head"
+
+      - name: Strict code-health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\build.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: H-INP canonical 7/7 matrix
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix"
+          $matrix = @(
+            @{Task='INP-01'; Filter='PinkCab.Vehicle.Input'},
+            @{Task='INP-02'; Filter='PinkCab.Vehicle.ControlRuntime.Runtime'},
+            @{Task='INP-03'; Filter='PinkCab.Cockpit.Input.Compliance'},
+            @{Task='INP-04'; Filter='PinkCab.Vehicle.PlayerInput'},
+            @{Task='INP-05'; Filter='PinkCab.UI.SystemMenu'},
+            @{Task='INP-06'; Filter='PinkCab.G1.HInp'},
+            @{Task='INP-07'; Filter='PinkCab.UI.SystemMenu.CanonicalControlHints'}
+          )
+          $summary=@()
+          foreach($row in $matrix){
+            $log=Join-Path $ev (($row.Task+"_"+$row.Filter).Replace(".","_")+".log")
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $($row.Filter)" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+            $q=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $c=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+            if($q.Count -eq 0 -or $f.Count -gt 0 -or $c.Count -gt 0){throw "$($row.Task) failed"}
+            $line="$($row.Task)=PASS | $($row.Filter) | $($q[-1].Line)"
+            $summary += $line
+            Write-Host $line
+          }
+          if($summary.Count -ne 7){throw "H-INP denominator mismatch"}
+          $summary | Set-Content (Join-Path $ev "HINP_TASK_MATRIX.txt")
+          Write-Host "H-INP CANONICAL 7/7 PASS"
+
+      - name: Owner-rejection real-path regression
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix"
+          $filters=@(
+            'PinkCab.Vehicle.ControlRuntime.Runtime.LaunchDoseAndReset',
+            'PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip',
+            'PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace',
+            'PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive'
+          )
+          $summary=@()
+          foreach($filter in $filters){
+            $log=Join-Path $ev (("OWNER_"+$filter).Replace(".","_")+".log")
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+            $q=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            if($q.Count -eq 0 -or $f.Count -gt 0){throw "Owner regression failed: $filter"}
+            $summary += "PASS $filter | $($q[-1].Line)"
+            Write-Host "PASS $filter"
+          }
+          $liveLog=Join-Path $ev "OWNER_PinkCab_Vehicle_PlayerInput_ControllerThrottleDrive.log"
+          $diag=@(Select-String -Path $liveLog -Pattern 'controller-input diagnostics travel=')
+          if($diag.Count -eq 0){throw "Live controller diagnostics missing"}
+          $diag[-1].Line | Set-Content (Join-Path $ev "OWNER_LIVE_DIAGNOSTICS.txt")
+          $summary | Set-Content (Join-Path $ev "OWNER_REGRESSION_MATRIX.txt")
+          Write-Host "OWNER-REJECTION REAL PATH 4/4 PASS"
+          Write-Host $diag[-1].Line
+
+      - name: Full PinkCab automation regression
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $log = Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix\FULL_PINKCAB_AUTOMATION.log"
+          & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+          $q=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $f=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          $c=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+          if($q.Count -eq 0 -or $f.Count -gt 0 -or $c.Count -gt 0){throw "Full PinkCab regression failed"}
+          $q[-1].Line | Set-Content "Saved\HInpOwnerFix\FULL_AUTOMATION_SUMMARY.txt"
+          Write-Host "FULL PINKCAB PASS: $($q[-1].Line)"
+
+      - name: Canonical Win64 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\build.ps1 -Package
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+          $outer=Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab.exe"
+          $inner=Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          if(-not(Test-Path $outer)){throw "Outer package exe missing"}
+          if(-not(Test-Path $inner)){throw "Inner package exe missing"}
+          Write-Host "OWNER FIX PACKAGE PASS"
+
+      - name: Packaged smoke + critical scan
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $inner=Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE "Saved\HInpOwnerFix\PACKAGED_SMOKE.log"
+          $proc=Start-Process -FilePath $inner -ArgumentList @("-log","-NoSound","-windowed","-ResX=1280","-ResY=720","-abslog=$log") -WorkingDirectory (Split-Path $inner) -PassThru
+          Start-Sleep -Seconds 10
+          $alive=-not $proc.HasExited
+          if($alive){Stop-Process -Id $proc.Id -Force; Start-Sleep -Milliseconds 500}
+          if(-not(Test-Path $log)){throw "Packaged smoke log missing"}
+          $map=@(Select-String -Path $log -Pattern 'UEngine::LoadMap Load map complete /Game/Dev/Maps/L_PinkCab_ChaosWeave')
+          $critical=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Log[A-Za-z0-9_]+: Error:')
+          if(-not $alive -or $map.Count -eq 0 -or $critical.Count -gt 0){throw "Packaged smoke failed: alive=$alive map=$($map.Count) critical=$($critical.Count)"}
+          "alive=$alive; map=$($map.Count); critical=0" | Set-Content "Saved\HInpOwnerFix\PACKAGED_SMOKE_SUMMARY.txt"
+          Write-Host "OWNER FIX PACKAGED SMOKE PASS"
+
+      - name: Immutable delivery and single desktop shortcut
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,7)
+          $gateName="G1_HINP_OWNERFIX_$short"+"_RUN"+$env:GITHUB_RUN_ID+"_A"+$env:GITHUB_RUN_ATTEMPT
+          $gateRoot=Join-Path $env:GATE_ROOT_BASE $gateName
+          if(Test-Path $gateRoot){throw "Immutable gate path exists"}
+          New-Item -ItemType Directory -Force -Path $gateRoot | Out-Null
+          Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\*") -Destination $gateRoot -Recurse -Force
+          $evidence=Join-Path $gateRoot "_evidence"
+          New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+          Copy-Item -Path "Saved\HInpOwnerFix\*" -Destination $evidence -Recurse -Force
+          Copy-Item -Path "Saved\Reports\code-health.json" -Destination $evidence -Force
+          Set-Content (Join-Path $gateRoot "BUILD_SHA.txt") $sha -NoNewline
+          $outer=Join-Path $gateRoot "Windows\PinkCab.exe"
+          if(-not(Test-Path $outer)){throw "Delivered exe missing"}
+          $hash=(Get-FileHash -Algorithm SHA256 $outer).Hash
+          @(
+            "gate=H-INP",
+            "owner_rejection_fix=true",
+            "auto_status=PASS",
+            "canonical_progress=7/7",
+            "owner_regression=4/4",
+            "human_status=HUMAN_PENDING",
+            "source_sha=$sha",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "build_root=$gateRoot",
+            "exe=$outer",
+            "exe_sha256=$hash",
+            "map=/Game/Dev/Maps/L_PinkCab_ChaosWeave"
+          ) | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
+
+          $desktop=[Environment]::GetFolderPath("Desktop")
+          Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File -ErrorAction SilentlyContinue | Remove-Item -Force
+          $latest=Join-Path $desktop "PINKCAB Latest.lnk"
+          $ws=New-Object -ComObject WScript.Shell
+          $s=$ws.CreateShortcut($latest)
+          $s.TargetPath=$outer
+          $s.WorkingDirectory=Join-Path $gateRoot "Windows"
+          $s.Description="PINK CAB H-INP owner-fix $short - HUMAN PENDING"
+          $s.Save()
+          $remaining=@(Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File)
+          if($remaining.Count -ne 1 -or $remaining[0].Name -ne 'PINKCAB Latest.lnk'){throw "Desktop shortcut cleanup failed"}
+
+          "GATE_ROOT=$gateRoot" | Set-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
+          "EXE_SHA256=$hash" | Add-Content "Saved\HInpOwnerFix\GATE_DELIVERY.txt"
+          Write-Host "H-INP OWNER FIX AUTO PASS"
+          Write-Host "H-INP HUMAN_PENDING"
+          Write-Host "DELIVERY=$gateRoot"
+          Write-Host "EXE_SHA256=$hash"
+          Write-Host "DESKTOP=$latest"
+
+      - name: Upload final evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-G1-HINP-OWNERFIX-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Saved/HInpOwnerFix
+          if-no-files-found: warn
+          retention-days: 14
