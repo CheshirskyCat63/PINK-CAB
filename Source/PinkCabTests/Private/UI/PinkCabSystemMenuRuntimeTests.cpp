@@ -196,8 +196,8 @@ bool FPinkCabDriverUiCanonicalControlHintsTest::RunTest(const FString& Parameter
         TEXT("2 HORN"),
         TEXT("3 GEARBOX"),
         TEXT("4 HANDBRAKE"),
-        TEXT("RMB GRIP"),
-        TEXT("LMB ACTION")
+        TEXT("RMB GRIP / HOLD"),
+        TEXT("LMB ACTION / MOVE LEVER")
     };
     for (const TCHAR* Token : RequiredTokens)
     {
