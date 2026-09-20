@@ -275,15 +275,15 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     EPinkCabPedalWheelRecipient WheelRecipient = EPinkCabPedalWheelRecipient::None;
     FPinkCabVehicleInputFrame InputFrame =
         PrepareVehicleFrame(PlayerInput, DeltaSeconds, WheelRecipient);
-    const bool bPhysicalGripActive =
+    const bool bPhysicalManipulationActive =
         ProcessCockpitFrame(*PC, PlayerInput, WheelRecipient, DeltaSeconds);
-    InputFrame.bSteeringHeld = bPhysicalGripActive;
+    InputFrame.bSteeringHeld = bPhysicalManipulationActive;
     const float SteeringMouseX = FPinkCabPhysicalInputConvention::SteeringRight(PlayerInput.DeviceX);
     ApplyVehicleInputFrame(
         InputFrame,
-        bPhysicalGripActive ? 0.0f : SteeringMouseX,
+        bPhysicalManipulationActive ? 0.0f : SteeringMouseX,
         DeltaSeconds);
-    UpdateDriverLook(PlayerInput, bPhysicalGripActive, DeltaSeconds);
+    UpdateDriverLook(PlayerInput, bPhysicalManipulationActive, DeltaSeconds);
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
     UpdateDriverUiState(Presentation);
