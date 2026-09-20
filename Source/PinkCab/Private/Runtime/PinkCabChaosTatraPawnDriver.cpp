@@ -111,7 +111,8 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
     // starts the explicit lever manipulation.
     const bool bCanStageGearboxFromClutch =
         !CockpitInteraction->IsGripActive()
-        && CockpitInteraction->GetCurrentTargetId().IsNone();
+        && (CockpitInteraction->GetCurrentTargetId().IsNone()
+            || CockpitInteraction->IsGearboxStageFromClutchHeld());
     InteractionFrame.bQuickRecall3Held = PlayerInput.bQuickRecall3Held;
     InteractionFrame.bQuickRecall4Held = PlayerInput.bQuickRecall4Held;
     InteractionFrame.bGearboxStageFromClutchHeld =
