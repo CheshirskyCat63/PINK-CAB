@@ -199,7 +199,8 @@ const FPinkCabVehicleControlState& FPinkCabVehicleControlRuntime::ResolveControl
     ControlState.SetDriveline(
         GearboxController.GetRequestedGear(),
         GearboxController.GetEngagedGear(),
-        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch) * DrivetrainTorqueCapacity);
+        GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch));
+    ControlState.SetDrivetrainTorqueCapacity(DrivetrainTorqueCapacity);
     return ControlState;
 }
 
