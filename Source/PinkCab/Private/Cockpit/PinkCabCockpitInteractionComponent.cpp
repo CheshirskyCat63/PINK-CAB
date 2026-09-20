@@ -90,7 +90,6 @@ void UPinkCabCockpitInteractionComponent::ClearConsumedRecallIfIdle()
     CurrentTarget = {};
     bCurrentTargetFromQuickRecall = false;
     bCurrentTargetRecallConsumed = false;
-    bCurrentTargetRecallConsumed = false;
 }
 
 FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiveSpec() const
@@ -295,6 +294,7 @@ void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
     for (FQuickSlotState& Slot : QuickSlots) Slot.bHeld = false;
     CurrentTarget = {};
     bCurrentTargetFromQuickRecall = false;
+    bCurrentTargetRecallConsumed = false;
     bGripActive = false;
     bManipulationActive = false;
     ActiveGripTargetId = NAME_None;
