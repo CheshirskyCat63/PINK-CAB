@@ -194,7 +194,10 @@ const FPinkCabVehicleControlState& FPinkCabVehicleControlRuntime::ResolveControl
         * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
             ? Condition.HandbrakeEffectiveness : 1.0f);
 
-    ApplySteering(SteeringMouseX, EffectiveInput.bGazeHeld, DeltaSeconds);
+    ApplySteering(
+        SteeringMouseX,
+        EffectiveInput.bGazeHeld || EffectiveInput.bSteeringHeld,
+        DeltaSeconds);
     ControlState = EffectiveInput.ToControlState(GetSteeringCommand(), EffectiveHandbrake);
     ControlState.SetDriveline(
         GearboxController.GetRequestedGear(),
