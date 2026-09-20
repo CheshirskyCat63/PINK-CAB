@@ -15,6 +15,10 @@ struct FPinkCabVehicleControlState
         EngagedGear = FMath::Clamp(InEngagedGear, -1, 5);
         ClutchCoupling = FMath::Clamp(InClutchCoupling, 0.0f, 1.0f);
     }
+    void SetDrivetrainTorqueCapacity(float Value)
+    {
+        DrivetrainTorqueCapacity = FMath::Clamp(Value, 0.0f, 1.0f);
+    }
     void SetExternalRearDriveTorquePerWheel(float TorqueNm)
     {
         ExternalRearDriveTorquePerWheelNm = TorqueNm;
@@ -28,5 +32,6 @@ struct FPinkCabVehicleControlState
     int32 RequestedGear = 0;
     int32 EngagedGear = 0;
     float ClutchCoupling = 1.0f;
+    float DrivetrainTorqueCapacity = 1.0f;
     float ExternalRearDriveTorquePerWheelNm = 0.0f;
 };
