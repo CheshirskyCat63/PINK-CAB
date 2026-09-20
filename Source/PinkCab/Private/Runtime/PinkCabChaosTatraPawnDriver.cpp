@@ -136,7 +136,7 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
     const bool bGearboxGripActive =
         CockpitInteraction->IsGripActive()
         && ActiveGripTarget == FName(TEXT("Gearbox"));
-    const bool bPhysicalGripActive = bHandbrakeGripActive || bGearboxGripActive;
+    const bool bPhysicalGripActive = CockpitInteraction->IsGripActive();
     if (DriverUi)
     {
         DriverUi->SetPointerCapture(PC, bPhysicalGripActive);
