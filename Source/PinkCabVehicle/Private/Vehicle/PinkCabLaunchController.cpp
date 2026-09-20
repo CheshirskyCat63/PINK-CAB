@@ -8,8 +8,8 @@ bool FPinkCabLaunchController::BeginLaunchAttempt()
     }
 
     bLaunchActive = true;
-    bThrottleDoseRequired = false;
-    ThrottleTarget = InitialThrottleTarget;
+    bThrottleDoseRequired = true;
+    ThrottleTarget = 0.0f;
     ++LaunchSerial;
     return true;
 }
@@ -25,7 +25,7 @@ bool FPinkCabLaunchController::ApplyThrottleDoseSteps(int32 SignedSteps)
         ThrottleTarget + static_cast<float>(SignedSteps) * ThrottleDoseStep,
         0.0f,
         1.0f);
-    bThrottleDoseRequired = false;
+    bThrottleDoseRequired = ThrottleTarget <= KINDA_SMALL_NUMBER;
     return true;
 }
 
