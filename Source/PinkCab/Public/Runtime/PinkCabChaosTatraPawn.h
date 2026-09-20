@@ -76,7 +76,7 @@ public:
     void ApplyVehicleInputFrame(const FPinkCabVehicleInputFrame& InputFrame, float MouseDeltaX, float DeltaSeconds = 1.0f / 60.0f);
     void ApplyPhysicalControlMouseDelta(
         FName TargetId,
-        bool bGripHeld,
+        bool bManipulationActive,
         float MouseDeltaX,
         float MouseDeltaY,
         float DeltaSeconds = 1.0f / 60.0f);
