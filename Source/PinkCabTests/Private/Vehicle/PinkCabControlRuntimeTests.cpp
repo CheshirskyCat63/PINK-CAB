@@ -295,7 +295,7 @@ bool FPinkCabHandbrakeStationaryLatchTest::RunTest(const FString& Parameters)
 
     Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, true, 50.0f, 0.1f);
     Handbrake.Step(EPinkCabVehicleMotionMode::Stationary, false, 0.0f, 0.5f);
-    TestTrue(TEXT("stationary RMB release latches lever"), Handbrake.IsParkingLatched());
+    TestTrue(TEXT("stationary lever release latches parking position"), Handbrake.IsParkingLatched());
     TestTrue(TEXT("latched parking amount is preserved"), FMath::IsNearlyEqual(Handbrake.GetLeverPosition(), 0.5f));
     return true;
 }
@@ -318,7 +318,7 @@ bool FPinkCabHandbrakeMovingReturnTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("moving handbrake never latches"), Handbrake.IsParkingLatched());
 
     Handbrake.Step(EPinkCabVehicleMotionMode::Moving, false, 0.0f, 0.05f);
-    TestTrue(TEXT("RMB release begins automatic return"), Handbrake.GetLeverPosition() < Pulled);
+    TestTrue(TEXT("moving lever release begins automatic return"), Handbrake.GetLeverPosition() < Pulled);
     for (int32 Index = 0; Index < 30; ++Index)
     {
         Handbrake.Step(EPinkCabVehicleMotionMode::Moving, false, 0.0f, 0.05f);
