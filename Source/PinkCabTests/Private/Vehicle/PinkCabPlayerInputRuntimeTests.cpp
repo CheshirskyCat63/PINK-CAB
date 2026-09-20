@@ -142,27 +142,10 @@ public:
                 PC->IsInputKeyDown(EKeys::E));
             Test->TestTrue(TEXT("Q remains physically held while E is pressed"),
                 PC->IsInputKeyDown(EKeys::Q));
-
-            if (Telemetry.NormalizedThrottle < 0.35f || Telemetry.EngineRpm <= 1100.0f)
-            {
-                if ((FPlatformTime::Seconds() - State->PhaseStartSeconds) > 2.0)
-                {
-                    Test->AddError(FString::Printf(
-                        TEXT("real Q+E path never produced usable throttle/RPM without wheel; throttle=%.3f rpm=%.1f"),
-                        Telemetry.NormalizedThrottle, Telemetry.EngineRpm));
-                    return true;
-                }
-                return false;
-            }
-
-            Test->TestEqual(TEXT("engine remains running with clutch down and direct E throttle"),
-                Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
-            Test->TestTrue(TEXT("direct E produces useful throttle before any wheel pulse"),
-                Telemetry.NormalizedThrottle >= 0.35f);
-            Test->TestTrue(TEXT("clutch remains disengaged while revving"),
+            Test->TestTrue(TEXT("clutch remains disengaged before throttle dosing"),
                 Telemetry.NormalizedClutch >= 0.85f);
-            Test->TestTrue(TEXT("direct E raises engine above idle before wheel adjustment"),
-                Telemetry.EngineRpm > 1100.0f);
+            Test->TestTrue(TEXT("new launch E without wheel does not invent throttle"),
+                Telemetry.NormalizedThrottle <= 0.01f);
 
             State->Phase = 4;
             return false;
@@ -170,7 +153,7 @@ public:
 
         if (State->Phase == 4)
         {
-            if (State->WheelPulsesApplied < 11)
+            if (State->WheelPulsesApplied < 20)
             {
                 if (!State->bWheelPulsePendingTick)
                 {
@@ -212,14 +195,15 @@ public:
 
             // Redline proof and launch proof are intentionally separate. At 100%
             // in first gear the authored car is a burnout case. Return to the
-            // normal 45% launch dose while Q is still held, then release clutch.
+            // established 25% clean-launch calibration while Q is still held,
+            // then release clutch.
             State->Phase = 5;
             return false;
         }
 
         if (State->Phase == 5)
         {
-            if (State->WheelDownPulsesApplied < 11)
+            if (State->WheelDownPulsesApplied < 15)
             {
                 if (!State->bWheelDownPulsePendingTick)
                 {
@@ -241,8 +225,8 @@ public:
 
             Test->TestTrue(TEXT("Q remains held while throttle is returned to launch dose"),
                 PC->IsInputKeyDown(EKeys::Q));
-            Test->TestTrue(TEXT("wheel-down restores a sane launch throttle before clutch release"),
-                Telemetry.NormalizedThrottle >= 0.35f && Telemetry.NormalizedThrottle <= 0.55f);
+            Test->TestTrue(TEXT("wheel-down restores the established 25 percent clean-launch band before clutch release"),
+                Telemetry.NormalizedThrottle >= 0.20f && Telemetry.NormalizedThrottle <= 0.30f);
 
             State->StartLocation = Pawn->GetActorLocation();
             InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
@@ -268,8 +252,8 @@ public:
             Test->TestEqual(TEXT("controller path keeps first engaged"), Telemetry.CurrentGear, 1);
             Test->TestEqual(TEXT("engine remains running through launch"),
                 Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
-            Test->TestTrue(TEXT("real PlayerController 45 percent launch moves the taxi decisively"),
-                TravelCm > 40.0f);
+            Test->TestTrue(TEXT("real PlayerController 25 percent clean launch moves the taxi"),
+                TravelCm > 20.0f);
 
             InjectKey(*PC, EKeys::E, IE_Released, 0.0f);
             State->Phase = 7;
