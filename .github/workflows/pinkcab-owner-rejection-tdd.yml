@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/CD-848-recovery-r1-input-contract
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -58,7 +59,9 @@ jobs:
             'PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip',
             'PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace',
             'PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive',
-            'PinkCab.Cockpit.Input.Recovery'
+            'PinkCab.Vehicle.PlayerInput.PhysicalControlRouting',
+            'PinkCab.Cockpit.Input.Recovery',
+            'PinkCab.UI.SystemMenu.CanonicalControlHints'
           )
           foreach ($filter in $filters) {
             $safe = $filter.Replace('.','_')
