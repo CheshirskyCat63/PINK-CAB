@@ -1,6 +1,9 @@
 name: PINK CAB Owner Rejection TDD
 
 on:
+  push:
+    branches:
+      - fix/CD-848-recovery-r1-input-contract
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +22,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: fix/CD-848-owner-rejection-runtime
+          ref: ${{ github.sha }}
           fetch-depth: 0
           lfs: true
           clean: true
@@ -50,7 +53,8 @@ jobs:
             'PinkCab.Vehicle.ControlRuntime.Runtime.LaunchDoseAndReset',
             'PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip',
             'PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace',
-            'PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive'
+            'PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive',
+            'PinkCab.Cockpit.Input.Recovery'
           )
           foreach ($filter in $filters) {
             $safe = $filter.Replace('.','_')
