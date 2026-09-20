@@ -45,6 +45,7 @@ public:
     bool EndGrip(FPinkCabInteractionEvent& OutEvent);
     bool IsGripActive() const { return bGripActive; }
     FName GetActiveGripTargetId() const { return ActiveGripTargetId; }
+    bool IsManipulationActive() const { return bManipulationActive; }
 
     bool BeginMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
     bool EndMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
@@ -63,13 +64,17 @@ public:
 private:
     struct FQuickSlotState { bool bHeld = false; uint32 PressSerial = 0; };
     static FName TargetForQuickSlot(int32 Slot);
+    static bool IsLeverManipulationTarget(FName TargetId);
     FPinkCabInteractionControlSpec ResolveActiveSpec() const;
+    void MarkRecalledTargetConsumed(FName TargetId);
+    void ClearConsumedRecallIfIdle();
     void UpdateTargetSelection(
         const FPinkCabCockpitInteractionFrame& Frame,
         const UPinkCabCockpitAssemblyComponent* Assembly);
     void UpdateGripState(
         const FPinkCabCockpitInteractionFrame& Frame,
         TArray<FPinkCabInteractionEvent>& OutActuationEvents);
+    void UpdateManipulationState(const FPinkCabCockpitInteractionFrame& Frame);
     void UpdateMomentaryState(
         const FPinkCabCockpitInteractionFrame& Frame,
         TArray<FPinkCabInteractionEvent>& OutActuationEvents);
@@ -87,6 +92,8 @@ private:
     double LastMomentaryHoldSeconds = 0.0;
     bool bGazeHeld = false;
     bool bGripActive = false;
+    bool bManipulationActive = false;
     bool bMomentaryActive = false;
     bool bCurrentTargetFromQuickRecall = false;
+    bool bCurrentTargetRecallConsumed = false;
 };
