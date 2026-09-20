@@ -103,7 +103,15 @@ FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiv
         return SpecForTargetId(ActiveGripTargetId);
     }
     const FName QuickTarget = GetCurrentQuickTargetId();
-    return QuickTarget.IsNone() ? CurrentTarget : SpecForTargetId(QuickTarget);
+    if (!QuickTarget.IsNone())
+    {
+        return SpecForTargetId(QuickTarget);
+    }
+    if (bGearboxStageFromClutchHeld)
+    {
+        return SpecForTargetId(TEXT("Gearbox"));
+    }
+    return CurrentTarget;
 }
 
 FName UPinkCabCockpitInteractionComponent::GetCurrentTargetId() const
@@ -182,7 +190,9 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
     // A recalled control (1/2/3/4, including Q staging the gearbox) is an
     // explicit driver choice. RMB must grip that target instead of replacing
     // it with a center-ray miss on the next frame.
-    if (Frame.bGripHeld && bCurrentTargetFromQuickRecall && !CurrentTarget.Id.IsNone())
+    if (Frame.bGripHeld
+        && ((bCurrentTargetFromQuickRecall && !CurrentTarget.Id.IsNone())
+            || bGearboxStageFromClutchHeld))
     {
         return;
     }
@@ -274,6 +284,7 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     SetQuickSlotHeld(2, Frame.bQuickRecall2Held);
     SetQuickSlotHeld(3, Frame.bQuickRecall3Held);
     SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
+    bGearboxStageFromClutchHeld = Frame.bGearboxStageFromClutchHeld;
 
     UpdateTargetSelection(Frame, Assembly);
     UpdateGripState(Frame, OutActuationEvents);
@@ -295,6 +306,7 @@ void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
     CurrentTarget = {};
     bCurrentTargetFromQuickRecall = false;
     bCurrentTargetRecallConsumed = false;
+    bGearboxStageFromClutchHeld = false;
     bGripActive = false;
     bManipulationActive = false;
     ActiveGripTargetId = NAME_None;
