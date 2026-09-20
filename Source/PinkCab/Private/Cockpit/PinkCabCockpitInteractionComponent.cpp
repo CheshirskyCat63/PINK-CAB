@@ -151,35 +151,25 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
     }
 }
 
-bool UPinkCabCockpitInteractionComponent::IsPrimaryPointerGrip(
-    const FPinkCabCockpitInteractionFrame& Frame) const
-{
-    const FPinkCabInteractionControlSpec PointerSpec = ResolveActiveSpec();
-    return Frame.bMomentaryHeld && PointerSpec.bSupportsGrip && !PointerSpec.bSupportsMomentary;
-}
-
 void UPinkCabCockpitInteractionComponent::UpdateGripState(
-    const FPinkCabCockpitInteractionFrame& Frame,
-    const bool bPrimaryPointerGrip)
+    const FPinkCabCockpitInteractionFrame& Frame)
 {
     FPinkCabInteractionEvent Event;
-    const bool bEffectiveGripHeld = Frame.bGripHeld || bPrimaryPointerGrip;
-    if (bEffectiveGripHeld && !bGripActive) BeginGrip(Event);
-    else if (!bEffectiveGripHeld && bGripActive) EndGrip(Event);
+    if (Frame.bGripHeld && !bGripActive) BeginGrip(Event);
+    else if (!Frame.bGripHeld && bGripActive) EndGrip(Event);
 }
 
 void UPinkCabCockpitInteractionComponent::UpdateMomentaryState(
     const FPinkCabCockpitInteractionFrame& Frame,
-    const bool bPrimaryPointerGrip,
     TArray<FPinkCabInteractionEvent>& OutActuationEvents)
 {
     FPinkCabInteractionEvent Event;
-    if (!bPrimaryPointerGrip && Frame.bMomentaryHeld && !bMomentaryActive)
+    if (Frame.bMomentaryHeld && !bMomentaryActive)
     {
         if (BeginMomentary(Frame.NowSeconds, Event)) OutActuationEvents.Add(Event);
         return;
     }
-    if ((!Frame.bMomentaryHeld || bPrimaryPointerGrip) && bMomentaryActive
+    if (!Frame.bMomentaryHeld && bMomentaryActive
         && EndMomentary(Frame.NowSeconds, Event))
     {
         OutActuationEvents.Add(Event);
@@ -206,9 +196,8 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
 
     UpdateTargetSelection(Frame, Assembly);
-    const bool bPrimaryPointerGrip = IsPrimaryPointerGrip(Frame);
-    UpdateGripState(Frame, bPrimaryPointerGrip);
-    UpdateMomentaryState(Frame, bPrimaryPointerGrip, OutActuationEvents);
+    UpdateGripState(Frame);
+    UpdateMomentaryState(Frame, OutActuationEvents);
     AppendWheelEvent(Frame, OutActuationEvents);
 }
 
