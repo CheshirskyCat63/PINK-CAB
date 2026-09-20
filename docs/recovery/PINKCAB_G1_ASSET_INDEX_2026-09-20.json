@@ -1,0 +1,111 @@
+{
+  "schema": "pinkcab.g1.recovery.asset-index.v1",
+  "source_snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+  "recovery_date": "2026-09-20",
+  "structural_count": 159,
+  "row_text_status": "PARTIAL_RECOVERY__DO_NOT_INFER_MISSING_DESCRIPTIONS",
+  "families": [
+    {
+      "prefix": "MOD-CAR",
+      "start": 1,
+      "end": 23,
+      "count": 23,
+      "purpose": "hero vehicle/cabin/control geometry"
+    },
+    {
+      "prefix": "ANIM",
+      "start": 1,
+      "end": 10,
+      "count": 10,
+      "purpose": "hands/controls/gauges/traffic/crowd motion"
+    },
+    {
+      "prefix": "ROAD",
+      "start": 1,
+      "end": 27,
+      "count": 27,
+      "purpose": "road/interchange/parking/future vertical modules"
+    },
+    {
+      "prefix": "SIGN",
+      "start": 1,
+      "end": 9,
+      "count": 9,
+      "purpose": "sign faces/supports/enforcement"
+    },
+    {
+      "prefix": "MARK",
+      "start": 1,
+      "end": 4,
+      "count": 4,
+      "purpose": "lane/parking/ramp markings"
+    },
+    {
+      "prefix": "WORLD",
+      "start": 1,
+      "end": 17,
+      "count": 17,
+      "purpose": "megablock/frontage/median/debris/ads/crowd/city-life"
+    },
+    {
+      "prefix": "TRAFFIC",
+      "start": 1,
+      "end": 6,
+      "count": 6,
+      "purpose": "provisional/future traffic roster"
+    },
+    {
+      "prefix": "MAT",
+      "start": 1,
+      "end": 16,
+      "count": 16,
+      "purpose": "material families"
+    },
+    {
+      "prefix": "SND",
+      "start": 1,
+      "end": 30,
+      "count": 30,
+      "purpose": "vehicle/cabin/radio/world sounds"
+    },
+    {
+      "prefix": "VFX",
+      "start": 1,
+      "end": 7,
+      "count": 7,
+      "purpose": "rain/spray/smoke/windshield/ad/magnet effects"
+    },
+    {
+      "prefix": "UI",
+      "start": 1,
+      "end": 4,
+      "count": 4,
+      "purpose": "menu/diegetic/build/release UI"
+    },
+    {
+      "prefix": "DATA",
+      "start": 1,
+      "end": 6,
+      "count": 6,
+      "purpose": "physical/road/license/perf/save/evidence data"
+    }
+  ],
+  "rights_gate": {
+    "marathon": "BLOCKED_UNTIL_EXPLICIT_PERMISSION_OR_LEGAL_FALLBACK",
+    "evidence": "Recovered planning notes: local ReadMe.pdf page 2 requires author permission for modification/conversion/redistribution/use of physics/3D/textures/sound; free mod availability is not commercial Unreal permission."
+  },
+  "source_folders": [
+    {
+      "path": "D:\\Новая папка\\дорожные знаки",
+      "policy": "inventory/admission only; do not move originals"
+    },
+    {
+      "path": "D:\\Новая папка\\заборы\\po_2_fence.glb",
+      "policy": "candidate; PO-2 not automatically accepted as P-6V equivalent"
+    },
+    {
+      "path": "E:\\Development\\дедкорн\\DESKTOP_SNAPSHOT\\DEADRACE",
+      "policy": "read-only salvage/reference; no legacy gameplay resurrection"
+    }
+  ]
+}
