@@ -22,6 +22,7 @@ struct PINKCAB_API FPinkCabVehicleInputFrame
         float Handbrake) const;
 
     bool bGazeHeld = false;
+    bool bSteeringHeld = false;
     float Throttle = 0.0f;
     float Brake = 0.0f;
     float Clutch = 0.0f;
