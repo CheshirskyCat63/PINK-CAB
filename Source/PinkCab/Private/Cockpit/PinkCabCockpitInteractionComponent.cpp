@@ -134,17 +134,41 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
     const FPinkCabCockpitInteractionFrame& Frame,
     const UPinkCabCockpitAssemblyComponent* Assembly)
 {
-    if ((Frame.bGazeHeld || Frame.bGripHeld) && Assembly && !bGripActive && !bMomentaryActive)
+    if (bGripActive || bMomentaryActive)
+    {
+        return;
+    }
+
+    // A recalled control (1/2/3/4, including Q staging the gearbox) is an
+    // explicit driver choice. RMB must grip that target instead of replacing
+    // it with a center-ray miss on the next frame.
+    if (Frame.bGripHeld && bCurrentTargetFromQuickRecall && !CurrentTarget.Id.IsNone())
+    {
+        return;
+    }
+
+    // Space is an explicit gaze-selection mode and may intentionally replace
+    // the staged target with what the driver is looking at.
+    if (Frame.bGazeHeld && Assembly)
     {
         const FName GazeTarget = Assembly->ResolveGazeTarget(
             Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
         SetCurrentTarget(SpecForTargetId(GazeTarget));
         return;
     }
+
+    // RMB in ordinary driving mode performs a bounded contextual center pick
+    // only when there is no explicit quick-recall target waiting to be used.
+    if (Frame.bGripHeld && Assembly && !bCurrentTargetFromQuickRecall)
+    {
+        const FName ContextTarget = Assembly->ResolveGazeTarget(
+            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+        SetCurrentTarget(SpecForTargetId(ContextTarget));
+        return;
+    }
+
     if (!Frame.bGazeHeld
         && GetCurrentQuickTargetId().IsNone()
-        && !bGripActive
-        && !bMomentaryActive
         && !bCurrentTargetFromQuickRecall)
     {
         SetCurrentTarget({});
