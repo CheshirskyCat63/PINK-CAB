@@ -77,7 +77,7 @@ public:
 
     void ApplyPhysicalControl(
         FName TargetId,
-        bool bGripHeld,
+        bool bManipulationActive,
         float DeviceX,
         float DeviceY,
         float DeltaSeconds,
