@@ -1,7 +1,7 @@
 # PINK CAB · Control & Vehicle Mechanics Release Contract
 
 **Status:** CURRENT OWNER CONTROL / VEHICLE-MECHANICS AUTHORITY MIRROR
-**Date:** 2026-09-18
+**Date:** 2026-09-18 · recovery amendment 2026-09-20
 **Jira umbrella:** `CD-848`
 **Confluence authority:** page `16744449` — `47 · PINK CAB · Control & Vehicle Mechanics Release Contract`
 **Runtime technology:** Unreal Engine 5.8.2 / native Chaos Vehicles
@@ -39,6 +39,21 @@ Hard rules:
 - focus loss/menu clears transient ownership/presses and cannot confirm a gear accidentally.
 
 Older START→ATTENTION→GO wording is superseded where it conflicts with this contract.
+
+## 1.1 Recovery input amendment · 2026-09-20
+
+The later owner correction supersedes the old interpretation that RMB+XY alone manipulates Gearbox/Handbrake.
+
+- RMB = acquire/retain the selected physical control only.
+- RMB alone keeps mouse XY on steering; it does not move Gearbox or Handbrake.
+- LMB while RMB is holding Gearbox/Handbrake begins lever manipulation and transfers mouse XY exclusively to that lever.
+- While lever manipulation is active, the current steering command is held; it is not reset and the same XY sample is not also applied to steering.
+- Releasing LMB ends lever manipulation and returns XY to steering even if RMB remains held.
+- Releasing RMB ends the grip. A consumed quick-recall target must no longer remain eligible for ghost input/prompt.
+- Gear request is produced by the physical H-gate path; actual engagement remains owned by the common validator. LMB/RMB release never performs a second commit.
+- Q may stage Gearbox while clutch remains independent, but Q never grips/manipulates the lever and cannot steal an active grip.
+
+Detailed executable contract: `docs/recovery/RECOVERY_INPUT_CONTRACT_R1.md`.
 
 ## 2. H-gate / gearbox topology
 
