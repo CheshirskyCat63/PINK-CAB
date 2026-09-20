@@ -223,7 +223,7 @@ jobs:
           foreach($file in $pakFiles){
             $contentHashes += "$($file.Name)_sha256=$((Get-FileHash -Algorithm SHA256 $file.FullName).Hash)"
           }
-          @(
+          $manifest=@(
             "gate=H-INP",
             "owner_rejection_fix=true",
             "auto_status=PASS",
@@ -238,7 +238,8 @@ jobs:
             "exe_sha256=$hash",
             "inner_exe_sha256=$innerHash",
             "map=/Game/Dev/Maps/L_PinkCab_ChaosWeave"
-          ) + $contentHashes | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
+          )
+          ($manifest + $contentHashes) | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
 
           $desktop=[Environment]::GetFolderPath("Desktop")
           Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File -ErrorAction SilentlyContinue | Remove-Item -Force
