@@ -277,6 +277,8 @@ struct FPinkCabPhysicalPlayerInputState
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
     TWeakObjectPtr<APlayerController> Controller;
     float InitialHandbrake = 0.0f;
+    float SteeringBeforeRmb = 0.0f;
+    float SteeringAtManipulationStart = 0.0f;
     int32 Phase = 0;
 };
 
@@ -369,6 +371,7 @@ public:
         case 7:
             Test->TestEqual(TEXT("RMB grips recalled gearbox"),
                 Interaction->GetActiveGripTargetId(), FName(TEXT("Gearbox")));
+            State->SteeringBeforeRmb = Pawn->GetSteeringCommand();
             InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 105.0f);
             State->Phase = 8;
@@ -378,6 +381,9 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("RMB alone does not move gearbox or request a gear"),
                 Pawn->GetRequestedGear(), 0);
+            Test->TestTrue(TEXT("RMB-only grip keeps mouse steering live"),
+                FMath::Abs(Pawn->GetSteeringCommand() - State->SteeringBeforeRmb) > 0.01f);
+            State->SteeringAtManipulationStart = Pawn->GetSteeringCommand();
             InjectKey(*PC, EKeys::LeftMouseButton, IE_Pressed);
             InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
             State->Phase = 9;
@@ -391,6 +397,9 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("short LMB manipulation remains neutral"),
                 Pawn->GetRequestedGear(), 0);
+            Test->TestTrue(TEXT("lever manipulation holds the existing steering command"),
+                FMath::IsNearlyEqual(
+                    Pawn->GetSteeringCommand(), State->SteeringAtManipulationStart, 0.02f));
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 45.0f);
             State->Phase = 11;
             return false;
