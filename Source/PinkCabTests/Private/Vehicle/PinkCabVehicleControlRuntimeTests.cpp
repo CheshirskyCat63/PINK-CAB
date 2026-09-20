@@ -79,7 +79,7 @@ bool FPinkCabVehicleControlRuntimeWheelPriorityTest::RunTest(const FString& Para
     const float ReleaseBefore = Cockpit.GetClutchReleaseSeconds();
     Runtime.Update(Digital(true, false, false, 1), Telemetry(), Cockpit, Health);
     TestEqual(TEXT("Q owns wheel when E/W absent"), Runtime.GetLastWheelRecipient(), EPinkCabPedalWheelRecipient::ClutchRelease);
-    TestTrue(TEXT("Q step changes clutch release time"), Cockpit.GetClutchReleaseSeconds() > ReleaseBefore);
+    TestTrue(TEXT("Q wheel-up makes clutch release faster"), Cockpit.GetClutchReleaseSeconds() < ReleaseBefore);
     return true;
 }
 

@@ -41,7 +41,7 @@ void FPinkCabCockpitState::SetSelectedGear(int32 Gear) { SelectedGear = FMath::C
 float FPinkCabCockpitState::AdjustClutchReleaseSpeed(int32 SignedSteps)
 {
     ClutchReleaseSeconds = FMath::Clamp(
-        ClutchReleaseSeconds + static_cast<float>(SignedSteps) * ClutchReleaseStepSeconds,
+        ClutchReleaseSeconds - static_cast<float>(SignedSteps) * ClutchReleaseStepSeconds,
         ClutchReleaseMinSeconds,
         ClutchReleaseMaxSeconds);
     return ClutchReleaseSeconds;
