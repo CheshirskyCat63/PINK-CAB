@@ -335,6 +335,13 @@ public:
                 PC->IsInputKeyDown(EKeys::Q));
             Test->TestEqual(TEXT("Q staging never steals recalled handbrake from RMB"),
                 Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
+            Test->AddInfo(FString::Printf(
+                TEXT("RECOVERY_R1_TRACE phase=handbrake_grip target=%s grip=%d manip=%d steer=%.3f handbrake=%.3f"),
+                *Interaction->GetActiveGripTargetId().ToString(),
+                Interaction->IsGripActive() ? 1 : 0,
+                Interaction->IsManipulationActive() ? 1 : 0,
+                Pawn->GetSteeringCommand(),
+                Pawn->GetCockpitState().GetHandbrakeAmount()));
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 500.0f);
             State->Phase = 3;
             return false;
@@ -350,6 +357,12 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("RMB plus LMB mouse axis releases parking handbrake"),
                 Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+            Test->AddInfo(FString::Printf(
+                TEXT("RECOVERY_R1_TRACE phase=handbrake_manip target=%s grip=%d manip=%d handbrake=%.3f"),
+                *Interaction->GetActiveGripTargetId().ToString(),
+                Interaction->IsGripActive() ? 1 : 0,
+                Interaction->IsManipulationActive() ? 1 : 0,
+                Pawn->GetCockpitState().GetHandbrakeAmount()));
             InjectKey(*PC, EKeys::LeftMouseButton, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
@@ -383,6 +396,13 @@ public:
                 Pawn->GetRequestedGear(), 0);
             Test->TestTrue(TEXT("RMB-only grip keeps mouse steering live"),
                 FMath::Abs(Pawn->GetSteeringCommand() - State->SteeringBeforeRmb) > 0.01f);
+            Test->AddInfo(FString::Printf(
+                TEXT("RECOVERY_R1_TRACE phase=gearbox_grip target=%s grip=%d manip=%d steer=%.3f requested=%d"),
+                *Interaction->GetActiveGripTargetId().ToString(),
+                Interaction->IsGripActive() ? 1 : 0,
+                Interaction->IsManipulationActive() ? 1 : 0,
+                Pawn->GetSteeringCommand(),
+                Pawn->GetRequestedGear()));
             State->SteeringAtManipulationStart = Pawn->GetSteeringCommand();
             InjectKey(*PC, EKeys::LeftMouseButton, IE_Pressed);
             InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
@@ -407,6 +427,14 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("continued RMB plus LMB forward throw requests first"),
                 Pawn->GetRequestedGear(), 1);
+            Test->AddInfo(FString::Printf(
+                TEXT("RECOVERY_R1_TRACE phase=gearbox_manip target=%s grip=%d manip=%d steer=%.3f requested=%d engaged=%d"),
+                *Interaction->GetActiveGripTargetId().ToString(),
+                Interaction->IsGripActive() ? 1 : 0,
+                Interaction->IsManipulationActive() ? 1 : 0,
+                Pawn->GetSteeringCommand(),
+                Pawn->GetRequestedGear(),
+                Pawn->GetEngagedGear()));
             InjectKey(*PC, EKeys::LeftMouseButton, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
             State->Phase = 12;
@@ -417,7 +445,8 @@ public:
             Test->TestTrue(TEXT("consumed gearbox target clears after complete release"),
                 Interaction->GetCurrentTargetId().IsNone());
             return true;
-        }    }
+        }
+    }
 
 private:
     FAutomationTestBase* Test = nullptr;
