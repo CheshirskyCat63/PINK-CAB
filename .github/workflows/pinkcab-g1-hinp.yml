@@ -3,7 +3,7 @@ name: PINK CAB G1 H-INP
 on:
   push:
     branches:
-      - fix/CD-848-hinp-contract
+      - fix/CD-848-owner-rejection-runtime
   workflow_dispatch:
 
 concurrency:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout exact H-INP candidate
         uses: actions/checkout@v4
         with:
-          ref: fix/CD-848-hinp-contract
+          ref: fix/CD-848-owner-rejection-runtime
           fetch-depth: 0
           lfs: true
           clean: true
@@ -209,13 +209,21 @@ jobs:
 
           $desktop = [Environment]::GetFolderPath("Desktop")
           $ws = New-Object -ComObject WScript.Shell
-          foreach ($name in @("PINKCAB G1 H-INP.lnk", "PINKCAB Latest.lnk")) {
-            $lnk = Join-Path $desktop $name
-            $s = $ws.CreateShortcut($lnk)
-            $s.TargetPath = $outer
-            $s.WorkingDirectory = Join-Path $gateRoot "Windows"
-            $s.Description = "PINK CAB G1 H-INP $short - HUMAN PENDING"
-            $s.Save()
+          $latest = Join-Path $desktop "PINKCAB Latest.lnk"
+          $s = $ws.CreateShortcut($latest)
+          $s.TargetPath = $outer
+          $s.WorkingDirectory = Join-Path $gateRoot "Windows"
+          $s.Description = "PINK CAB G1 H-INP $short - HUMAN PENDING"
+          $s.Save()
+
+          Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File | ForEach-Object {
+            if ($_.FullName -ne $latest) {
+              Remove-Item -LiteralPath $_.FullName -Force
+            }
+          }
+          $remaining = @(Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File)
+          if ($remaining.Count -ne 1 -or $remaining[0].Name -ne 'PINKCAB Latest.lnk') {
+            throw "Desktop shortcut cleanup failed: $($remaining.Name -join ', ')"
           }
 
           "GATE_ROOT=$gateRoot" | Set-Content "Saved\G1HInp\GATE_DELIVERY.txt"
