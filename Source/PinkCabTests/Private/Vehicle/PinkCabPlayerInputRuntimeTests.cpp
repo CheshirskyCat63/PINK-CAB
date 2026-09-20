@@ -322,11 +322,14 @@ public:
             Test->TestEqual(TEXT("4 quick recall selects handbrake"),
                 Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
             InjectKey(*PC, EKeys::Four, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::Q, IE_Pressed);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
             State->Phase = 2;
             return false;
         case 2:
-            Test->TestEqual(TEXT("RMB grips recalled handbrake"),
+            Test->TestTrue(TEXT("Q may coexist while recalled handbrake stays selected"),
+                PC->IsInputKeyDown(EKeys::Q));
+            Test->TestEqual(TEXT("Q staging never steals recalled handbrake from RMB"),
                 Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 500.0f);
             State->Phase = 3;
@@ -336,6 +339,7 @@ public:
             Test->TestEqual(TEXT("real mouse axis fully releases parking handbrake"),
                 Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::Three, IE_Pressed);
             State->Phase = 4;
             return false;
