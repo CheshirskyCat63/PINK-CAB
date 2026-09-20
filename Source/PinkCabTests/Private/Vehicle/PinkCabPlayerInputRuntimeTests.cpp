@@ -276,6 +276,7 @@ struct FPinkCabPhysicalPlayerInputState
 {
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
     TWeakObjectPtr<APlayerController> Controller;
+    float InitialHandbrake = 0.0f;
     int32 Phase = 0;
 };
 
@@ -321,6 +322,7 @@ public:
         case 1:
             Test->TestEqual(TEXT("4 quick recall selects handbrake"),
                 Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
+            State->InitialHandbrake = Pawn->GetCockpitState().GetHandbrakeAmount();
             InjectKey(*PC, EKeys::Four, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::Q, IE_Pressed);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
@@ -336,51 +338,77 @@ public:
             return false;
         case 3:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
-            Test->TestEqual(TEXT("real mouse axis fully releases parking handbrake"),
-                Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
-            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
-            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
-            InjectKey(*PC, EKeys::Three, IE_Pressed);
+            Test->TestEqual(TEXT("RMB alone only grips; handbrake does not move before LMB action"),
+                Pawn->GetCockpitState().GetHandbrakeAmount(), State->InitialHandbrake);
+            InjectKey(*PC, EKeys::LeftMouseButton, IE_Pressed);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 500.0f);
             State->Phase = 4;
             return false;
         case 4:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("RMB plus LMB mouse axis releases parking handbrake"),
+                Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
+            InjectKey(*PC, EKeys::LeftMouseButton, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
+            State->Phase = 5;
+            return false;
+        case 5:
+            Test->TestTrue(TEXT("consumed handbrake target clears after complete release"),
+                Interaction->GetCurrentTargetId().IsNone());
+            InjectKey(*PC, EKeys::Three, IE_Pressed);
+            State->Phase = 6;
+            return false;
+        case 6:
             Test->TestEqual(TEXT("3 quick recall selects gearbox"),
                 Interaction->GetCurrentTargetId(), FName(TEXT("Gearbox")));
             InjectKey(*PC, EKeys::Three, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
-            State->Phase = 5;
-            return false;
-        case 5:
-            Test->TestEqual(TEXT("RMB grips recalled gearbox"),
-                Interaction->GetActiveGripTargetId(), FName(TEXT("Gearbox")));
-            InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
-            State->Phase = 6;
-            return false;
-        case 6:
-            InjectKey(*PC, EKeys::MouseX, IE_Axis, 0.0f);
-            InjectKey(*PC, EKeys::MouseY, IE_Axis, 60.0f);
             State->Phase = 7;
             return false;
         case 7:
-            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
-            Test->TestEqual(TEXT("short real forward flick remains neutral"),
-                Pawn->GetRequestedGear(), 0);
-            InjectKey(*PC, EKeys::MouseY, IE_Axis, 45.0f);
+            Test->TestEqual(TEXT("RMB grips recalled gearbox"),
+                Interaction->GetActiveGripTargetId(), FName(TEXT("Gearbox")));
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 105.0f);
             State->Phase = 8;
             return false;
         case 8:
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, 0.0f);
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
-            Test->TestEqual(TEXT("continued real forward throw requests first"),
-                Pawn->GetRequestedGear(), 1);
-            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            Test->TestEqual(TEXT("RMB alone does not move gearbox or request a gear"),
+                Pawn->GetRequestedGear(), 0);
+            InjectKey(*PC, EKeys::LeftMouseButton, IE_Pressed);
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
             State->Phase = 9;
+            return false;
+        case 9:
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, 0.0f);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 60.0f);
+            State->Phase = 10;
+            return false;
+        case 10:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("short LMB manipulation remains neutral"),
+                Pawn->GetRequestedGear(), 0);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 45.0f);
+            State->Phase = 11;
+            return false;
+        case 11:
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
+            Test->TestEqual(TEXT("continued RMB plus LMB forward throw requests first"),
+                Pawn->GetRequestedGear(), 1);
+            InjectKey(*PC, EKeys::LeftMouseButton, IE_Released, 0.0f);
+            InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
+            State->Phase = 12;
             return false;
         default:
             Test->TestFalse(TEXT("physical grip releases after RMB"),
                 Interaction->IsGripActive());
+            Test->TestTrue(TEXT("consumed gearbox target clears after complete release"),
+                Interaction->GetCurrentTargetId().IsNone());
             return true;
-        }
-    }
+        }    }
 
 private:
     FAutomationTestBase* Test = nullptr;
