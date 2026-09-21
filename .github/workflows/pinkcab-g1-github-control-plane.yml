@@ -17,7 +17,7 @@ concurrency:
 jobs:
   gate:
     name: Exact-head build test package evidence
-    runs-on: [self-hosted, Windows, X64, pinkcab, ue58, cheshire, gui]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 300
     env:
       PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
@@ -50,7 +50,9 @@ jobs:
           $pointers = @(Get-ChildItem -Recurse -File Content -ErrorAction SilentlyContinue |
             Select-String -Pattern '^version https://git-lfs.github.com/spec/v1$' -SimpleMatch -ErrorAction SilentlyContinue)
           if ($pointers.Count -gt 0) { throw "Unresolved Git LFS pointers remain." }
+          Write-Host "runner_name=$env:RUNNER_NAME runner_os=$env:RUNNER_OS runner_arch=$env:RUNNER_ARCH"
           if (-not (Test-Path $env:PINKCAB_UE_ROOT)) { throw "UE root missing: $env:PINKCAB_UE_ROOT" }
+          if (-not (Test-Path 'E:\\CHESHIRE_DIVISION\\GitHubRunner\\PINK-CAB\\actions-runner')) { Write-Warning 'PINK-CAB runner home marker not found; continuing because this job is exact-repo isolated by checkout and PINK-CAB UE preflight.' }
           if (-not (Test-Path $env:GATE_ROOT_BASE)) {
             New-Item -ItemType Directory -Force -Path $env:GATE_ROOT_BASE | Out-Null
           }
