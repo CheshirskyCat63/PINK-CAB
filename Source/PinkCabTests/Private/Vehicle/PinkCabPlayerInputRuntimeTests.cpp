@@ -399,8 +399,9 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("RMB alone does not move gearbox or request a gear"),
                 Pawn->GetRequestedGear(), 0);
-            Test->TestTrue(TEXT("RMB-only grip keeps mouse steering live"),
-                FMath::Abs(Pawn->GetSteeringCommand() - State->SteeringBeforeRmb) > 0.01f);
+            const float SteeringAfterRmbMouse = Pawn->GetSteeringCommand();
+            Test->TestTrue(TEXT("RMB-only grip keeps mouse steering live in the injected left direction"),
+                SteeringAfterRmbMouse < State->SteeringBeforeRmb - 0.0005f);
             Test->AddInfo(FString::Printf(
                 TEXT("RECOVERY_R1_TRACE phase=gearbox_grip target=%s grip=%d manip=%d steer=%.3f requested=%d"),
                 *Interaction->GetActiveGripTargetId().ToString(),
@@ -485,7 +486,11 @@ public:
                 PC->IsInputKeyDown(EKeys::Q));
             Test->TestTrue(TEXT("E is held for launch dosing"),
                 PC->IsInputKeyDown(EKeys::E));
-            if (State->WheelPulsesApplied == 0)
+            // Prove E-alone before the first wheel pulse is injected. Once the
+            // positive axis pulse is pending, the next pawn tick is allowed to
+            // consume it even though WheelPulsesApplied is incremented one latent
+            // command update later.
+            if (State->WheelPulsesApplied == 0 && !State->bWheelPulsePendingTick)
             {
                 Test->TestTrue(TEXT("fresh E press alone still has zero throttle"),
                     Telemetry.NormalizedThrottle <= 0.01f);

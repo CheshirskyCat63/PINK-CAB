@@ -12,9 +12,9 @@
 | C-04 | TEST_PENDING | Added PlayerController→cockpit→runtime→Chaos→movement drivetrain path. Exact-run evidence still required; ignition fixture is excluded from the claim. |
 | C-05 | BLOCKED_HUMAN | UE InputKey/PlayerController automation is not OS/HID mouse evidence. GitHub gate records this as HUMAN_PENDING. |
 | C-06 | DONE | RED on `35595470850` proved raw X=19/Y=-23 became 0/0. GREEN on `35596197869`: `ProcessedZeroPreservesRawPhysicalDelta` PASS after raw-first fix. |
-| C-07 | TEST_PENDING | Physical PlayerController routing now asserts RequestedGear=1 while EngagedGear remains 0 for a no-clutch first-gear request. |
+| C-07 | DONE | Run `35596639287` reached the PlayerController gearbox path: requested first with no clutch remained `engaged=0`; real Q then engaged first before launch. |
 | C-08 | TEST_PENDING | New drivetrain movement assertion reuses the real RMB/LMB handbrake and gearbox path before launch; existing direct-provider Chaos smoke remains physics-only. |
-| C-09 | GREEN_PENDING | RED on `35596197869`: zero pedal fabricated 131.751 Nm/wheel. Production fix removes the 18% idle-governor floor; exact-head rerun required. |
+| C-09 | DONE | RED on `35596197869`: zero pedal fabricated 131.751 Nm/wheel. GREEN on `35596639287`: `ZeroThrottleNoSyntheticDriveTorque` PASS after removing the hidden 18% floor. |
 | C-10 | RED_PENDING | Added `PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary`: 0.999 coupling must remain on continuous partial-clutch torque; only 1.0 may hand off to Chaos gear. Current 0.995 threshold is expected to fail. |
 | C-11 | TEST_PENDING | Chaos runtime smoke now asserts signed displacement in the initial vehicle-right axis for positive semantic steering; `abs(lateral)` can no longer hide inversion. |
 | C-12 | BLOCKED_HUMAN | Canonical H-gate sign is automated; OS/HID physical MouseY direction remains a human packaged gate. |
