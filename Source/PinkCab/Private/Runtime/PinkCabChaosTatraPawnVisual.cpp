@@ -1,6 +1,8 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
+#include "ChaosVehicleWheel.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -106,6 +108,62 @@ bool APinkCabChaosTatraPawn::AlignInitialPresentationToGround()
     {
         PhysicsMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
         PhysicsMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    }
+    return true;
+}
+
+bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
+{
+    if (!VehicleVisualShell)
+    {
+        return false;
+    }
+
+    UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
+    if (!Movement || Movement->Wheels.Num() != 4)
+    {
+        return false;
+    }
+
+    static const FName WheelIds[4] = {
+        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
+    const FPinkCabVehicleVisualProfile& Profile = VehicleVisualShell->GetProfile();
+
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        UChaosVehicleWheel* ChaosWheel = Movement->Wheels[Index];
+        UStaticMeshComponent* VisualWheel =
+            VehicleVisualShell->GetPresentationPartComponent(WheelIds[Index]);
+        const FPinkCabVehiclePresentationPart* Part =
+            Profile.PresentationParts.FindByPredicate(
+                [Index](const FPinkCabVehiclePresentationPart& Candidate)
+                {
+                    return Candidate.PartId == WheelIds[Index];
+                });
+
+        if (!ChaosWheel || !VisualWheel || !Part || ChaosWheel->Location.ContainsNaN())
+        {
+            return false;
+        }
+
+        const FQuat SteeringRotation(
+            FVector::UpVector,
+            FMath::DegreesToRadians(ChaosWheel->GetSteerAngle()));
+        const FQuat SpinRotation(
+            FVector::ForwardVector,
+            FMath::DegreesToRadians(ChaosWheel->GetRotationAngle()));
+        const FQuat DynamicRotation =
+            SteeringRotation * Part->LocalTransform.GetRotation() * SpinRotation;
+
+        VisualWheel->SetWorldLocation(
+            ChaosWheel->Location,
+            false,
+            nullptr,
+            ETeleportType::TeleportPhysics);
+        VisualWheel->SetRelativeRotation(DynamicRotation);
+        VisualWheel->SetRelativeScale3D(Part->LocalTransform.GetScale3D());
+        VisualWheel->SetVisibility(true, false);
+        VisualWheel->SetHiddenInGame(false, false);
     }
     return true;
 }

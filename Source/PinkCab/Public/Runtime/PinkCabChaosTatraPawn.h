@@ -57,6 +57,7 @@ public:
     UPinkCabVehicleVisualShellComponent* GetVehicleVisualShell() const { return VehicleVisualShell; }
     FName GetVehicleVisualProfileId() const;
     bool ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile);
+    bool SyncWheelPresentationFromChaos();
     const FPinkCabVehicleLoadState& GetVehicleLoadState() const { return VehicleLoadState; }
 
     bool SetFuelMassKg(float MassKg, float LongitudinalCm = 0.0f);

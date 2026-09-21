@@ -272,6 +272,7 @@ void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+    SyncWheelPresentationFromChaos();
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
     {
