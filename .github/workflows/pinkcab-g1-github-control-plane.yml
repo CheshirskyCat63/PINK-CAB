@@ -39,6 +39,50 @@ jobs:
           }
           Write-Host "PINKCAB_EXECUTION_HOST_OK"
 
+      - name: Reap stale PINK-CAB Unreal runner processes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $workspaceMarker = 'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          $stale = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            if ([string]::IsNullOrWhiteSpace($_.CommandLine) -or
+                $_.CommandLine -notlike "*$workspaceMarker*") {
+              return $false
+            }
+            if ($_.Name -in @('UnrealEditor-Cmd.exe', 'UnrealEditor.exe', 'AutomationTool.exe')) {
+              return $true
+            }
+            if ($_.Name -eq 'dotnet.exe' -and
+                ($_.CommandLine -match 'UnrealBuildTool|AutomationTool')) {
+              return $true
+            }
+            if ($_.Name -eq 'cmd.exe' -and
+                ($_.CommandLine -match 'Build\.bat|RunUAT\.bat')) {
+              return $true
+            }
+            return $false
+          })
+          foreach ($proc in $stale) {
+            Write-Host "reaping stale runner process pid=$($proc.ProcessId) name=$($proc.Name)"
+            Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+          }
+          if ($stale.Count -gt 0) {
+            Start-Sleep -Milliseconds 750
+          }
+          $remaining = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_.CommandLine) -and
+            $_.CommandLine -like "*$workspaceMarker*" -and
+            ($_.Name -in @('UnrealEditor-Cmd.exe', 'AutomationTool.exe') -or
+             ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool'))
+          })
+          if ($remaining.Count -gt 0) {
+            $remaining | ForEach-Object {
+              Write-Host "remaining pid=$($_.ProcessId) name=$($_.Name) cmd=$($_.CommandLine)"
+            }
+            throw "Stale PINK-CAB Unreal runner process survived cleanup."
+          }
+          Write-Host "PINKCAB_RUNNER_PROCESS_CLEAN"
+
       - name: Checkout exact GitHub candidate
         uses: actions/checkout@v4
         with:
