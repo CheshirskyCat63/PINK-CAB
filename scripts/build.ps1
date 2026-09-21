@@ -46,7 +46,7 @@ if ($GenerateProjectFiles) {
 
 if ($Package) {
     $ArchiveDir = Join-Path $RepoRoot "Artifacts\Package"
-    & $RunUAT BuildCookRun "-project=$Project" -noP4 -platform=Win64 -clientconfig=Development -build -cook -stage -pak -archive "-archivedirectory=$ArchiveDir"
+    & $RunUAT -WaitForUATMutex BuildCookRun "-project=$Project" -noP4 -platform=Win64 -clientconfig=Development -build -cook -stage -pak -archive "-archivedirectory=$ArchiveDir"
     exit $LASTEXITCODE
 }
 
