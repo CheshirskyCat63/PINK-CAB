@@ -14,6 +14,8 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
+#include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "HAL/PlatformTime.h"
 
 class FPinkCabVehiclePresentationBindingCommand final : public IAutomationLatentCommand
 {
