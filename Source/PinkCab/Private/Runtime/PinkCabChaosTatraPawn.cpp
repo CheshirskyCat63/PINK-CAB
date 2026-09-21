@@ -329,9 +329,36 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     }
 
     int32 WheelCount = 0;
+    int32 ContactCount = 0;
+    int32 ChaosCurrentGear = 0;
+    int32 ChaosTargetGear = 0;
+    float ChaosEngineRpm = 0.0f;
+    float RearLeftDriveTorque = 0.0f;
+    float RearRightDriveTorque = 0.0f;
+    float RearLeftBrakeTorque = 0.0f;
+    float RearRightBrakeTorque = 0.0f;
     if (const UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
     {
         WheelCount = Movement->GetNumWheels();
+        ChaosCurrentGear = Movement->GetCurrentGear();
+        ChaosTargetGear = Movement->GetTargetGear();
+        ChaosEngineRpm = Movement->GetEngineRotationSpeed();
+        for (int32 WheelIndex = 0; WheelIndex < WheelCount; ++WheelIndex)
+        {
+            ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
+        }
+        if (WheelCount > 2)
+        {
+            const FWheelStatus RearLeft = Movement->GetWheelState(2);
+            RearLeftDriveTorque = RearLeft.DriveTorque;
+            RearLeftBrakeTorque = RearLeft.BrakeTorque;
+        }
+        if (WheelCount > 3)
+        {
+            const FWheelStatus RearRight = Movement->GetWheelState(3);
+            RearRightDriveTorque = RearRight.DriveTorque;
+            RearRightBrakeTorque = RearRight.BrakeTorque;
+        }
     }
 
     const bool bIgnitionRunning =
@@ -342,7 +369,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     UE_LOG(
         LogTemp,
         Display,
-        TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d camera=%d wheels=%d"),
+        TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d camera=%d wheels=%d contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
         static_cast<int32>(IsSystemMenuOpen()),
         static_cast<int32>(bIgnitionRunning),
         GetRequestedGear(),
@@ -360,7 +387,15 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
         static_cast<int32>(bGrip),
         static_cast<int32>(bManipulation),
         static_cast<int32>(bDriverCameraActive),
-        WheelCount);
+        WheelCount,
+        ContactCount,
+        ChaosCurrentGear,
+        ChaosTargetGear,
+        ChaosEngineRpm,
+        RearLeftDriveTorque,
+        RearRightDriveTorque,
+        RearLeftBrakeTorque,
+        RearRightBrakeTorque);
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const
