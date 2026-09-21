@@ -19,6 +19,8 @@ public static class PinkCabNativeInput {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
     [DllImport("user32.dll")] static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
     const uint KEYUP=0x0002, MOVE=0x0001, LEFTDOWN=0x0002, LEFTUP=0x0004, RIGHTDOWN=0x0008, RIGHTUP=0x0010, WHEEL=0x0800;
@@ -81,6 +83,26 @@ function Wait-State([scriptblock]$Predicate,[int]$TimeoutMs,[string]$Description
     $last=Get-State
     throw "Timed out: $Description. Last=$($last.raw)"
 }
+function Focus-GameWindow([IntPtr]$Handle) {
+    for($i=0;$i -lt 12;$i++) {
+        [PinkCabNativeInput]::ShowWindow($Handle,9) | Out-Null
+        [PinkCabNativeInput]::SetForegroundWindow($Handle) | Out-Null
+        Start-Sleep -Milliseconds 180
+        if([PinkCabNativeInput]::GetForegroundWindow() -eq $Handle){ return }
+        $rect=New-Object PinkCabNativeInput+RECT
+        if([PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) {
+            $x=$rect.Right-80
+            $y=$rect.Bottom-80
+            [PinkCabNativeInput]::SetCursorPos($x,$y) | Out-Null
+            [PinkCabNativeInput]::LeftDown()
+            Start-Sleep -Milliseconds 40
+            [PinkCabNativeInput]::LeftUp()
+        }
+        Start-Sleep -Milliseconds 180
+    }
+    throw "Packaged game could not acquire foreground focus"
+}
+
 function Capture-Window([IntPtr]$Handle,[string]$Path) {
     $rect=New-Object PinkCabNativeInput+RECT
     if (-not [PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) { throw "GetWindowRect failed" }
@@ -111,6 +133,27 @@ function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
     Move-GameAxis 'x' $X $SignX
     Move-GameAxis 'y' $Y $SignY
 }
+function Center-Steering {
+    $probeBefore=Get-State
+    [PinkCabNativeInput]::Move(20,0)
+    Start-Sleep -Milliseconds 180
+    $probeAfter=Get-State
+    $sign=[Math]::Sign($probeAfter.steering-$probeBefore.steering)
+    if($sign -eq 0){ throw "MouseX did not affect steering during center calibration" }
+    for($i=0;$i -lt 20;$i++) {
+        $s=Get-State
+        if([Math]::Abs($s.steering) -le 0.03){ return }
+        $delta=[int][Math]::Round((-1.0*$s.steering*85.0)/$sign)
+        if($delta -gt 45){$delta=45}
+        if($delta -lt -45){$delta=-45}
+        if($delta -eq 0){ $delta=if($s.steering -gt 0){-1*$sign}else{$sign} }
+        [PinkCabNativeInput]::Move($delta,0)
+        Start-Sleep -Milliseconds 160
+    }
+    $s=Get-State
+    throw "Could not center steering before launch. Last=$($s.raw)"
+}
+
 function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120) {
     $before=Get-State
     [PinkCabNativeInput]::Wheel($PrimaryWheelDelta)
@@ -148,11 +191,11 @@ try {
     } while(($proc.MainWindowHandle -eq 0 -or $null -eq (Get-State)) -and [DateTime]::UtcNow -lt $deadline)
     if($proc.MainWindowHandle -eq 0){ throw "Packaged game window not found" }
 
-    [PinkCabNativeInput]::ShowWindow($proc.MainWindowHandle,9) | Out-Null
-    [PinkCabNativeInput]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
+    Focus-GameWindow $proc.MainWindowHandle
     Start-Sleep -Milliseconds 500
 
     Wait-State { param($s) $s.menu -eq 1 -and $s.camera -eq 1 -and $s.wheels -eq 4 } 8000 "startup menu/camera/wheels" | Out-Null
+    Focus-GameWindow $proc.MainWindowHandle
     Tap-Key $VK_ESC
     Wait-State { param($s) $s.menu -eq 0 } 5000 "ESC closes startup menu" | Out-Null
 
@@ -210,6 +253,9 @@ try {
     Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
     Wait-State { param($s) $s.engaged -eq 1 } 4000 "Q allows first engagement" | Out-Null
+
+    Center-Steering
+    Wait-State { param($s) [Math]::Abs($s.steering) -le 0.05 } 2500 "steering centered before forward launch" | Out-Null
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
@@ -286,6 +332,8 @@ try {
         "rmb_only_and_rmb_lmb_route=PASS",
         "analog_handbrake_release=PASS",
         "hgate_first=PASS",
+        "prelaunch_steering_center=PASS",
+        "foreground_focus=PASS",
         "mandatory_e_wheel_launch=PASS",
         "forward_movement=PASS",
         "mouse_right_steering=PASS",
