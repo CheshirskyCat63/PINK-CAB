@@ -1,0 +1,312 @@
+name: PINK CAB G1 GitHub Control Plane
+
+on:
+  push:
+    branches:
+      - fix/CD-848-recovery-r1-input-contract
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: pinkcab-g1-github-control-plane
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Exact-head build test package evidence
+    runs-on: [self-hosted, Windows, X64, pinkcab, ue58, cheshire, gui]
+    timeout-minutes: 300
+    env:
+      PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      GATE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      EVIDENCE_DIR: Saved\GitHubGate
+
+    steps:
+      - name: Checkout exact GitHub candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Exact-head preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          git lfs pull
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne "$env:GITHUB_SHA") {
+            throw "Exact-head violation: checkout=$head event=$env:GITHUB_SHA"
+          }
+          $status = @(git status --porcelain)
+          if ($status.Count -gt 0) {
+            $status | ForEach-Object { Write-Host $_ }
+            throw "Candidate checkout is dirty before verification."
+          }
+          $pointers = @(Get-ChildItem -Recurse -File Content -ErrorAction SilentlyContinue |
+            Select-String -Pattern '^version https://git-lfs.github.com/spec/v1$' -SimpleMatch -ErrorAction SilentlyContinue)
+          if ($pointers.Count -gt 0) { throw "Unresolved Git LFS pointers remain." }
+          if (-not (Test-Path $env:PINKCAB_UE_ROOT)) { throw "UE root missing: $env:PINKCAB_UE_ROOT" }
+          if (-not (Test-Path $env:GATE_ROOT_BASE)) {
+            New-Item -ItemType Directory -Force -Path $env:GATE_ROOT_BASE | Out-Null
+          }
+          New-Item -ItemType Directory -Force -Path $env:EVIDENCE_DIR | Out-Null
+          Set-Content "$env:EVIDENCE_DIR\CANDIDATE_SHA.txt" $head -NoNewline
+          @(
+            "control_plane=github-actions",
+            "source_of_execution=github_sha",
+            "remote_desktop_commander=NOT_USED",
+            "runner=$env:RUNNER_NAME",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_attempt=$env:GITHUB_RUN_ATTEMPT"
+          ) | Set-Content "$env:EVIDENCE_DIR\CONTROL_PLANE.txt"
+          @(
+            "automation_input_scope=UE_PlayerController_and_Automation",
+            "os_hid_mouse=NOT_VERIFIED_BY_AUTOMATION",
+            "human_acceptance=HUMAN_PENDING",
+            "physics_smoke_note=existing_Chaos_smokes_may_use_direct_dynamics_provider",
+            "rule=technical_pass_never_implies_human_pass"
+          ) | Set-Content "$env:EVIDENCE_DIR\AUTOMATION_SCOPE.txt"
+          Write-Host "EXACT_HEAD=$head"
+
+      - name: Strict code-health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\build.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Input and recovery automated matrix
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
+          $filters = @(
+            'PinkCab.Vehicle.Input',
+            'PinkCab.Vehicle.ControlRuntime.Runtime',
+            'PinkCab.Cockpit.Input.Compliance',
+            'PinkCab.Vehicle.PlayerInput',
+            'PinkCab.UI.SystemMenu',
+            'PinkCab.G1.HInp',
+            'PinkCab.UI.SystemMenu.CanonicalControlHints',
+            'PinkCab.Cockpit.Input.Recovery',
+            'PinkCab.Vehicle.PlayerInput.PhysicalControlRouting',
+            'PinkCab.Vehicle.ControlRuntime.Pedals.WheelPriority',
+            'PinkCab.Vehicle.ControlRuntime.Pedals.TargetsAndCoexistence',
+            'PinkCab.Vehicle.ControlRuntime.Launch.OneResetPerAttempt',
+            'PinkCab.Vehicle.AssetContract.Tatra613V12',
+            'PinkCab.Vehicle.Visual.PresentationBindingRuntime',
+            'PinkCab.UI.SystemMenu.StartupHardPause',
+            'PinkCab.Vehicle.ChaosBaseline.Runtime.DriveSmoke',
+            'PinkCab.Vehicle.ChaosBaseline.Runtime.ReverseDriveSmoke'
+          )
+          $summary = New-Object System.Collections.Generic.List[string]
+          foreach ($filter in $filters) {
+            $safe = $filter.Replace('.','_').Replace('/','_')
+            $log = Join-Path $ev ("AUTO_" + $safe + ".log")
+            Remove-Item $log -Force -ErrorAction SilentlyContinue
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $q = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $c = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+            if ($q.Count -eq 0 -or $f.Count -gt 0 -or $c.Count -gt 0) {
+              throw "Automated matrix failed: $filter queue=$($q.Count) fail=$($f.Count) critical=$($c.Count)"
+            }
+            $line = "PASS $filter | $($q[-1].Line)"
+            $summary.Add($line)
+            Write-Host $line
+          }
+          $summary | Set-Content (Join-Path $ev "AUTOMATED_MATRIX.txt")
+          "count=$($summary.Count)" | Set-Content (Join-Path $ev "AUTOMATED_MATRIX_COUNT.txt")
+
+      - name: Full PinkCab automation regression
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $log = Join-Path $env:GITHUB_WORKSPACE "$env:EVIDENCE_DIR\FULL_PINKCAB_AUTOMATION.log"
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $q = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $f = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          $c = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+          if ($q.Count -eq 0 -or $f.Count -gt 0 -or $c.Count -gt 0) {
+            throw "Full PinkCab regression failed: queue=$($q.Count) fail=$($f.Count) critical=$($c.Count)"
+          }
+          $q[-1].Line | Set-Content "$env:EVIDENCE_DIR\FULL_AUTOMATION_SUMMARY.txt"
+          Write-Host "FULL_PINKCAB_PASS $($q[-1].Line)"
+
+      - name: Canonical Win64 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\scripts\build.ps1 -Package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $outer = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab.exe"
+          $inner = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          if (-not (Test-Path $outer)) { throw "Outer packaged exe missing: $outer" }
+          if (-not (Test-Path $inner)) { throw "Inner packaged exe missing: $inner" }
+          Write-Host "PACKAGE_PASS"
+
+      - name: Packaged smoke and critical scan
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $inner = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log = Join-Path $env:GITHUB_WORKSPACE "$env:EVIDENCE_DIR\PACKAGED_SMOKE.log"
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $proc = Start-Process -FilePath $inner -ArgumentList @(
+            "-log","-NoSound","-windowed","-ResX=1280","-ResY=720","-abslog=$log"
+          ) -WorkingDirectory (Split-Path $inner) -PassThru
+          Start-Sleep -Seconds 12
+          $alive = -not $proc.HasExited
+          if ($alive) {
+            Stop-Process -Id $proc.Id -Force
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not (Test-Path $log)) { throw "Packaged smoke log missing." }
+          $map = @(Select-String -Path $log -Pattern 'UEngine::LoadMap Load map complete /Game/Dev/Maps/L_PinkCab_ChaosWeave')
+          $critical = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Log[A-Za-z0-9_]+: Error:')
+          if (-not $alive -or $map.Count -eq 0 -or $critical.Count -gt 0) {
+            throw "Packaged smoke failed: alive=$alive map=$($map.Count) critical=$($critical.Count)"
+          }
+          "alive=$alive; map=$($map.Count); critical=0" | Set-Content "$env:EVIDENCE_DIR\PACKAGED_SMOKE_SUMMARY.txt"
+          Write-Host "PACKAGED_SMOKE_PASS"
+
+      - name: Immutable runner delivery and HUMAN_PENDING shortcut
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha = (git rev-parse HEAD).Trim()
+          $short = $sha.Substring(0,7)
+          $gateName = "G1_GITHUB_$short" + "_RUN" + $env:GITHUB_RUN_ID + "_A" + $env:GITHUB_RUN_ATTEMPT
+          $gateRoot = Join-Path $env:GATE_ROOT_BASE $gateName
+          if (Test-Path $gateRoot) { throw "Immutable gate path already exists: $gateRoot" }
+
+          New-Item -ItemType Directory -Force -Path $gateRoot | Out-Null
+          Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\*") -Destination $gateRoot -Recurse -Force
+          $evidence = Join-Path $gateRoot "_evidence"
+          New-Item -ItemType Directory -Force -Path $evidence | Out-Null
+          Copy-Item -Path "$env:EVIDENCE_DIR\*" -Destination $evidence -Recurse -Force
+          Copy-Item -Path "Saved\Reports\code-health.json" -Destination $evidence -Force
+
+          $outer = Join-Path $gateRoot "Windows\PinkCab.exe"
+          $inner = Join-Path $gateRoot "Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          if (-not (Test-Path $outer)) { throw "Delivered outer exe missing." }
+          if (-not (Test-Path $inner)) { throw "Delivered inner exe missing." }
+          $outerHash = (Get-FileHash -Algorithm SHA256 $outer).Hash
+          $innerHash = (Get-FileHash -Algorithm SHA256 $inner).Hash
+          $pakFiles = @(Get-ChildItem -Path (Join-Path $gateRoot "Windows\PinkCab\Content\Paks") -File -ErrorAction Stop |
+            Where-Object { $_.Extension -in '.pak','.utoc','.ucas' })
+          if ($pakFiles.Count -lt 3) { throw "Expected pak/utoc/ucas provenance files." }
+          $contentHashes = @()
+          foreach ($file in $pakFiles) {
+            $contentHashes += "$($file.Name)_sha256=$((Get-FileHash -Algorithm SHA256 $file.FullName).Hash)"
+          }
+
+          @(
+            "gate=G1_HINP",
+            "control_plane=github-actions",
+            "technical_auto_status=PASS",
+            "human_status=HUMAN_PENDING",
+            "os_hid_mouse_status=HUMAN_PENDING",
+            "source_sha=$sha",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "workflow_run_attempt=$env:GITHUB_RUN_ATTEMPT",
+            "runner_name=$env:RUNNER_NAME",
+            "build_root=$gateRoot",
+            "exe=$outer",
+            "exe_sha256=$outerHash",
+            "inner_exe_sha256=$innerHash",
+            "map=/Game/Dev/Maps/L_PinkCab_ChaosWeave"
+          ) + $contentHashes | Set-Content (Join-Path $gateRoot "GATE_MANIFEST.txt")
+          Set-Content (Join-Path $gateRoot "BUILD_SHA.txt") $sha -NoNewline
+
+          $desktop = [Environment]::GetFolderPath("Desktop")
+          if (-not [string]::IsNullOrWhiteSpace($desktop) -and (Test-Path $desktop)) {
+            Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File -ErrorAction SilentlyContinue | Remove-Item -Force
+            $latest = Join-Path $desktop "PINKCAB Latest.lnk"
+            $ws = New-Object -ComObject WScript.Shell
+            $s = $ws.CreateShortcut($latest)
+            $s.TargetPath = $outer
+            $s.WorkingDirectory = Join-Path $gateRoot "Windows"
+            $s.Description = "PINK CAB $short - GitHub AUTO PASS / HUMAN PENDING"
+            $s.Save()
+            $remaining = @(Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File)
+            if ($remaining.Count -ne 1 -or $remaining[0].Name -ne 'PINKCAB Latest.lnk') {
+              throw "Desktop shortcut invariant failed."
+            }
+            "desktop_shortcut=$latest" | Set-Content "$env:EVIDENCE_DIR\RUNNER_DELIVERY.txt"
+          } else {
+            "desktop_shortcut=UNAVAILABLE_ON_RUNNER_SESSION" | Set-Content "$env:EVIDENCE_DIR\RUNNER_DELIVERY.txt"
+          }
+          "gate_root=$gateRoot" | Add-Content "$env:EVIDENCE_DIR\RUNNER_DELIVERY.txt"
+          "exe_sha256=$outerHash" | Add-Content "$env:EVIDENCE_DIR\RUNNER_DELIVERY.txt"
+          Write-Host "AUTO_TECHNICAL_PASS"
+          Write-Host "HUMAN_PENDING"
+          Write-Host "GATE_ROOT=$gateRoot"
+
+      - name: Upload exact-head evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-G1-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            Saved/GitHubGate
+            Saved/Reports/code-health.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload packaged human-gate build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-G1-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Artifacts/Package/Windows
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Publish exact-head GitHub gate status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $description = if ($state -eq 'success') {
+            "AUTO technical PASS; HUMAN_PENDING"
+          } else {
+            "AUTO technical gate failed; HUMAN not evaluated"
+          }
+          $body = @{
+            state = $state
+            context = 'cheshire/pinkcab-g1-github'
+            description = $description
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          } -ContentType 'application/json' -Body $body | Out-Null
+          Write-Host "GITHUB_GATE_STATUS=$state"
+          Write-Host "HUMAN_STATUS=HUMAN_PENDING"
