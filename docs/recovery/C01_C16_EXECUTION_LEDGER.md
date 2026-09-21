@@ -41,3 +41,10 @@ This ledger commit is intentionally **tests first** for C-06/C-09. Production be
 - Ruling: packaged Windows SendInput evidence is an OS/window input-path proof, not physical HID proof. It may close packaged routing evidence but cannot close C-05/C-12 or HUMAN acceptance.
 - Added explicit packaged OS-input route, rendered screenshot evidence, 50 interaction-session cleanup cycles, audio-enabled launch, and focused `HealthyThirtyMinutes` simulation evidence to the canonical exact-head workflow.
 - C-16 remains BLOCKED_TOOLING until repository ruleset/required-check administration is actually writable and verified.
+
+
+### 2026-09-21 packaged L3 diagnostic continuation
+
+- Exact packaged Windows input at `a0854d3` proved menu, ignition, handbrake manipulation, Q clutch, H-gate first, E+wheel 25% throttle and engaged gear 1 through the real packaged window, but the vehicle remained effectively stationary.
+- The next pass is diagnostic only: trace world pause/delta, rigid-body awake state, actor velocity, wheel contacts, Chaos current/target gear, RPM and rear drive/brake torque before changing gameplay physics.
+- Compile-only telemetry qualifier defect from `c8749b1` was corrected at `e199787`; no control/physics behavior was changed by that correction.
