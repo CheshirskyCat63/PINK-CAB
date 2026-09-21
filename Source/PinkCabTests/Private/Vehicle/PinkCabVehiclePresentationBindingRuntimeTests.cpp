@@ -285,19 +285,22 @@ public:
             FrontBaseRotation =
                 Shell->GetPresentationPartComponent(TEXT("WheelFL"))->GetRelativeRotation();
 
-            // This test owns the synthetic steering stimulus. The normal pawn tick
-            // reads the real PlayerController every frame, so leaving it enabled
-            // would immediately overwrite our direct test input with zero before
-            // Chaos can publish a wheel pose. Vehicle movement continues ticking
-            // independently; presentation sync is invoked explicitly below.
+            // This is a presentation/Chaos-pose test, not a duplicate of the
+            // already-covered player-input/provider routing tests. The startup
+            // cockpit intentionally keeps Chaos mechanical simulation disabled
+            // until the engine is running, so explicitly enable the physics
+            // producer here and drive its canonical steering input directly.
+            // Disable Pawn::Tick so the real PlayerController cannot overwrite
+            // the deterministic test stimulus before the next Chaos update.
             Pawn->SetActorTickEnabled(false);
+            Movement->EnableMechanicalSim(true);
+            Movement->SetSteeringInput(1.0f);
             StartSeconds = FPlatformTime::Seconds();
             Phase = 1;
             return false;
         }
 
-        FPinkCabVehicleInputFrame Frame;
-        Pawn->ApplyVehicleInputFrame(Frame, 180.0f, 1.0f / 60.0f);
+        Movement->SetSteeringInput(1.0f);
         if ((FPlatformTime::Seconds() - StartSeconds) < 0.35) return false;
 
         Test->TestTrue(
@@ -314,6 +317,7 @@ public:
                 FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
         }
 
+        Movement->SetSteeringInput(0.0f);
         Pawn->SetActorTickEnabled(true);
         return true;
     }
