@@ -3,6 +3,9 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -53,6 +56,38 @@ bool FPinkCabChaosProviderNullGuardTest::RunTest(const FString& Parameters)
     FPinkCabVehicleTelemetry Telemetry;
     TestFalse(TEXT("null provider rejects controls"), Provider.ApplyControls(FPinkCabVehicleControlState()));
     TestFalse(TEXT("null provider rejects telemetry"), Provider.ReadTelemetry(Telemetry));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosBridgeZeroThrottleNoSyntheticTorqueTest,
+    "PinkCab.Vehicle.ChaosBaseline.Provider.ZeroThrottleNoSyntheticDriveTorque",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosBridgeZeroThrottleNoSyntheticTorqueTest::RunTest(const FString& Parameters)
+{
+    UChaosWheeledVehicleMovementComponent* Movement =
+        NewObject<UChaosWheeledVehicleMovementComponent>();
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    Profile.ApplyToMovement(*Movement);
+
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    FPinkCabCockpitState Cockpit;
+    Cockpit.StartEngine();
+
+    FPinkCabVehicleControlState Controls;
+    Controls.SetThrottle(0.0f);
+    Controls.SetDriveline(1, 1, 0.50f);
+    Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+    TestTrue(TEXT("bridge accepts configured zero-throttle partial-clutch state"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
+    TestEqual(TEXT("zero throttle must not fabricate rear drive torque"),
+        Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+    TestEqual(TEXT("provider still receives the real zero pedal command"),
+        Provider.GetLastControls().Throttle, 0.0f);
     return true;
 }
 

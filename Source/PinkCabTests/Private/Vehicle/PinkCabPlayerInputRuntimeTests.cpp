@@ -427,6 +427,8 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("continued RMB plus LMB forward throw requests first"),
                 Pawn->GetRequestedGear(), 1);
+            Test->TestEqual(TEXT("no-clutch first request keeps actual gearbox in neutral"),
+                Pawn->GetEngagedGear(), 0);
             Test->AddInfo(FString::Printf(
                 TEXT("RECOVERY_R1_TRACE phase=gearbox_manip target=%s grip=%d manip=%d steer=%.3f requested=%d engaged=%d"),
                 *Interaction->GetActiveGripTargetId().ToString(),

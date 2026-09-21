@@ -45,11 +45,11 @@ bool FPinkCabPlayerInputAdapterSemanticSampleTest::RunTest(const FString& Parame
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabPlayerInputAdapterStaleRawSuppressionTest,
-    "PinkCab.Interaction.PlayerInput.StaleRawSuppression",
+    FPinkCabPlayerInputAdapterProcessedZeroPreservesRawDeltaTest,
+    "PinkCab.Interaction.PlayerInput.ProcessedZeroPreservesRawPhysicalDelta",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabPlayerInputAdapterStaleRawSuppressionTest::RunTest(const FString& Parameters)
+bool FPinkCabPlayerInputAdapterProcessedZeroPreservesRawDeltaTest::RunTest(const FString& Parameters)
 {
     const FPinkCabSemanticInputRouter Router = FPinkCabSemanticInputRouter::CreateDefaults();
     const FPinkCabPlayerInputSample Sample = FPinkCabPlayerInputAdapter::ComposeSample(
@@ -62,8 +62,11 @@ bool FPinkCabPlayerInputAdapterStaleRawSuppressionTest::RunTest(const FString& P
         -23.0f,
         0.0f);
 
-    TestEqual(TEXT("processed-zero suppresses stale raw X"), Sample.DeviceX, 0.0f);
-    TestEqual(TEXT("processed-zero suppresses stale raw Y"), Sample.DeviceY, 0.0f);
+    // C-06 regression: processed look input is not a freshness bit for the
+    // physical device stream. A valid raw mouse delta must not disappear
+    // merely because the processed axis for the same frame is zero.
+    TestEqual(TEXT("valid raw X survives a processed-zero frame"), Sample.DeviceX, 19.0f);
+    TestEqual(TEXT("valid raw Y survives a processed-zero frame"), Sample.DeviceY, -23.0f);
     TestEqual(TEXT("zero wheel stays zero"), Sample.WheelSteps, 0);
     return true;
 }

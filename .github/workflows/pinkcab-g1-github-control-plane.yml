@@ -95,6 +95,8 @@ jobs:
           $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
           $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
           $filters = @(
+            'PinkCab.Interaction.PlayerInput',
+            'PinkCab.Vehicle.ChaosBaseline.Provider',
             'PinkCab.Vehicle.Input',
             'PinkCab.Vehicle.ControlRuntime.Runtime',
             'PinkCab.Cockpit.Input.Compliance',
