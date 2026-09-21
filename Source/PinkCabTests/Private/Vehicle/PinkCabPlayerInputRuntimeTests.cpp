@@ -285,6 +285,8 @@ struct FPinkCabPhysicalPlayerInputState
     double PhaseStartSeconds = 0.0;
     double DriveStartSeconds = 0.0;
     bool bInitialInputModeSettled = false;
+    bool bInputWarmupPressed = false;
+    double InputWarmupStartSeconds = 0.0;
     int32 Phase = 0;
 };
 
@@ -328,9 +330,31 @@ public:
                     Pawn->IsSystemMenuOpen());
                 Test->TestTrue(TEXT("ignition primed for physical input routing"),
                     Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+                State->InputWarmupStartSeconds = FPlatformTime::Seconds();
                 State->bInitialInputModeSettled = true;
                 return false;
             }
+            // Standalone AutomationOpenMap can expose a controller before its
+            // input state retains injected keys. Probe with an unbound key so
+            // this test does not depend on another test warming the viewport.
+            if (!State->bInputWarmupPressed)
+            {
+                InjectKey(*PC, EKeys::F12, IE_Pressed);
+                State->bInputWarmupPressed = true;
+                return false;
+            }
+            if (!PC->IsInputKeyDown(EKeys::F12))
+            {
+                InjectKey(*PC, EKeys::F12, IE_Released, 0.0f);
+                State->bInputWarmupPressed = false;
+                if ((FPlatformTime::Seconds() - State->InputWarmupStartSeconds) > 2.0)
+                {
+                    Test->AddError(TEXT("PlayerController input stack never retained the neutral warmup key"));
+                    return true;
+                }
+                return false;
+            }
+            InjectKey(*PC, EKeys::F12, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::Four, IE_Pressed);
             State->Phase = 1;
             return false;
