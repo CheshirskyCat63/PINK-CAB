@@ -28,6 +28,11 @@ public static class PinkCabNativeInput {
     public static void KeyUp(byte vk) { keybd_event(vk,0,KEYUP,UIntPtr.Zero); }
     public static void Move(int dx,int dy) { mouse_event(MOVE,dx,dy,0,UIntPtr.Zero); }
     public static void Wheel(int delta) { mouse_event(WHEEL,0,0,unchecked((uint)delta),UIntPtr.Zero); }
+    public static void WheelWindow(IntPtr hWnd, int delta) {
+        const uint WM_MOUSEWHEEL = 0x020A;
+        long packed = ((long)(ushort)unchecked((short)delta)) << 16;
+        PostMessage(hWnd, WM_MOUSEWHEEL, (IntPtr)packed, IntPtr.Zero);
+    }
     public static void LeftDown() { mouse_event(LEFTDOWN,0,0,0,UIntPtr.Zero); }
     public static void LeftUp() { mouse_event(LEFTUP,0,0,0,UIntPtr.Zero); }
     public static void RightDown() { mouse_event(RIGHTDOWN,0,0,0,UIntPtr.Zero); }
@@ -158,23 +163,30 @@ function Center-Steering {
     throw "Could not center steering before launch. Last=$($s.raw)"
 }
 
+$script:GameHwnd = [IntPtr]::Zero
+
+function Send-Wheel([int]$Delta) {
+    if($script:GameHwnd -eq [IntPtr]::Zero){ throw "Packaged game HWND is not initialized for wheel input" }
+    [PinkCabNativeInput]::WheelWindow($script:GameHwnd,$Delta)
+}
+
 function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120) {
     $before=Get-State
-    [PinkCabNativeInput]::Wheel($PrimaryWheelDelta)
+    Send-Wheel $PrimaryWheelDelta
     Start-Sleep -Milliseconds 180
     $after=Get-State
     $beforeVal=[double]$before.$Field; $afterVal=[double]$after.$Field
     $wheel=$PrimaryWheelDelta
     if($afterVal -le $beforeVal + 0.001) {
         $wheel=-$PrimaryWheelDelta
-        [PinkCabNativeInput]::Wheel($wheel)
+        Send-Wheel $wheel
         Start-Sleep -Milliseconds 180
     }
     for($i=0;$i -lt 24;$i++) {
         $v=[double](Get-State).$Field
         if($v -ge $Min -and $v -le $Max){ return }
         if($v -gt $Max) { throw "$Field overshot target: $v" }
-        [PinkCabNativeInput]::Wheel($wheel)
+        Send-Wheel $wheel
         Start-Sleep -Milliseconds 150
     }
     throw "Could not dose $Field"
@@ -358,7 +370,8 @@ try {
 
     $final=Get-State
     @(
-        "scope=WINDOWS_SYNTHETIC_SENDINPUT_NOT_PHYSICAL_HID",
+        "scope=WINDOWS_SYNTHETIC_KEY_MOUSE_PLUS_WM_MOUSEWHEEL_NOT_PHYSICAL_HID",
+        "wheel_injection=WM_MOUSEWHEEL_TO_ACTIVE_PACKAGED_WINDOW",
         "startup_menu=PASS",
         "driver_camera=PASS",
         "wheels=4",
