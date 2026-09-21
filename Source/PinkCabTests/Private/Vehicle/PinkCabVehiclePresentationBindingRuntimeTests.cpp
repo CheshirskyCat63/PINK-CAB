@@ -167,6 +167,95 @@ bool FPinkCabVehiclePresentationBindingRuntimeTest::RunTest(const FString& Param
 }
 
 
+
+namespace PinkCabWheelPresentationTests
+{
+APinkCabChaosTatraPawn* FindPawn(UWorld& World)
+{
+    for (TActorIterator<APinkCabChaosTatraPawn> It(&World); It; ++It)
+    {
+        return *It;
+    }
+    return nullptr;
+}
+
+bool ValidateStaticWheels(
+    FAutomationTestBase& Test,
+    UPinkCabVehicleVisualShellComponent& Shell)
+{
+    static const FName WheelIds[] = {
+        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
+    for (const FName WheelId : WheelIds)
+    {
+        UStaticMeshComponent* VisualWheel =
+            Shell.GetPresentationPartComponent(WheelId);
+        Test.TestNotNull(
+            *FString::Printf(TEXT("%s visual wheel exists"), *WheelId.ToString()),
+            VisualWheel);
+        if (!VisualWheel || !VisualWheel->GetStaticMesh()) return false;
+        Test.TestTrue(
+            *FString::Printf(TEXT("%s visual wheel is rendered"), *WheelId.ToString()),
+            VisualWheel->IsVisible() && !VisualWheel->bHiddenInGame);
+
+        const FVector Extent =
+            VisualWheel->GetStaticMesh()->GetBounds().BoxExtent
+            * VisualWheel->GetRelativeScale3D().GetAbs();
+        TArray<float> HalfDimensions = {
+            FMath::Abs(Extent.X), FMath::Abs(Extent.Y), FMath::Abs(Extent.Z)};
+        HalfDimensions.Sort();
+        Test.AddInfo(FString::Printf(
+            TEXT("WHEEL_VISUAL_BOUNDS id=%s half=(%.2f,%.2f,%.2f)"),
+            *WheelId.ToString(),
+            HalfDimensions[0], HalfDimensions[1], HalfDimensions[2]));
+        Test.TestTrue(
+            *FString::Printf(TEXT("%s visual tyre width matches 205mm source"), *WheelId.ToString()),
+            FMath::IsNearlyEqual(HalfDimensions[0], 10.25f, 2.5f));
+        Test.TestTrue(
+            *FString::Printf(TEXT("%s visual tyre radius matches 205/70R14 source"), *WheelId.ToString()),
+            FMath::IsNearlyEqual(HalfDimensions[2], 32.13f, 3.0f));
+    }
+    return true;
+}
+
+void ValidateDynamicFrontWheel(
+    FAutomationTestBase& Test,
+    UPinkCabVehicleVisualShellComponent& Shell,
+    UChaosWheeledVehicleMovementComponent& Movement,
+    const FRotator& FrontBaseRotation)
+{
+    UStaticMeshComponent* FrontVisual =
+        Shell.GetPresentationPartComponent(TEXT("WheelFL"));
+    const UChaosVehicleWheel* FrontChaos =
+        Movement.Wheels.IsValidIndex(0) ? Movement.Wheels[0] : nullptr;
+    Test.TestNotNull(TEXT("front Chaos wheel instance exists"), FrontChaos);
+    if (!FrontVisual || !FrontChaos) return;
+
+    const float FrontSteer = FrontChaos->GetSteerAngle();
+    Test.AddInfo(FString::Printf(
+        TEXT("WHEEL_CHAOS_POSE frontSteer=%.3f frontSpin=%.3f frontSusp=%.3f"),
+        FrontSteer,
+        FrontChaos->GetRotationAngle(),
+        FrontChaos->GetSuspensionOffset()));
+    Test.TestTrue(TEXT("Chaos front wheel receives a real steering pose"),
+        FMath::Abs(FrontSteer) > 0.25f);
+    Test.TestFalse(TEXT("visible front wheel follows Chaos steering"),
+        FrontVisual->GetRelativeRotation().Equals(FrontBaseRotation, 0.05f));
+
+    const FPinkCabVehiclePresentationPart* FrontPart =
+        Shell.GetProfile().PresentationParts.FindByPredicate(
+            [](const FPinkCabVehiclePresentationPart& Part)
+            {
+                return Part.PartId == FName(TEXT("WheelFL"));
+            });
+    if (FrontPart && FMath::Abs(FrontChaos->GetSuspensionOffset()) > 0.10f)
+    {
+        Test.TestFalse(TEXT("visible front wheel follows Chaos suspension offset"),
+            FrontVisual->GetRelativeLocation().Equals(
+                FrontPart->LocalTransform.GetLocation(), 0.05f));
+    }
+}
+}
+
 class FPinkCabWheelPresentationChaosSyncCommand final : public IAutomationLatentCommand
 {
 public:
@@ -177,61 +266,22 @@ public:
     {
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World) return false;
-
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
-        {
-            Pawn = *It;
-            break;
-        }
+        APinkCabChaosTatraPawn* Pawn = PinkCabWheelPresentationTests::FindPawn(*World);
         if (!Pawn) return false;
 
         UPinkCabVehicleVisualShellComponent* Shell = Pawn->GetVehicleVisualShell();
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
         if (!Shell || !Movement || Movement->Wheels.Num() != 4) return false;
 
-        static const FName WheelIds[] = {
-            TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
-
         if (Phase == 0)
         {
             Pawn->SetSystemMenuOpen(false);
-            const FPinkCabVehicleVisualProfile& Profile = Shell->GetProfile();
-            for (int32 Index = 0; Index < 4; ++Index)
+            if (!PinkCabWheelPresentationTests::ValidateStaticWheels(*Test, *Shell))
             {
-                UStaticMeshComponent* VisualWheel =
-                    Shell->GetPresentationPartComponent(WheelIds[Index]);
-                Test->TestNotNull(
-                    *FString::Printf(TEXT("%s visual wheel exists"), *WheelIds[Index].ToString()),
-                    VisualWheel);
-                if (!VisualWheel || !VisualWheel->GetStaticMesh()) return true;
-                Test->TestTrue(
-                    *FString::Printf(TEXT("%s visual wheel is rendered"), *WheelIds[Index].ToString()),
-                    VisualWheel->IsVisible() && !VisualWheel->bHiddenInGame);
-
-                const FVector Extent =
-                    VisualWheel->GetStaticMesh()->GetBounds().BoxExtent
-                    * VisualWheel->GetRelativeScale3D().GetAbs();
-                TArray<float> HalfDimensions = {
-                    FMath::Abs(Extent.X), FMath::Abs(Extent.Y), FMath::Abs(Extent.Z)};
-                HalfDimensions.Sort();
-                Test->AddInfo(FString::Printf(
-                    TEXT("WHEEL_VISUAL_BOUNDS id=%s half=(%.2f,%.2f,%.2f)"),
-                    *WheelIds[Index].ToString(),
-                    HalfDimensions[0], HalfDimensions[1], HalfDimensions[2]));
-                Test->TestTrue(
-                    *FString::Printf(TEXT("%s visual tyre width matches 205mm source"), *WheelIds[Index].ToString()),
-                    FMath::IsNearlyEqual(HalfDimensions[0], 10.25f, 2.5f));
-                Test->TestTrue(
-                    *FString::Printf(TEXT("%s visual tyre radius matches 205/70R14 source"), *WheelIds[Index].ToString()),
-                    FMath::IsNearlyEqual(HalfDimensions[2], 32.13f, 3.0f));
+                return true;
             }
-
             FrontBaseRotation =
                 Shell->GetPresentationPartComponent(TEXT("WheelFL"))->GetRelativeRotation();
-            RearBaseRotation =
-                Shell->GetPresentationPartComponent(TEXT("WheelRL"))->GetRelativeRotation();
-
             FPinkCabVehicleInputFrame Frame;
             Pawn->ApplyVehicleInputFrame(Frame, 180.0f, 0.25f);
             StartSeconds = FPlatformTime::Seconds();
@@ -239,49 +289,17 @@ public:
             return false;
         }
 
-        if ((FPlatformTime::Seconds() - StartSeconds) < 0.35)
-        {
-            return false;
-        }
-
-        UStaticMeshComponent* FrontVisual =
-            Shell->GetPresentationPartComponent(TEXT("WheelFL"));
-        UStaticMeshComponent* RearVisual =
-            Shell->GetPresentationPartComponent(TEXT("WheelRL"));
-        const UChaosVehicleWheel* FrontChaos = Movement->Wheels[0];
-        const UChaosVehicleWheel* RearChaos = Movement->Wheels[2];
-        Test->TestNotNull(TEXT("front Chaos wheel instance exists"), FrontChaos);
+        if ((FPlatformTime::Seconds() - StartSeconds) < 0.35) return false;
+        PinkCabWheelPresentationTests::ValidateDynamicFrontWheel(
+            *Test, *Shell, *Movement, FrontBaseRotation);
+        const UChaosVehicleWheel* RearChaos =
+            Movement->Wheels.IsValidIndex(2) ? Movement->Wheels[2] : nullptr;
         Test->TestNotNull(TEXT("rear Chaos wheel instance exists"), RearChaos);
-        if (!FrontVisual || !RearVisual || !FrontChaos || !RearChaos) return true;
-
-        const float FrontSteer = FrontChaos->GetSteerAngle();
-        Test->AddInfo(FString::Printf(
-            TEXT("WHEEL_CHAOS_POSE frontSteer=%.3f frontSpin=%.3f frontSusp=%.3f rearSpin=%.3f rearSusp=%.3f"),
-            FrontSteer,
-            FrontChaos->GetRotationAngle(),
-            FrontChaos->GetSuspensionOffset(),
-            RearChaos->GetRotationAngle(),
-            RearChaos->GetSuspensionOffset()));
-        Test->TestTrue(TEXT("Chaos front wheel receives a real steering pose"),
-            FMath::Abs(FrontSteer) > 0.25f);
-        Test->TestFalse(TEXT("visible front wheel follows Chaos steering"),
-            FrontVisual->GetRelativeRotation().Equals(FrontBaseRotation, 0.05f));
-
-        const FPinkCabVehicleVisualProfile& Profile = Shell->GetProfile();
-        const FPinkCabVehiclePresentationPart* FrontPart =
-            Profile.PresentationParts.FindByPredicate([](const FPinkCabVehiclePresentationPart& Part)
-            {
-                return Part.PartId == FName(TEXT("WheelFL"));
-            });
-        if (FrontPart && FMath::Abs(FrontChaos->GetSuspensionOffset()) > 0.10f)
+        if (RearChaos)
         {
-            Test->TestFalse(TEXT("visible front wheel follows Chaos suspension offset"),
-                FrontVisual->GetRelativeLocation().Equals(
-                    FrontPart->LocalTransform.GetLocation(), 0.05f));
+            Test->TestTrue(TEXT("rear wheel is not falsely steered by front steering input"),
+                FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
         }
-
-        Test->TestTrue(TEXT("rear wheel is not falsely steered by front steering input"),
-            FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
         return true;
     }
 
@@ -290,7 +308,6 @@ private:
     int32 Phase = 0;
     double StartSeconds = 0.0;
     FRotator FrontBaseRotation = FRotator::ZeroRotator;
-    FRotator RearBaseRotation = FRotator::ZeroRotator;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
