@@ -128,6 +128,7 @@ jobs:
             'PinkCab.Vehicle.ControlRuntime.Launch.OneResetPerAttempt',
             'PinkCab.Vehicle.AssetContract.Tatra613V12',
             'PinkCab.Vehicle.Visual.PresentationBindingRuntime',
+            'PinkCab.Vehicle.Visual.WheelPresentationChaosSync',
             'PinkCab.UI.SystemMenu.StartupHardPause',
             'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.DriveSmoke',
             'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.ReverseDriveSmoke',

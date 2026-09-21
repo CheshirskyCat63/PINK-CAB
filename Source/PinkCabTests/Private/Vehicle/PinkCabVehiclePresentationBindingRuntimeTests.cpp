@@ -3,6 +3,8 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
+#include "ChaosVehicleWheel.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
@@ -159,6 +161,149 @@ bool FPinkCabVehiclePresentationBindingRuntimeTest::RunTest(const FString& Param
     TestTrue(TEXT("vehicle presentation runtime map opens"), bOpened);
     if (!bOpened) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabVehiclePresentationBindingCommand(this));
+    return true;
+}
+
+
+class FPinkCabWheelPresentationChaosSyncCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabWheelPresentationChaosSyncCommand(FAutomationTestBase* InTest)
+        : Test(InTest) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World) return false;
+
+        APinkCabChaosTatraPawn* Pawn = nullptr;
+        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        {
+            Pawn = *It;
+            break;
+        }
+        if (!Pawn) return false;
+
+        UPinkCabVehicleVisualShellComponent* Shell = Pawn->GetVehicleVisualShell();
+        UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+        if (!Shell || !Movement || Movement->Wheels.Num() != 4) return false;
+
+        static const FName WheelIds[] = {
+            TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
+
+        if (Phase == 0)
+        {
+            Pawn->SetSystemMenuOpen(false);
+            const FPinkCabVehicleVisualProfile& Profile = Shell->GetProfile();
+            for (int32 Index = 0; Index < 4; ++Index)
+            {
+                UStaticMeshComponent* VisualWheel =
+                    Shell->GetPresentationPartComponent(WheelIds[Index]);
+                Test->TestNotNull(
+                    *FString::Printf(TEXT("%s visual wheel exists"), *WheelIds[Index].ToString()),
+                    VisualWheel);
+                if (!VisualWheel || !VisualWheel->GetStaticMesh()) return true;
+                Test->TestTrue(
+                    *FString::Printf(TEXT("%s visual wheel is rendered"), *WheelIds[Index].ToString()),
+                    VisualWheel->IsVisible() && !VisualWheel->bHiddenInGame);
+
+                const FVector Extent =
+                    VisualWheel->GetStaticMesh()->GetBounds().BoxExtent
+                    * VisualWheel->GetRelativeScale3D().GetAbs();
+                TArray<float> HalfDimensions = {
+                    FMath::Abs(Extent.X), FMath::Abs(Extent.Y), FMath::Abs(Extent.Z)};
+                HalfDimensions.Sort();
+                Test->AddInfo(FString::Printf(
+                    TEXT("WHEEL_VISUAL_BOUNDS id=%s half=(%.2f,%.2f,%.2f)"),
+                    *WheelIds[Index].ToString(),
+                    HalfDimensions[0], HalfDimensions[1], HalfDimensions[2]));
+                Test->TestTrue(
+                    *FString::Printf(TEXT("%s visual tyre width matches 205mm source"), *WheelIds[Index].ToString()),
+                    FMath::IsNearlyEqual(HalfDimensions[0], 10.25f, 2.5f));
+                Test->TestTrue(
+                    *FString::Printf(TEXT("%s visual tyre radius matches 205/70R14 source"), *WheelIds[Index].ToString()),
+                    FMath::IsNearlyEqual(HalfDimensions[2], 32.13f, 3.0f));
+            }
+
+            FrontBaseRotation =
+                Shell->GetPresentationPartComponent(TEXT("WheelFL"))->GetRelativeRotation();
+            RearBaseRotation =
+                Shell->GetPresentationPartComponent(TEXT("WheelRL"))->GetRelativeRotation();
+
+            FPinkCabVehicleInputFrame Frame;
+            Pawn->ApplyVehicleInputFrame(Frame, 180.0f, 0.25f);
+            StartSeconds = FPlatformTime::Seconds();
+            Phase = 1;
+            return false;
+        }
+
+        if ((FPlatformTime::Seconds() - StartSeconds) < 0.35)
+        {
+            return false;
+        }
+
+        UStaticMeshComponent* FrontVisual =
+            Shell->GetPresentationPartComponent(TEXT("WheelFL"));
+        UStaticMeshComponent* RearVisual =
+            Shell->GetPresentationPartComponent(TEXT("WheelRL"));
+        const UChaosVehicleWheel* FrontChaos = Movement->Wheels[0];
+        const UChaosVehicleWheel* RearChaos = Movement->Wheels[2];
+        Test->TestNotNull(TEXT("front Chaos wheel instance exists"), FrontChaos);
+        Test->TestNotNull(TEXT("rear Chaos wheel instance exists"), RearChaos);
+        if (!FrontVisual || !RearVisual || !FrontChaos || !RearChaos) return true;
+
+        const float FrontSteer = FrontChaos->GetSteerAngle();
+        Test->AddInfo(FString::Printf(
+            TEXT("WHEEL_CHAOS_POSE frontSteer=%.3f frontSpin=%.3f frontSusp=%.3f rearSpin=%.3f rearSusp=%.3f"),
+            FrontSteer,
+            FrontChaos->GetRotationAngle(),
+            FrontChaos->GetSuspensionOffset(),
+            RearChaos->GetRotationAngle(),
+            RearChaos->GetSuspensionOffset()));
+        Test->TestTrue(TEXT("Chaos front wheel receives a real steering pose"),
+            FMath::Abs(FrontSteer) > 0.25f);
+        Test->TestFalse(TEXT("visible front wheel follows Chaos steering"),
+            FrontVisual->GetRelativeRotation().Equals(FrontBaseRotation, 0.05f));
+
+        const FPinkCabVehicleVisualProfile& Profile = Shell->GetProfile();
+        const FPinkCabVehiclePresentationPart* FrontPart =
+            Profile.PresentationParts.FindByPredicate([](const FPinkCabVehiclePresentationPart& Part)
+            {
+                return Part.PartId == FName(TEXT("WheelFL"));
+            });
+        if (FrontPart && FMath::Abs(FrontChaos->GetSuspensionOffset()) > 0.10f)
+        {
+            Test->TestFalse(TEXT("visible front wheel follows Chaos suspension offset"),
+                FrontVisual->GetRelativeLocation().Equals(
+                    FrontPart->LocalTransform.GetLocation(), 0.05f));
+        }
+
+        Test->TestTrue(TEXT("rear wheel is not falsely steered by front steering input"),
+            FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
+        return true;
+    }
+
+private:
+    FAutomationTestBase* Test = nullptr;
+    int32 Phase = 0;
+    double StartSeconds = 0.0;
+    FRotator FrontBaseRotation = FRotator::ZeroRotator;
+    FRotator RearBaseRotation = FRotator::ZeroRotator;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabWheelPresentationChaosSyncTest,
+    "PinkCab.Vehicle.Visual.WheelPresentationChaosSync",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabWheelPresentationChaosSyncTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened =
+        AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("wheel presentation sync map opens"), bOpened);
+    if (!bOpened) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(
+        FPinkCabWheelPresentationChaosSyncCommand(this));
     return true;
 }
 
