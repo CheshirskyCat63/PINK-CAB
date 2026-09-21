@@ -284,6 +284,7 @@ struct FPinkCabPhysicalPlayerInputState
     bool bWheelPulsePendingTick = false;
     double PhaseStartSeconds = 0.0;
     double DriveStartSeconds = 0.0;
+    bool bInitialInputModeSettled = false;
     int32 Phase = 0;
 };
 
@@ -320,9 +321,16 @@ public:
         switch (State->Phase)
         {
         case 0:
-            Pawn->SetSystemMenuOpen(false);
-            Test->TestTrue(TEXT("ignition primed for physical input routing"),
-                Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+            if (!State->bInitialInputModeSettled)
+            {
+                Pawn->SetSystemMenuOpen(false);
+                Test->TestFalse(TEXT("system menu closed before physical input routing"),
+                    Pawn->IsSystemMenuOpen());
+                Test->TestTrue(TEXT("ignition primed for physical input routing"),
+                    Pawn->ApplyCockpitInteraction({FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+                State->bInitialInputModeSettled = true;
+                return false;
+            }
             InjectKey(*PC, EKeys::Four, IE_Pressed);
             State->Phase = 1;
             return false;
