@@ -16,7 +16,7 @@
 | C-08 | TEST_PENDING | New drivetrain movement assertion reuses the real RMB/LMB handbrake and gearbox path before launch; existing direct-provider Chaos smoke remains physics-only. |
 | C-09 | DONE | RED on `35596197869`: zero pedal fabricated 131.751 Nm/wheel. GREEN on `35596639287`: `ZeroThrottleNoSyntheticDriveTorque` PASS after removing the hidden 18% floor. |
 | C-10 | RED_PENDING | Added `PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary`: 0.999 coupling must remain on continuous partial-clutch torque; only 1.0 may hand off to Chaos gear. Current 0.995 threshold is expected to fail. |
-| C-11 | TEST_PENDING | Chaos runtime smoke now asserts signed displacement in the initial vehicle-right axis for positive semantic steering; `abs(lateral)` can no longer hide inversion. |
+| C-11 | GREEN_PENDING | RED on run `35597592827`: positive semantic steering produced `right=-3.6 cm` after `154.5 cm` forward travel. Removed the stale Chaos-boundary sign inversion and updated provider mapping expectation; exact-head rerun required. |
 | C-12 | BLOCKED_HUMAN | Canonical H-gate sign is automated; OS/HID physical MouseY direction remains a human packaged gate. |
 | C-13 | DONE | One push-triggered canonical GitHub G1 workflow on the recovery branch; legacy owner/H-INP workflows are manual hard-failing tombstones. |
 | C-14 | DONE | Jira CD-848 + Confluence page 47 + Git recovery docs use the same R1 ownership semantics. |

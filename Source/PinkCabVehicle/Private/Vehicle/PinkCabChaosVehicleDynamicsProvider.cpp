@@ -50,9 +50,10 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
 
     LastControls = Controls;
     // PINK CAB semantic steering is permanently player-facing: + = right.
-    // This Chaos/Tatra chassis uses the opposite vehicle-space sign, so adapt
-    // exactly once here. Never invert the semantic controller/input path.
-    Movement->SetSteeringInput(-Controls.Steering);
+    // Runtime signed-displacement evidence on the Tatra chassis confirms that
+    // Chaos expects the same sign here. Do not add another inversion at this
+    // boundary; input/controller and physical vehicle must stay right-positive.
+    Movement->SetSteeringInput(Controls.Steering);
     const float RequestedEngineThrottle =
         FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
     const float LimitedEngineThrottle = ApplyPinkCabRevLimiter(
