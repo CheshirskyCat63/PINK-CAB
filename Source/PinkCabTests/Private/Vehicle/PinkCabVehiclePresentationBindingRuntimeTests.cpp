@@ -201,7 +201,9 @@ bool ValidateStaticWheels(
             VisualWheel->GetStaticMesh()->GetBounds().BoxExtent
             * VisualWheel->GetRelativeScale3D().GetAbs();
         TArray<float> HalfDimensions = {
-            FMath::Abs(Extent.X), FMath::Abs(Extent.Y), FMath::Abs(Extent.Z)};
+            static_cast<float>(FMath::Abs(Extent.X)),
+            static_cast<float>(FMath::Abs(Extent.Y)),
+            static_cast<float>(FMath::Abs(Extent.Z))};
         HalfDimensions.Sort();
         Test.AddInfo(FString::Printf(
             TEXT("WHEEL_VISUAL_BOUNDS id=%s half=(%.2f,%.2f,%.2f)"),
