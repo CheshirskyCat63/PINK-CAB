@@ -213,7 +213,7 @@ try {
         Start-Sleep -Milliseconds 260
         $after=Get-State
         $delta=[double]$after.$Field-[double]$before.$Field
-        $counts=[double](if($Dx -ne 0){$Dx}else{$Dy})
+        $counts = if($Dx -ne 0) { [double]$Dx } else { [double]$Dy }
         if([Math]::Abs($delta) -lt 0.05){ throw "Aim calibration produced no measurable $Field response" }
         return $delta/$counts
     }
