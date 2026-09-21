@@ -399,9 +399,8 @@ public:
             InjectKey(*PC, EKeys::MouseY, IE_Axis, 0.0f);
             Test->TestEqual(TEXT("RMB alone does not move gearbox or request a gear"),
                 Pawn->GetRequestedGear(), 0);
-            const float SteeringAfterRmbMouse = Pawn->GetSteeringCommand();
             Test->TestTrue(TEXT("RMB-only grip keeps mouse steering live in the injected left direction"),
-                SteeringAfterRmbMouse < State->SteeringBeforeRmb - 0.0005f);
+                Pawn->GetSteeringCommand() < State->SteeringBeforeRmb - 0.0005f);
             Test->AddInfo(FString::Printf(
                 TEXT("RECOVERY_R1_TRACE phase=gearbox_grip target=%s grip=%d manip=%d steer=%.3f requested=%d"),
                 *Interaction->GetActiveGripTargetId().ToString(),
