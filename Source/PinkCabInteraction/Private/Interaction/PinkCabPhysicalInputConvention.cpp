@@ -10,11 +10,17 @@ float FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(
         return 0.0f;
     }
 
-    return FMath::IsNearlyZero(
-        ProcessedAxis,
-        0.0001f)
-        ? 0.0f
-        : RawAxis;
+    // Raw MouseX/MouseY is the physical-device stream used by steering and
+    // lever manipulation. A processed axis value of zero is not a freshness
+    // signal for that raw stream and must never suppress a valid device delta.
+    if (!FMath::IsNearlyZero(RawAxis, 0.0001f))
+    {
+        return RawAxis;
+    }
+
+    // Keep the processed frame delta as a safe fallback for input paths where
+    // PlayerInput does not expose a raw value (including some synthetic tests).
+    return ProcessedAxis;
 }
 
 float FPinkCabPhysicalInputConvention::SteeringRight(float DeviceX)
