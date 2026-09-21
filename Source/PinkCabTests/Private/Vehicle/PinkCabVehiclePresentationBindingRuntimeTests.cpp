@@ -284,14 +284,25 @@ public:
             }
             FrontBaseRotation =
                 Shell->GetPresentationPartComponent(TEXT("WheelFL"))->GetRelativeRotation();
-            FPinkCabVehicleInputFrame Frame;
-            Pawn->ApplyVehicleInputFrame(Frame, 180.0f, 0.25f);
+
+            // This test owns the synthetic steering stimulus. The normal pawn tick
+            // reads the real PlayerController every frame, so leaving it enabled
+            // would immediately overwrite our direct test input with zero before
+            // Chaos can publish a wheel pose. Vehicle movement continues ticking
+            // independently; presentation sync is invoked explicitly below.
+            Pawn->SetActorTickEnabled(false);
             StartSeconds = FPlatformTime::Seconds();
             Phase = 1;
             return false;
         }
 
+        FPinkCabVehicleInputFrame Frame;
+        Pawn->ApplyVehicleInputFrame(Frame, 180.0f, 1.0f / 60.0f);
         if ((FPlatformTime::Seconds() - StartSeconds) < 0.35) return false;
+
+        Test->TestTrue(
+            TEXT("explicit wheel presentation sync succeeds"),
+            Pawn->SyncWheelPresentationFromChaos());
         PinkCabWheelPresentationTests::ValidateDynamicFrontWheel(
             *Test, *Shell, *Movement, FrontBaseRotation);
         const UChaosVehicleWheel* RearChaos =
@@ -302,6 +313,8 @@ public:
             Test->TestTrue(TEXT("rear wheel is not falsely steered by front steering input"),
                 FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
         }
+
+        Pawn->SetActorTickEnabled(true);
         return true;
     }
 
