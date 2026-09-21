@@ -272,7 +272,14 @@ void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    SyncWheelPresentationFromChaos();
+    // The startup system menu hard-pauses the world after the authored donor
+    // wheels have been grounded. Chaos wheel runtime locations are not a valid
+    // presentation pose until gameplay resumes, so keep the authored/rest pose
+    // while paused and begin dynamic suspension/steer/spin sync on DRIVE.
+    if (!UGameplayStatics::IsGamePaused(this))
+    {
+        SyncWheelPresentationFromChaos();
+    }
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
     {
