@@ -7,6 +7,7 @@
 #include "Cockpit/PinkCabCockpitServiceBridge.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Interaction/PinkCabPlayerInputAdapter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
@@ -38,6 +39,18 @@ void APinkCabChaosTatraPawn::ApplyVehicleInputFrame(
     const float MouseDeltaX,
     const float DeltaSeconds)
 {
+    // A vehicle can legitimately enter Chaos sleep while parked in the system
+    // menu or while the driver is manipulating cockpit controls. A fresh
+    // throttle command is explicit driver intent to move and must wake the
+    // simulated chassis before the drivetrain frame is handed to Chaos.
+    if (InputFrame.Throttle > KINDA_SMALL_NUMBER)
+    {
+        if (USkeletalMeshComponent* VehicleMesh = GetMesh())
+        {
+            VehicleMesh->WakeAllRigidBodies();
+        }
+    }
+
     VehicleControlRuntime.ResolveControlFrame(
         InputFrame, MouseDeltaX, DeltaSeconds, CockpitState, GetMutableVehicleHealthState());
     if (CockpitInteraction)
