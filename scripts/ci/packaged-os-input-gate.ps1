@@ -48,7 +48,7 @@ function Get-State {
         Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } |
         Select-Object -Last 1
     if (-not $line) { return $null }
-    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) wheels=(?<wheels>\d+)'
+    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) aimvalid=(?<aimvalid>\d+) aimyaw=(?<aimyaw>-?[\d.]+) aimpitch=(?<aimpitch>-?[\d.]+) wheels=(?<wheels>\d+)'
     $m = [regex]::Match($line,$rx)
     if (-not $m.Success) { return $null }
     [pscustomobject]@{
@@ -70,6 +70,9 @@ function Get-State {
         manip=[int]$m.Groups['manip'].Value
         gaze=[int]$m.Groups['gaze'].Value
         camera=[int]$m.Groups['camera'].Value
+        aimvalid=[int]$m.Groups['aimvalid'].Value
+        aimyaw=[double]$m.Groups['aimyaw'].Value
+        aimpitch=[double]$m.Groups['aimpitch'].Value
         wheels=[int]$m.Groups['wheels'].Value
         raw=$line
     }
@@ -200,40 +203,45 @@ try {
     Tap-Key $VK_ESC
     Wait-State { param($s) $s.menu -eq 0 } 5000 "ESC closes startup menu" | Out-Null
 
-    $ignitionFound=$false
-    $candidates=@(
-        @(35,-55), @(45,-65), @(30,-45), @(55,-75),
-        @(70,-55), @(0,-55), @(-25,-55), @(35,55),
-        @(45,65), @(70,55), @(-25,55), @(0,55),
-        @(110,-80), @(80,-80), @(50,-80), @(20,-80), @(-20,-80), @(-50,-80), @(-80,-80), @(-110,-80),
-        @(110,-50), @(80,-50), @(50,-50), @(20,-50), @(-20,-50), @(-50,-50), @(-80,-50), @(-110,-50),
-        @(110,-20), @(80,-20), @(50,-20), @(20,-20), @(-20,-20), @(-50,-20), @(-80,-20), @(-110,-20),
-        @(110,20), @(80,20), @(50,20), @(20,20), @(-20,20), @(-50,20), @(-80,20), @(-110,20),
-        @(110,50), @(80,50), @(50,50), @(20,50), @(-20,50), @(-50,50), @(-80,50), @(-110,50),
-        @(110,80), @(80,80), @(50,80), @(20,80), @(-20,80), @(-50,80), @(-80,80), @(-110,80)
-    )
-    foreach($c in $candidates) {
-        Focus-GameWindow $proc.MainWindowHandle
-        [PinkCabNativeInput]::KeyDown($VK_SPACE)
-        Wait-State { param($s) $s.gaze -eq 1 } 1500 "Space enters gaze mode" | Out-Null
-        Start-Sleep -Milliseconds 120
-        [PinkCabNativeInput]::Move([int]$c[0],[int]$c[1])
-        Start-Sleep -Milliseconds 420
-        $s=Get-State
-        if($s.target -eq 'Ignition') {
-            [PinkCabNativeInput]::LeftDown()
-            Start-Sleep -Milliseconds 350
-            [PinkCabNativeInput]::LeftUp()
-            Start-Sleep -Milliseconds 450
-            $s=Get-State
-            if($s.ignition -eq 1){ $ignitionFound=$true }
-        }
-        [PinkCabNativeInput]::KeyUp($VK_SPACE)
-        Wait-State { param($s) $s.gaze -eq 0 } 1500 "Space exits gaze mode" | Out-Null
-        if($ignitionFound){ break }
-        Start-Sleep -Milliseconds 1200
+    Focus-GameWindow $proc.MainWindowHandle
+    [PinkCabNativeInput]::KeyDown($VK_SPACE)
+    Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 2500 "Space enters gaze mode with ignition aim telemetry" | Out-Null
+
+    function Calibrate-AimAxis([string]$Field,[int]$Dx,[int]$Dy) {
+        $before=Get-State
+        [PinkCabNativeInput]::Move($Dx,$Dy)
+        Start-Sleep -Milliseconds 260
+        $after=Get-State
+        $delta=[double]$after.$Field-[double]$before.$Field
+        $counts=[double](if($Dx -ne 0){$Dx}else{$Dy})
+        if([Math]::Abs($delta) -lt 0.05){ throw "Aim calibration produced no measurable $Field response" }
+        return $delta/$counts
     }
-    if(-not $ignitionFound){ throw "Could not acquire/start Ignition through packaged Space+LMB route. Last=$((Get-State).raw)" }
+
+    $yawPerCount=Calibrate-AimAxis 'aimyaw' 24 0
+    $pitchPerCount=Calibrate-AimAxis 'aimpitch' 0 24
+    for($i=0;$i -lt 36;$i++) {
+        $s=Get-State
+        if($s.target -eq 'Ignition' -and [Math]::Abs($s.aimyaw) -le 4.0 -and [Math]::Abs($s.aimpitch) -le 4.0) { break }
+        $dx=[int][Math]::Round((-1.0*$s.aimyaw)/$yawPerCount)
+        $dy=[int][Math]::Round((-1.0*$s.aimpitch)/$pitchPerCount)
+        if($dx -gt 45){$dx=45}; if($dx -lt -45){$dx=-45}
+        if($dy -gt 45){$dy=45}; if($dy -lt -45){$dy=-45}
+        if($dx -eq 0 -and [Math]::Abs($s.aimyaw) -gt 1.0){$dx=if($s.aimyaw*$yawPerCount -gt 0){-1}else{1}}
+        if($dy -eq 0 -and [Math]::Abs($s.aimpitch) -gt 1.0){$dy=if($s.aimpitch*$pitchPerCount -gt 0){-1}else{1}}
+        [PinkCabNativeInput]::Move($dx,$dy)
+        Start-Sleep -Milliseconds 180
+    }
+    $aimed=Get-State
+    if($aimed.target -ne 'Ignition'){
+        throw "Closed-loop gaze did not select Ignition. Last=$($aimed.raw)"
+    }
+    [PinkCabNativeInput]::LeftDown()
+    Start-Sleep -Milliseconds 350
+    [PinkCabNativeInput]::LeftUp()
+    Wait-State { param($s) $s.ignition -eq 1 } 2500 "LMB starts ignition through gaze-selected target" | Out-Null
+    [PinkCabNativeInput]::KeyUp($VK_SPACE)
+    Wait-State { param($s) $s.gaze -eq 0 } 1500 "Space exits gaze mode" | Out-Null
 
     Tap-Key $VK_4
     [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 250
