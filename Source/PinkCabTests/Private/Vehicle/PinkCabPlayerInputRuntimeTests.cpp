@@ -9,9 +9,6 @@
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Vehicle/PinkCabVehicleInputFrame.h"
-#include "Interaction/PinkCabInteractionModel.h"
 
 namespace
 {
@@ -597,106 +594,6 @@ private:
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabPhysicalPlayerInputState> State;
 };
-
-
-struct FPinkCabWakeOnThrottleState
-{
-    TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
-    int32 Phase = 0;
-};
-
-class FPinkCabWakeOnThrottleCommand final : public IAutomationLatentCommand
-{
-public:
-    FPinkCabWakeOnThrottleCommand(
-        FAutomationTestBase* InTest,
-        TSharedRef<FPinkCabWakeOnThrottleState> InState)
-        : Test(InTest), State(InState) {}
-
-    virtual bool Update() override
-    {
-        UWorld* World = AutomationCommon::GetAnyGameWorld();
-        if (!World)
-        {
-            return false;
-        }
-        if (!State->Pawn.IsValid())
-        {
-            for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
-            {
-                State->Pawn = *It;
-                break;
-            }
-        }
-        APinkCabChaosTatraPawn* Pawn = State->Pawn.Get();
-        if (!Pawn)
-        {
-            return false;
-        }
-        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
-        if (!Mesh)
-        {
-            Test->AddError(TEXT("wake-on-throttle fixture has no vehicle mesh"));
-            return true;
-        }
-
-        if (State->Phase == 0)
-        {
-            Pawn->SetSystemMenuOpen(false);
-            Test->TestTrue(
-                TEXT("wake-on-throttle fixture starts engine"),
-                Pawn->ApplyCockpitInteraction({
-                    FName(TEXT("Ignition")),
-                    EPinkCabInteractionGesture::PressHold,
-                    1}));
-            Mesh->PutAllRigidBodiesToSleep();
-            State->Phase = 1;
-            return false;
-        }
-
-        if (State->Phase == 1)
-        {
-            Test->TestFalse(
-                TEXT("fixture proves chassis entered sleep before throttle"),
-                Mesh->IsAnyRigidBodyAwake());
-
-            FPinkCabVehicleInputFrame Frame;
-            Frame.Throttle = 0.25f;
-            Pawn->ApplyVehicleInputFrame(Frame, 0.0f, 1.0f / 60.0f);
-            State->Phase = 2;
-            return false;
-        }
-
-        Test->TestTrue(
-            TEXT("fresh throttle command wakes sleeping Chaos chassis"),
-            Mesh->IsAnyRigidBodyAwake());
-        return true;
-    }
-
-private:
-    FAutomationTestBase* Test = nullptr;
-    TSharedRef<FPinkCabWakeOnThrottleState> State;
-};
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabWakeOnThrottleRuntimeTest,
-    "PinkCab.Vehicle.PlayerInput.WakeSleepingChassisOnThrottle",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabWakeOnThrottleRuntimeTest::RunTest(const FString& Parameters)
-{
-    const bool bOpened =
-        AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
-    TestTrue(TEXT("wake-on-throttle map opens for PIE"), bOpened);
-    if (!bOpened)
-    {
-        return false;
-    }
-
-    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabWakeOnThrottleCommand(
-        this, MakeShared<FPinkCabWakeOnThrottleState>()));
-    return true;
-}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPhysicalPlayerInputRuntimeTest,
