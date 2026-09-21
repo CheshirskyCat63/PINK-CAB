@@ -251,8 +251,20 @@ try {
     [PinkCabNativeInput]::Move(0,80); Start-Sleep -Milliseconds 250
     $hbAfter=(Get-State).handbrake
     $hbDirection = if($hbAfter -lt $hbBefore){1}else{-1}
-    for($i=0;$i -lt 12 -and (Get-State).handbrake -gt 0.05;$i++){
+    $hbBest=$hbAfter
+    $hbStagnant=0
+    for($i=0;$i -lt 32 -and (Get-State).handbrake -gt 0.05;$i++){
         [PinkCabNativeInput]::Move(0,$hbDirection*100); Start-Sleep -Milliseconds 140
+        $hbNow=(Get-State).handbrake
+        if($hbNow -lt ($hbBest - 0.002)){
+            $hbBest=$hbNow
+            $hbStagnant=0
+        } else {
+            $hbStagnant++
+        }
+        if($hbStagnant -ge 6){
+            throw "Handbrake synthetic OS throw stopped making progress at $hbNow"
+        }
     }
     Wait-State { param($s) $s.handbrake -le 0.05 -and $s.manip -eq 1 } 4000 "analog handbrake release" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp(); Start-Sleep -Milliseconds 250
