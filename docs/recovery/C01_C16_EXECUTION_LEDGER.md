@@ -11,10 +11,10 @@
 | C-03 | TEST_PENDING | Direct-provider drive/reverse tests are renamed under `ChaosBaseline.PhysicsOnly.*`, and GitHub evidence explicitly forbids using them as gameplay-input acceptance. Exact-run compile/evidence still required. |
 | C-04 | TEST_PENDING | Added PlayerController→cockpit→runtime→Chaos→movement drivetrain path. Exact-run evidence still required; ignition fixture is excluded from the claim. |
 | C-05 | BLOCKED_HUMAN | UE InputKey/PlayerController automation is not OS/HID mouse evidence. GitHub gate records this as HUMAN_PENDING. |
-| C-06 | GREEN_PENDING | RED proven on run `35595470850`: raw X=19/Y=-23 became 0/0. Production fix now makes raw device delta authoritative with processed fallback; exact-head rerun required before DONE. |
+| C-06 | DONE | RED on `35595470850` proved raw X=19/Y=-23 became 0/0. GREEN on `35596197869`: `ProcessedZeroPreservesRawPhysicalDelta` PASS after raw-first fix. |
 | C-07 | TEST_PENDING | Physical PlayerController routing now asserts RequestedGear=1 while EngagedGear remains 0 for a no-clutch first-gear request. |
 | C-08 | TEST_PENDING | New drivetrain movement assertion reuses the real RMB/LMB handbrake and gearbox path before launch; existing direct-provider Chaos smoke remains physics-only. |
-| C-09 | RED_PENDING | Test `PinkCab.Vehicle.ChaosBaseline.Provider.ZeroThrottleNoSyntheticDriveTorque` added before production change. Current 18% idle-governor throttle floor is expected to fail it. |
+| C-09 | GREEN_PENDING | RED on `35596197869`: zero pedal fabricated 131.751 Nm/wheel. Production fix removes the 18% idle-governor floor; exact-head rerun required. |
 | C-10 | RED_PENDING | Added `PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary`: 0.999 coupling must remain on continuous partial-clutch torque; only 1.0 may hand off to Chaos gear. Current 0.995 threshold is expected to fail. |
 | C-11 | TEST_PENDING | Chaos runtime smoke now asserts signed displacement in the initial vehicle-right axis for positive semantic steering; `abs(lateral)` can no longer hide inversion. |
 | C-12 | BLOCKED_HUMAN | Canonical H-gate sign is automated; OS/HID physical MouseY direction remains a human packaged gate. |

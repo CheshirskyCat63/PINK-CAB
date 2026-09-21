@@ -20,7 +20,7 @@ bool FPinkCabChaosCockpitBridge::Apply(
     // Chaos has no public clutch axis. PINK CAB keeps Chaos as the tire/contact
     // solver while using its normal transmission at full coupling and additive
     // rear-wheel drive torque during partial clutch transfer.
-    constexpr float FullyCoupledThreshold = 0.995f;
+    constexpr float FullyCoupledThreshold = 1.0f;
     const bool bFullyCoupled =
         Controls.ClutchCoupling >= FullyCoupledThreshold
         && Controls.EngagedGear != 0;
@@ -41,20 +41,11 @@ bool FPinkCabChaosCockpitBridge::Apply(
             Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear);
 
         // Chaos exposes no public clutch axis, so partial coupling is authored here.
-        // Preserve actual driver throttle, but let the physical engine's idle governor
-        // contribute a small amount of torque around the launch bite point. That makes
-        // careful no-throttle clutch release capable of creeping instead of feeling
-        // disconnected, while the separate stall gate still kills a fast clutch dump.
-        constexpr float LaunchSpeedCmPerSecond = 300.0f; // 10.8 km/h
-        constexpr float IdleGovernorTorqueFraction = 0.18f;
-        const bool bNearLaunchSpeed =
-            FMath::Abs(Movement.GetForwardSpeed()) < LaunchSpeedCmPerSecond;
-        const float PedalLinkedThrottle =
-            FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
+        // The wheel-torque bridge must preserve the driver's actual pedal command.
+        // No idle governor, launch helper, or minimum throttle is allowed to synthesize
+        // drivetrain torque when the pedal target is zero.
         const float EffectiveThrottle =
-            bNearLaunchSpeed
-                ? FMath::Max(PedalLinkedThrottle, IdleGovernorTorqueFraction)
-                : PedalLinkedThrottle;
+            FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
         const float AxleTorqueNm =
             EngineTorqueNm
             * GearRatio
