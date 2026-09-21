@@ -69,11 +69,13 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     FName TargetId = NAME_None;
     bool bGrip = false;
     bool bManipulation = false;
+    bool bGazeHeld = false;
     if (CockpitInteraction)
     {
         TargetId = CockpitInteraction->GetCurrentTargetId();
         bGrip = CockpitInteraction->IsGripActive();
         bManipulation = CockpitInteraction->IsManipulationActive();
+        bGazeHeld = CockpitInteraction->IsGazeHeld();
     }
 
     const FPinkCabPackagedGateChaosState Chaos =
@@ -86,7 +88,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     UE_LOG(
         LogTemp,
         Display,
-        TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d camera=%d wheels=%d contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
+        TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d gaze=%d camera=%d wheels=%d contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
         static_cast<int32>(IsSystemMenuOpen()),
         static_cast<int32>(bIgnitionRunning),
         GetRequestedGear(),
@@ -103,6 +105,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
         *TargetId.ToString(),
         static_cast<int32>(bGrip),
         static_cast<int32>(bManipulation),
+        static_cast<int32>(bGazeHeld),
         static_cast<int32>(bDriverCameraActive),
         Chaos.WheelCount,
         Chaos.ContactCount,

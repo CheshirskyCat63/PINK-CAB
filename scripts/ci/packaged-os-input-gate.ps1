@@ -48,7 +48,7 @@ function Get-State {
         Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } |
         Select-Object -Last 1
     if (-not $line) { return $null }
-    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) camera=(?<camera>\d+) wheels=(?<wheels>\d+)'
+    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) wheels=(?<wheels>\d+)'
     $m = [regex]::Match($line,$rx)
     if (-not $m.Success) { return $null }
     [pscustomobject]@{
@@ -68,6 +68,7 @@ function Get-State {
         target=$m.Groups['target'].Value
         grip=[int]$m.Groups['grip'].Value
         manip=[int]$m.Groups['manip'].Value
+        gaze=[int]$m.Groups['gaze'].Value
         camera=[int]$m.Groups['camera'].Value
         wheels=[int]$m.Groups['wheels'].Value
         raw=$line
@@ -202,22 +203,35 @@ try {
     $ignitionFound=$false
     $candidates=@(
         @(35,-55), @(45,-65), @(30,-45), @(55,-75),
-        @(35,55), @(45,65), @(0,-55), @(70,-55),
-        @(-25,-55), @(70,55), @(-25,55), @(0,55)
+        @(70,-55), @(0,-55), @(-25,-55), @(35,55),
+        @(45,65), @(70,55), @(-25,55), @(0,55),
+        @(110,-80), @(80,-80), @(50,-80), @(20,-80), @(-20,-80), @(-50,-80), @(-80,-80), @(-110,-80),
+        @(110,-50), @(80,-50), @(50,-50), @(20,-50), @(-20,-50), @(-50,-50), @(-80,-50), @(-110,-50),
+        @(110,-20), @(80,-20), @(50,-20), @(20,-20), @(-20,-20), @(-50,-20), @(-80,-20), @(-110,-20),
+        @(110,20), @(80,20), @(50,20), @(20,20), @(-20,20), @(-50,20), @(-80,20), @(-110,20),
+        @(110,50), @(80,50), @(50,50), @(20,50), @(-20,50), @(-50,50), @(-80,50), @(-110,50),
+        @(110,80), @(80,80), @(50,80), @(20,80), @(-20,80), @(-50,80), @(-80,80), @(-110,80)
     )
     foreach($c in $candidates) {
-        [PinkCabNativeInput]::KeyDown($VK_SPACE); Start-Sleep -Milliseconds 180
-        [PinkCabNativeInput]::Move([int]$c[0],[int]$c[1]); Start-Sleep -Milliseconds 500
+        Focus-GameWindow $proc.MainWindowHandle
+        [PinkCabNativeInput]::KeyDown($VK_SPACE)
+        Wait-State { param($s) $s.gaze -eq 1 } 1500 "Space enters gaze mode" | Out-Null
+        Start-Sleep -Milliseconds 120
+        [PinkCabNativeInput]::Move([int]$c[0],[int]$c[1])
+        Start-Sleep -Milliseconds 420
         $s=Get-State
         if($s.target -eq 'Ignition') {
-            [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 350; [PinkCabNativeInput]::LeftUp()
+            [PinkCabNativeInput]::LeftDown()
+            Start-Sleep -Milliseconds 350
+            [PinkCabNativeInput]::LeftUp()
             Start-Sleep -Milliseconds 450
             $s=Get-State
             if($s.ignition -eq 1){ $ignitionFound=$true }
         }
         [PinkCabNativeInput]::KeyUp($VK_SPACE)
+        Wait-State { param($s) $s.gaze -eq 0 } 1500 "Space exits gaze mode" | Out-Null
         if($ignitionFound){ break }
-        Start-Sleep -Milliseconds 900
+        Start-Sleep -Milliseconds 1200
     }
     if(-not $ignitionFound){ throw "Could not acquire/start Ignition through packaged Space+LMB route. Last=$((Get-State).raw)" }
 
@@ -328,6 +342,7 @@ try {
         "startup_menu=PASS",
         "driver_camera=PASS",
         "wheels=4",
+        "gaze_space_state=PASS",
         "ignition_space_lmb=PASS",
         "rmb_only_and_rmb_lmb_route=PASS",
         "analog_handbrake_release=PASS",
