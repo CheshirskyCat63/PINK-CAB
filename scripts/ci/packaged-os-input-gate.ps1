@@ -208,7 +208,8 @@ try {
     } while(($proc.MainWindowHandle -eq 0 -or $null -eq (Get-State)) -and [DateTime]::UtcNow -lt $deadline)
     if($proc.MainWindowHandle -eq 0){ throw "Packaged game window not found" }
 
-    Focus-GameWindow $proc.MainWindowHandle
+    $script:GameHwnd = [IntPtr]$proc.MainWindowHandle
+    Focus-GameWindow $script:GameHwnd
     Start-Sleep -Milliseconds 500
 
     Wait-State { param($s) $s.menu -eq 1 -and $s.camera -eq 1 -and $s.wheels -eq 4 } 8000 "startup menu/camera/wheels" | Out-Null
@@ -266,7 +267,7 @@ try {
     $hbDirection = if($hbAfter -lt $hbBefore){1}else{-1}
     $hbBest=$hbAfter
     $hbStagnant=0
-    for($i=0;$i -lt 32 -and (Get-State).handbrake -gt 0.05;$i++){
+    for($i=0;$i -lt 32 -and (Get-State).handbrake -gt 0.0001;$i++){
         [PinkCabNativeInput]::Move(0,$hbDirection*100); Start-Sleep -Milliseconds 140
         $hbNow=(Get-State).handbrake
         if($hbNow -lt ($hbBest - 0.002)){
@@ -279,7 +280,7 @@ try {
             throw "Handbrake synthetic OS throw stopped making progress at $hbNow"
         }
     }
-    Wait-State { param($s) $s.handbrake -le 0.05 -and $s.manip -eq 1 } 4000 "analog handbrake release" | Out-Null
+    Wait-State { param($s) $s.handbrake -le 0.0001 -and $s.manip -eq 1 } 4000 "full parking handbrake release" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp(); Start-Sleep -Milliseconds 250
 
     [PinkCabNativeInput]::KeyDown($VK_Q)
