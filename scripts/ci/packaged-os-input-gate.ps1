@@ -127,6 +127,31 @@ function Capture-Window([IntPtr]$Handle,[string]$Path) {
     try { $g.CopyFromScreen($rect.Left,$rect.Top,0,0,$bmp.Size) ; $bmp.Save($Path,[System.Drawing.Imaging.ImageFormat]::Png) }
     finally { $g.Dispose(); $bmp.Dispose() }
 }
+function Probe-AxisResponse(
+    [string]$Field,
+    [int]$Dx,
+    [int]$Dy,
+    [double]$MinDelta = 0.03,
+    [int]$TimeoutMs = 1500
+) {
+    $before=Get-State
+    if($null -eq $before){ throw "No packaged telemetry before $Field probe" }
+    $start=[double]$before.$Field
+    [PinkCabNativeInput]::Move($Dx,$Dy)
+    $deadline=[DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    do {
+        Start-Sleep -Milliseconds 50
+        $after=Get-State
+        if($null -eq $after){ continue }
+        $delta=[double]$after.$Field-$start
+        if([Math]::Abs($delta) -ge $MinDelta){
+            return [Math]::Sign($delta)
+        }
+    } while([DateTime]::UtcNow -lt $deadline)
+    $last=Get-State
+    throw "$Field produced no measurable packaged mouse response. Before=$($before.raw) Last=$($last.raw)"
+}
+
 function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
     for($i=0;$i -lt 16;$i++) {
         $s=Get-State
@@ -148,12 +173,7 @@ function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
     Move-GameAxis 'y' $Y $SignY
 }
 function Center-Steering {
-    $probeBefore=Get-State
-    [PinkCabNativeInput]::Move(20,0)
-    Start-Sleep -Milliseconds 180
-    $probeAfter=Get-State
-    $sign=[Math]::Sign($probeAfter.steering-$probeBefore.steering)
-    if($sign -eq 0){ throw "MouseX did not affect steering during center calibration" }
+    $sign=Probe-AxisResponse 'steering' 20 0 0.02 1500
     for($i=0;$i -lt 20;$i++) {
         $s=Get-State
         if([Math]::Abs($s.steering) -le 0.03){ return }
@@ -294,13 +314,9 @@ try {
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 180
     Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation" | Out-Null
 
-    $sx0=Get-State; [PinkCabNativeInput]::Move(25,0); Start-Sleep -Milliseconds 220; $sx1=Get-State
-    $signX=[Math]::Sign($sx1.gearx-$sx0.gearx)
-    if($signX -eq 0){ throw "MouseX did not reach H-gate through packaged window" }
+    $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
     Move-GameAxis 'x' 0.0 $signX
-    $sy0=Get-State; [PinkCabNativeInput]::Move(0,25); Start-Sleep -Milliseconds 220; $sy1=Get-State
-    $signY=[Math]::Sign($sy1.geary-$sy0.geary)
-    if($signY -eq 0){ throw "MouseY did not reach H-gate through packaged window" }
+    $signY=Probe-AxisResponse 'geary' 0 25 0.03 1500
     Move-GearCursor -1.0 1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
