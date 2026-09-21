@@ -321,6 +321,10 @@ try {
     Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
     Wait-State { param($s) $s.engaged -eq 1 } 4000 "Q allows first engagement" | Out-Null
+    Wait-State {
+        param($s)
+        $s.grip -eq 0 -and $s.manip -eq 0 -and $s.target -eq 'None'
+    } 2500 "gearbox release restores steering ownership" | Out-Null
 
     Center-Steering
     Wait-State { param($s) [Math]::Abs($s.steering) -le 0.05 } 2500 "steering centered before forward launch" | Out-Null
