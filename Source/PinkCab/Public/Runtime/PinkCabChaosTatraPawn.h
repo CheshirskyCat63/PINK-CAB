@@ -155,6 +155,7 @@ private:
     void EnsurePlayableLighting();
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
     bool AlignInitialPresentationToGround();
+    void EmitPackagedGateTelemetry(double NowSeconds);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
@@ -191,4 +192,8 @@ private:
     float LookPitch = 0.0f;
     bool bGearLeverDragging = false;
     FVector2D GearLeverCursor = FVector2D::ZeroVector;
+
+    bool bPackagedGateTelemetryEnabled = false;
+    double NextPackagedGateTelemetrySeconds = 0.0;
+    FVector PackagedGateStartLocation = FVector::ZeroVector;
 };

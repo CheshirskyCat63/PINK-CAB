@@ -33,3 +33,11 @@ This ledger commit is intentionally **tests first** for C-06/C-09. Production be
 - PlayerController/InputKey tests prove Unreal input routing, not real Windows HID/capture.
 - Packaged smoke proves launch/map/runtime health, not handling acceptance.
 - Human acceptance is explicit owner evidence only.
+
+
+## 2026-09-21 completion hardening
+
+- Ruling: the owner's explicit request to replace `PINKCAB Latest.lnk` with the newest verified candidate supersedes the earlier conservative proposal to keep Latest pinned to the last human-accepted build. The workflow now replaces only `PINKCAB Latest.lnk`; it no longer deletes unrelated `PINKCAB*.lnk` shortcuts.
+- Ruling: packaged Windows SendInput evidence is an OS/window input-path proof, not physical HID proof. It may close packaged routing evidence but cannot close C-05/C-12 or HUMAN acceptance.
+- Added explicit packaged OS-input route, rendered screenshot evidence, 50 interaction-session cleanup cycles, audio-enabled launch, and focused `HealthyThirtyMinutes` simulation evidence to the canonical exact-head workflow.
+- C-16 remains BLOCKED_TOOLING until repository ruleset/required-check administration is actually writable and verified.

@@ -24,6 +24,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
+#include "HAL/PlatformTime.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabPhysicalInputConvention.h"
 #include "Interaction/PinkCabPlayerInputAdapter.h"
@@ -245,6 +248,15 @@ void APinkCabChaosTatraPawn::BeginPlay()
         DriverUi->BeginRuntime(PC);
     }
     SetSystemMenuOpen(true);
+
+    bPackagedGateTelemetryEnabled =
+        FParse::Param(FCommandLine::Get(), TEXT("PinkCabGateTelemetry"));
+    if (bPackagedGateTelemetryEnabled)
+    {
+        PackagedGateStartLocation = GetActorLocation();
+        NextPackagedGateTelemetrySeconds = 0.0;
+        UE_LOG(LogTemp, Display, TEXT("PINKCAB_GATE_BEGIN source=packaged_runtime_input_probe"));
+    }
 }
 
 void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -267,6 +279,8 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         return;
     }
 
+    EmitPackagedGateTelemetry(FPlatformTime::Seconds());
+
     FPinkCabPlayerInputSample PlayerInput;
     if (!BeginDriverFrame(*PC, PlayerInput))
     {
@@ -287,6 +301,51 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
     UpdateDriverUiState(Presentation);
+    EmitPackagedGateTelemetry(FPlatformTime::Seconds());
+}
+
+void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
+{
+    if (!bPackagedGateTelemetryEnabled || NowSeconds < NextPackagedGateTelemetrySeconds)
+    {
+        return;
+    }
+    NextPackagedGateTelemetrySeconds = NowSeconds + 0.10;
+
+    FPinkCabVehicleTelemetry Telemetry;
+    const bool bHasTelemetry = DynamicsProvider.ReadTelemetry(Telemetry);
+    const FVector Location = GetActorLocation();
+    const float DistanceCm = FVector::Dist2D(Location, PackagedGateStartLocation);
+    const FName TargetId =
+        CockpitInteraction ? CockpitInteraction->GetCurrentTargetId() : NAME_None;
+    const bool bGrip = CockpitInteraction && CockpitInteraction->IsGripActive();
+    const bool bManipulation =
+        CockpitInteraction && CockpitInteraction->IsManipulationActive();
+    const FVector2D Cursor = GetGearLeverVisualCursor();
+    const UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d camera=%d wheels=%d"),
+        IsSystemMenuOpen() ? 1 : 0,
+        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running ? 1 : 0,
+        GetRequestedGear(),
+        GetEngagedGear(),
+        bHasTelemetry ? Telemetry.NormalizedThrottle : 0.0f,
+        bHasTelemetry ? Telemetry.NormalizedBrake : 0.0f,
+        bHasTelemetry ? Telemetry.NormalizedClutch : 0.0f,
+        bHasTelemetry ? Telemetry.NormalizedHandbrake : 0.0f,
+        bHasTelemetry ? Telemetry.NormalizedSteering : GetSteeringCommand(),
+        bHasTelemetry ? Telemetry.SpeedKmh : 0.0f,
+        DistanceCm,
+        Cursor.X,
+        Cursor.Y,
+        *TargetId.ToString(),
+        bGrip ? 1 : 0,
+        bManipulation ? 1 : 0,
+        DriverCamera && DriverCamera->IsActive() ? 1 : 0,
+        Movement ? Movement->GetNumWheels() : 0);
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const

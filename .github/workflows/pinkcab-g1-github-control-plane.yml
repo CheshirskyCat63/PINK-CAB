@@ -17,7 +17,7 @@ concurrency:
 jobs:
   gate:
     name: Exact-head build test package evidence
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 300
     env:
       PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
@@ -82,6 +82,7 @@ jobs:
           @(
             "automation_input_scope=UE_PlayerController_and_Automation",
             "os_hid_mouse=NOT_VERIFIED_BY_AUTOMATION",
+            "packaged_os_input=WINDOWS_SYNTHETIC_SENDINPUT_ONLY",
             "human_acceptance=HUMAN_PENDING",
             "physics_smoke_note=ChaosBaseline.PhysicsOnly tests use direct dynamics-provider setup and are never gameplay-input acceptance",
             "fixture_input_note=ControllerPedalDriveWithFixtureDrivetrain uses fixture ignition/drivetrain setup and is never full cockpit E2E",
@@ -129,7 +130,8 @@ jobs:
             'PinkCab.Vehicle.Visual.PresentationBindingRuntime',
             'PinkCab.UI.SystemMenu.StartupHardPause',
             'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.DriveSmoke',
-            'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.ReverseDriveSmoke'
+            'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.ReverseDriveSmoke',
+            'PinkCab.Vehicle.Health.Drivetrain.HealthyThirtyMinutes'
           )
           $summary = New-Object System.Collections.Generic.List[string]
           foreach ($filter in $filters) {
@@ -207,6 +209,15 @@ jobs:
           "alive=$alive; map=$($map.Count); critical=0" | Set-Content "$env:EVIDENCE_DIR\PACKAGED_SMOKE_SUMMARY.txt"
           Write-Host "PACKAGED_SMOKE_PASS"
 
+      - name: Packaged Windows OS-input route and render evidence
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $inner = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $ev
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Immutable runner delivery and HUMAN_PENDING shortcut
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -258,17 +269,17 @@ jobs:
 
           $desktop = [Environment]::GetFolderPath("Desktop")
           if (-not [string]::IsNullOrWhiteSpace($desktop) -and (Test-Path $desktop)) {
-            Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File -ErrorAction SilentlyContinue | Remove-Item -Force
             $latest = Join-Path $desktop "PINKCAB Latest.lnk"
+            Remove-Item -LiteralPath $latest -Force -ErrorAction SilentlyContinue
             $ws = New-Object -ComObject WScript.Shell
             $s = $ws.CreateShortcut($latest)
             $s.TargetPath = $outer
             $s.WorkingDirectory = Join-Path $gateRoot "Windows"
-            $s.Description = "PINK CAB $short - GitHub AUTO PASS / HUMAN PENDING"
+            $s.Description = "PINK CAB $short - latest verified GitHub candidate / HUMAN PENDING"
             $s.Save()
-            $remaining = @(Get-ChildItem -LiteralPath $desktop -Filter 'PINKCAB*.lnk' -File)
-            if ($remaining.Count -ne 1 -or $remaining[0].Name -ne 'PINKCAB Latest.lnk') {
-              throw "Desktop shortcut invariant failed."
+            $verify = $ws.CreateShortcut($latest)
+            if ($verify.TargetPath -ne $outer) {
+              throw "Latest shortcut target mismatch: $($verify.TargetPath)"
             }
             "desktop_shortcut=$latest" | Set-Content "$env:EVIDENCE_DIR\RUNNER_DELIVERY.txt"
           } else {
@@ -298,7 +309,7 @@ jobs:
           name: PINKCAB-G1-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: Artifacts/Package/Windows
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
           compression-level: 0
 
       - name: Publish exact-head GitHub gate status

@@ -1,0 +1,315 @@
+param(
+    [Parameter(Mandatory=$true)][string]$Exe,
+    [Parameter(Mandatory=$true)][string]$EvidenceDir
+)
+
+$ErrorActionPreference = "Stop"
+New-Item -ItemType Directory -Force -Path $EvidenceDir | Out-Null
+$log = Join-Path $EvidenceDir "PACKAGED_OS_INPUT.log"
+$summary = Join-Path $EvidenceDir "PACKAGED_OS_INPUT_SUMMARY.txt"
+$screenshot = Join-Path $EvidenceDir "PACKAGED_OS_INPUT.png"
+Remove-Item $log,$summary,$screenshot -Force -ErrorAction SilentlyContinue
+
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class PinkCabNativeInput {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    [DllImport("user32.dll")] static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
+    const uint KEYUP=0x0002, MOVE=0x0001, LEFTDOWN=0x0002, LEFTUP=0x0004, RIGHTDOWN=0x0008, RIGHTUP=0x0010, WHEEL=0x0800;
+    public static void KeyDown(byte vk) { keybd_event(vk,0,0,UIntPtr.Zero); }
+    public static void KeyUp(byte vk) { keybd_event(vk,0,KEYUP,UIntPtr.Zero); }
+    public static void Move(int dx,int dy) { mouse_event(MOVE,dx,dy,0,UIntPtr.Zero); }
+    public static void Wheel(int delta) { mouse_event(WHEEL,0,0,unchecked((uint)delta),UIntPtr.Zero); }
+    public static void LeftDown() { mouse_event(LEFTDOWN,0,0,0,UIntPtr.Zero); }
+    public static void LeftUp() { mouse_event(LEFTUP,0,0,0,UIntPtr.Zero); }
+    public static void RightDown() { mouse_event(RIGHTDOWN,0,0,0,UIntPtr.Zero); }
+    public static void RightUp() { mouse_event(RIGHTUP,0,0,0,UIntPtr.Zero); }
+}
+"@
+Add-Type -AssemblyName System.Drawing
+
+function Tap-Key([byte]$Vk, [int]$HoldMs=90) {
+    [PinkCabNativeInput]::KeyDown($Vk)
+    Start-Sleep -Milliseconds $HoldMs
+    [PinkCabNativeInput]::KeyUp($Vk)
+    Start-Sleep -Milliseconds 120
+}
+function Get-State {
+    if (-not (Test-Path $log)) { return $null }
+    $line = Get-Content $log -Tail 500 -ErrorAction SilentlyContinue |
+        Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } |
+        Select-Object -Last 1
+    if (-not $line) { return $null }
+    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) camera=(?<camera>\d+) wheels=(?<wheels>\d+)'
+    $m = [regex]::Match($line,$rx)
+    if (-not $m.Success) { return $null }
+    [pscustomobject]@{
+        menu=[int]$m.Groups['menu'].Value
+        ignition=[int]$m.Groups['ignition'].Value
+        requested=[int]$m.Groups['requested'].Value
+        engaged=[int]$m.Groups['engaged'].Value
+        throttle=[double]$m.Groups['throttle'].Value
+        brake=[double]$m.Groups['brake'].Value
+        clutch=[double]$m.Groups['clutch'].Value
+        handbrake=[double]$m.Groups['handbrake'].Value
+        steering=[double]$m.Groups['steering'].Value
+        speed=[double]$m.Groups['speed'].Value
+        dist=[double]$m.Groups['dist'].Value
+        gearx=[double]$m.Groups['gearx'].Value
+        geary=[double]$m.Groups['geary'].Value
+        target=$m.Groups['target'].Value
+        grip=[int]$m.Groups['grip'].Value
+        manip=[int]$m.Groups['manip'].Value
+        camera=[int]$m.Groups['camera'].Value
+        wheels=[int]$m.Groups['wheels'].Value
+        raw=$line
+    }
+}
+function Wait-State([scriptblock]$Predicate,[int]$TimeoutMs,[string]$Description) {
+    $deadline=[DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    do {
+        $s=Get-State
+        if ($null -ne $s -and (& $Predicate $s)) { return $s }
+        Start-Sleep -Milliseconds 100
+    } while([DateTime]::UtcNow -lt $deadline)
+    $last=Get-State
+    throw "Timed out: $Description. Last=$($last.raw)"
+}
+function Capture-Window([IntPtr]$Handle,[string]$Path) {
+    $rect=New-Object PinkCabNativeInput+RECT
+    if (-not [PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) { throw "GetWindowRect failed" }
+    $ww=$rect.Right-$rect.Left; $hh=$rect.Bottom-$rect.Top
+    if ($ww -lt 64 -or $hh -lt 64) { throw "Invalid window rect" }
+    $bmp=New-Object System.Drawing.Bitmap($ww,$hh)
+    $g=[System.Drawing.Graphics]::FromImage($bmp)
+    try { $g.CopyFromScreen($rect.Left,$rect.Top,0,0,$bmp.Size) ; $bmp.Save($Path,[System.Drawing.Imaging.ImageFormat]::Png) }
+    finally { $g.Dispose(); $bmp.Dispose() }
+}
+function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
+    for($i=0;$i -lt 16;$i++) {
+        $s=Get-State
+        $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
+        $err=$Target-$current
+        if([Math]::Abs($err) -le 0.10){ return }
+        $scale = if($Axis -eq 'x'){155.0}else{115.0}
+        $delta=[int][Math]::Round(($err*$scale)/$OsSign)
+        if($delta -gt 65){$delta=65}; if($delta -lt -65){$delta=-65}
+        if($Axis -eq 'x'){[PinkCabNativeInput]::Move($delta,0)}else{[PinkCabNativeInput]::Move(0,$delta)}
+        Start-Sleep -Milliseconds 160
+    }
+    $s=Get-State
+    throw "Gear axis failed"
+}
+function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
+    Move-GameAxis 'y' 0.0 $SignY
+    Move-GameAxis 'x' $X $SignX
+    Move-GameAxis 'y' $Y $SignY
+}
+function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120) {
+    $before=Get-State
+    [PinkCabNativeInput]::Wheel($PrimaryWheelDelta)
+    Start-Sleep -Milliseconds 180
+    $after=Get-State
+    $beforeVal=[double]$before.$Field; $afterVal=[double]$after.$Field
+    $wheel=$PrimaryWheelDelta
+    if($afterVal -le $beforeVal + 0.001) {
+        $wheel=-$PrimaryWheelDelta
+        [PinkCabNativeInput]::Wheel($wheel)
+        Start-Sleep -Milliseconds 180
+    }
+    for($i=0;$i -lt 24;$i++) {
+        $v=[double](Get-State).$Field
+        if($v -ge $Min -and $v -le $Max){ return }
+        if($v -gt $Max) { throw "$Field overshot target: $v" }
+        [PinkCabNativeInput]::Wheel($wheel)
+        Start-Sleep -Milliseconds 150
+    }
+    throw "Could not dose $Field"
+}
+
+$proc=$null
+$VK_ESC=0x1B; $VK_SPACE=0x20; $VK_Q=0x51; $VK_W=0x57; $VK_E=0x45; $VK_3=0x33; $VK_4=0x34
+try {
+    $proc=Start-Process -FilePath $Exe -ArgumentList @(
+        "-log","-windowed","-ResX=1280","-ResY=720","-PinkCabGateTelemetry","-abslog=$log"
+    ) -WorkingDirectory (Split-Path $Exe) -PassThru
+
+    $deadline=[DateTime]::UtcNow.AddSeconds(45)
+    do {
+        Start-Sleep -Milliseconds 250
+        $proc.Refresh()
+        if($proc.HasExited){ throw "Packaged game exited before OS-input gate" }
+    } while(($proc.MainWindowHandle -eq 0 -or $null -eq (Get-State)) -and [DateTime]::UtcNow -lt $deadline)
+    if($proc.MainWindowHandle -eq 0){ throw "Packaged game window not found" }
+
+    [PinkCabNativeInput]::ShowWindow($proc.MainWindowHandle,9) | Out-Null
+    [PinkCabNativeInput]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null
+    Start-Sleep -Milliseconds 500
+
+    Wait-State { param($s) $s.menu -eq 1 -and $s.camera -eq 1 -and $s.wheels -eq 4 } 8000 "startup menu/camera/wheels" | Out-Null
+    Tap-Key $VK_ESC
+    Wait-State { param($s) $s.menu -eq 0 } 5000 "ESC closes startup menu" | Out-Null
+
+    $ignitionFound=$false
+    $candidates=@(
+        @(35,-55), @(45,-65), @(30,-45), @(55,-75),
+        @(35,55), @(45,65), @(0,-55), @(70,-55),
+        @(-25,-55), @(70,55), @(-25,55), @(0,55)
+    )
+    foreach($c in $candidates) {
+        [PinkCabNativeInput]::KeyDown($VK_SPACE); Start-Sleep -Milliseconds 180
+        [PinkCabNativeInput]::Move([int]$c[0],[int]$c[1]); Start-Sleep -Milliseconds 500
+        $s=Get-State
+        if($s.target -eq 'Ignition') {
+            [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 350; [PinkCabNativeInput]::LeftUp()
+            Start-Sleep -Milliseconds 450
+            $s=Get-State
+            if($s.ignition -eq 1){ $ignitionFound=$true }
+        }
+        [PinkCabNativeInput]::KeyUp($VK_SPACE)
+        if($ignitionFound){ break }
+        Start-Sleep -Milliseconds 900
+    }
+    if(-not $ignitionFound){ throw "Could not acquire/start Ignition through packaged Space+LMB route. Last=$((Get-State).raw)" }
+
+    Tap-Key $VK_4
+    [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 250
+    $hbGrip=Wait-State { param($s) $s.target -eq 'Handbrake' -and $s.grip -eq 1 } 4000 "RMB grips handbrake"
+    $hbBefore=$hbGrip.handbrake
+    [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 150
+    [PinkCabNativeInput]::Move(0,80); Start-Sleep -Milliseconds 250
+    $hbAfter=(Get-State).handbrake
+    $hbDirection = if($hbAfter -lt $hbBefore){1}else{-1}
+    for($i=0;$i -lt 12 -and (Get-State).handbrake -gt 0.05;$i++){
+        [PinkCabNativeInput]::Move(0,$hbDirection*100); Start-Sleep -Milliseconds 140
+    }
+    Wait-State { param($s) $s.handbrake -le 0.05 -and $s.manip -eq 1 } 4000 "analog handbrake release" | Out-Null
+    [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp(); Start-Sleep -Milliseconds 250
+
+    [PinkCabNativeInput]::KeyDown($VK_Q)
+    Wait-State { param($s) $s.clutch -ge 0.90 } 4000 "Q depresses clutch" | Out-Null
+    Tap-Key $VK_3
+    [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 180
+    [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 180
+    Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation" | Out-Null
+
+    $sx0=Get-State; [PinkCabNativeInput]::Move(25,0); Start-Sleep -Milliseconds 220; $sx1=Get-State
+    $signX=[Math]::Sign($sx1.gearx-$sx0.gearx)
+    if($signX -eq 0){ throw "MouseX did not reach H-gate through packaged window" }
+    Move-GameAxis 'x' 0.0 $signX
+    $sy0=Get-State; [PinkCabNativeInput]::Move(0,25); Start-Sleep -Milliseconds 220; $sy1=Get-State
+    $signY=[Math]::Sign($sy1.geary-$sy0.geary)
+    if($signY -eq 0){ throw "MouseY did not reach H-gate through packaged window" }
+    Move-GearCursor -1.0 1.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
+    [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
+    Wait-State { param($s) $s.engaged -eq 1 } 4000 "Q allows first engagement" | Out-Null
+
+    [PinkCabNativeInput]::KeyDown($VK_E)
+    Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
+    Dose-To 'throttle' 0.20 0.30 120
+    [PinkCabNativeInput]::KeyUp($VK_Q)
+    Wait-State { param($s) $s.engaged -eq 1 -and $s.dist -gt 20.0 -and $s.speed -gt 0.5 } 7000 "forward packaged movement" | Out-Null
+
+    $steerBefore=(Get-State).steering
+    [PinkCabNativeInput]::Move(30,0); Start-Sleep -Milliseconds 350
+    $steerAfter=(Get-State).steering
+    if($steerAfter -le $steerBefore){ throw "Physical Windows mouse-right did not increase semantic right steering" }
+    Capture-Window $proc.MainWindowHandle $screenshot
+
+    [PinkCabNativeInput]::KeyUp($VK_E)
+    [PinkCabNativeInput]::KeyDown($VK_Q)
+    [PinkCabNativeInput]::KeyDown($VK_W)
+    Dose-To 'brake' 0.75 1.0 120
+    Wait-State { param($s) [Math]::Abs($s.speed) -lt 1.0 } 8000 "service-brake stop" | Out-Null
+    [PinkCabNativeInput]::KeyUp($VK_W)
+
+    Tap-Key $VK_3
+    [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 160
+    [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 160
+    Move-GearCursor 1.0 -1.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq -1 } 4000 "H-gate requests reverse" | Out-Null
+    [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
+    Wait-State { param($s) $s.engaged -eq -1 } 4000 "reverse engages with clutch down" | Out-Null
+
+    [PinkCabNativeInput]::KeyDown($VK_E)
+    Wait-State { param($s) $s.throttle -le 0.01 } 2500 "reverse launch requires fresh E+wheel dose" | Out-Null
+    Dose-To 'throttle' 0.20 0.30 120
+    [PinkCabNativeInput]::KeyUp($VK_Q)
+    Wait-State { param($s) $s.engaged -eq -1 -and $s.speed -lt -0.5 } 7000 "reverse packaged movement" | Out-Null
+
+    [PinkCabNativeInput]::KeyUp($VK_E)
+    [PinkCabNativeInput]::KeyDown($VK_Q)
+    [PinkCabNativeInput]::KeyDown($VK_W)
+    Dose-To 'brake' 0.75 1.0 120
+    Wait-State { param($s) [Math]::Abs($s.speed) -lt 1.0 } 8000 "reverse stop" | Out-Null
+    [PinkCabNativeInput]::KeyUp($VK_W)
+    [PinkCabNativeInput]::KeyUp($VK_Q)
+
+    Tap-Key $VK_ESC
+    Wait-State { param($s) $s.menu -eq 1 -and $s.grip -eq 0 -and $s.manip -eq 0 } 4000 "menu cleans transient capture" | Out-Null
+    Tap-Key $VK_ESC
+    Wait-State { param($s) $s.menu -eq 0 } 4000 "resume after menu" | Out-Null
+
+    for($i=1;$i -le 50;$i++){
+        Tap-Key $VK_3 25
+        [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 25
+        [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 25
+        [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
+        Start-Sleep -Milliseconds 45
+        if(($i % 10) -eq 0){
+            Wait-State { param($x) $x.grip -eq 0 -and $x.manip -eq 0 -and $x.target -eq 'None' } 2500 "interaction cleanup cycle" | Out-Null
+        }
+    }
+
+    $audioDisabled=@(Select-String -Path $log -Pattern 'Audio Device Manager not initializing due to all audio being disabled' -ErrorAction SilentlyContinue)
+    if($audioDisabled.Count -gt 0){ throw "OS-input package was accidentally launched with audio disabled" }
+    $audioLines=@(Select-String -Path $log -Pattern '(?i)LogAudio|AudioMixer' -ErrorAction SilentlyContinue)
+    if($audioLines.Count -eq 0){ throw "No audio initialization evidence in packaged run" }
+
+    $critical=@(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Log[A-Za-z0-9_]+: Error:' -ErrorAction SilentlyContinue)
+    if($critical.Count -gt 0){ throw "Critical packaged OS-input log entries: $($critical.Count)" }
+
+    $final=Get-State
+    @(
+        "scope=WINDOWS_SYNTHETIC_SENDINPUT_NOT_PHYSICAL_HID",
+        "startup_menu=PASS",
+        "driver_camera=PASS",
+        "wheels=4",
+        "ignition_space_lmb=PASS",
+        "rmb_only_and_rmb_lmb_route=PASS",
+        "analog_handbrake_release=PASS",
+        "hgate_first=PASS",
+        "mandatory_e_wheel_launch=PASS",
+        "forward_movement=PASS",
+        "mouse_right_steering=PASS",
+        "service_brake_stop=PASS",
+        "hgate_reverse=PASS",
+        "reverse_movement=PASS",
+        "menu_focus_cleanup=PASS",
+        "interaction_cleanup_cycles=50",
+        "audio_log_lines=$($audioLines.Count)",
+        "critical=0",
+        "screenshot=$screenshot",
+        "final=$($final.raw)"
+    ) | Set-Content $summary
+    Write-Host "PACKAGED_OS_INPUT_PASS"
+}
+finally {
+    [PinkCabNativeInput]::KeyUp($VK_Q)
+    [PinkCabNativeInput]::KeyUp($VK_W)
+    [PinkCabNativeInput]::KeyUp($VK_E)
+    [PinkCabNativeInput]::KeyUp($VK_SPACE)
+    [PinkCabNativeInput]::LeftUp()
+    [PinkCabNativeInput]::RightUp()
+    if($proc -and -not $proc.HasExited){
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 300
+    }
+}
