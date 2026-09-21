@@ -226,8 +226,8 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     Controls.SetSteering(0.40f);
     TestTrue(TEXT("semantic right-positive steering reaches Chaos adapter"),
         Provider.ApplyControls(Controls));
-    TestTrue(TEXT("Chaos vehicle-space steering is inverted exactly once from player-facing right-positive"),
-        FMath::IsNearlyEqual(Movement->GetSteeringInput(), -0.40f, 1.e-4f));
+    TestTrue(TEXT("Chaos vehicle-space steering preserves player-facing right-positive"),
+        FMath::IsNearlyEqual(Movement->GetSteeringInput(), 0.40f, 1.e-4f));
 
     Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
@@ -262,17 +262,14 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("partial coupling produces continuous external rear torque"),
         PoweredPartialTorque > 0.0f);
 
-    // A real idling engine still has anti-stall/idle torque at the clutch bite point.
-    // This is what lets a careful no-throttle launch creep while a fast clutch dump
-    // can still hit the drivetrain stall gate.
+    // Owner authority forbids hidden launch assistance. Zero pedal command must
+    // never synthesize rear-wheel drive torque, even at the clutch bite point.
     Controls.SetThrottle(0.0f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
-    const float IdleBiteTorque =
+    const float ZeroPedalTorque =
         FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
-    TestTrue(TEXT("partial clutch carries idle bite torque with zero throttle"),
-        IdleBiteTorque > 0.0f);
-    TestTrue(TEXT("idle bite remains below powered partial-clutch torque"),
-        IdleBiteTorque < PoweredPartialTorque);
+    TestEqual(TEXT("partial clutch carries zero synthetic torque with zero throttle"),
+        ZeroPedalTorque, 0.0f);
 
     Controls.SetClutch(1.0f);
     Controls.SetDriveline(1, 1, 0.0f);

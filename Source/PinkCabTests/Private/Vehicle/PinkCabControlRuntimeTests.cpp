@@ -167,10 +167,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabSteeringHorizontalMouseOnlyTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("inactive processed axis rejects stale raw value"),
-        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.0f, 18.0f), 0.0f);
-    TestEqual(TEXT("tiny processed axis noise is treated as inactive"),
-        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.00001f, -22.0f), 0.0f);
+    TestEqual(TEXT("processed-zero frame preserves valid raw horizontal delta"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.0f, 18.0f), 18.0f);
+    TestEqual(TEXT("tiny processed axis noise does not suppress valid raw delta"),
+        FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.00001f, -22.0f), -22.0f);
     TestEqual(TEXT("active positive axis keeps raw magnitude"),
         FPinkCabPhysicalInputConvention::ResolveActiveDeviceAxis(0.35f, 18.0f), 18.0f);
     TestEqual(TEXT("active negative axis keeps raw sign"),
