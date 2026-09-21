@@ -279,6 +279,11 @@ struct FPinkCabPhysicalPlayerInputState
     float InitialHandbrake = 0.0f;
     float SteeringBeforeRmb = 0.0f;
     float SteeringAtManipulationStart = 0.0f;
+    FVector DriveStartLocation = FVector::ZeroVector;
+    int32 WheelPulsesApplied = 0;
+    bool bWheelPulsePendingTick = false;
+    double PhaseStartSeconds = 0.0;
+    double DriveStartSeconds = 0.0;
     int32 Phase = 0;
 };
 
@@ -441,11 +446,110 @@ public:
             InjectKey(*PC, EKeys::RightMouseButton, IE_Released, 0.0f);
             State->Phase = 12;
             return false;
-        default:
+        case 12:
             Test->TestFalse(TEXT("physical grip releases after RMB"),
                 Interaction->IsGripActive());
             Test->TestTrue(TEXT("consumed gearbox target clears after complete release"),
                 Interaction->GetCurrentTargetId().IsNone());
+            InjectKey(*PC, EKeys::Q, IE_Pressed);
+            State->PhaseStartSeconds = FPlatformTime::Seconds();
+            State->Phase = 13;
+            return false;
+        case 13:
+            if (Pawn->GetEngagedGear() != 1)
+            {
+                if ((FPlatformTime::Seconds() - State->PhaseStartSeconds) > 2.0)
+                {
+                    Test->AddError(FString::Printf(
+                        TEXT("pending first never engaged after real Q clutch input; requested=%d engaged=%d"),
+                        Pawn->GetRequestedGear(), Pawn->GetEngagedGear()));
+                    return true;
+                }
+                return false;
+            }
+            Test->TestTrue(TEXT("real Q accepts the already-requested first gear"),
+                PC->IsInputKeyDown(EKeys::Q));
+            Test->TestEqual(TEXT("actual gearbox engages first only after Q"),
+                Pawn->GetEngagedGear(), 1);
+            InjectKey(*PC, EKeys::E, IE_Pressed);
+            State->Phase = 14;
+            return false;
+        case 14:
+        {
+            FPinkCabVehicleTelemetry Telemetry;
+            if (!Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry))
+            {
+                return false;
+            }
+            Test->TestTrue(TEXT("Q remains held while E begins launch dosing"),
+                PC->IsInputKeyDown(EKeys::Q));
+            Test->TestTrue(TEXT("E is held for launch dosing"),
+                PC->IsInputKeyDown(EKeys::E));
+            if (State->WheelPulsesApplied == 0)
+            {
+                Test->TestTrue(TEXT("fresh E press alone still has zero throttle"),
+                    Telemetry.NormalizedThrottle <= 0.01f);
+            }
+
+            if (State->WheelPulsesApplied < 5)
+            {
+                if (!State->bWheelPulsePendingTick)
+                {
+                    InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 1.0f);
+                    State->bWheelPulsePendingTick = true;
+                    return false;
+                }
+                InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 0.0f);
+                State->bWheelPulsePendingTick = false;
+                ++State->WheelPulsesApplied;
+                return false;
+            }
+
+            if (Telemetry.NormalizedThrottle < 0.20f)
+            {
+                return false;
+            }
+
+            Test->TestTrue(TEXT("five E+wheel pulses create the 25 percent launch band"),
+                Telemetry.NormalizedThrottle >= 0.20f && Telemetry.NormalizedThrottle <= 0.30f);
+            State->DriveStartLocation = Pawn->GetActorLocation();
+            InjectKey(*PC, EKeys::Q, IE_Released, 0.0f);
+            State->DriveStartSeconds = FPlatformTime::Seconds();
+            State->Phase = 15;
+            return false;
+        }
+        case 15:
+        {
+            if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 2.5)
+            {
+                return false;
+            }
+            FPinkCabVehicleTelemetry Telemetry;
+            if (!Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry))
+            {
+                return false;
+            }
+            const float TravelCm = FVector::Dist2D(Pawn->GetActorLocation(), State->DriveStartLocation);
+            Test->AddInfo(FString::Printf(
+                TEXT("RECOVERY_R1_TRACE phase=playercontroller_drive travel=%.1f throttle=%.3f clutch=%.3f requested=%d engaged=%d"),
+                TravelCm,
+                Telemetry.NormalizedThrottle,
+                Telemetry.NormalizedClutch,
+                Pawn->GetRequestedGear(),
+                Pawn->GetEngagedGear()));
+            Test->TestEqual(TEXT("PlayerController drivetrain path keeps first engaged"),
+                Pawn->GetEngagedGear(), 1);
+            Test->TestTrue(TEXT("PlayerController cockpit path moves the taxi"),
+                TravelCm > 20.0f);
+            InjectKey(*PC, EKeys::E, IE_Released, 0.0f);
+            State->Phase = 16;
+            return false;
+        }
+        default:
+            Test->TestFalse(TEXT("Q is released after physical drivetrain path"),
+                PC->IsInputKeyDown(EKeys::Q));
+            Test->TestFalse(TEXT("E is released after physical drivetrain path"),
+                PC->IsInputKeyDown(EKeys::E));
             return true;
         }
     }

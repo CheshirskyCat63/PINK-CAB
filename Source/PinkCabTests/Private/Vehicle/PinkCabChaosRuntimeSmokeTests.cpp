@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
+#include "Math/RotationMatrix.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "Interaction/PinkCabInteractionModel.h"
@@ -176,15 +177,19 @@ public:
         }
 
         const FVector EndLocation = Pawn->GetActorLocation();
-        const float ForwardTravelCm = EndLocation.X - State->StartLocation.X;
-        const float LateralTravelCm = FMath::Abs(EndLocation.Y - State->StartLocation.Y);
+        const FVector Travel = EndLocation - State->StartLocation;
+        const FVector StartForward = State->StartRotation.Vector();
+        const FVector StartRight =
+            FRotationMatrix(State->StartRotation).GetScaledAxis(EAxis::Y);
+        const float ForwardTravelCm = FVector::DotProduct(Travel, StartForward);
+        const float RightTravelCm = FVector::DotProduct(Travel, StartRight);
         const FWheelStatus FrontLeft = Movement->GetWheelState(0);
         const FWheelStatus FrontRight = Movement->GetWheelState(1);
         const FWheelStatus RearLeft = Movement->GetWheelState(2);
         const FWheelStatus RearRight = Movement->GetWheelState(3);
         Test->AddInfo(FString::Printf(
             TEXT("quarter-pedal diagnostics: forward=%.1fcm lateral=%.1fcm speed=%.1fcm/s rpm=%.1f brakes=(%.1f,%.1f,%.1f,%.1f) rearL[slip=%d mag=%.1f skid=%d drive=%.1f] rearR[slip=%d mag=%.1f skid=%d drive=%.1f]"),
-            ForwardTravelCm, LateralTravelCm, Movement->GetForwardSpeed(),
+            ForwardTravelCm, RightTravelCm, Movement->GetForwardSpeed(),
             Movement->GetEngineRotationSpeed(),
             FrontLeft.BrakeTorque, FrontRight.BrakeTorque,
             RearLeft.BrakeTorque, RearRight.BrakeTorque,
@@ -193,7 +198,8 @@ public:
             RearRight.bIsSlipping ? 1 : 0, RearRight.SlipMagnitude,
             RearRight.bIsSkidding ? 1 : 0, RearRight.DriveTorque));
         Test->TestTrue(TEXT("quarter pedal moves the heavy car without demanding a launch trick"), ForwardTravelCm > 50.0f);
-        Test->TestTrue(TEXT("quarter-pedal steering remains physically observable"), LateralTravelCm > 1.0f);
+        Test->TestTrue(TEXT("positive semantic steering produces signed driver-right travel"),
+            RightTravelCm > 1.0f);
         Test->TestTrue(TEXT("quarter pedal keeps useful forward speed"), FMath::Abs(Movement->GetForwardSpeed()) > 20.0f);
         Test->TestFalse(TEXT("quarter pedal remains below rear-left wheelspin threshold"), RearLeft.bIsSlipping);
         Test->TestFalse(TEXT("quarter pedal remains below rear-right wheelspin threshold"), RearRight.bIsSlipping);
