@@ -239,7 +239,7 @@ private:
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosRuntimeDriveSmokeTest,
-    "PinkCab.Vehicle.ChaosBaseline.Runtime.DriveSmoke",
+    "PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.DriveSmoke",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FPinkCabChaosRuntimeDriveSmokeTest::RunTest(const FString& Parameters)
 {
@@ -535,7 +535,7 @@ private:
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosRuntimeReverseDriveSmokeTest,
-    "PinkCab.Vehicle.ChaosBaseline.Runtime.ReverseDriveSmoke",
+    "PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.ReverseDriveSmoke",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FPinkCabChaosRuntimeReverseDriveSmokeTest::RunTest(const FString& Parameters)

@@ -576,7 +576,7 @@ bool FPinkCabPhysicalPlayerInputRuntimeTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPlayerInputRuntimeTest,
-    "PinkCab.Vehicle.PlayerInput.ControllerThrottleDrive",
+    "PinkCab.Vehicle.PlayerInput.ControllerPedalDriveWithFixtureDrivetrain",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FPinkCabPlayerInputRuntimeTest::RunTest(const FString& Parameters)

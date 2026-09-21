@@ -91,4 +91,46 @@ bool FPinkCabChaosBridgeZeroThrottleNoSyntheticTorqueTest::RunTest(const FString
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosBridgeFullCouplingBoundaryTest,
+    "PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosBridgeFullCouplingBoundaryTest::RunTest(const FString& Parameters)
+{
+    UChaosWheeledVehicleMovementComponent* Movement =
+        NewObject<UChaosWheeledVehicleMovementComponent>();
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    Profile.ApplyToMovement(*Movement);
+
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    FPinkCabCockpitState Cockpit;
+    Cockpit.StartEngine();
+
+    FPinkCabVehicleControlState Partial;
+    Partial.SetThrottle(0.25f);
+    Partial.SetDriveline(1, 1, 0.999f);
+    Partial.SetDrivetrainTorqueCapacity(1.0f);
+    TestTrue(TEXT("99.9 percent coupling is accepted"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Partial, Provider));
+    TestEqual(TEXT("partial clutch keeps Chaos transmission neutral until physically full coupling"),
+        Movement->GetTargetGear(), 0);
+    TestTrue(TEXT("partial clutch still carries authored continuous external torque"),
+        FMath::Abs(Partial.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER);
+
+    FPinkCabVehicleControlState Full;
+    Full.SetThrottle(0.25f);
+    Full.SetDriveline(1, 1, 1.0f);
+    Full.SetDrivetrainTorqueCapacity(1.0f);
+    TestTrue(TEXT("full coupling is accepted"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Full, Provider));
+    TestEqual(TEXT("only full coupling hands engaged gear to Chaos transmission"),
+        Movement->GetTargetGear(), 1);
+    TestEqual(TEXT("full coupling stops the partial-clutch external torque path"),
+        Full.ExternalRearDriveTorquePerWheelNm, 0.0f);
+    return true;
+}
+
 #endif

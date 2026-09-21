@@ -68,7 +68,8 @@ jobs:
             "automation_input_scope=UE_PlayerController_and_Automation",
             "os_hid_mouse=NOT_VERIFIED_BY_AUTOMATION",
             "human_acceptance=HUMAN_PENDING",
-            "physics_smoke_note=existing_Chaos_smokes_may_use_direct_dynamics_provider",
+            "physics_smoke_note=ChaosBaseline.PhysicsOnly tests use direct dynamics-provider setup and are never gameplay-input acceptance",
+            "fixture_input_note=ControllerPedalDriveWithFixtureDrivetrain uses fixture ignition/drivetrain setup and is never full cockpit E2E",
             "rule=technical_pass_never_implies_human_pass"
           ) | Set-Content "$env:EVIDENCE_DIR\AUTOMATION_SCOPE.txt"
           Write-Host "EXACT_HEAD=$head"
@@ -112,8 +113,8 @@ jobs:
             'PinkCab.Vehicle.AssetContract.Tatra613V12',
             'PinkCab.Vehicle.Visual.PresentationBindingRuntime',
             'PinkCab.UI.SystemMenu.StartupHardPause',
-            'PinkCab.Vehicle.ChaosBaseline.Runtime.DriveSmoke',
-            'PinkCab.Vehicle.ChaosBaseline.Runtime.ReverseDriveSmoke'
+            'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.DriveSmoke',
+            'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly.ReverseDriveSmoke'
           )
           $summary = New-Object System.Collections.Generic.List[string]
           foreach ($filter in $filters) {
