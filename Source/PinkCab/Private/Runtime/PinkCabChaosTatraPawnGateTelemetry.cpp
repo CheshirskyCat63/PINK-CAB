@@ -135,7 +135,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     const bool bWorldPaused = UGameplayStatics::IsGamePaused(this);
     const float WorldDeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : -1.0f;
     const float ActorVelocityCmPerSec = GetVelocity().Size2D();
-    const USkeletalMeshComponent* VehicleMesh = GetMesh();
+    USkeletalMeshComponent* VehicleMesh = GetMesh();
     const bool bAnyRigidBodyAwake =
         VehicleMesh && VehicleMesh->IsAnyRigidBodyAwake();
 
