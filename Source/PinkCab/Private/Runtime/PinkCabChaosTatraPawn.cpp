@@ -312,40 +312,55 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     }
     NextPackagedGateTelemetrySeconds = NowSeconds + 0.10;
 
-    FPinkCabVehicleTelemetry Telemetry;
-    const bool bHasTelemetry = DynamicsProvider.ReadTelemetry(Telemetry);
+    FPinkCabVehicleTelemetry Telemetry{};
+    DynamicsProvider.ReadTelemetry(Telemetry);
     const FVector Location = GetActorLocation();
     const float DistanceCm = FVector::Dist2D(Location, PackagedGateStartLocation);
-    const FName TargetId =
-        CockpitInteraction ? CockpitInteraction->GetCurrentTargetId() : NAME_None;
-    const bool bGrip = CockpitInteraction && CockpitInteraction->IsGripActive();
-    const bool bManipulation =
-        CockpitInteraction && CockpitInteraction->IsManipulationActive();
     const FVector2D Cursor = GetGearLeverVisualCursor();
-    const UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
+
+    FName TargetId = NAME_None;
+    bool bGrip = false;
+    bool bManipulation = false;
+    if (CockpitInteraction)
+    {
+        TargetId = CockpitInteraction->GetCurrentTargetId();
+        bGrip = CockpitInteraction->IsGripActive();
+        bManipulation = CockpitInteraction->IsManipulationActive();
+    }
+
+    int32 WheelCount = 0;
+    if (const UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
+    {
+        WheelCount = Movement->GetNumWheels();
+    }
+
+    const bool bIgnitionRunning =
+        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
+    const bool bDriverCameraActive =
+        DriverCamera && DriverCamera->IsActive();
 
     UE_LOG(
         LogTemp,
         Display,
         TEXT("PINKCAB_GATE_STATE menu=%d ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d camera=%d wheels=%d"),
-        IsSystemMenuOpen() ? 1 : 0,
-        CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running ? 1 : 0,
+        static_cast<int32>(IsSystemMenuOpen()),
+        static_cast<int32>(bIgnitionRunning),
         GetRequestedGear(),
         GetEngagedGear(),
-        bHasTelemetry ? Telemetry.NormalizedThrottle : 0.0f,
-        bHasTelemetry ? Telemetry.NormalizedBrake : 0.0f,
-        bHasTelemetry ? Telemetry.NormalizedClutch : 0.0f,
-        bHasTelemetry ? Telemetry.NormalizedHandbrake : 0.0f,
-        bHasTelemetry ? Telemetry.NormalizedSteering : GetSteeringCommand(),
-        bHasTelemetry ? Telemetry.SpeedKmh : 0.0f,
+        Telemetry.NormalizedThrottle,
+        Telemetry.NormalizedBrake,
+        Telemetry.NormalizedClutch,
+        Telemetry.NormalizedHandbrake,
+        Telemetry.NormalizedSteering,
+        Telemetry.SpeedKmh,
         DistanceCm,
         Cursor.X,
         Cursor.Y,
         *TargetId.ToString(),
-        bGrip ? 1 : 0,
-        bManipulation ? 1 : 0,
-        DriverCamera && DriverCamera->IsActive() ? 1 : 0,
-        Movement ? Movement->GetNumWheels() : 0);
+        static_cast<int32>(bGrip),
+        static_cast<int32>(bManipulation),
+        static_cast<int32>(bDriverCameraActive),
+        WheelCount);
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const
