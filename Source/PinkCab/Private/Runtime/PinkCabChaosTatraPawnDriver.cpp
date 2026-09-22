@@ -184,8 +184,11 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
 
     const FName ActiveGripTarget = CockpitInteraction->GetActiveGripTargetId();
     const bool bManipulationActive = CockpitInteraction->IsManipulationActive();
+    const FName ManipulationTarget = bManipulationActive
+        ? CockpitInteraction->GetActiveManipulationTargetId()
+        : ActiveGripTarget;
     const bool bGearboxManipulationActive =
-        bManipulationActive && ActiveGripTarget == FName(TEXT("Gearbox"));
+        bManipulationActive && ManipulationTarget == FName(TEXT("Gearbox"));
 
     // RMB only acquires/retains the selected physical control. Steering stays
     // mouse-owned until LMB starts an authored lever manipulation. During that
@@ -196,7 +199,7 @@ bool APinkCabChaosTatraPawn::ProcessCockpitFrame(
         DriverUi->SetPointerCapture(PC, bManipulationActive);
     }
     ApplyPhysicalControlMouseDelta(
-        ActiveGripTarget,
+        ManipulationTarget,
         bManipulationActive,
         PlayerInput.DeviceX,
         PlayerInput.DeviceY,
@@ -292,7 +295,18 @@ void APinkCabChaosTatraPawn::UpdateDriverUiState(
         return;
     }
     FPinkCabDriverUiState UiState;
-    UiState.CurrentTargetId = CockpitInteraction ? CockpitInteraction->GetCurrentTargetId() : NAME_None;
+    if (CockpitInteraction)
+    {
+        const FName QuickTarget = CockpitInteraction->GetCurrentQuickTargetId();
+        const bool bShowHeldTarget =
+            CockpitInteraction->IsGripActive()
+            || CockpitInteraction->IsManipulationActive()
+            || CockpitInteraction->IsMomentaryActive()
+            || CockpitInteraction->IsGazeHeld();
+        UiState.CurrentTargetId = !QuickTarget.IsNone()
+            ? QuickTarget
+            : (bShowHeldTarget ? CockpitInteraction->GetCurrentTargetId() : NAME_None);
+    }
     UiState.GearLeverCursor = GearLeverCursor;
     UiState.SpeedKmh = Presentation.SpeedKmh;
     UiState.EngineRpm = Presentation.EngineRpm;
