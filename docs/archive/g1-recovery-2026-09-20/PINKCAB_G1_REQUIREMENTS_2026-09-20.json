@@ -1,0 +1,219 @@
+{
+  "schema": "pinkcab.g1.recovery.requirements.v1",
+  "source_snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+  "recovery_date": "2026-09-20",
+  "count": 42,
+  "implementation_status": "NOT_VERIFIED_IN_RECOVERY_SESSION",
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "requirement": "Plan files only during planning; originals untouched",
+      "tasks": "ADM-01..04"
+    },
+    {
+      "id": "REQ-002",
+      "requirement": "One active PINK CAB",
+      "tasks": "ADM-01/02"
+    },
+    {
+      "id": "REQ-003",
+      "requirement": "Shareholder build + explicit STOP",
+      "tasks": "ADM-04,QA-07"
+    },
+    {
+      "id": "REQ-004",
+      "requirement": "Vehicle mechanics/code 100%",
+      "tasks": "VEH-01..09,QA-03..07"
+    },
+    {
+      "id": "REQ-005",
+      "requirement": "Vehicle correctly fitted in scene",
+      "tasks": "VEH-02/03,ASSET-03"
+    },
+    {
+      "id": "REQ-006",
+      "requirement": "Fully animated adopted cockpit",
+      "tasks": "CAB-01..09"
+    },
+    {
+      "id": "REQ-007",
+      "requirement": "Every adopted control works",
+      "tasks": "CAB-01/08/09"
+    },
+    {
+      "id": "REQ-008",
+      "requirement": "Context RMB/LMB/wheel grammar",
+      "tasks": "INP-01..03/07"
+    },
+    {
+      "id": "REQ-009",
+      "requirement": "Rotary + analog/dosed actions",
+      "tasks": "INP-02/03,CAB-08"
+    },
+    {
+      "id": "REQ-010",
+      "requirement": "Radio tuning/volume",
+      "tasks": "CAB-08,AUD-04"
+    },
+    {
+      "id": "REQ-011",
+      "requirement": "Physical gearbox/handbrake context",
+      "tasks": "INP-06,VEH-07"
+    },
+    {
+      "id": "REQ-012",
+      "requirement": "Q staging keeps steering; key3 remains",
+      "tasks": "INP-04,CAB-03"
+    },
+    {
+      "id": "REQ-013",
+      "requirement": "Mass + heavy stationary steering / rolling relief",
+      "tasks": "VEH-05/08"
+    },
+    {
+      "id": "REQ-014",
+      "requirement": "Root cause of car not moving",
+      "tasks": "VEH-01"
+    },
+    {
+      "id": "REQ-015",
+      "requirement": "Wheels grounded; not sunk/floating",
+      "tasks": "VEH-02/03"
+    },
+    {
+      "id": "REQ-016",
+      "requirement": "Rear passenger menu camera",
+      "tasks": "CAM-01"
+    },
+    {
+      "id": "REQ-017",
+      "requirement": "Smooth driver transition",
+      "tasks": "CAM-02/03"
+    },
+    {
+      "id": "REQ-018",
+      "requirement": "Approved rough road with bumps",
+      "tasks": "CITY-01..03,VEH-08"
+    },
+    {
+      "id": "REQ-019",
+      "requirement": "G1 lower first level only",
+      "tasks": "ADM-04,CITY-01"
+    },
+    {
+      "id": "REQ-020",
+      "requirement": "Full city construction path",
+      "tasks": "CITY/STR/TRA,POST-02..07"
+    },
+    {
+      "id": "REQ-021",
+      "requirement": "City exactly 50%, already interesting",
+      "tasks": "CITY-08..10,STR-07"
+    },
+    {
+      "id": "REQ-022",
+      "requirement": "Infinite forward streaming",
+      "tasks": "STR-01..07"
+    },
+    {
+      "id": "REQ-023",
+      "requirement": "Reverse restores same CityCode city",
+      "tasks": "STR-04/05"
+    },
+    {
+      "id": "REQ-024",
+      "requirement": "Traffic starts from one admitted downloaded model",
+      "tasks": "ASSET-01,TRA-01..06"
+    },
+    {
+      "id": "REQ-025",
+      "requirement": "Traffic AI not finally approved",
+      "tasks": "TRA-06,POST-06"
+    },
+    {
+      "id": "REQ-026",
+      "requirement": "Later material/model swaps without mechanics rewrite",
+      "tasks": "ASSET-03/04,POST-01"
+    },
+    {
+      "id": "REQ-027",
+      "requirement": "Signs/markings/infrastructure",
+      "tasks": "CITY-04/05/08,TRA-05"
+    },
+    {
+      "id": "REQ-028",
+      "requirement": "Sound list through product",
+      "tasks": "AUD-01..05,SND-01..30"
+    },
+    {
+      "id": "REQ-029",
+      "requirement": "Texture/material list",
+      "tasks": "ASSET-04,MAT-01..16"
+    },
+    {
+      "id": "REQ-030",
+      "requirement": "Model/animation list",
+      "tasks": "ASSET-01/03,MOD/ANIM/ROAD/WORLD"
+    },
+    {
+      "id": "REQ-031",
+      "requirement": "Detailed variables + readable code",
+      "tasks": "QA-01,architecture"
+    },
+    {
+      "id": "REQ-032",
+      "requirement": "AI never substitutes for readiness",
+      "tasks": "All,QA-03..07"
+    },
+    {
+      "id": "REQ-033",
+      "requirement": "Use D:\\Новая папка responsibly",
+      "tasks": "ADM-03,ASSET-01"
+    },
+    {
+      "id": "REQ-034",
+      "requirement": "DEADRACE snapshot is salvage only",
+      "tasks": "ADM-03,ASSET-01"
+    },
+    {
+      "id": "REQ-035",
+      "requirement": "Recover мир_пример / early PINK CAB evidence",
+      "tasks": "ADM-02/03,CITY-01"
+    },
+    {
+      "id": "REQ-036",
+      "requirement": "Marathon only with rights/fallback",
+      "tasks": "ASSET-02/03"
+    },
+    {
+      "id": "REQ-037",
+      "requirement": "Spider/butterfly/loop/oval/8 through buildings",
+      "tasks": "CITY-06/07"
+    },
+    {
+      "id": "REQ-038",
+      "requirement": "Production administration preserved",
+      "tasks": "ADM,QA-06"
+    },
+    {
+      "id": "REQ-039",
+      "requirement": "Preserve boosted Tatra starting point",
+      "tasks": "VEH-04"
+    },
+    {
+      "id": "REQ-040",
+      "requirement": "No steering/gearbox inversion regression",
+      "tasks": "INP-06,VEH-05,CAB-02"
+    },
+    {
+      "id": "REQ-041",
+      "requirement": "No mandatory paid tools/assets",
+      "tasks": "ASSET-02,QA-01"
+    },
+    {
+      "id": "REQ-042",
+      "requirement": "Work safely under context/tool limits",
+      "tasks": "handoff/checkpoint"
+    }
+  ]
+}
