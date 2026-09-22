@@ -166,9 +166,10 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $context = if ($env:GATE_LANE -eq 'fast') { 'cheshire/pinkcab-fast' } else { 'cheshire/pinkcab-human-gate' }
           $body = @{
             state = 'pending'
-            context = 'cheshire/pinkcab-g1-github'
+            context = $context
             description = "PINK-CAB $env:GATE_LANE verification running"
             target_url = $runUrl
           } | ConvertTo-Json
@@ -203,9 +204,10 @@ jobs:
           $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
           $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
           $filters = @(
-            'PinkCab.Interaction',
-            'PinkCab.Cockpit',
-            'PinkCab.Vehicle',
+            'PinkCab.G1.HInp',
+            'PinkCab.Cockpit.Input.Recovery',
+            'PinkCab.Vehicle.ChaosBaseline.PhysicsOnly',
+            'PinkCab.Vehicle.Visual.WheelPresentationChaosSync',
             'PinkCab.UI.SystemMenu'
           )
           $summary = New-Object System.Collections.Generic.List[string]
@@ -500,9 +502,10 @@ jobs:
           } else {
             "AUTO technical gate failed; HUMAN not evaluated"
           }
+          $context = if ($env:GATE_LANE -eq 'fast') { 'cheshire/pinkcab-fast' } else { 'cheshire/pinkcab-human-gate' }
           $body = @{
             state = $state
-            context = 'cheshire/pinkcab-g1-github'
+            context = $context
             description = $description
             target_url = $runUrl
           } | ConvertTo-Json
