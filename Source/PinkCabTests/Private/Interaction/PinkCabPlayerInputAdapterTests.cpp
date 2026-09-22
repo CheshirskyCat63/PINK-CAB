@@ -95,4 +95,30 @@ bool FPinkCabPlayerInputAdapterCanonicalDirectionTest::RunTest(const FString& Pa
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPlayerInputAdapterWheelEdgeFallbackTest,
+    "PinkCab.Interaction.PlayerInput.WheelEdgeFallback",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPlayerInputAdapterWheelEdgeFallbackTest::RunTest(const FString& Parameters)
+{
+    TestEqual(
+        TEXT("scroll-up edge survives a zero packaged analog axis"),
+        FPinkCabPlayerInputAdapter::ResolveWheelAxis(0.0f, true, false),
+        1.0f);
+    TestEqual(
+        TEXT("scroll-down edge survives a zero packaged analog axis"),
+        FPinkCabPlayerInputAdapter::ResolveWheelAxis(0.0f, false, true),
+        -1.0f);
+    TestEqual(
+        TEXT("analog wheel remains fallback when no discrete edge exists"),
+        FPinkCabPlayerInputAdapter::ResolveWheelAxis(-0.5f, false, false),
+        -0.5f);
+    TestEqual(
+        TEXT("contradictory same-frame edges do not invent a direction"),
+        FPinkCabPlayerInputAdapter::ResolveWheelAxis(0.0f, true, true),
+        0.0f);
+    return true;
+}
+
 #endif
