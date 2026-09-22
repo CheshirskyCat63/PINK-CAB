@@ -25,11 +25,17 @@ float FPinkCabSteeringController::Step(
         return Steering;
     }
 
-    constexpr float StationaryTravelScale = 2.20f;
+    const float SpeedAlpha = FMath::Clamp(
+        FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
+        0.0f,
+        1.0f);
     const float TravelScale =
         MotionMode == EPinkCabVehicleMotionMode::Stationary
-            ? StationaryTravelScale
-            : 1.0f;
+            ? FMath::Max(Config.StationaryTravelScale, 1.0f)
+            : FMath::Lerp(
+                FMath::Max(Config.MovingTravelScaleLow, 1.0f),
+                FMath::Max(Config.MovingTravelScaleHigh, 1.0f),
+                SpeedAlpha);
     const float Counts =
         FMath::Max(Config.MouseCountsForFullScale * TravelScale, 1.0f);
     VirtualCursor = FMath::Clamp(
@@ -41,10 +47,6 @@ float FPinkCabSteeringController::Step(
     const float Curve = FMath::Pow(
         AbsCursor,
         FMath::Max(Config.CenterExponent, 1.0f));
-    const float SpeedAlpha = FMath::Clamp(
-        FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
-        0.0f,
-        1.0f);
     const float Gain = MotionMode == EPinkCabVehicleMotionMode::Moving
         ? FMath::Lerp(1.0f, Config.HighSpeedTargetGain, SpeedAlpha)
         : 1.0f;
