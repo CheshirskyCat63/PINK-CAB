@@ -13,7 +13,7 @@ Moving refueling is a year-one gameplay mechanic. BASE-100 covers its state mach
 
 - shared `FuelTank`;
 - shared `EconomyService` and stable `TransactionId`;
-- normalized `VehicleTelemetry` rather than spreading FGear vendor types through service code;
+- normalized `VehicleTelemetry` rather than spreading Chaos/provider/vendor-specific types through service code;
 - common `RoadGraph` / traffic placement;
 - common save/schema/evidence infrastructure.
 
@@ -34,7 +34,7 @@ State semantics/transaction boundaries remain owner-pack work until explicitly a
 - fuel is credited only while valid connected/fueling state is authoritative;
 - voluntary early stop/abort remains supported direction;
 - loss of tolerance should resolve through bounded warning/grace/disconnect behavior if current proposed default is accepted;
-- collision consequences use normal FGear → VDS/Vehicle Health path;
+- collision consequences use the normal Native Chaos → bounded authored/native damage → Vehicle Health path;
 - success/abort/restart/chunk recycle must converge to one clean exactly-once fuel/economy result.
 
 ## Tier scope / pricing
@@ -54,7 +54,7 @@ Moving fuel uses the same cabin grammar as the rest of PINK CAB:
 - LMB presses/holds momentary controls where declared;
 - mouse wheel adjusts detents/rotaries/incremental controls where declared.
 
-The universal `LMB ATTENTION / RMB GO` wording is SUPERSEDED. Moving refuel may not fork its own control framework; each endpoint declares which of grip / momentary press-hold / wheel adjustment it supports.
+The universal `LMB ATTENTION / RMB GO` wording is SUPERSEDED by Recovery Input Contract R1. Moving refuel may not fork its own control framework; each endpoint declares which of grip / momentary press-hold / wheel adjustment it supports.
 
 Physical card/terminal interaction is a presentation/interaction endpoint over the authoritative payment state; its visual choreography cannot independently charge or credit fuel.
 
@@ -75,6 +75,6 @@ Physical card/terminal interaction is a presentation/interaction endpoint over t
 
 `PC-T-FUEL-001..007` plus settlement/reload coverage must prove queue ownership, valid connection, transfer, early abort, tolerance breach, collision, restart/chunk interruption and exactly-once monetary/fuel state.
 
-Every VERIFIED run records exact build/commit, UE/FGear/VDS/profile/config/schema versions where relevant, CityCode/traffic/service seed, session/vehicle/transaction IDs, gap/error telemetry, expected/observed result and artifact paths.
+Every VERIFIED run records exact build/commit, UE/vehicle-profile/config/schema versions where relevant, CityCode/traffic/service seed, session/vehicle/transaction IDs, gap/error telemetry, expected/observed result and artifact paths.
 
 Documentation establishes SPECIFIED only. Runtime remains **NOT IMPLEMENTED / NOT VERIFIED**.

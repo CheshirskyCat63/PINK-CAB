@@ -86,7 +86,7 @@ Level1 training subtype using the same ServiceNode transition/persistence contra
 
 `LIVE ROAD -> NODE ENTRY -> HANGAR ACTIVE -> FLOOR/WALL/CEILING/WALL/FLOOR -> RESET/EXIT -> SAME TATRA/CITYCODE`
 
-FGear remains vehicle-physics authority; the Hangar does not create another traversal solver.
+Native Chaos remains vehicle-physics authority; the Hangar does not create another traversal solver.
 
 ## 8. `PARTS_MARKET` / `PARTS_SHOP`
 
@@ -94,7 +94,7 @@ Versioned item/catalog IDs, compatibility checks, inventory persistence and exac
 
 ## 9. `GARAGE_TUNING`
 
-Install/remove/replace parts and modify versioned `VehicleBuild`. Physical/mechanical changes reach FGear only through the approved PINK CAB vehicle profile/adapter boundary. VehicleBuild save/migration is explicit.
+Install/remove/replace parts and modify versioned `VehicleBuild`. Physical/mechanical changes reach the Native Chaos vehicle only through the approved PINK CAB vehicle profile/provider boundary. VehicleBuild save/migration is explicit.
 
 ## 10. `REPAIR_SERVICE`
 
