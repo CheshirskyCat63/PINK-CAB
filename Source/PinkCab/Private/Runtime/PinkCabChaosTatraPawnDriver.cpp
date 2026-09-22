@@ -100,6 +100,9 @@ bool APinkCabChaosTatraPawn::BeginDriverFrame(
         PendingMouseWheelSteps -= EventStep;
         OutInput.WheelSteps = EventStep;
     }
+    OutInput.WheelSteps = WheelInputResponse.Apply(
+        OutInput.WheelSteps,
+        FPlatformTime::Seconds());
     if (OutInput.bSystemMenuToggleRequested)
     {
         SetSystemMenuOpen(!IsSystemMenuOpen());
