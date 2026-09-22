@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
   statuses: write
-  issues: read
+  issues: write
   pull-requests: read
 
 concurrency:
@@ -25,6 +25,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ack_owner_command:
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report queued owner command
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ github.event.comment.body == '/pinkcab-human' && 'human_gate' || 'fast' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/7/comments" -f body="PINKCAB_GATE_QUEUED lane=$LANE run_id=$GITHUB_RUN_ID"
+
   gate:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human')) }}
     name: Exact-head ${{ github.event_name == 'issue_comment' && (github.event.comment.body == '/pinkcab-human' && 'human_gate' || 'fast') || inputs.lane }} verification
@@ -532,3 +545,18 @@ jobs:
           } -ContentType 'application/json' -Body $body | Out-Null
           Write-Host "GITHUB_GATE_STATUS=$state"
           Write-Host "HUMAN_STATUS=HUMAN_PENDING"
+
+  report_owner_command:
+    if: ${{ always() && github.event_name == 'issue_comment' && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human') }}
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report owner command result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ github.event.comment.body == '/pinkcab-human' && 'human_gate' || 'fast' }}
+          RESULT: ${{ needs.gate.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/7/comments" -f body="PINKCAB_GATE_RESULT lane=$LANE run_id=$GITHUB_RUN_ID result=$RESULT"
