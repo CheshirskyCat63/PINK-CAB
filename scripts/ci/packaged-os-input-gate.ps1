@@ -173,7 +173,11 @@ function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
     Move-GameAxis 'y' $Y $SignY
 }
 function Center-Steering {
-    $sign=Probe-AxisResponse 'steering' 20 0 0.02 1500
+    $initial=Get-State
+    if($null -eq $initial){ throw "No packaged telemetry before steering centering" }
+    if([Math]::Abs($initial.steering) -le 0.03){ return }
+
+    $sign=Probe-AxisResponse 'steering' 120 0 0.02 1800
     for($i=0;$i -lt 20;$i++) {
         $s=Get-State
         if([Math]::Abs($s.steering) -le 0.03){ return }
