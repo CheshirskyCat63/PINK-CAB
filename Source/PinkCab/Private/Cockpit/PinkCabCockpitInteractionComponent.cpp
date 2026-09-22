@@ -170,7 +170,6 @@ bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(const int32 SignedStep
 {
     const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
     if (SignedSteps == 0 || Spec.Id.IsNone() || !Spec.bSupportsWheel) return false;
-    if (Spec.bSupportsGrip && (!bGripActive || ActiveGripTargetId != Spec.Id)) return false;
     ++ActuationSerial;
     MarkRecalledTargetConsumed(Spec.Id);
     OutEvent = {Spec.Id, EPinkCabInteractionGesture::WheelIncrement, SignedSteps};
@@ -243,10 +242,14 @@ void UPinkCabCockpitInteractionComponent::UpdateGripState(
 void UPinkCabCockpitInteractionComponent::UpdateManipulationState(
     const FPinkCabCockpitInteractionFrame& Frame)
 {
+    const FName CandidateTarget = bGripActive
+        ? ActiveGripTargetId
+        : ResolveActiveSpec().Id;
     bManipulationActive =
-        bGripActive
-        && IsLeverManipulationTarget(ActiveGripTargetId)
-        && Frame.bMomentaryHeld;
+        Frame.bMomentaryHeld
+        && IsLeverManipulationTarget(CandidateTarget);
+    ActiveManipulationTargetId =
+        bManipulationActive ? CandidateTarget : NAME_None;
 }
 
 void UPinkCabCockpitInteractionComponent::UpdateMomentaryState(
@@ -310,6 +313,7 @@ void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
     bGripActive = false;
     bManipulationActive = false;
     ActiveGripTargetId = NAME_None;
+    ActiveManipulationTargetId = NAME_None;
     bMomentaryActive = false;
     ActiveMomentaryTargetId = NAME_None;
     MomentaryStartSeconds = 0.0;
