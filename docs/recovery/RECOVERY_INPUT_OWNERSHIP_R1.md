@@ -1,8 +1,9 @@
 # PINK CAB · Recovery R1 Input / Mechanical Ownership Map
 
 **Revision:** RECOVERY-R1-OWNERSHIP-2026-09-20  
-**Baseline:** 34a1937f9ac66b771f8eba813619c01f9ac706e5  
+**Historical baseline:** 34a1937f9ac66b771f8eba813619c01f9ac706e5  
 **Companion contract:** docs/recovery/RECOVERY_INPUT_CONTRACT_R1.md
+**Current control plane:** `docs/CONTROL_PLANE.md` · PR #7 → `main` · CD-848 / CD-868
 
 This map closes REC-005 for the current recovery lane. One concern has one authoritative writer. Adapters may translate data but must not create a second state owner.
 
