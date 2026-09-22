@@ -20,6 +20,12 @@ public static class PinkCabNativeInput {
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+    [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool SetActiveWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool SetFocus(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll", SetLastError=true)] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
@@ -101,13 +107,40 @@ function Wait-State([scriptblock]$Predicate,[int]$TimeoutMs,[string]$Description
 function Focus-GameWindow([IntPtr]$Handle) {
     for($i=0;$i -lt 12;$i++) {
         [PinkCabNativeInput]::ShowWindow($Handle,9) | Out-Null
-        [PinkCabNativeInput]::SetForegroundWindow($Handle) | Out-Null
+
+        $foreground=[PinkCabNativeInput]::GetForegroundWindow()
+        $currentTid=[PinkCabNativeInput]::GetCurrentThreadId()
+        $targetTid=[PinkCabNativeInput]::GetWindowThreadProcessId($Handle,[IntPtr]::Zero)
+        $foregroundTid=if($foreground -ne [IntPtr]::Zero){
+            [PinkCabNativeInput]::GetWindowThreadProcessId($foreground,[IntPtr]::Zero)
+        } else { 0 }
+
+        $attachedTarget=$false
+        $attachedForeground=$false
+        try {
+            if($targetTid -ne 0 -and $targetTid -ne $currentTid){
+                $attachedTarget=[PinkCabNativeInput]::AttachThreadInput($currentTid,$targetTid,$true)
+            }
+            if($foregroundTid -ne 0 -and $foregroundTid -ne $currentTid -and $foregroundTid -ne $targetTid){
+                $attachedForeground=[PinkCabNativeInput]::AttachThreadInput($currentTid,$foregroundTid,$true)
+            }
+            [PinkCabNativeInput]::BringWindowToTop($Handle) | Out-Null
+            [PinkCabNativeInput]::SetActiveWindow($Handle) | Out-Null
+            [PinkCabNativeInput]::SetFocus($Handle) | Out-Null
+            [PinkCabNativeInput]::SetForegroundWindow($Handle) | Out-Null
+        }
+        finally {
+            if($attachedForeground){ [PinkCabNativeInput]::AttachThreadInput($currentTid,$foregroundTid,$false) | Out-Null }
+            if($attachedTarget){ [PinkCabNativeInput]::AttachThreadInput($currentTid,$targetTid,$false) | Out-Null }
+        }
+
         Start-Sleep -Milliseconds 180
         if([PinkCabNativeInput]::GetForegroundWindow() -eq $Handle){ return }
+
         $rect=New-Object PinkCabNativeInput+RECT
         if([PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) {
-            $x=$rect.Right-80
-            $y=$rect.Bottom-80
+            $x=[int](($rect.Left+$rect.Right)/2)
+            $y=[int](($rect.Top+$rect.Bottom)/2)
             [PinkCabNativeInput]::SetCursorPos($x,$y) | Out-Null
             [PinkCabNativeInput]::LeftDown()
             Start-Sleep -Milliseconds 40
@@ -115,7 +148,8 @@ function Focus-GameWindow([IntPtr]$Handle) {
         }
         Start-Sleep -Milliseconds 180
     }
-    throw "Packaged game could not acquire foreground focus"
+    $fg=[PinkCabNativeInput]::GetForegroundWindow()
+    throw "Packaged game could not acquire foreground focus. target=$Handle foreground=$fg"
 }
 
 function Capture-Window([IntPtr]$Handle,[string]$Path) {
