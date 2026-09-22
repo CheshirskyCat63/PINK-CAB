@@ -316,18 +316,10 @@ jobs:
           ) | Set-Content (Join-Path $diagRoot "DIAGNOSTIC_BUILD_INFO.txt")
           Set-Content (Join-Path $diagRoot "BUILD_SHA.txt") $sha -NoNewline
 
-          $desktop = [Environment]::GetFolderPath("Desktop")
-          if (-not [string]::IsNullOrWhiteSpace($desktop) -and (Test-Path $desktop)) {
-            $latest = Join-Path $desktop "PINKCAB Latest.lnk"
-            Remove-Item -LiteralPath $latest -Force -ErrorAction SilentlyContinue
-            $ws = New-Object -ComObject WScript.Shell
-            $s = $ws.CreateShortcut($latest)
-            $s.TargetPath = $outer
-            $s.WorkingDirectory = Join-Path $diagRoot "Windows"
-            $s.Description = "PINK CAB recovery diagnostic $short / HUMAN PENDING"
-            $s.Save()
-          }
+          # Diagnostic packages are evidence only. They must never replace the
+          # owner's PINKCAB Latest shortcut before the packaged OS-input gate passes.
           "diagnostic_root=$diagRoot" | Set-Content "$env:EVIDENCE_DIR\DIAGNOSTIC_DELIVERY.txt"
+          "desktop_shortcut=NOT_UPDATED_DIAGNOSTIC_ONLY" | Add-Content "$env:EVIDENCE_DIR\DIAGNOSTIC_DELIVERY.txt"
           Write-Host "DIAGNOSTIC_BUILD_READY=$diagRoot"
 
       - name: Packaged Windows OS-input route and render evidence
