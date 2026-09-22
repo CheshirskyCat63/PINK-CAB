@@ -531,11 +531,16 @@ public:
             {
                 if (!State->bWheelPulsePendingTick)
                 {
+                    // A physical Windows wheel notch can surface as both the
+                    // analog wheel axis and a discrete scroll-up edge. The
+                    // pawn must queue it once, not once per UE representation.
+                    InjectKey(*PC, EKeys::MouseScrollUp, IE_Pressed);
                     InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 1.0f);
                     State->bWheelPulsePendingTick = true;
                     return false;
                 }
                 InjectKey(*PC, EKeys::MouseWheelAxis, IE_Axis, 0.0f);
+                InjectKey(*PC, EKeys::MouseScrollUp, IE_Released, 0.0f);
                 State->bWheelPulsePendingTick = false;
                 ++State->WheelPulsesApplied;
                 return false;
