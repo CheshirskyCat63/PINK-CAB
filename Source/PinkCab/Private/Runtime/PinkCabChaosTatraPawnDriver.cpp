@@ -18,10 +18,6 @@ void APinkCabChaosTatraPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
     Super::SetupPlayerInputComponent(PlayerInputComponent);
     if (PlayerInputComponent)
     {
-        PlayerInputComponent->BindAxisKey(
-            EKeys::MouseWheelAxis,
-            this,
-            &APinkCabChaosTatraPawn::CaptureMouseWheelAxis);
         PlayerInputComponent->BindKey(
             EKeys::MouseScrollUp,
             IE_Pressed,
@@ -33,16 +29,6 @@ void APinkCabChaosTatraPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
             this,
             &APinkCabChaosTatraPawn::CaptureMouseWheelDown);
     }
-}
-
-void APinkCabChaosTatraPawn::CaptureMouseWheelAxis(const float AxisValue)
-{
-    if (!FMath::IsFinite(AxisValue) || FMath::IsNearlyZero(AxisValue))
-    {
-        return;
-    }
-
-    QueueMouseWheelStep(AxisValue > 0.0f ? 1 : -1);
 }
 
 void APinkCabChaosTatraPawn::CaptureMouseWheelUp()
