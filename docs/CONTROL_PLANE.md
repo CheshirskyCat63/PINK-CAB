@@ -144,3 +144,20 @@ Gameplay work resumes only when:
 6. Owner performs the human gate and explicitly accepts/rejects it.
 
 Technical PASS never equals Human Acceptance.
+
+
+## Atlassian cost policy
+
+Target plan: **Jira Free** unless a concrete shipping/production blocker proves a paid plan is required.
+
+PINK-CAB must not depend on paid-only Jira features for normal development.
+
+Free-plan operating assumptions:
+- team stays at or below 10 Jira users;
+- Jira file storage stays below the Free allowance;
+- GitHub Actions, not Jira Automation, owns build/test/package work;
+- direct Jira/Confluence issue/page operations are preferred over Atlassian Rovo AI/search;
+- project operation must not require editable advanced permission/security schemes;
+- paid audit logs, anonymous access, paid support and Rovo are non-critical conveniences, not dependencies.
+
+If a future requirement needs a paid-only feature, record the blocker and expected cost in Jira before upgrading.
