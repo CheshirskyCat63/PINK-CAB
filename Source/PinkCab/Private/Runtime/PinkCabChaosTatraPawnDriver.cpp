@@ -1,6 +1,7 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabDriverUiComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/InputComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
@@ -11,6 +12,29 @@
 #include "Interaction/PinkCabPlayerInputAdapter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Vehicle/PinkCabVehicleInputResponse.h"
+
+void APinkCabChaosTatraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+    if (PlayerInputComponent)
+    {
+        PlayerInputComponent->BindAxisKey(
+            EKeys::MouseWheelAxis,
+            this,
+            &APinkCabChaosTatraPawn::CaptureMouseWheelAxis);
+    }
+}
+
+void APinkCabChaosTatraPawn::CaptureMouseWheelAxis(const float AxisValue)
+{
+    if (!FMath::IsFinite(AxisValue) || FMath::IsNearlyZero(AxisValue))
+    {
+        return;
+    }
+
+    const int32 Step = AxisValue > 0.0f ? 1 : -1;
+    PendingMouseWheelSteps = FMath::Clamp(PendingMouseWheelSteps + Step, -8, 8);
+}
 
 void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
     const float DeltaX,
@@ -56,6 +80,12 @@ bool APinkCabChaosTatraPawn::BeginDriverFrame(
         DriverUi->EnsurePlayableHudMounted();
     }
     OutInput = FPinkCabPlayerInputAdapter().Capture(PC, InputRouter);
+    if (PendingMouseWheelSteps != 0)
+    {
+        const int32 EventStep = FMath::Clamp(PendingMouseWheelSteps, -1, 1);
+        PendingMouseWheelSteps -= EventStep;
+        OutInput.WheelSteps = EventStep;
+    }
     if (OutInput.bSystemMenuToggleRequested)
     {
         SetSystemMenuOpen(!IsSystemMenuOpen());
