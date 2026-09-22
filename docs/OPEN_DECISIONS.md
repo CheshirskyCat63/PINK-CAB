@@ -66,7 +66,7 @@ Base **1450 kg**; full-fuel vehicle **1550 kg**; full tank **100 kg**; heroine *
 
 ### `OD-TATRA-E34-FEEL-001` — LOCKED DIRECTION / NATIVE CHAOS CALIBRATION
 
-E34 530i V8 5MT is behavioral-control reference only. PINK CAB retains rear-engine air-cooled V8, no ABS/ESP, 180 hp / 240 Nm and 195 km/h targets. Wet rapid lane change above ~160 km/h with maintained/excess throttle can progressively saturate rear grip; throttle reduction normally restores lateral reserve for steering recovery. No scripted drift threshold or automatic rescue.
+BMW E34 535i is the current behavioral/control-capability reference only. PINK CAB retains rear-engine air-cooled V8, no ABS/ESP, 180 hp / 240 Nm and 195 km/h targets. Wet rapid lane change above ~160 km/h with maintained/excess throttle can progressively saturate rear grip; throttle reduction normally restores lateral reserve for steering recovery. No scripted drift threshold or automatic rescue.
 
 The Tatra 50-question pack is retired. Low-level plugin constants are CALIBRATION.
 
