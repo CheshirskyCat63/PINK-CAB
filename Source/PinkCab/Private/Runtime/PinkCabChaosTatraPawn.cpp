@@ -215,11 +215,13 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = PrototypeVisualProfile.WheelBones[3];
 
-    if (!BindChaosWheelsToTatraGeometry(
-            *Movement, *VehicleMesh, FPinkCabVehicleVisualProfile::Tatra613Donor()))
+    // Physics stays on the proven UE template wheel bones. The Tatra donor
+    // wheel meshes are presentation-only and must never reposition Chaos wheels.
+    // Mixing those coordinate systems can leave all four wheels "in contact"
+    // while the template chassis is embedded in the road and unable to move.
+    for (FChaosWheelSetup& Setup : Movement->WheelSetups)
     {
-        UE_LOG(LogTemp, Error, TEXT("PinkCab Tatra wheel geometry contract could not be bound; disabling Chaos wheel setups."));
-        Movement->WheelSetups.Reset();
+        Setup.AdditionalOffset = FVector::ZeroVector;
     }
 }
 
