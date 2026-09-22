@@ -18,7 +18,7 @@ permissions:
   contents: read
   statuses: write
   actions: write
-  issues: read
+  issues: write
   pull-requests: read
 
 concurrency:
@@ -37,11 +37,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          before="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pinkcab-g1-github-control-plane.yml --event workflow_dispatch --branch fix/CD-848-recovery-r1-input-contract --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
           gh workflow run pinkcab-g1-github-control-plane.yml \
             --repo "$GITHUB_REPOSITORY" \
             --ref fix/CD-848-recovery-r1-input-contract \
             -f lane="$LANE"
-          echo "Dispatched lane=$LANE"
+          run_id=""
+          for i in $(seq 1 20); do
+            candidate="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pinkcab-g1-github-control-plane.yml --event workflow_dispatch --branch fix/CD-848-recovery-r1-input-contract --limit 1 --json databaseId,headSha,status --jq '.[0] | [.databaseId,.headSha,.status] | @tsv' 2>/dev/null || true)"
+            id="$(printf '%s' "$candidate" | cut -f1)"
+            if [ -n "$id" ] && [ "$id" != "0" ] && [ "$id" != "$before" ]; then
+              run_id="$id"
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::workflow_dispatch did not produce a discoverable run"
+            exit 1
+          fi
+          gh pr comment 7 --repo "$GITHUB_REPOSITORY" --body "PINKCAB_DISPATCHED lane=$LANE run_id=$run_id"
+          echo "Dispatched lane=$LANE run_id=$run_id"
 
   gate:
     if: ${{ github.event_name == 'workflow_dispatch' }}
