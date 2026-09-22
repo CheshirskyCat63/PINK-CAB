@@ -335,7 +335,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
-    Dose-To 'throttle' 0.20 0.30 120
+    Dose-To 'throttle' 0.25 0.30 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq 1 -and $s.dist -gt 20.0 -and $s.speed -gt 0.5 } 7000 "forward packaged movement" | Out-Null
 
@@ -362,7 +362,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 } 2500 "reverse launch requires fresh E+wheel dose" | Out-Null
-    Dose-To 'throttle' 0.20 0.30 120
+    Dose-To 'throttle' 0.25 0.30 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq -1 -and $s.speed -lt -0.5 } 7000 "reverse packaged movement" | Out-Null
 

@@ -347,6 +347,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Upload diagnostic package when packaging completed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-G1-diagnostic-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Artifacts/Package/Windows
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
+
       - name: Upload packaged human-gate build
         if: success()
         uses: actions/upload-artifact@v4
