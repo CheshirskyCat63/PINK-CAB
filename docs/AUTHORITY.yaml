@@ -7,6 +7,16 @@ clean_repository_target: PINK-CAB
 clean_repository_status: complete
 snapshot_date: 2026-09-22
 control_plane_cleanup:
+  remaining_admin_gates:
+    stale_remote_branch_refs:
+      count: 16
+      status: TOOLING_GATE_DELETE_REF_NOT_EXPOSED
+      active_execution_lane: false
+    jira_plan_downgrade:
+      target: FREE
+      status: HUMAN_BILLING_GATE
+      eligibility: jira_users_lte_10_and_storage_within_free_allowance
+      paid_features_not_required_by_pipeline: [audit_logs, rovo_ai, advanced_permission_editing, high_jira_automation_quota]
   status: ACTIVE_ADMIN_FREEZE
   owner: CD-868
   product_root: CD-519
