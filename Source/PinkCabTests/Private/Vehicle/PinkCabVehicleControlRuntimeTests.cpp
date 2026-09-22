@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 namespace
 {
@@ -244,6 +245,43 @@ bool FPinkCabVehicleControlRuntimeSteeringHoldTest::RunTest(const FString& Param
     Runtime.ResolveControlFrame(Frame, 0.0f, 0.50f, Cockpit, Health);
     TestTrue(TEXT("lever manipulation preserves exact current steering angle"),
         FMath::IsNearlyEqual(Runtime.GetSteeringCommand(), BeforeManipulation, 1.0e-6f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabManualSteeringWeightTest,
+    "PinkCab.Vehicle.Steering.ManualSteeringWeight",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabManualSteeringWeightTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringController Steering;
+
+    const float MouseDelta = 280.0f;
+    const float DeltaSeconds = 0.20f;
+
+    Steering.Reset();
+    const float Stationary = FMath::Abs(Steering.Step(
+        MouseDelta, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, DeltaSeconds));
+
+    Steering.Reset();
+    const float Rolling = FMath::Abs(Steering.Step(
+        MouseDelta, false, 10.0f, EPinkCabVehicleMotionMode::Moving, DeltaSeconds));
+
+    Steering.Reset();
+    const float Highway = FMath::Abs(Steering.Step(
+        MouseDelta, false, 120.0f, EPinkCabVehicleMotionMode::Moving, DeltaSeconds));
+
+    TestTrue(TEXT("manual steering is heavier at a standstill than once rolling"),
+        Stationary < Rolling);
+    TestTrue(TEXT("high-speed steering is calmer than low-speed rolling steering"),
+        Highway < Rolling);
+    TestTrue(TEXT("stationary response rate is lower than rolling response"),
+        Steering.GetResponseRate(0.0f, EPinkCabVehicleMotionMode::Stationary)
+            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
+    TestTrue(TEXT("high-speed response does not accelerate with speed"),
+        Steering.GetResponseRate(120.0f, EPinkCabVehicleMotionMode::Moving)
+            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
     return true;
 }
 
