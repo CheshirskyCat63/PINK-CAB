@@ -323,11 +323,13 @@ bool FPinkCabWheelComplianceTest::RunTest(const FString& Parameters)
         Interaction->BuildWheelEvent(-1, Event));
 
     Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("PassengerDoor")));
-    TestFalse(TEXT("wheel cannot move a grip-required lever before RMB grip"),
+    TestTrue(TEXT("wheel directly moves a contextual wheel control without RMB"),
         Interaction->BuildWheelEvent(-1, Event));
-    TestTrue(TEXT("RMB establishes grip for authored wheel lever"), Interaction->BeginGrip(Event));
-    TestTrue(TEXT("wheel emits for the passenger-door lever"), Interaction->BuildWheelEvent(-1, Event));
-    TestEqual(TEXT("wheel keeps signed step"), Event.SignedValue, -1);
+    TestEqual(TEXT("direct wheel keeps signed step"), Event.SignedValue, -1);
+    TestTrue(TEXT("RMB may still retain the same authored wheel control"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("wheel continues to work while RMB retains the control"),
+        Interaction->BuildWheelEvent(-1, Event));
+    TestEqual(TEXT("retained wheel keeps signed step"), Event.SignedValue, -1);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -482,10 +484,12 @@ bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
     TArray<FPinkCabInteractionEvent> Events;
 
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestFalse(TEXT("LMB without RMB never grips the gearbox"), Interaction->IsGripActive());
-    TestFalse(TEXT("LMB without RMB never starts lever manipulation"),
+    TestFalse(TEXT("direct LMB does not invent an RMB grip"), Interaction->IsGripActive());
+    TestTrue(TEXT("LMB directly starts contextual gearbox manipulation without RMB"),
         Interaction->IsManipulationActive());
-    TestEqual(TEXT("LMB without grip does not actuate grip-only gearbox"), Events.Num(), 0);
+    TestEqual(TEXT("direct LMB manipulation targets gearbox"),
+        Interaction->GetActiveManipulationTargetId(), FName(TEXT("Gearbox")));
+    TestEqual(TEXT("direct lever manipulation emits no fake momentary event"), Events.Num(), 0);
 
     Events.Reset();
     Frame.bMomentaryHeld = false;
