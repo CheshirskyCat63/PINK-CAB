@@ -54,7 +54,7 @@ function Get-State {
         Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } |
         Select-Object -Last 1
     if (-not $line) { return $null }
-    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) paused=(?<paused>\d+) worlddt=(?<worlddt>-?[\d.]+) awake=(?<awake>\d+) velcm=(?<velcm>-?[\d.]+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) aimvalid=(?<aimvalid>\d+) aimyaw=(?<aimyaw>-?[\d.]+) aimpitch=(?<aimpitch>-?[\d.]+) wheels=(?<wheels>\d+)'
+    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) paused=(?<paused>\d+) worlddt=(?<worlddt>-?[\d.]+) awake=(?<awake>\d+) velcm=(?<velcm>-?[\d.]+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) longcm=(?<longcm>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) aimvalid=(?<aimvalid>\d+) aimyaw=(?<aimyaw>-?[\d.]+) aimpitch=(?<aimpitch>-?[\d.]+) wheels=(?<wheels>\d+)'
     $m = [regex]::Match($line,$rx)
     if (-not $m.Success) { return $null }
     [pscustomobject]@{
@@ -73,6 +73,7 @@ function Get-State {
         steering=[double]$m.Groups['steering'].Value
         speed=[double]$m.Groups['speed'].Value
         dist=[double]$m.Groups['dist'].Value
+        longcm=[double]$m.Groups['longcm'].Value
         gearx=[double]$m.Groups['gearx'].Value
         geary=[double]$m.Groups['geary'].Value
         target=$m.Groups['target'].Value
@@ -338,7 +339,7 @@ try {
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
     Dose-To 'throttle' 0.25 0.30 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
-    Wait-State { param($s) $s.engaged -eq 1 -and $s.dist -gt 20.0 -and $s.speed -gt 0.5 } 7000 "forward packaged movement" | Out-Null
+    Wait-State { param($s) $s.engaged -eq 1 -and $s.longcm -gt 500.0 -and $s.speed -gt 0.5 } 10000 "forward packaged movement beyond 5m" | Out-Null
 
     $steerBefore=(Get-State).steering
     [PinkCabNativeInput]::Move(30,0); Start-Sleep -Milliseconds 350
@@ -361,11 +362,12 @@ try {
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
     Wait-State { param($s) $s.engaged -eq -1 } 4000 "reverse engages with clutch down" | Out-Null
 
+    $reverseStartLongCm=(Get-State).longcm
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 } 2500 "reverse launch requires fresh E+wheel dose" | Out-Null
     Dose-To 'throttle' 0.25 0.30 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
-    Wait-State { param($s) $s.engaged -eq -1 -and $s.speed -lt -0.5 } 7000 "reverse packaged movement" | Out-Null
+    Wait-State { param($s) $s.engaged -eq -1 -and $s.speed -lt -0.5 -and $s.longcm -lt ($reverseStartLongCm - 300.0) } 10000 "reverse packaged movement beyond 3m" | Out-Null
 
     [PinkCabNativeInput]::KeyUp($VK_E)
     [PinkCabNativeInput]::KeyDown($VK_Q)
@@ -414,11 +416,11 @@ try {
         "prelaunch_steering_center=PASS",
         "foreground_focus=PASS",
         "mandatory_e_wheel_launch=PASS",
-        "forward_movement=PASS",
+        "forward_movement_over_5m=PASS",
         "mouse_right_steering=PASS",
         "service_brake_stop=PASS",
         "hgate_reverse=PASS",
-        "reverse_movement=PASS",
+        "reverse_movement_over_3m=PASS",
         "menu_focus_cleanup=PASS",
         "interaction_cleanup_cycles=50",
         "audio_log_lines=$($audioLines.Count)",
