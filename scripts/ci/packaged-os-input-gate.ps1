@@ -20,6 +20,7 @@ public static class PinkCabNativeInput {
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
     [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
@@ -44,6 +45,7 @@ public static class PinkCabNativeInput {
     public static void LeftUp() { mouse_event(LEFTUP,0,0,0,UIntPtr.Zero); }
     public static void RightDown() { mouse_event(RIGHTDOWN,0,0,0,UIntPtr.Zero); }
     public static void RightUp() { mouse_event(RIGHTUP,0,0,0,UIntPtr.Zero); }
+    public static bool IsKeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 }
 "@
 Add-Type -AssemblyName System.Drawing
@@ -231,12 +233,21 @@ $script:GameHwnd = [IntPtr]::Zero
 
 function Send-Wheel([int]$Delta) {
     if($script:GameHwnd -eq [IntPtr]::Zero){ throw "Packaged game HWND is not initialized for wheel input" }
-    Focus-GameWindow $script:GameHwnd
+    if([PinkCabNativeInput]::GetForegroundWindow() -ne $script:GameHwnd) {
+        Focus-GameWindow $script:GameHwnd
+    }
     [PinkCabNativeInput]::Wheel($Delta)
 }
 
-function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120) {
+function Assert-HeldKey([int]$Vk,[string]$Name) {
+    if($Vk -ne 0 -and -not [PinkCabNativeInput]::IsKeyDown($Vk)) {
+        throw "Synthetic held key lost before wheel dosing: $Name"
+    }
+}
+
+function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120,[int]$HeldVk=0,[string]$HeldName='') {
     $before=Get-State
+    Assert-HeldKey $HeldVk $HeldName
     Send-Wheel $PrimaryWheelDelta
     Start-Sleep -Milliseconds 180
     $after=Get-State
@@ -244,6 +255,7 @@ function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelt
     $wheel=$PrimaryWheelDelta
     if($afterVal -le $beforeVal + 0.001) {
         $wheel=-$PrimaryWheelDelta
+        Assert-HeldKey $HeldVk $HeldName
         Send-Wheel $wheel
         Start-Sleep -Milliseconds 180
     }
@@ -251,6 +263,7 @@ function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelt
         $v=[double](Get-State).$Field
         if($v -ge $Min -and $v -le $Max){ return }
         if($v -gt $Max) { throw "$Field overshot target: $v" }
+        Assert-HeldKey $HeldVk $HeldName
         Send-Wheel $wheel
         Start-Sleep -Milliseconds 150
     }
@@ -371,7 +384,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
-    Dose-To 'throttle' 0.25 0.35 120
+    Dose-To 'throttle' 0.25 0.35 120 $VK_E 'E'
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq 1 -and $s.longcm -gt 500.0 -and $s.speed -gt 0.5 } 10000 "forward packaged movement beyond 5m" | Out-Null
 
@@ -384,7 +397,7 @@ try {
     [PinkCabNativeInput]::KeyUp($VK_E)
     [PinkCabNativeInput]::KeyDown($VK_Q)
     [PinkCabNativeInput]::KeyDown($VK_W)
-    Dose-To 'brake' 0.75 1.0 120
+    Dose-To 'brake' 0.75 1.0 120 $VK_W 'W'
     Wait-State { param($s) [Math]::Abs($s.speed) -lt 1.0 } 8000 "service-brake stop" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_W)
 
