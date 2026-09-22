@@ -122,7 +122,7 @@ FName UPinkCabCockpitInteractionComponent::GetCurrentTargetId() const
 bool UPinkCabCockpitInteractionComponent::BeginGrip(FPinkCabInteractionEvent& OutEvent)
 {
     const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
-    if (Spec.Id.IsNone() || !Spec.bSupportsGrip) return false;
+    if (Spec.Id.IsNone()) return false;
     bGripActive = true;
     ActiveGripTargetId = Spec.Id;
     MarkRecalledTargetConsumed(Spec.Id);
