@@ -12,6 +12,11 @@ Mass/load: `docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`
 Future daily insurance authority: `docs/PINK_CAB_DAILY_INSURANCE_CRASH_RECOVERY.md` / page `10321936` / `CD-741..745` — POST-FIRST-EURO
 Repository: `CheshirskyCat63/PINK-CAB` is the sole active PINK CAB technical truth; `DEADRACE` is legacy/migration-source only.
 
+> **CONTROL-PLANE FREEZE · 2026-09-22**  
+> Current execution authority: `docs/CONTROL_PLANE.md` → Jira `CD-519 / CD-848 / CD-868` → Confluence 47 → Git PR #7.  
+> `CD-855` and `CD-860` are BACKLOG. Recovery Input Contract R1 is current. No current vehicle build has HUMAN ACCEPTANCE.  
+> This baseline remains product context; mutable execution status/SHA claims must come from the control plane and GitHub.
+
 ## Current control/mechanics precedence
 
 The 2026-09-18 owner correction takes precedence for vehicle controls/mechanics. See [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md) and Confluence [page 16744449](https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/16744449/47+PINK+CAB+Control+Vehicle+Mechanics+Release+Contract). Older 530i, left-forward reverse, fixed 0.20–1.20 clutch-range, START→ATTENTION→GO and yaw-edge-guard wording is superseded. The corrected matrix is SPECIFIED / NOT RUNTIME VERIFIED.
@@ -34,7 +39,7 @@ Every runtime domain must expose: `PURPOSE → BUY/ENGINE/WRITE → AUTHORITATIV
 
 Prefer proven Unreal features/plugins/assets over custom frameworks. Selected third-party systems sit behind PINK CAB adapters. One authoritative owner per responsibility; no competing production solvers. C++ owns interfaces/state/persistence/invariants; Blueprint remains thin composition/orchestration; DataAssets/DataTables/config own tunable values.
 
-## Current START-90 snapshot — 2026-09-12
+## Historical START-90 snapshot — 2026-09-12
 
 Technical Owner Pack 01 contains **196 code-facing rows**: 102 LOCKED, 3 CALIBRATION, 69 PROPOSED DEFAULT, 22 OPEN.
 
@@ -63,8 +68,10 @@ Locked identity:
 Technology stack:
 
 - **Chaos Vehicles / native Unreal physics** = sole production road-dynamics owner;
-- **Vehicle Damage System — Debugging Delight Studios** = sole permanent runtime body-deformation owner;
-- PINK CAB code = input/profile adapters, Tatra Expression, Vehicle Health bridge, persistence and normalized telemetry;
+- damage/destruction = bounded authored damage states + detachable parts + pooled debris + selective native Chaos events;
+- required third-party vehicle/damage plugins = **none**;
+- FGear/VDS references are archived research only, not production dependencies or authority;
+- PINK CAB code = input/profile adapters, Tatra Expression, Vehicle Health, persistence and normalized telemetry;
 - no parallel competing hero-Tatra dynamics solver or hidden second destruction authority without an explicit migration decision.
 
 ## Handling — E34-like control / Tatra expression
@@ -107,7 +114,7 @@ Level1 residual magnetism is **linear by total mass**: **5.0 s @1657 kg → 4.0 
 
 ## Input / physical controls
 
-Current grammar: mouse steers by default; hold Space for gaze/free-look and target search; `1–4` quick-recall the saved physical targets for turn signals / horn / gearbox / handbrake without actuating them. RMB brings/retains the right hand on the current target where a grip is required. LMB presses or holds momentary controls (for example a short/long horn press). Mouse wheel moves detents/rotaries/incremental controls where that control supports it. Looking at, quick-recalling or gripping a target never implicitly actuates it.
+Current grammar (Recovery Input Contract R1): mouse steers by default; hold Space for gaze/free-look and target search; `1–4` quick-recall the saved physical targets for turn signals / horn / gearbox / handbrake without actuating them. RMB acquires/retains the selected Gearbox/Handbrake target without moving it or stealing steering. **RMB+LMB is required for lever manipulation**; while manipulation is active mouse XY belongs to the lever and steering holds; releasing LMB returns XY to steering while RMB may remain held; releasing RMB ends grip. LMB remains momentary press/hold for controls that explicitly author it. Mouse wheel moves detents/rotaries/incremental controls where supported.
 
 Steering, throttle, brake, clutch state/release speed and handbrake are continuous. Q+wheel adjusts clutch release timing; E+wheel doses throttle and must be used again on every new launch; W+wheel doses brake; W+E may coexist. If Q/W/E overlap, the wheel has one recipient with priority E → W → Q. The H-gate is 1/3/5 over 2/4/R with a neutral cross-gate. No Drift Mode, auto-throttle, auto-rev-match, auto-countersteer, yaw rescue, ABS or ESP.
 
