@@ -1,0 +1,72 @@
+name: PINK-CAB ADMIN · delete stale branches once
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Delete 16 superseded remote branch refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            "chore/CD-856-authority-sync"
+            "ci/cleanup-ownerfix-34a1937"
+            "ci/launch-ownerfix-34a1937"
+            "ci/pinkcab-desktop-latest-only"
+            "ci/pinkcab-g1-tbase"
+            "ci/pinkcab-g1-tmove"
+            "docs/CD-784-fgear-evaluation-plan"
+            "docs/CD-848-control-mechanics-20260918"
+            "docs/g1-recovery-2026-09-20"
+            "feat/CD-848-control-runtime"
+            "feat/CD-848-pre-model-vehicle-freeze"
+            "feat/CD-855-tatra-playable-foundation"
+            "fix/CD-848-hinp-contract"
+            "fix/CD-848-human-gate-regressions"
+            "fix/CD-848-owner-rejection-runtime"
+            "integration/CD848-CD855"
+          )
+          for b in "${branches[@]}"; do
+            if git ls-remote --exit-code --heads origin "$b" >/dev/null 2>&1; then
+              echo "Deleting $b"
+              git push origin --delete "$b"
+            else
+              echo "Already absent: $b"
+            fi
+          done
+
+      - name: Verify only main + active recovery remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t branches < <(git ls-remote --heads origin | awk '{sub("refs/heads/","",$2); print $2}' | sort)
+          printf 'Remaining branches:\n'
+          printf ' - %s\n' "${branches[@]}"
+          expected=("fix/CD-848-recovery-r1-input-contract" "main")
+          if [ "${branches[*]}" != "${expected[*]}" ]; then
+            echo "::error::Unexpected branch set after cleanup"
+            exit 1
+          fi
+
+      - name: Remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pinkcab-admin-delete-stale-branches-once.yml
+          git commit -m "admin: remove completed one-shot branch cleanup"
+          git push origin HEAD:main
