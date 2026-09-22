@@ -47,6 +47,7 @@ public:
     bool IsGripActive() const { return bGripActive; }
     FName GetActiveGripTargetId() const { return ActiveGripTargetId; }
     bool IsManipulationActive() const { return bManipulationActive; }
+    FName GetActiveManipulationTargetId() const { return ActiveManipulationTargetId; }
     bool IsGearboxStageFromClutchHeld() const { return bGearboxStageFromClutchHeld; }
 
     bool BeginMomentary(double NowSeconds, FPinkCabInteractionEvent& OutEvent);
@@ -89,6 +90,7 @@ private:
     uint32 ActuationSerial = 0;
     FPinkCabInteractionControlSpec CurrentTarget;
     FName ActiveGripTargetId = NAME_None;
+    FName ActiveManipulationTargetId = NAME_None;
     FName ActiveMomentaryTargetId = NAME_None;
     double MomentaryStartSeconds = 0.0;
     double LastMomentaryHoldSeconds = 0.0;
