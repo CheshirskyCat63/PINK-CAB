@@ -11,10 +11,14 @@ on:
         options:
           - fast
           - human_gate
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
   statuses: write
+  issues: read
+  pull-requests: read
 
 concurrency:
   group: pinkcab-g1-github-control-plane
@@ -22,14 +26,16 @@ concurrency:
 
 jobs:
   gate:
-    name: Exact-head ${{ inputs.lane }} verification
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human')) }}
+    name: Exact-head PINK-CAB verification
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
     env:
       PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       GATE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       EVIDENCE_DIR: Saved\GitHubGate
-      GATE_LANE: ${{ inputs.lane }}
+      GATE_LANE: ${{ github.event_name == 'issue_comment' && (github.event.comment.body == '/pinkcab-human' && 'human_gate' || 'fast') || inputs.lane }}
+      CANDIDATE_REF: ${{ github.event_name == 'issue_comment' && 'fix/CD-848-recovery-r1-input-contract' || github.ref_name }}
 
     steps:
       - name: Verify PINK-CAB execution host before checkout
@@ -110,20 +116,28 @@ jobs:
       - name: Checkout exact GitHub candidate
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.CANDIDATE_REF }}
           fetch-depth: 0
           lfs: true
           clean: true
 
       - name: Exact-head preflight
+        id: preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
           git lfs pull
           $head = (git rev-parse HEAD).Trim()
-          if ($head -ne "$env:GITHUB_SHA") {
-            throw "Exact-head violation: checkout=$head event=$env:GITHUB_SHA"
+          $expectedLine = @(git ls-remote origin "refs/heads/$env:CANDIDATE_REF" | Select-Object -First 1)
+          if ($expectedLine.Count -eq 0) {
+            throw "Candidate remote ref not found: $env:CANDIDATE_REF"
           }
+          $expected = (($expectedLine[0] -split "\s+")[0]).Trim()
+          if ($head -ne $expected) {
+            throw "Exact-head violation: checkout=$head remote=$expected ref=$env:CANDIDATE_REF"
+          }
+          "CANDIDATE_SHA=$head" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "candidate_sha=$head" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           $status = @(git status --porcelain)
           if ($status.Count -gt 0) {
             $status | ForEach-Object { Write-Host $_ }
@@ -173,7 +187,7 @@ jobs:
             description = "PINK-CAB $env:GATE_LANE verification running"
             target_url = $runUrl
           } | ConvertTo-Json
-          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:CANDIDATE_SHA" -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
@@ -196,7 +210,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Fast recovery smoke matrix
-        if: ${{ inputs.lane == 'fast' }}
+        if: ${{ env.GATE_LANE == 'fast' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -229,7 +243,7 @@ jobs:
           Write-Host "FAST_MATRIX_PASS count=$($summary.Count)"
 
       - name: Input and recovery automated matrix
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -280,7 +294,7 @@ jobs:
           "count=$($summary.Count)" | Set-Content (Join-Path $ev "AUTOMATED_MATRIX_COUNT.txt")
 
       - name: Full PinkCab automation regression
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -300,7 +314,7 @@ jobs:
           Write-Host "FULL_PINKCAB_PASS $($q[-1].Line)"
 
       - name: Canonical Win64 package
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -313,7 +327,7 @@ jobs:
           Write-Host "PACKAGE_PASS"
 
       - name: Packaged smoke and critical scan
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -339,7 +353,7 @@ jobs:
           Write-Host "PACKAGED_SMOKE_PASS"
 
       - name: Deliver packaged diagnostic candidate before OS-input gate
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -370,7 +384,7 @@ jobs:
           Write-Host "DIAGNOSTIC_BUILD_READY=$diagRoot"
 
       - name: Packaged Windows OS-input route and render evidence
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -380,7 +394,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Immutable runner delivery and HUMAN_PENDING shortcut
-        if: ${{ inputs.lane == 'human_gate' }}
+        if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -457,7 +471,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: PINKCAB-G1-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: PINKCAB-G1-evidence-${{ steps.preflight.outputs.candidate_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             Saved/GitHubGate
             Saved/Reports/code-health.json
@@ -465,20 +479,20 @@ jobs:
           retention-days: 30
 
       - name: Upload diagnostic package when packaging completed
-        if: ${{ always() && inputs.lane == 'human_gate' }}
+        if: ${{ always() && env.GATE_LANE == 'human_gate' }}
         uses: actions/upload-artifact@v4
         with:
-          name: PINKCAB-G1-diagnostic-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: PINKCAB-G1-diagnostic-package-${{ steps.preflight.outputs.candidate_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: Artifacts/Package/Windows
           if-no-files-found: warn
           retention-days: 7
           compression-level: 0
 
       - name: Upload packaged human-gate build
-        if: ${{ success() && inputs.lane == 'human_gate' }}
+        if: ${{ success() && env.GATE_LANE == 'human_gate' }}
         uses: actions/upload-artifact@v4
         with:
-          name: PINKCAB-G1-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: PINKCAB-G1-package-${{ steps.preflight.outputs.candidate_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: Artifacts/Package/Windows
           if-no-files-found: error
           retention-days: 30
@@ -509,7 +523,7 @@ jobs:
             description = $description
             target_url = $runUrl
           } | ConvertTo-Json
-          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:CANDIDATE_SHA" -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
