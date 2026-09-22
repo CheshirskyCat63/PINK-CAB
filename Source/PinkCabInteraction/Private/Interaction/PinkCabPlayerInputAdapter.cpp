@@ -34,9 +34,13 @@ FPinkCabPlayerInputSample FPinkCabPlayerInputAdapter::Capture(
     }
 
     const FKey WheelKey = Router.GetKeyForAction(EPinkCabSemanticAction::Wheel);
-    const float WheelAxis = WheelKey.IsValid()
+    const float AnalogWheelAxis = WheelKey.IsValid()
         ? Controller.GetInputAnalogKeyState(WheelKey)
         : 0.0f;
+    const float WheelAxis = ResolveWheelAxis(
+        AnalogWheelAxis,
+        Controller.WasInputKeyJustPressed(EKeys::MouseScrollUp),
+        Controller.WasInputKeyJustPressed(EKeys::MouseScrollDown));
 
     return ComposeSample(
         Router,
@@ -81,4 +85,16 @@ FPinkCabPlayerInputSample FPinkCabPlayerInputAdapter::ComposeSample(
         RawMouseY);
     Sample.WheelSteps = WheelAxis > 0.0f ? 1 : (WheelAxis < 0.0f ? -1 : 0);
     return Sample;
+}
+
+float FPinkCabPlayerInputAdapter::ResolveWheelAxis(
+    const float AnalogAxis,
+    const bool bScrollUpPressed,
+    const bool bScrollDownPressed)
+{
+    if (bScrollUpPressed != bScrollDownPressed)
+    {
+        return bScrollUpPressed ? 1.0f : -1.0f;
+    }
+    return FMath::IsFinite(AnalogAxis) ? AnalogAxis : 0.0f;
 }
