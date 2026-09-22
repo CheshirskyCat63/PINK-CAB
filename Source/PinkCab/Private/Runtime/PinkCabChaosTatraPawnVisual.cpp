@@ -99,7 +99,12 @@ bool APinkCabChaosTatraPawn::AlignInitialPresentationToGround()
         return false;
     }
 
-    constexpr float TyreClearanceCm = 1.0f;
+    // Recovery isolation: keep the whole physical car 20 cm higher than the
+    // previous tyre-ground alignment so chassis/physics penetration cannot
+    // pin the vehicle after the Tatra presentation swap.
+    constexpr float BaselineTyreClearanceCm = 1.0f;
+    constexpr float RecoverySpawnLiftCm = 20.0f;
+    constexpr float TyreClearanceCm = BaselineTyreClearanceCm + RecoverySpawnLiftCm;
     const float OffsetZ = GroundHit.ImpactPoint.Z + TyreClearanceCm - LowestTyreZ;
     AddActorWorldOffset(
         FVector(0.0f, 0.0f, OffsetZ), false, nullptr, ETeleportType::TeleportPhysics);
