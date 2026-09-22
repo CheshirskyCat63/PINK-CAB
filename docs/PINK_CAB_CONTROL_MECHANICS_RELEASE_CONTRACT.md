@@ -5,9 +5,14 @@
 **Jira umbrella:** `CD-848`
 **Confluence authority:** page `16744449` — `47 · PINK CAB · Control & Vehicle Mechanics Release Contract`
 **Runtime technology:** Unreal Engine 5.8.2 / native Chaos Vehicles
-**Implementation state:** SPECIFIED / ADMIN-SYNCHRONIZED / **NOT RUNTIME VERIFIED**
+**Implementation state:** RECOVERY-R1 ACTIVE / ADMIN FREEZE / **AUTO GATE FAILED AT PACKAGED OS-INPUT / HUMAN NOT ACCEPTED**
 
 This file mirrors the owner-approved 2026-09-18 release matrix into Git. It does not claim that the current executable already behaves this way.
+
+> **CONTROL-PLANE STATUS · 2026-09-22**  
+> Single active implementation lane: PR #7 `fix/CD-848-recovery-r1-input-contract` → `main`.  
+> Last runtime-affecting candidate before admin-only cleanup: `8bed51e5c47e037eb45a670f9d6c1c2cdd28b712`; run `35746083559` passed code-health, build, focused/full automation, package and packaged smoke, then **FAILED packaged Windows OS-input throttle dosing**.  
+> No current HUMAN_ACCEPTED vehicle build. Heavy CI is manual-only during cleanup; see `docs/CONTROL_PLANE.md`.
 
 ## 1. Owner control lock
 
