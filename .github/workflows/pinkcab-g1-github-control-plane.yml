@@ -2,6 +2,15 @@ name: PINK CAB G1 GitHub Control Plane
 
 on:
   workflow_dispatch:
+    inputs:
+      lane:
+        description: Verification lane
+        required: true
+        default: fast
+        type: choice
+        options:
+          - fast
+          - human_gate
 
 permissions:
   contents: read
@@ -13,13 +22,14 @@ concurrency:
 
 jobs:
   gate:
-    name: Exact-head build test package evidence
+    name: Exact-head ${{ inputs.lane }} verification
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 300
+    timeout-minutes: 120
     env:
       PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       GATE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       EVIDENCE_DIR: Saved\GitHubGate
+      GATE_LANE: ${{ inputs.lane }}
 
     steps:
       - name: Verify PINK-CAB execution host before checkout
@@ -135,7 +145,8 @@ jobs:
             "remote_desktop_commander=NOT_USED",
             "runner=$env:RUNNER_NAME",
             "workflow_run_id=$env:GITHUB_RUN_ID",
-            "workflow_run_attempt=$env:GITHUB_RUN_ATTEMPT"
+            "workflow_run_attempt=$env:GITHUB_RUN_ATTEMPT",
+            "lane=$env:GATE_LANE"
           ) | Set-Content "$env:EVIDENCE_DIR\CONTROL_PLANE.txt"
           @(
             "automation_input_scope=UE_PlayerController_and_Automation",
@@ -158,7 +169,7 @@ jobs:
           $body = @{
             state = 'pending'
             context = 'cheshire/pinkcab-g1-github'
-            description = 'Exact-head recovery gate running'
+            description = "PINK-CAB $env:GATE_LANE verification running"
             target_url = $runUrl
           } | ConvertTo-Json
           Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
@@ -183,7 +194,40 @@ jobs:
           & .\scripts\build.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Fast recovery smoke matrix
+        if: ${{ inputs.lane == 'fast' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $editor = Join-Path $env:PINKCAB_UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
+          $filters = @(
+            'PinkCab.Interaction',
+            'PinkCab.Cockpit',
+            'PinkCab.Vehicle',
+            'PinkCab.UI.SystemMenu'
+          )
+          $summary = New-Object System.Collections.Generic.List[string]
+          foreach ($filter in $filters) {
+            $safe = $filter.Replace('.','_')
+            $log = Join-Path $ev ("FAST_" + $safe + ".log")
+            Remove-Item $log -Force -ErrorAction SilentlyContinue
+            & $editor $project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $filter" "-TestExit=Automation Test Queue Empty"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $q = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $f = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $crit = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception')
+            if ($q.Count -eq 0 -or $f.Count -gt 0 -or $crit.Count -gt 0) {
+              throw "Fast matrix failed: $filter queue=$($q.Count) fail=$($f.Count) critical=$($crit.Count)"
+            }
+            $summary.Add("PASS $filter | $($q[-1].Line)")
+          }
+          $summary | Set-Content (Join-Path $ev "FAST_MATRIX.txt")
+          Write-Host "FAST_MATRIX_PASS count=$($summary.Count)"
+
       - name: Input and recovery automated matrix
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -234,6 +278,7 @@ jobs:
           "count=$($summary.Count)" | Set-Content (Join-Path $ev "AUTOMATED_MATRIX_COUNT.txt")
 
       - name: Full PinkCab automation regression
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -253,6 +298,7 @@ jobs:
           Write-Host "FULL_PINKCAB_PASS $($q[-1].Line)"
 
       - name: Canonical Win64 package
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -265,6 +311,7 @@ jobs:
           Write-Host "PACKAGE_PASS"
 
       - name: Packaged smoke and critical scan
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -290,6 +337,7 @@ jobs:
           Write-Host "PACKAGED_SMOKE_PASS"
 
       - name: Deliver packaged diagnostic candidate before OS-input gate
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -320,6 +368,7 @@ jobs:
           Write-Host "DIAGNOSTIC_BUILD_READY=$diagRoot"
 
       - name: Packaged Windows OS-input route and render evidence
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -329,6 +378,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Immutable runner delivery and HUMAN_PENDING shortcut
+        if: ${{ inputs.lane == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
@@ -413,7 +463,7 @@ jobs:
           retention-days: 30
 
       - name: Upload diagnostic package when packaging completed
-        if: always()
+        if: ${{ always() && inputs.lane == 'human_gate' }}
         uses: actions/upload-artifact@v4
         with:
           name: PINKCAB-G1-diagnostic-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -423,7 +473,7 @@ jobs:
           compression-level: 0
 
       - name: Upload packaged human-gate build
-        if: success()
+        if: ${{ success() && inputs.lane == 'human_gate' }}
         uses: actions/upload-artifact@v4
         with:
           name: PINKCAB-G1-package-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -441,8 +491,12 @@ jobs:
         run: |
           $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
           $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
-          $description = if ($state -eq 'success') {
+          $description = if ($state -eq 'success' -and $env:GATE_LANE -eq 'fast') {
+            "FAST technical PASS; package/human gate not run"
+          } elseif ($state -eq 'success') {
             "AUTO technical PASS; HUMAN_PENDING"
+          } elseif ($env:GATE_LANE -eq 'fast') {
+            "FAST technical gate failed"
           } else {
             "AUTO technical gate failed; HUMAN not evaluated"
           }
