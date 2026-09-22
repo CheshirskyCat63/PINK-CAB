@@ -159,6 +159,9 @@ private:
     bool AlignInitialPresentationToGround();
     void EmitPackagedGateTelemetry(double NowSeconds);
     void CaptureMouseWheelAxis(float AxisValue);
+    void CaptureMouseWheelUp();
+    void CaptureMouseWheelDown();
+    void QueueMouseWheelStep(int32 Step);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
