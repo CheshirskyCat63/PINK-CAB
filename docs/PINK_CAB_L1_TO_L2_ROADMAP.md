@@ -7,7 +7,7 @@ FIRST EURO scope authority: `CD-746/CD-753`, `docs/PINK_CAB_BASE100_CODE_ARCHITE
 Core owners:
 
 - BASE-100 code/runtime program: `CD-746`; domain packs `CD-747..753`;
-- vehicle technology: `CD-730`; integration `CD-731..738`; damage state `CD-740`;
+- vehicle technology: Native Chaos `CD-785..792` / `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`; current mechanics/recovery `CD-848`;
 - Tatra handling owner-lock: `CD-729`; detailed calibration `CD-648..659`; physics/mass `CD-562`; power `CD-641`;
 - Level1 gameplay: `CD-678` / proof `CD-679`;
 - Level1 mass/contact: `CD-592` / QA `CD-701`;
@@ -63,25 +63,25 @@ Lock Level1 cross-section, right entry/exit, wallride/ceiling/ramp/frontage clea
 
 ## Phase B — production vehicle stack
 
-Owners `CD-730..738`, damage persistence `CD-740`.
+Owners: Native Chaos program `CD-785..792`; current mechanics/recovery `CD-848`; damage persistence remains in Vehicle Health/save contracts.
 
 Order:
 
-1. pin compatible UE/FGear/VDS versions (`CD-731`);
-2. build one authoritative FGear Tatra profile (`CD-732`);
+1. pin Unreal Engine 5.8 Native Chaos production line and PINK-CAB provider/profile versions;
+2. build one authoritative versioned Native Chaos/PINK-CAB Tatra profile;
 3. connect physical analog controls through one adapter (`CD-733`);
 4. tune dry/wet/storm combined-grip behavior and wet >160 km/h recovery (`CD-734`);
 5. build presentation-only Tatra Expression Layer (`CD-735`);
-6. integrate permanent VDS deformation (`CD-736`);
+6. integrate bounded authored/native damage states + detachable parts + Vehicle Health consequences;
 7. map authored hit zones to bounded Vehicle Health consequences (`CD-737`);
 8. persist damage state (`CD-740`);
 9. prove stack in `CD-738`.
 
-Architectural rule: FGear is sole hero-Tatra road-dynamics solver; VDS sole permanent deformation owner. No parallel Chaos/custom vehicle solver.
+Architectural rule: Native Unreal Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` is the sole hero-Tatra road-dynamics solver. Damage uses bounded authored/native states + Vehicle Health. Required third-party vehicle/damage plugins are none. No parallel solver.
 
 ## Phase C — Tatra handling / road-feel acceptance
 
-Owners `CD-729`, calibration `CD-648..659`, FGear `CD-732..735`, QA `CD-657/CD-658/CD-738`, surface `CD-690`.
+Owners `CD-729`, calibration `CD-648..659`, Native Chaos `CD-785..792`, current mechanics `CD-848`, QA/surface evidence under current recovery authority.
 
 Locked contract:
 
@@ -92,7 +92,7 @@ Locked contract:
 - 180 hp / 240 Nm current authority, 195 km/h target;
 - continuous steering/throttle/brake/clutch-release/handbrake commands;
 - wet rapid lane change above roughly 160 km/h may saturate rear combined grip under excess throttle; easing throttle normally restores lateral reserve;
-- physical FGear chassis state separate from expression/presentation;
+- physical Native Chaos chassis state separate from expression/presentation;
 - road defects use one coherent physical→expression chain.
 
 The previous Tatra 50-question pack is closed as owner intake. Low-level constants are CALIBRATION.
@@ -119,7 +119,7 @@ Owners `CD-567/CD-568/CD-692`, world contract `CD-751`.
 
 Deliver bounded passenger cars + motorcycles/sidecars, lane speeds/gaps, right-exit friction, signs/cameras/parking and reproducible seeds. No traffic lights or systemic standing jams. Ordinary buses belong to Level2; heavy freight belongs to Level1 ceiling.
 
-Distant traffic should not receive hero-level FGear simulation by default; materialization/collision relevance is controlled by common traffic architecture.
+Distant traffic should not receive hero-level full Chaos simulation by default; materialization/collision relevance is controlled by common traffic architecture.
 
 ## Phase G — Level1 identity / presentation kit
 
@@ -169,13 +169,13 @@ Moving refueling is FIRST EURO live-road gameplay and must reuse common FuelTank
 
 Gate `CD-679`; QA `CD-700..703`; mass/contact `CD-701`; presentation `CD-719`.
 
-Evidence covers cross-section, continuous moving traffic/no signals, FGear road response, wallride, linear load-sensitive magnet rule, freight, poplar side-swap, incidents, automotive ServiceNode access, rules, reverse reconstruction and streaming.
+Evidence covers cross-section, continuous moving traffic/no signals, Native Chaos road response, wallride, linear load-sensitive magnet rule, freight, poplar side-swap, incidents, automotive ServiceNode access, rules, reverse reconstruction and streaming.
 
 ## Phase L/M/N — right-entry pipe interchange
 
 `CD-696/CD-564` approach graph → `CD-697/CD-698/CD-699` two-lane one-way pipe/tube, building penetration, traffic/vignettes → gate `CD-681`, QA `CD-704`.
 
-Same FGear/Tatra handling applies. No interchange-only drift physics.
+Same Native Chaos/PINK-CAB Tatra handling applies. No interchange-only drift physics.
 
 ## Phase O — Level2 cross-section lock
 
