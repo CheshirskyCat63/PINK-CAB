@@ -118,6 +118,19 @@ Pages 48/48A…48G are **RECOVERY ARCHIVE**.
 Former duplicate page 15826945 is **ARCHIVE**, not a competing page 46.  
 Former 28A FGear-lineage matrix is archived.
 
+
+## SaaS / cost policy
+
+PINK-CAB is **FREE-FIRST / RESOURCE-CONSTRAINED**.
+
+- Jira target plan: **Free**, provided the site remains within Free eligibility (10 Jira users or fewer and storage within the Free allowance).
+- Jira is a production tracker, not the build/test execution engine.
+- Do not depend on paid Jira audit logs, Rovo/AI, advanced permission editing or high automation quotas for the game pipeline.
+- Existing permission schemes may remain preserved after downgrade but Free must not require routine permission-scheme editing.
+- Prefer GitHub + self-hosted Windows UE runner for deterministic technical automation.
+- New paid SaaS/plugin/tool dependencies require explicit owner approval and a concrete blocker they solve.
+- If a workflow can be implemented reliably with current free/native tools, do not introduce a paid dependency.
+
 ## Branch hygiene
 
 Unique material from superseded branches is preserved under `docs/archive/`.
