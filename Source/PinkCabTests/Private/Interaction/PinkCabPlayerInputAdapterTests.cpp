@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Interaction/PinkCabPlayerInputAdapter.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
+#include "Interaction/PinkCabWheelInputResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPlayerInputAdapterSemanticSampleTest,
@@ -118,6 +119,30 @@ bool FPinkCabPlayerInputAdapterWheelEdgeFallbackTest::RunTest(const FString& Par
         TEXT("contradictory same-frame edges do not invent a direction"),
         FPinkCabPlayerInputAdapter::ResolveWheelAxis(0.0f, true, true),
         0.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabWheelBurstAccelerationTest,
+    "PinkCab.Interaction.PlayerInput.WheelBurstAcceleration",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabWheelBurstAccelerationTest::RunTest(const FString& Parameters)
+{
+    FPinkCabWheelInputResponse Response;
+
+    TestEqual(TEXT("first isolated notch stays precise"), Response.Apply(1, 1.00), 1);
+    TestEqual(TEXT("second rapid notch remains precise"), Response.Apply(1, 1.10), 1);
+    TestEqual(TEXT("third rapid notch accelerates"), Response.Apply(1, 1.20), 2);
+    TestEqual(TEXT("continued rapid wheel burst keeps accelerating"), Response.Apply(1, 1.30), 2);
+    TestTrue(TEXT("longer same-direction burst becomes faster"),
+        Response.Apply(1, 1.40) >= 3);
+
+    TestEqual(TEXT("pause resets wheel acceleration"), Response.Apply(1, 2.00), 1);
+    TestEqual(TEXT("direction change resets wheel acceleration"), Response.Apply(-1, 2.05), -1);
+
+    Response.Reset();
+    TestEqual(TEXT("explicit reset restores precise first notch"), Response.Apply(1, 3.00), 1);
     return true;
 }
 
