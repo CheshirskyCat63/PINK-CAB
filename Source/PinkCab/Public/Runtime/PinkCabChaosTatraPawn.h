@@ -10,6 +10,7 @@
 #include "Vehicle/PinkCabVehicleHealthBinding.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
+#include "Interaction/PinkCabWheelInputResponse.h"
 #include "WheeledVehiclePawn.h"
 #include "PinkCabChaosTatraPawn.generated.h"
 
@@ -171,6 +172,7 @@ private:
     FPinkCabChaosVehicleDynamicsProvider DynamicsProvider;
     FPinkCabCockpitState CockpitState;
     FPinkCabSemanticInputRouter InputRouter = FPinkCabSemanticInputRouter::CreateDefaults();
+    FPinkCabWheelInputResponse WheelInputResponse;
     FPinkCabVehicleControlRuntime VehicleControlRuntime;
     FPinkCabVehicleHealthBinding VehicleHealthBinding;
     const FPinkCabTaximeter* CockpitTaximeterSource = nullptr;
