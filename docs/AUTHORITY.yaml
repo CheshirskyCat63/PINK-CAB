@@ -9,8 +9,9 @@ snapshot_date: 2026-09-22
 control_plane_cleanup:
   remaining_admin_gates:
     stale_remote_branch_refs:
-      count: 16
-      status: TOOLING_GATE_DELETE_REF_NOT_EXPOSED
+      count: 0
+      status: COMPLETE_2026_09_22
+      remaining_branches: [main, fix/CD-848-recovery-r1-input-contract]
       active_execution_lane: false
     jira_plan_downgrade:
       target: FREE
