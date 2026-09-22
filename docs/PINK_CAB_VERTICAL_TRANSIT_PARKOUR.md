@@ -3,7 +3,7 @@
 Status: CURRENT FIRST-EURO L1+L2 IMPLEMENTATION-FACING CANON
 Product root: `CD-519`
 Confluence authority: `8388609`
-Vehicle technology: `CD-730` / `docs/PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md`
+Vehicle technology: Native Chaos `CD-785..792` / `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`
 Vertical owners: `CD-523`, `CD-547`, `CD-676`, `CD-572/CD-677`, `CD-589`, `CD-592`; QA `CD-701/CD-738`
 
 ## Authority correction
@@ -12,7 +12,7 @@ Tier1 = seven-band chain-link wallride + five-lane opposite-flow freight ceiling
 
 ## Vehicle physics boundary
 
-**FGear Vehicle Physics is the sole hero-Tatra road/tire/suspension/drivetrain solver.** Vertical systems may apply explicit magnetic/contact constraints under `CD-592`, but may not instantiate a second hidden vehicle solver or call those constraints ABS/ESP.
+**Native Unreal Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` is the sole hero-Tatra road/tire/suspension/drivetrain solver.** Vertical systems may apply explicit magnetic/contact constraints under `CD-592`, but may not instantiate a second hidden vehicle solver or call those constraints ABS/ESP.
 
 Tatra remains rear-engine/RWD, 1450 kg base / 1550 kg full fuel, no ABS/ESP, E34-like control/Tatra-expression contract.
 
@@ -48,7 +48,7 @@ Only fast direct side swap uses wallride/ceiling and an approved giant-poplar wi
 
 ## Tier2 bus / metro / stations
 
-Suspended bus lane count remains OPEN/CALIBRATION under `CD-705` and the BASE-100 owner pack. Current FGear vehicle/load state carries into Tier2; Tier2 magnetic/contact values must not silently copy Tier1.
+Suspended bus lane count remains OPEN/CALIBRATION under `CD-705` and the BASE-100 owner pack. Current authoritative Chaos/PINK-CAB vehicle/load state carries into Tier2; Tier2 magnetic/contact values must not silently copy Tier1.
 
 Metro has **two tracks per side**, longitudinal and visible from Level1. Exact elevation, directions, speed/headway/dwell/counter-phase and station geometry remain `CD-706/CD-707` work. Direct Tatra-on-metro driving is non-canon unless separately locked.
 
@@ -62,7 +62,7 @@ Where approved, ascent rolls clockwise and descent continues clockwise; a full a
 
 ## Persistence
 
-CityCode+version reconstructs Tier1 wallride/ceiling sequence, poplar windows, Tier2 bus topology and metro/station sequence. FIRST EURO schema may expose compatible future-tier fields, but it does not generate or persist canonical Tier3 gameplay topology yet. Passenger mass remains stable because it affects FGear dynamics and residual timeout.
+CityCode+version reconstructs Tier1 wallride/ceiling sequence, poplar windows, Tier2 bus topology and metro/station sequence. FIRST EURO schema may expose compatible future-tier fields, but it does not generate or persist canonical Tier3 gameplay topology yet. Passenger mass remains stable because it affects authoritative vehicle dynamics and residual timeout.
 
 ## Gameplay integration
 
@@ -70,4 +70,4 @@ Vertical traversal feeds ordinary taxi systems: fare time/route efficiency, pass
 
 ## Verification
 
-`CD-701` / `docs/qa/VERTICAL_TRANSIT_TESTS.md` must prove 1657, 2107 and intermediate **linear** timeout fixtures, lighter cap, wallride load direction and clean recovery. Reacquisition tests use the final `M05` owner lock once resolved. `CD-738` proves the integrated FGear vehicle stack. Runtime remains NOT VERIFIED until exact-build evidence exists.
+`CD-701` / `docs/qa/VERTICAL_TRANSIT_TESTS.md` must prove 1657, 2107 and intermediate **linear** timeout fixtures, lighter cap, wallride load direction and clean recovery. Reacquisition tests use the final `M05` owner lock once resolved. Integrated vehicle-stack proof follows current CD-848 recovery/human-gate evidence. Runtime remains NOT VERIFIED until exact-build evidence exists.
