@@ -196,7 +196,8 @@ $script:GameHwnd = [IntPtr]::Zero
 
 function Send-Wheel([int]$Delta) {
     if($script:GameHwnd -eq [IntPtr]::Zero){ throw "Packaged game HWND is not initialized for wheel input" }
-    [PinkCabNativeInput]::WheelWindow($script:GameHwnd,$Delta)
+    Focus-GameWindow $script:GameHwnd
+    [PinkCabNativeInput]::Wheel($Delta)
 }
 
 function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120) {
@@ -401,7 +402,7 @@ try {
     $final=Get-State
     @(
         "scope=WINDOWS_SYNTHETIC_KEY_MOUSE_PLUS_WM_MOUSEWHEEL_NOT_PHYSICAL_HID",
-        "wheel_injection=WM_MOUSEWHEEL_TO_ACTIVE_PACKAGED_WINDOW",
+        "wheel_injection=FOREGROUND_WINDOWS_MOUSE_WHEEL_EVENT",
         "startup_menu=PASS",
         "driver_camera=PASS",
         "wheels=4",
