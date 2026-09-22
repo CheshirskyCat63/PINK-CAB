@@ -1,6 +1,6 @@
 # PINK CAB · C-01…C-16 Recovery Execution Ledger
 
-**Updated:** 2026-09-21  
+**Updated:** 2026-09-22  
 **Branch:** `fix/CD-848-recovery-r1-input-contract`  
 **Rule:** DONE means evidence exists on the exact candidate. OPEN/BLOCKED is not rounded up.
 
@@ -15,17 +15,28 @@
 | C-07 | DONE | Run `35596639287` reached the PlayerController gearbox path: requested first with no clutch remained `engaged=0`; real Q then engaged first before launch. |
 | C-08 | DONE | Run `35611762556` focused matrix PASS: movement acceptance traverses real RMB/LMB handbrake + gearbox states before Q/E+wheel launch; direct-provider smoke remains physics-only evidence. |
 | C-09 | DONE | RED on `35596197869`: zero pedal fabricated 131.751 Nm/wheel. GREEN on `35596639287`: `ZeroThrottleNoSyntheticDriveTorque` PASS after removing the hidden 18% floor. |
-| C-10 | RED_PENDING | Added `PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary`: 0.999 coupling must remain on continuous partial-clutch torque; only 1.0 may hand off to Chaos gear. Current 0.995 threshold is expected to fail. |
+| C-10 | DONE | `PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary` now enforces the exact boundary: 0.999 remains partial coupling; only 1.0 is fully coupled. Current bridge uses `FullyCoupledThreshold = 1.0f`. |
 | C-11 | DONE | RED on `35597592827`: `+right` produced `right=-3.6 cm`. GREEN focused matrix on `35611762556`: signed runtime DriveSmoke PASS after removing the stale Chaos-boundary inversion. |
 | C-12 | BLOCKED_HUMAN | Canonical H-gate sign is automated; OS/HID physical MouseY direction remains a human packaged gate. |
-| C-13 | DONE | One push-triggered canonical GitHub G1 workflow on the recovery branch; legacy owner/H-INP workflows are manual hard-failing tombstones. |
+| C-13 | DONE | One canonical GitHub control-plane workflow remains. It is manual-only with `fast` (default focused verification) and `human_gate` (full regression/package/OS-input/delivery) modes. Deprecated H-INP/owner-rejection workflows were removed from the active tree. |
 | C-14 | DONE | Jira CD-848 + Confluence page 47 + Git recovery docs use the same R1 ownership semantics. |
-| C-15 | DONE | Canonical GitHub workflow can publish AUTO technical PASS only and always leaves HUMAN_PENDING; automation scope file explicitly denies OS/HID inference. |
+| C-15 | DONE | Workflow uses separate status contexts for `fast` and `human_gate`; only `human_gate` may produce a packaged HUMAN_PENDING candidate. Automation scope explicitly denies physical HID inference. |
 | C-16 | BLOCKED_TOOLING | Exact-head gate/status exists, but branch/ruleset protection cannot be changed by the currently exposed GitHub connector. Do not claim required-check enforcement until GitHub branch/ruleset configuration is verifiably applied. |
+
+
+## 2026-09-22 current control-plane state
+
+- Administrative owner: Jira CD-868.
+- Mechanics/recovery owner: Jira CD-848.
+- Single open implementation PR: #7 → `main`.
+- Last runtime-affecting candidate before admin-only cleanup: `8bed51e5c47e037eb45a670f9d6c1c2cdd28b712`.
+- Run `35746083559`: code-health/build/focused automation/full automation/package/packaged smoke PASS; packaged Windows OS-input route FAIL at throttle dosing; no HUMAN acceptance.
+- Heavy CI is manual-only. Normal iteration uses `fast`; package/delivery runs only under `human_gate`.
+- Old PRs #3–#6 are closed historical evidence. Unique superseded-branch material is preserved under `docs/archive/`.
 
 ## TDD checkpoint
 
-This ledger commit is intentionally **tests first** for C-06/C-09. Production behavior must not be changed until the GitHub UE runner executes these tests and the expected failures are observed.
+Historical TDD note: C-06/C-09 were introduced tests-first and their expected RED→GREEN sequence is preserved in evidence. This is no longer a pending production gate.
 
 ## Acceptance semantics
 
