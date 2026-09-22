@@ -11,17 +11,40 @@ on:
         options:
           - fast
           - human_gate
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
   statuses: write
+  actions: write
+  issues: read
+  pull-requests: read
 
 concurrency:
   group: pinkcab-g1-github-control-plane
   cancel-in-progress: true
 
 jobs:
+  dispatch_from_owner_comment:
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical recovery verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ github.event.comment.body == '/pinkcab-human' && 'human_gate' || 'fast' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run pinkcab-g1-github-control-plane.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref fix/CD-848-recovery-r1-input-contract \
+            -f lane="$LANE"
+          echo "Dispatched lane=$LANE"
+
   gate:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: Exact-head ${{ inputs.lane }} verification
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
