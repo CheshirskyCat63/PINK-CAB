@@ -109,7 +109,9 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
 
     FPinkCabVehicleTelemetry Telemetry{};
     DynamicsProvider.ReadTelemetry(Telemetry);
+    const FVector GateDisplacement = GetActorLocation() - PackagedGateStartLocation;
     const float DistanceCm = FVector::Dist2D(GetActorLocation(), PackagedGateStartLocation);
+    const float LongitudinalCm = FVector::DotProduct(GateDisplacement, PackagedGateStartForward);
     const FVector2D Cursor = GetGearLeverVisualCursor();
 
     FName TargetId = NAME_None;
@@ -142,7 +144,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     UE_LOG(
         LogTemp,
         Display,
-        TEXT("PINKCAB_GATE_STATE menu=%d paused=%d worlddt=%.4f awake=%d velcm=%.3f ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d gaze=%d camera=%d aimvalid=%d aimyaw=%.2f aimpitch=%.2f wheels=%d contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
+        TEXT("PINKCAB_GATE_STATE menu=%d paused=%d worlddt=%.4f awake=%d velcm=%.3f ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f longcm=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d gaze=%d camera=%d aimvalid=%d aimyaw=%.2f aimpitch=%.2f wheels=%d contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
         static_cast<int32>(IsSystemMenuOpen()),
         static_cast<int32>(bWorldPaused),
         WorldDeltaSeconds,
@@ -158,6 +160,7 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
         Telemetry.NormalizedSteering,
         Telemetry.SpeedKmh,
         DistanceCm,
+        LongitudinalCm,
         Cursor.X,
         Cursor.Y,
         *TargetId.ToString(),
