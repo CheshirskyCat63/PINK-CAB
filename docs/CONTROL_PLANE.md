@@ -98,15 +98,13 @@ Rule: **do not spend package/runtime-gate resources on documentation/admin-only 
 
 ## Jira active surface
 
-During cleanup, only these may be non-backlog:
+During cleanup, the non-backlog PINK-CAB execution surface is exactly:
 
 - CD-519 — product root
 - CD-848 — mechanics/recovery
 - CD-868 — control-plane cleanup
-- CD-855 — BLOCKED
-- CD-860 — BLOCKED
 
-Old mechanics cards moved out of UNDER REVIEW remain historical/backlog until reconciled with R1.
+CD-855 and CD-860 are BACKLOG. Old mechanics cards moved out of UNDER REVIEW remain historical/backlog until reconciled with R1.
 
 ## Confluence precedence
 
