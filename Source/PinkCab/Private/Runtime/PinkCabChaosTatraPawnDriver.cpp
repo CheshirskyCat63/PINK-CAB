@@ -22,6 +22,16 @@ void APinkCabChaosTatraPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
             EKeys::MouseWheelAxis,
             this,
             &APinkCabChaosTatraPawn::CaptureMouseWheelAxis);
+        PlayerInputComponent->BindKey(
+            EKeys::MouseScrollUp,
+            IE_Pressed,
+            this,
+            &APinkCabChaosTatraPawn::CaptureMouseWheelUp);
+        PlayerInputComponent->BindKey(
+            EKeys::MouseScrollDown,
+            IE_Pressed,
+            this,
+            &APinkCabChaosTatraPawn::CaptureMouseWheelDown);
     }
 }
 
@@ -32,8 +42,26 @@ void APinkCabChaosTatraPawn::CaptureMouseWheelAxis(const float AxisValue)
         return;
     }
 
-    const int32 Step = AxisValue > 0.0f ? 1 : -1;
-    PendingMouseWheelSteps = FMath::Clamp(PendingMouseWheelSteps + Step, -8, 8);
+    QueueMouseWheelStep(AxisValue > 0.0f ? 1 : -1);
+}
+
+void APinkCabChaosTatraPawn::CaptureMouseWheelUp()
+{
+    QueueMouseWheelStep(1);
+}
+
+void APinkCabChaosTatraPawn::CaptureMouseWheelDown()
+{
+    QueueMouseWheelStep(-1);
+}
+
+void APinkCabChaosTatraPawn::QueueMouseWheelStep(const int32 Step)
+{
+    if (Step == 0)
+    {
+        return;
+    }
+    PendingMouseWheelSteps = FMath::Clamp(PendingMouseWheelSteps + FMath::Sign(Step), -8, 8);
 }
 
 void APinkCabChaosTatraPawn::ApplyMouseSteeringDelta(
