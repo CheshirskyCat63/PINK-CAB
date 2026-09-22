@@ -2,9 +2,10 @@
 
 **Contract revision:** RECOVERY-R1-INPUT-2026-09-20  
 **Owner umbrella:** CD-848  
-**Source baseline:** `34a1937f9ac66b771f8eba813619c01f9ac706e5`  
+**Historical source baseline:** `34a1937f9ac66b771f8eba813619c01f9ac706e5`  
 **Recovery authority:** `PINKCAB_RECOVERY_TO_WORKING_100_SOL56.md`, REC-002 / REC-011…REC-017  
-**Status:** IMPLEMENTATION CANDIDATE · automated verification required · human feel remains pending
+**Status:** CURRENT RECOVERY-R1 CONTRACT · control-plane admin freeze · latest runtime candidate auto-gate failed · human acceptance pending
+**Current control plane:** `docs/CONTROL_PLANE.md` · PR #7 → `main` · CD-848 / CD-868
 
 This amendment resolves the RMB/LMB conflict for the current recovery lane. It supersedes only contradictory wording that allowed RMB+XY alone to manipulate the gearbox or handbrake.
 
