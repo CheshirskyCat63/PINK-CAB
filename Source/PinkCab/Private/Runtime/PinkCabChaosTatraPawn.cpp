@@ -254,6 +254,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     if (bPackagedGateTelemetryEnabled)
     {
         PackagedGateStartLocation = GetActorLocation();
+        PackagedGateStartForward = GetActorForwardVector().GetSafeNormal();
         NextPackagedGateTelemetrySeconds = 0.0;
         UE_LOG(LogTemp, Display, TEXT("PINKCAB_GATE_BEGIN source=packaged_runtime_input_probe"));
     }
