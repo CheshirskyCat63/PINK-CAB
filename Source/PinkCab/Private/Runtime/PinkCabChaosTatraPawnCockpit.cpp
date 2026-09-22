@@ -36,6 +36,7 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
         }
     }
     VehicleControlRuntime.ResetThrottleInputLatch();
+    PendingMouseWheelSteps = 0;
     bGearLeverDragging = false;
     GearLeverCursor = UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
         CockpitState.GetSelectedGear());
