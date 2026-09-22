@@ -2,10 +2,27 @@ product: PINK CAB
 product_root: CD-519
 repository: CheshirskyCat63/PINK-CAB
 repository_status: active-dedicated-pink-cab
-working_branch: main
+working_branch: fix/CD-848-recovery-r1-input-contract
 clean_repository_target: PINK-CAB
 clean_repository_status: complete
-snapshot_date: 2026-09-16
+snapshot_date: 2026-09-22
+control_plane_cleanup:
+  status: ACTIVE_ADMIN_FREEZE
+  owner: CD-868
+  product_root: CD-519
+  mechanics_recovery_owner: CD-848
+  active_git_pr: 7
+  active_git_branch: fix/CD-848-recovery-r1-input-contract
+  canonical_target_branch: main
+  heavy_ci_trigger: manual_only
+  gameplay_changes_allowed: false
+  latest_auto_gate_run: 35746083559
+  latest_auto_gate_result: FAIL_PACKAGED_WINDOWS_OS_INPUT_THROTTLE_DOSING
+  human_gate: NOT_ACCEPTED
+  stale_prs_closed: [3, 4, 5, 6]
+  archived_unique_branch_material: docs/archive
+  resume_rule: control_plane_clean_then_fresh_exact_head_auto_gate_then_human_acceptance
+
 legacy_migration_source: CheshirskyCat63/DEADRACE
 legacy_staging_branch: dev/pinkcab-pre-fgear-20260911
 legacy_staging_sha: 1a4d7e05f1430a6e558b3f697aee3fbf412785bb
@@ -18,7 +35,7 @@ maturity:
   canon: defined
   specification: partial
   implementation: core_code_complete_primitive_only
-  verification: canonical_build_automation_package_verified
+  verification: recovery_exact_head_auto_gate_failed_human_not_accepted
   truth_rule: CANON_to_SPECIFIED_to_IMPLEMENTED_to_VERIFIED
   documentation_never_equals_runtime_verification: true
 
@@ -214,6 +231,15 @@ architecture_doctrine:
   build_pass_equals_gameplay_verified: false
 
 current_canon:
+  control_mechanics_release:
+    owner: CD-848
+    confluence_page: 16744449
+    git_mirror: docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md
+    status: RECOVERY_R1_ACTIVE_AUTO_GATE_FAILED_HUMAN_PENDING
+    qa_status: exact_head_8bed51e_auto_build_tests_package_pass_os_input_fail_throttle_dosing
+    runtime_technology: UE_5_8_2_Native_Chaos_Vehicles
+    explicit_supersessions: [throttle_reset_is_not_defect, old_attention_go_grammar, old_left_forward_reverse_plane, fixed_0_20_1_20_clutch_range_owner_lock, BMW_E34_530i_reference, yaw_rescue_allowance]
+
   input:
     steering_default: mouse
     gaze_hold: Space
@@ -233,6 +259,9 @@ current_canon:
     interaction_target_policy: one_bounded_current_target_no_world_scan
     semantic_input_router: one_cpp_enhanced_input_router_distributes_semantic_state_and_commands_no_feature_system_reads_raw_keys
     physical_control_contract: one_reusable_control_interface_each_control_declares_supported_gestures_and_emits_semantic_events
+    recovery_r1_grip_semantics: RMB_grips_or_retains_selected_lever_without_actuation
+    recovery_r1_lever_manipulation: RMB_plus_LMB_required_mouse_XY_routes_to_lever_only_while_both_held
+    recovery_r1_release_semantics: releasing_LMB_returns_mouse_XY_to_steering_while_RMB_may_remain_held
     control_to_subsystem_rule: controls_never_reach_directly_into_unrelated_taxi_economy_vehicle_internals
     reticle_feedback: translucent_default_valid_target_brightens_to_white_matte_less_transparent_no_text_labels
     hand_selection: interaction_truth_hand_agnostic_left_or_right_hand_chosen_automatically_by_presentation_context
@@ -240,8 +269,14 @@ current_canon:
     brake_key: W
     throttle_key: E
     clutch_wheel_semantics: adjusts_release_speed_not_instantaneous_pressure
-    clutch_release_seconds_fast_slow: [0.20, 1.20]
-    clutch_release_addressable_steps_min: 64
+    clutch_release_numeric_range_status: RECONCILE_CODE_VS_DOCS_NOT_OWNER_LOCKED_2026_09_18
+    clutch_release_code_observed_range_seconds: [0.15, 2.50]
+    clutch_release_legacy_doc_range_seconds: [0.20, 1.20]
+    throttle_wheel_semantics: doses_target_required_again_each_new_launch
+    brake_wheel_semantics: doses_target
+    pedal_wheel_overlap_priority: [E, W, Q]
+    pedal_wheel_single_recipient: true
+    new_launch_throttle_reset: exactly_once_per_new_launch_not_speed_jitter
     rebinding_first_euro: true
     rebinding_scope: semantic_KBM
     rebinding_conflict_detection: required
@@ -294,7 +329,7 @@ current_canon:
     status: IMPLEMENTED_VERIFIED_PRE_MODEL_CONTRACT
     git_freeze: docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md
     asset_import_contract: docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md
-    model_integration_may_proceed: true
+    model_integration_may_proceed: false_during_control_plane_cleanup_and_until_current_recovery_human_gate
     full_mechanics_freeze_implied: false
     final_model_complete: false
     presentation_may_replace_assets_without_gameplay_rewrite: true
@@ -329,7 +364,7 @@ current_canon:
     tire_visual_family: 185R15_like_tall_sidewall
     steering_inner_lock_deg: 41_plus_minus_2
     steering_wheel_lock_to_lock_turns: approx_2_5
-    behavioral_reference: BMW_E34_530i_V8_5MT_control_behavior_only
+    behavioral_reference: BMW_E34_535i_control_capability_reference_only
 
   handling:
     owner_lock: CD-729
@@ -347,6 +382,8 @@ current_canon:
     easing_excess_throttle_recovery: normally_restores_rear_lateral_reserve
     scripted_drift_threshold: false
     automatic_countersteer: false
+    yaw_rescue: false
+    hidden_trajectory_correction: false
     low_level_physics_constants: CALIBRATION_NOT_OWNER_OPEN
 
   mass_load:
@@ -392,6 +429,8 @@ current_canon:
       - authored_alignment_consequence
       - authored_suspension_degradation
       - brake_heat_fade_hydraulic_fluid_health
+      - clutch_heat_wear_torque_transfer_degradation
+      - gearbox_transmission_conflict_wear_damage
       - air_cooled_v8_thermal_health
       - repair_service
       - exact_once_persistence
@@ -599,6 +638,7 @@ confluence_authorities:
   base100_code_architecture: 11239425
   open_decisions: 5832744
   tatra_cockpit: 6619137
+  hero_vehicle_pre_model_asset_contract: 15663105
   vehicle_technology_stack: 13303842
   tatra_handling: 6225936
   tatra_handling_qa: 6160435
@@ -624,6 +664,8 @@ jira_authorities:
   reconciliation_master: CD-841
   reconciliation_units: CD-842_CD-843_CD-844_CD-845_CD-846_CD-847
   mechanics_freeze_master: CD-848
+  pre_model_vehicle_asset_handoff: CD-856
+  model_presentation_consumer: CD-855
   mechanics_freeze_units: CD-849_CD-850_CD-851_CD-852_CD-853_CD-854
   open_decisions: CD-588
   readiness: CD-660_CD-661
@@ -659,6 +701,7 @@ implementation_mirrors:
   first_euro_scope: docs/FIRST_EURO_SCOPE.md
   vehicle_technology_stack: docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md
   tatra_handling: docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md
+  tatra_pre_model_asset_contract: docs/PINK_CAB_TATRA613_PREMODEL_ASSET_CONTRACT.md
   tatra_mass_load: docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md
   taxi_work_physicality: docs/PINK_CAB_TAXI_WORK_PHYSICALITY.md
   servicenode: docs/PINK_CAB_SERVICENODE_TAXONOMY.md
@@ -688,7 +731,7 @@ qa_mirrors:
 legacy_rule:
   deadrace_pursuit_combat_requires_explicit_re_adoption: true
   old_fixed_magnet_5s_all_loads: SUPERSEDED
-  old_rmb_passive_lmb_manipulate: SUPERSEDED
+  old_rmb_passive_lmb_manipulate: RECOVERY_R1_CURRENT_RMB_GRIP_PLUS_LMB_MANIPULATION
   old_two_hour_workday_as_locked_duration: READOPTED_BY_I08_AS_12_INGAME_HOURS_120_REAL_MINUTES
   old_three_tier_first_euro: SUPERSEDED_L1_L2_ONLY
   old_damage_depth_open: SUPERSEDED_CD-600_DONE
