@@ -65,6 +65,48 @@ bool FPinkCabVehicleControlRuntimeLaunchTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabVehicleControlRuntimeRepeatedLaunchTest,
+    "PinkCab.Vehicle.ControlRuntime.Runtime.RepeatedLaunchAfterMoveStop",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabVehicleControlRuntimeRepeatedLaunchTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleHealthState Health;
+
+    Runtime.Update(Digital(true, false, true, 1, 0.0f, 0.20f), Telemetry(0.0f), Cockpit, Health);
+    TestEqual(TEXT("first launch serial"), Runtime.GetLaunchSerial(), 1u);
+    TestEqual(TEXT("first launch one wheel step is five percent"),
+        Runtime.GetThrottleTarget(), 0.05f);
+
+    Runtime.Update(Digital(true, false, false, 0, 0.0f, 0.20f), Telemetry(5.0f), Cockpit, Health);
+    TestEqual(TEXT("moving telemetry exits stationary launch mode"),
+        Runtime.GetMotionMode(), EPinkCabVehicleMotionMode::Moving);
+
+    Runtime.Update(Digital(true, false, false, 0, 0.0f, 0.20f), Telemetry(0.0f), Cockpit, Health);
+    TestEqual(TEXT("stopped telemetry returns to stationary"),
+        Runtime.GetMotionMode(), EPinkCabVehicleMotionMode::Stationary);
+
+    Runtime.Update(Digital(true, false, true, 0, 0.0f, 0.20f), Telemetry(0.0f), Cockpit, Health);
+    TestEqual(TEXT("fresh E after stop starts exactly second launch"), Runtime.GetLaunchSerial(), 2u);
+    TestTrue(TEXT("second launch requires fresh wheel dose"), Runtime.RequiresThrottleDose());
+    TestEqual(TEXT("second launch resets target to zero once"),
+        Runtime.GetThrottleTarget(), 0.0f);
+
+    Runtime.Update(Digital(true, false, true, 1, 0.0f, 0.20f), Telemetry(0.0f), Cockpit, Health);
+    TestEqual(TEXT("second launch one wheel step is five percent"),
+        Runtime.GetThrottleTarget(), 0.05f);
+    TestFalse(TEXT("second launch dose satisfies requirement"), Runtime.RequiresThrottleDose());
+
+    Runtime.Update(Digital(true, false, true, 0, 0.0f, 0.20f), Telemetry(0.0f), Cockpit, Health);
+    TestEqual(TEXT("held E does not reset second launch target"),
+        Runtime.GetThrottleTarget(), 0.05f);
+    TestEqual(TEXT("held E does not create third launch"), Runtime.GetLaunchSerial(), 2u);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleControlRuntimeWheelPriorityTest,
     "PinkCab.Vehicle.ControlRuntime.Runtime.WheelPriority",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
