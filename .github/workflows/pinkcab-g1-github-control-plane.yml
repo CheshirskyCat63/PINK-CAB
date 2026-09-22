@@ -1,9 +1,6 @@
 name: PINK CAB G1 GitHub Control Plane
 
 on:
-  push:
-    branches:
-      - fix/CD-848-recovery-r1-input-contract
   workflow_dispatch:
 
 permissions:
