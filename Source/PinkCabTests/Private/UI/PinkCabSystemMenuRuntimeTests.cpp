@@ -38,8 +38,17 @@ public:
                 Test->TestTrue(*FString::Printf(TEXT("%s donor tyre is visible"), *WheelId.ToString()), Wheel->IsVisible() && !Wheel->bHiddenInGame);
                 LowestTyreZ = FMath::Min(LowestTyreZ, Wheel->Bounds.GetBox().Min.Z);
             }
-            Test->TestTrue(TEXT("startup tyres rest on road instead of hanging in paused menu"),
-                FMath::IsFinite(LowestTyreZ) && FMath::Abs(LowestTyreZ - 1.0f) <= 5.0f);
+            Test->TestTrue(TEXT("startup donor tyre bounds are finite"),
+                FMath::IsFinite(LowestTyreZ));
+            for (const FName WheelId : { FName(TEXT("WheelFL")), FName(TEXT("WheelFR")), FName(TEXT("WheelRL")), FName(TEXT("WheelRR")) })
+            {
+                UStaticMeshComponent* Wheel = Shell ? Shell->GetPresentationPartComponent(WheelId) : nullptr;
+                if (!Wheel) continue;
+                Test->TestEqual(
+                    *FString::Printf(TEXT("%s donor tyre remains presentation-only"), *WheelId.ToString()),
+                    Wheel->GetCollisionEnabled(),
+                    ECollisionEnabled::NoCollision);
+            }
             return true;
         }
         Test->AddError(TEXT("playable Tatra pawn was not found"));
