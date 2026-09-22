@@ -135,7 +135,11 @@ PINK-CAB is **FREE-FIRST / RESOURCE-CONSTRAINED**.
 
 Unique material from superseded branches is preserved under `docs/archive/`.
 
-Remote stale branch refs are historical/delete candidates. Their PRs are closed and they are not execution lanes. The current GitHub connector does not expose branch-ref deletion, and connector-authored commits do not trigger the attempted one-shot cleanup Action, so physical deletion of those remote refs requires direct Git access or GitHub UI. Do not create new work on them.
+Remote branch cleanup completed on 2026-09-22. Exactly two remote branches remain:
+- `main`
+- `fix/CD-848-recovery-r1-input-contract`
+
+Unique material from superseded branches remains preserved under `docs/archive/`.
 
 New rule after cleanup:
 
@@ -147,7 +151,7 @@ No parallel ownerfix/final/recovery/integration branch chains.
 
 Gameplay work resumes only when:
 
-1. CD-868 confirms authority/status cleanup complete.
+1. The remaining Jira billing human gate (Standard → Free) is acknowledged/completed.
 2. PR #7 remains the sole active implementation PR.
 3. No current Confluence page contradicts Recovery R1.
 4. Exact runtime changes use the **fast** lane first.
@@ -155,20 +159,3 @@ Gameplay work resumes only when:
 6. Owner performs the human gate and explicitly accepts/rejects it.
 
 Technical PASS never equals Human Acceptance.
-
-
-## Atlassian cost policy
-
-Target plan: **Jira Free** unless a concrete shipping/production blocker proves a paid plan is required.
-
-PINK-CAB must not depend on paid-only Jira features for normal development.
-
-Free-plan operating assumptions:
-- team stays at or below 10 Jira users;
-- Jira file storage stays below the Free allowance;
-- GitHub Actions, not Jira Automation, owns build/test/package work;
-- direct Jira/Confluence issue/page operations are preferred over Atlassian Rovo AI/search;
-- project operation must not require editable advanced permission/security schemes;
-- paid audit logs, anonymous access, paid support and Rovo are non-critical conveniences, not dependencies.
-
-If a future requirement needs a paid-only feature, record the blocker and expected cost in Jira before upgrading.
