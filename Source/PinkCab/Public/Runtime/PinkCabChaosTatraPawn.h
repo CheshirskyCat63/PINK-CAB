@@ -197,4 +197,5 @@ private:
     bool bPackagedGateTelemetryEnabled = false;
     double NextPackagedGateTelemetrySeconds = 0.0;
     FVector PackagedGateStartLocation = FVector::ZeroVector;
+    FVector PackagedGateStartForward = FVector::ForwardVector;
 };
