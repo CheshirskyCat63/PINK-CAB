@@ -285,23 +285,60 @@ public:
             FrontBaseRotation =
                 Shell->GetPresentationPartComponent(TEXT("WheelFL"))->GetRelativeRotation();
 
-            // This is a presentation/Chaos-pose test, not a duplicate of the
-            // already-covered player-input/provider routing tests. The startup
-            // cockpit intentionally keeps Chaos mechanical simulation disabled
-            // until the engine is running, so explicitly enable the physics
-            // producer here and drive its canonical steering input directly.
-            // Disable Pawn::Tick so the real PlayerController cannot overwrite
-            // the deterministic test stimulus before the next Chaos update.
+            // Match the proven Chaos runtime-smoke preconditions: the live wheel
+            // pose is not valid until ignition enables mechanical simulation and
+            // the suspension has established road contact.
             Pawn->SetActorTickEnabled(false);
-            Movement->EnableMechanicalSim(true);
-            Movement->SetSteeringInput(1.0f);
-            StartSeconds = FPlatformTime::Seconds();
+            Test->TestTrue(
+                TEXT("wheel pose test ignition interaction succeeds"),
+                Pawn->ApplyCockpitInteraction(
+                    {FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+            PhaseStartSeconds = FPlatformTime::Seconds();
             Phase = 1;
             return false;
         }
 
-        Movement->SetSteeringInput(1.0f);
-        if ((FPlatformTime::Seconds() - StartSeconds) < 0.35) return false;
+        if (Phase == 1)
+        {
+            int32 ContactCount = 0;
+            for (int32 WheelIndex = 0; WheelIndex < Movement->GetNumWheels(); ++WheelIndex)
+            {
+                ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
+            }
+            if (ContactCount < 2)
+            {
+                if ((FPlatformTime::Seconds() - PhaseStartSeconds) < 2.5)
+                {
+                    return false;
+                }
+                Test->TestTrue(TEXT("Chaos suspension establishes road contact"), false);
+                Pawn->SetActorTickEnabled(true);
+                return true;
+            }
+
+            FPinkCabVehicleControlState Controls;
+            Controls.SetSteering(1.0f);
+            Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+            Test->TestTrue(
+                TEXT("provider publishes full right steering to Chaos"),
+                Movement->GetSteeringInput() > 0.99f);
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            Phase = 2;
+            return false;
+        }
+
+        FPinkCabVehicleControlState Controls;
+        Controls.SetSteering(1.0f);
+        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+
+        const UChaosVehicleWheel* FrontChaos =
+            Movement->Wheels.IsValidIndex(0) ? Movement->Wheels[0] : nullptr;
+        if (FrontChaos
+            && FMath::Abs(FrontChaos->GetSteerAngle()) <= 0.25f
+            && (FPlatformTime::Seconds() - PhaseStartSeconds) < 1.5)
+        {
+            return false;
+        }
 
         Test->TestTrue(
             TEXT("explicit wheel presentation sync succeeds"),
@@ -317,7 +354,8 @@ public:
                 FMath::Abs(RearChaos->GetSteerAngle()) < 0.10f);
         }
 
-        Movement->SetSteeringInput(0.0f);
+        Controls.SetSteering(0.0f);
+        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
         Pawn->SetActorTickEnabled(true);
         return true;
     }
@@ -325,7 +363,7 @@ public:
 private:
     FAutomationTestBase* Test = nullptr;
     int32 Phase = 0;
-    double StartSeconds = 0.0;
+    double PhaseStartSeconds = 0.0;
     FRotator FrontBaseRotation = FRotator::ZeroRotator;
 };
 
