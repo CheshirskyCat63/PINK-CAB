@@ -218,11 +218,6 @@ int32 FPinkCabInteractionState::ApplyWheelSteps(
     {
         return 0;
     }
-    if (CurrentTarget.bSupportsGrip && !bGripActive)
-    {
-        return 0;
-    }
-
     ++ActuationSerial;
     LastEvent = {
         CurrentTarget.Id,
