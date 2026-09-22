@@ -14,6 +14,11 @@ public:
         APlayerController& Controller,
         const FPinkCabSemanticInputRouter& Router) const;
 
+    static float ResolveWheelAxis(
+        float AnalogAxis,
+        bool bScrollUpPressed,
+        bool bScrollDownPressed);
+
     static FPinkCabPlayerInputSample ComposeSample(
         const FPinkCabSemanticInputRouter& Router,
         TFunctionRef<bool(const FKey&)> IsKeyDown,
