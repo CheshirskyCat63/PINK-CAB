@@ -1,0 +1,44 @@
+name: PINK-CAB ADMIN · sync main into recovery once
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: read
+  pull-requests: read
+
+jobs:
+  sync:
+    if: ${{ github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.body == '/admin-sync-main-into-recovery' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovery branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/CD-848-recovery-r1-input-contract
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge current main into recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit -X theirs origin/main
+          git push origin HEAD:fix/CD-848-recovery-r1-input-contract
+
+      - name: Remove this one-shot workflow from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git switch -C main origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pinkcab-admin-sync-main-into-recovery-once.yml
+          git commit -m "admin: remove completed main-to-recovery sync workflow"
+          git push origin HEAD:main
