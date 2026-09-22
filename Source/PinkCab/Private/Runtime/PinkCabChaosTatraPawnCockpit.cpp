@@ -3,6 +3,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
@@ -73,6 +74,20 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
     {
         VehicleControlRuntime.ApplyHealthCapabilities(
             VehicleHealthService, GetVehicleHealthState());
+
+        const FPinkCabVehicleControlState& Controls =
+            VehicleControlRuntime.GetControlState();
+        const bool bDriverRequestsDriveWake =
+            CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running
+            && Controls.Throttle > KINDA_SMALL_NUMBER;
+        if (bDriverRequestsDriveWake)
+        {
+            if (USkeletalMeshComponent* VehicleMesh = GetMesh())
+            {
+                VehicleMesh->WakeAllRigidBodies();
+            }
+        }
+
         FPinkCabChaosCockpitBridge::Apply(
             CockpitState,
             *Movement,

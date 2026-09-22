@@ -4,8 +4,11 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Interaction/PinkCabInteractionModel.h"
 #include "Vehicle/PinkCabVehicleStateSnapshot.h"
+#include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
@@ -119,6 +122,56 @@ bool FPinkCabVehicleLivePawnRoundTripTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("vehicle runtime map opens"), bOpened);
     if (!bOpened) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabVehicleLivePawnRoundTripCommand(this));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabVehicleDriveDemandWakesPhysicsTest,
+    "PinkCab.Vehicle.LiveState.DriveDemandWakesSleepingPhysics",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabVehicleDriveDemandWakesPhysicsTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("vehicle runtime map opens for sleep/wake proof"), bOpened);
+    if (!bOpened) return false;
+
+    ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(0.25f));
+    ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this]()
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        APinkCabChaosTatraPawn* Pawn = nullptr;
+        if (World)
+        {
+            for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+            {
+                Pawn = *It;
+                break;
+            }
+        }
+
+        TestNotNull(TEXT("sleep/wake proof owns live Tatra pawn"), Pawn);
+        if (!Pawn || !Pawn->GetMesh())
+        {
+            return true;
+        }
+
+        Pawn->SetSystemMenuOpen(false);
+        TestTrue(TEXT("ignition starts before wake proof"),
+            Pawn->ApplyCockpitInteraction(
+                {FName(TEXT("Ignition")), EPinkCabInteractionGesture::PressHold, 1}));
+
+        Pawn->GetMesh()->PutAllRigidBodiesToSleep();
+        TestFalse(TEXT("fixture forces vehicle physics asleep"), Pawn->GetMesh()->IsAnyRigidBodyAwake());
+
+        FPinkCabVehicleInputFrame DriveFrame;
+        DriveFrame.Throttle = 0.30f;
+        Pawn->ApplyVehicleInputFrame(DriveFrame, 0.0f, 1.0f / 60.0f);
+
+        TestTrue(TEXT("real throttle demand wakes sleeping vehicle physics"),
+            Pawn->GetMesh()->IsAnyRigidBodyAwake());
+        return true;
+    }));
     return true;
 }
 
