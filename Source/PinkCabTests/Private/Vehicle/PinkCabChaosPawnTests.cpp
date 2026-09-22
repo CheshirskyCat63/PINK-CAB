@@ -118,21 +118,15 @@ bool FPinkCabChaosTatraWheelGeometryBindingTest::RunTest(const FString& Paramete
         return false;
     }
 
-    const FPinkCabVehicleVisualProfile Tatra = FPinkCabVehicleVisualProfile::Tatra613Donor();
-    const FName PartIds[4] = { TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR") };
     for (int32 Index = 0; Index < 4; ++Index)
     {
-        const FPinkCabVehiclePresentationPart* Part = FindPresentationPart(Tatra, PartIds[Index]);
-        TestNotNull(*FString::Printf(TEXT("%s target wheel contract exists"), *PartIds[Index].ToString()), Part);
-        if (!Part)
-        {
-            return false;
-        }
-        const FVector Expected = Part->LocalTransform.GetLocation();
-        const FVector Actual = ResolveChaosWheelRestPosition(*Pawn, Movement->WheelSetups[Index]);
+        const FChaosWheelSetup& Setup = Movement->WheelSetups[Index];
+        TestFalse(
+            *FString::Printf(TEXT("physical wheel %d keeps a prototype wheel bone"), Index),
+            Setup.BoneName.IsNone());
         TestTrue(
-            *FString::Printf(TEXT("%s Chaos resting position follows Tatra geometry contract"), *PartIds[Index].ToString()),
-            Actual.Equals(Expected, 0.01f));
+            *FString::Printf(TEXT("physical wheel %d is isolated from Tatra presentation offsets"), Index),
+            Setup.AdditionalOffset.IsNearlyZero(0.01f));
     }
     return true;
 }
