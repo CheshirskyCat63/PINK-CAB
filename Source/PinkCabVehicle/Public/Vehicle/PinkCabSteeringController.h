@@ -6,12 +6,15 @@
 struct FPinkCabSteeringControllerConfig
 {
     float MouseCountsForFullScale = 1400.0f;
-    float CenterExponent = 1.10f;
-    float StationaryResponsePerSecond = 6.0f;
-    float MovingResponseLowPerSecond = 16.0f;
-    float MovingResponseHighPerSecond = 22.0f;
-    float HighSpeedKmh = 160.0f;
-    float HighSpeedTargetGain = 1.12f;
+    float CenterExponent = 1.22f;
+    float StationaryTravelScale = 3.00f;
+    float MovingTravelScaleLow = 1.25f;
+    float MovingTravelScaleHigh = 1.85f;
+    float StationaryResponsePerSecond = 3.2f;
+    float MovingResponseLowPerSecond = 13.0f;
+    float MovingResponseHighPerSecond = 8.0f;
+    float HighSpeedKmh = 120.0f;
+    float HighSpeedTargetGain = 0.60f;
 };
 
 class PINKCABVEHICLE_API FPinkCabSteeringController
