@@ -12,6 +12,7 @@
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
