@@ -6,6 +6,8 @@
 **Confluence authority index:** `6586369`
 **Repository:** `CheshirskyCat63/PINK-CAB` is the sole active PINK CAB technical truth.
 
+**2026-09-22 control-plane status:** ADMIN FREEZE. Active execution authority is CD-519 / CD-848 / CD-868 + Confluence 47 + PR #7. CD-855/CD-860 are BACKLOG. Older PRs #3–#6 and Confluence 48-series are historical/archive only. Heavy UE CI is manual-only; use `fast` lane for iteration and `human_gate` only for owner candidates.
+
 ## Start here
 
 1. [`CONTROL_PLANE.md`](CONTROL_PLANE.md) — single active Git/Jira/Confluence execution path, resource policy, and resume gate.
