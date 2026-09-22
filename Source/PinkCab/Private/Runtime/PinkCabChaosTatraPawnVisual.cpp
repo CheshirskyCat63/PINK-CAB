@@ -155,12 +155,24 @@ bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
         const FQuat DynamicRotation =
             SteeringRotation * Part->LocalTransform.GetRotation() * SpinRotation;
 
-        VisualWheel->SetWorldLocation(
-            ChaosWheel->Location,
+        // Keep the donor tyre strictly presentation-only. Chaos owns the
+        // physical wheel center; the visible static mesh stays in the authored
+        // vehicle-local frame and only receives the simulated suspension/steer/
+        // spin pose. Never teleport a child component through world space from
+        // the vehicle tick.
+        const FVector DynamicLocation =
+            Part->LocalTransform.GetLocation()
+            + ChaosWheel->GetSuspensionAxis() * ChaosWheel->GetSuspensionOffset();
+        VisualWheel->SetRelativeLocation(
+            DynamicLocation,
             false,
             nullptr,
-            ETeleportType::TeleportPhysics);
-        VisualWheel->SetRelativeRotation(DynamicRotation);
+            ETeleportType::None);
+        VisualWheel->SetRelativeRotation(
+            DynamicRotation,
+            false,
+            nullptr,
+            ETeleportType::None);
         VisualWheel->SetRelativeScale3D(Part->LocalTransform.GetScale3D());
         VisualWheel->SetVisibility(true, false);
         VisualWheel->SetHiddenInGame(false, false);

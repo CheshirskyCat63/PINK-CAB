@@ -252,9 +252,18 @@ void ValidateDynamicFrontWheel(
             });
     if (FrontPart && FMath::Abs(FrontChaos->GetSuspensionOffset()) > 0.10f)
     {
+        const FVector ExpectedLocalLocation =
+            FrontPart->LocalTransform.GetLocation()
+            + FrontChaos->GetSuspensionAxis() * FrontChaos->GetSuspensionOffset();
         Test.TestFalse(TEXT("visible front wheel follows Chaos suspension offset"),
             FrontVisual->GetRelativeLocation().Equals(
                 FrontPart->LocalTransform.GetLocation(), 0.05f));
+        Test.TestTrue(TEXT("visible tyre stays in authored local frame plus suspension travel"),
+            FrontVisual->GetRelativeLocation().Equals(ExpectedLocalLocation, 0.25f));
+        Test.TestTrue(TEXT("visible tyre is never teleported away from donor wheel well"),
+            FVector::Distance(
+                FrontVisual->GetRelativeLocation(),
+                FrontPart->LocalTransform.GetLocation()) < 25.0f);
     }
 }
 }
