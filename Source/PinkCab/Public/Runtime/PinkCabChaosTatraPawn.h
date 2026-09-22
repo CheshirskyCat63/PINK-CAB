@@ -43,6 +43,7 @@ public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
     UChaosWheeledVehicleMovementComponent* GetChaosMovement() const;
     IPinkCabVehicleDynamicsProvider& GetPinkCabDynamicsProvider() { return DynamicsProvider; }
     const FPinkCabCockpitState& GetCockpitState() const { return CockpitState; }
@@ -157,6 +158,7 @@ private:
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
     bool AlignInitialPresentationToGround();
     void EmitPackagedGateTelemetry(double NowSeconds);
+    void CaptureMouseWheelAxis(float AxisValue);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
@@ -198,4 +200,5 @@ private:
     double NextPackagedGateTelemetrySeconds = 0.0;
     FVector PackagedGateStartLocation = FVector::ZeroVector;
     FVector PackagedGateStartForward = FVector::ForwardVector;
+    int32 PendingMouseWheelSteps = 0;
 };
