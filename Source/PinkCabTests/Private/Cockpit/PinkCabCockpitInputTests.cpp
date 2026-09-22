@@ -273,13 +273,18 @@ bool FPinkCabGripComplianceTest::RunTest(const FString& Parameters)
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
     FPinkCabInteractionEvent Event;
-    TestFalse(TEXT("RMB rejects target without grip capability"), Interaction->BeginGrip(Event));
+    const uint32 Before = Interaction->GetActuationSerial();
+    TestTrue(TEXT("RMB may retain any valid control including a button"),
+        Interaction->BeginGrip(Event));
+    TestTrue(TEXT("universal RMB retain is active"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB retain alone never actuates the control"),
+        Interaction->GetActuationSerial(), Before);
+    TestTrue(TEXT("RMB release ends retained button target"), Interaction->EndGrip(Event));
 
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
-    const uint32 Before = Interaction->GetActuationSerial();
-    TestTrue(TEXT("RMB grips grip-capable target"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("RMB also retains lever controls"), Interaction->BeginGrip(Event));
     TestTrue(TEXT("grip state is retained"), Interaction->IsGripActive());
-    TestEqual(TEXT("grip alone never actuates"), Interaction->GetActuationSerial(), Before);
+    TestEqual(TEXT("grip alone still never actuates"), Interaction->GetActuationSerial(), Before);
     TestTrue(TEXT("RMB release ends grip"), Interaction->EndGrip(Event));
     TestFalse(TEXT("grip release clears hand ownership"), Interaction->IsGripActive());
     return true;
