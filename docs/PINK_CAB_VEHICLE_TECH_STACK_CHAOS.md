@@ -39,7 +39,7 @@ The solver change does not reopen the approved Tatra identity:
 - current declared five-passenger max fixture 2107 kg;
 - no ABS / no ESP;
 - current target 180 hp / 240 Nm / 195 km/h;
-- E34 530i V8 5MT remains behavioral-control reference only;
+- BMW E34 535i remains the current behavioral/control-capability reference only;
 - progressive/catchable RWD oversteer and visible soft-barge body work remain target behavior.
 
 Calibration values belong to `FPinkCabChaosPhysicalProfile` and related versioned data, not vendor types.
