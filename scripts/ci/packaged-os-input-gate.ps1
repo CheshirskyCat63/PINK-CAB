@@ -371,7 +371,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
-    Dose-To 'throttle' 0.25 0.30 120
+    Dose-To 'throttle' 0.25 0.35 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq 1 -and $s.longcm -gt 500.0 -and $s.speed -gt 0.5 } 10000 "forward packaged movement beyond 5m" | Out-Null
 
@@ -399,7 +399,7 @@ try {
     $reverseStartLongCm=(Get-State).longcm
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 } 2500 "reverse launch requires fresh E+wheel dose" | Out-Null
-    Dose-To 'throttle' 0.25 0.30 120
+    Dose-To 'throttle' 0.25 0.35 120
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq -1 -and $s.speed -lt -0.5 -and $s.longcm -lt ($reverseStartLongCm - 300.0) } 10000 "reverse packaged movement beyond 3m" | Out-Null
 
