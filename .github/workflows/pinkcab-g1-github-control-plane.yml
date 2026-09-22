@@ -134,6 +134,27 @@ jobs:
           ) | Set-Content "$env:EVIDENCE_DIR\AUTOMATION_SCOPE.txt"
           Write-Host "EXACT_HEAD=$head"
 
+      - name: Publish exact-head gate pending status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $body = @{
+            state = 'pending'
+            context = 'cheshire/pinkcab-g1-github'
+            description = 'Exact-head recovery gate running'
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          } -ContentType 'application/json' -Body $body | Out-Null
+          Write-Host "GITHUB_GATE_STATUS=pending"
+          Write-Host "GITHUB_GATE_RUN_URL=$runUrl"
+
       - name: Strict code-health
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
