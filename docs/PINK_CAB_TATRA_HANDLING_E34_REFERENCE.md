@@ -11,7 +11,7 @@
 PINK CAB separates **how the car physically controls** from **how the old Tatra body communicates that control**.
 
 - Road dynamics implementation = **FGear Vehicle Physics only**.
-- Control/tire/steering behavior target = **BMW E34 530i V8 5MT-like**.
+- Control/tire/steering behavior target = **BMW E34 535i-like**.
 - Body/mass/presentation = bespoke rear-engined 1970s PINK CAB Tatra 603-family.
 - Permanent mesh deformation = Debugging Delight Vehicle Damage System, not this handling layer.
 
