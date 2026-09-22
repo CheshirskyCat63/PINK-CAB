@@ -7,6 +7,7 @@
 #include "Cockpit/PinkCabCockpitSlot.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 
 namespace
