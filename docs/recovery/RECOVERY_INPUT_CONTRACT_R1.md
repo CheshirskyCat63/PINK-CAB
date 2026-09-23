@@ -1,73 +1,147 @@
 # PINK CAB · Recovery Input Contract R1
 
-**Contract revision:** RECOVERY-R1-INPUT-2026-09-20  
+**Contract revision:** RECOVERY-R1-INPUT-2026-09-23  
 **Owner umbrella:** CD-848  
-**Historical source baseline:** `34a1937f9ac66b771f8eba813619c01f9ac706e5`  
-**Recovery authority:** `PINKCAB_RECOVERY_TO_WORKING_100_SOL56.md`, REC-002 / REC-011…REC-017  
-**Status:** CURRENT RECOVERY-R1 CONTRACT · control-plane admin freeze · latest runtime candidate auto-gate failed · human acceptance pending
-**Current control plane:** `docs/CONTROL_PLANE.md` · PR #7 → `main` · CD-848 / CD-868
+**Status:** **CURRENT · OWNER-ACCEPTED WORKING BASELINE**  
+**Accepted runtime SHA:** `8168d72406af6934ab20eace583c2b895f0620b7`  
+**Accepted run:** `35809749568`  
+**Integration:** PR #7 merged to `main` as `865e8f77dde4af1f5c5bee8d49754628b6494db4`
 
-This amendment resolves the RMB/LMB conflict for the current recovery lane. It supersedes only contradictory wording that allowed RMB+XY alone to manipulate the gearbox or handbrake.
+This contract records the interaction behavior accepted by the owner on 2026-09-23. It supersedes contradictory earlier R1 wording that made RMB a mandatory prefix for lever motion.
 
-## 1. Mouse ownership phases
+## 1. Mouse ownership
 
-| Phase | Gearbox / Handbrake contract |
+| State | Contract |
 |---|---|
 | Default | Mouse XY owns steering. |
-| Select / stage | 3 or 4 recalls the physical control. Q may stage Gearbox while operating clutch. Recall/staging does not actuate the control. |
-| RMB grip | RMB acquires/retains exactly one selected physical control. RMB alone does not move the lever and does not take mouse XY away from steering. |
-| RMB + LMB manipulation | LMB begins explicit lever manipulation while RMB remains held. Mouse XY now belongs only to the captured lever. Steering receives no new mouse delta; the existing steering command is held, not reset. |
-| LMB release with RMB still held | Manipulation ends immediately. The grip may remain, but mouse XY returns to steering and cannot continue moving the lever. |
-| RMB release | Grip ends. A consumed quick-recall target becomes ineligible for later ghost input. Persistent mechanical state (gear request/engagement, handbrake position) is not cleared merely to hide UI. |
+| Space held | Mouse owns gaze/look. Releasing Space returns it to steering. |
+| Quick 1/2/3/4 held | Temporary quick target/prompt is visible. Recall alone never actuates. |
+| Quick key released | The quick-access prompt disappears immediately. |
+| RMB held | RMB may capture/retain one valid contextual/selected control. RMB alone never actuates it. |
+| LMB contextual action | LMB may directly execute the authored action on the current/contextual target without RMB first. |
+| Wheel contextual action | Wheel may directly execute the authored incremental action without RMB first. |
+| Lever manipulation | While Gearbox/Handbrake manipulation is active, mouse XY belongs only to that lever; steering holds its current command. |
+| Manipulation ends | Mouse XY returns to steering. An optional RMB retain may remain until RMB release. |
 
-One mouse sample must never steer and manipulate a lever at the same time.
+One physical mouse sample must never steer and manipulate a lever at the same time.
 
-## 2. Gearbox commit contract
+## 2. Quick access
 
-- H-gate topology remains 1/3/5 top, 2/4/R bottom, through the neutral corridor.
-- Lever/request movement exists only during RMB+LMB manipulation.
-- Reaching a detent updates the requested gear through the existing gearbox controller.
-- Actual engagement remains owned by the existing common mechanical validator.
-- LMB release and RMB release do **not** perform a second gear request/commit.
-- Standstill N→gear without valid clutch/load synchronization remains refused by the validator; no shortcut bypass is added.
-- Q stages Gearbox but never grips/manipulates it and must not steal another active grip.
+Keys:
 
-## 3. Handbrake contract
+- 1 = TurnSignals
+- 2 = Horn
+- 3 = Gearbox
+- 4 = Handbrake
 
-- 4 stages Handbrake.
-- RMB retains the handbrake without moving it.
-- RMB+LMB+mouse manipulates the existing analog handbrake value.
-- LMB release stops further lever movement; the mechanical handbrake position remains where the player left it.
-- Stationary parking-latch and moving hydraulic behavior remain owned by the existing handbrake actuator; this contract changes only input ownership.
+Rules:
 
-## 4. Momentary and other controls
+- quick access is selection/staging, never hidden actuation;
+- its visible prompt is key-held only;
+- releasing the number key removes the quick prompt;
+- a control already captured/manipulated may finish its active interaction without a ghost quick prompt;
+- release order must not create duplicate commits or delayed actions.
 
-- LMB remains the authored action button for true momentary controls such as Horn/Ignition.
-- LMB without RMB does not manipulate Gearbox/Handbrake.
-- RMB grip alone never fires a momentary action.
-- Wheel routing remains single-recipient with pedal priority E > W > Q.
-- Space gaze remains independent; focus/menu cancellation clears transient grip/action state without committing a gear.
+## 3. RMB / LMB / wheel
 
-## 5. Target / prompt lifecycle
+RMB is **optional capture/retain**, not a global permission key.
 
-Selection, recalled target, active grip, active manipulation, momentary action, and displayed prompt are separate concepts.
+- RMB alone never presses a button, moves a lever or changes a rotary value.
+- LMB can directly activate momentary/contextual controls such as Horn/Ignition/Taximeter where authored.
+- LMB can directly begin Gearbox/Handbrake manipulation when that lever is the active/contextual target.
+- RMB can retain Gearbox/Handbrake so the player can hold that target across interaction phases.
+- wheel can directly operate a target that declares wheel/incremental support.
+- Gearbox itself remains mouse-XY H-gate manipulation rather than wheel shifting where the current control spec disables wheel.
+- pedal wheel routing is separate and single-recipient with priority **E → W → Q**.
 
-After a recalled target has actually been consumed by grip/action/wheel and the interaction session ends:
-- it must no longer remain eligible for a later ghost click;
-- Gearbox/Handbrake prompt must disappear after all related input is released;
-- actual gear/handbrake mechanical state remains truthful and separately displayed.
+## 4. Wheel response
 
-A quick recall that was selected but not yet consumed may remain available for the intended tap-recall behavior.
+Isolated wheel detents remain precise.
 
-## 6. Mandatory regression scenarios
+A sustained same-direction burst accelerates progressively so long adjustments do not require excessive repetitive scrolling.
 
-- RV-011: RMB-only grip does not move Gearbox/Handbrake; steering remains responsive.
-- RV-012: LMB without RMB does not manipulate a lever; RMB+LMB does.
-- RV-013: simultaneous/reordered releases create one session and no duplicate commit.
-- RV-015: another target cannot steal an active session.
-- RV-016/RV-017: consumed Gearbox/Handbrake target and prompt clear after complete release.
-- RV-021: Q+E+wheel keeps clutch down and doses throttle.
-- RV-023: Q does not steal an active handbrake/other grip.
-- RV-041: no-clutch mismatch is refused by the common validator.
+Acceleration resets when:
 
-No later code or test may reinterpret RMB as direct lever manipulation without a new explicit owner amendment.
+- the burst pauses beyond the configured window; or
+- direction reverses.
+
+The response must never duplicate one physical notch through both analog and discrete UE wheel representations.
+
+## 5. Steering character
+
+The car has **no hydraulic or electric power steering**.
+
+Required transfer character:
+
+- standstill: heavy and slow; large mouse travel is required;
+- initial/low-speed rolling: substantially lighter than standstill;
+- rising speed: response becomes calmer/stabler rather than more nervous;
+- high speed must not gain extra target sensitivity or response rate;
+- mouse right means physical steering/right trajectory direction; no recurring inversion;
+- gaze or lever ownership holds existing steering rather than resetting it.
+
+## 6. Gearbox
+
+H-gate topology:
+
+| Position | Left | Center | Right |
+|---|---:|---:|---:|
+| top | 1 | 3 | 5 |
+| cross-gate | N | N | N |
+| bottom | 2 | 4 | R |
+
+Rules:
+
+- changes physically traverse the neutral corridor;
+- requested gear and engaged gear are separate;
+- actual engagement goes through the common mechanical validator;
+- clutch/load/speed mismatch may refuse or damage a shift;
+- release edges never perform a second commit;
+- Q may stage Gearbox while clutch remains independently held;
+- Q does not steal another active retained control.
+
+## 7. Pedals / launch
+
+- Q = clutch.
+- W = brake.
+- E = throttle.
+- E+wheel doses throttle.
+- W+wheel doses brake.
+- Q+wheel adjusts clutch-release timing.
+- If E/W/Q overlap, one wheel step has one recipient: E, then W, then Q.
+- A genuine new launch from standstill requires a fresh throttle dose.
+- One held launch attempt is not repeatedly reset by speed jitter.
+- No hidden auto-throttle or auto-rev-match.
+
+## 8. Cleanup / cancellation
+
+Focus loss, menu transition or explicit transient reset must:
+
+- end temporary target/capture/action ownership;
+- release held momentary actions;
+- prevent delayed/duplicate gear commits;
+- preserve truthful persistent mechanical state such as engaged gear or handbrake position.
+
+## 9. No hidden assists
+
+The accepted control layer does not introduce:
+
+- auto-countersteer;
+- yaw rescue;
+- ESP;
+- ABS;
+- trajectory correction;
+- auto-throttle;
+- auto-rev-match.
+
+## 10. Baseline evidence
+
+Owner-accepted working build:
+
+- source SHA: `8168d72406af6934ab20eace583c2b895f0620b7`;
+- run: `35809749568`;
+- successful job: `PINK-CAB code-only standalone human build`;
+- delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`;
+- desktop shortcut: `PINKCAB Latest.lnk`.
+
+This acceptance freezes the current working interaction baseline. It does not assert that every later FIRST EURO feature or QA item is finished.
