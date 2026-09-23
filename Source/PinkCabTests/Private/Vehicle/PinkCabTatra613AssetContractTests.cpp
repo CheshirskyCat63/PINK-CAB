@@ -49,14 +49,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabTatra613V12AssetContractTest::RunTest(const FString& Parameters)
 {
-    const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Tatra613Donor();
+    const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Tatra613ScenePreserved();
     const FPinkCabChaosPhysicalProfile Physical = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
 
     TestEqual(TEXT("desktop TATRA613 does not replace source cockpit geometry"),
         Visual.CockpitBindings.Num(), 0);
     TestTrue(TEXT("scene-preserved profile does not use merged exterior mesh"),
         Visual.ExteriorStaticMesh.IsNull());
-    TestEqual(TEXT("scene-preserved profile keeps all 133 source meshes plus four donor wheels"),
+    TestEqual(TEXT("scene-preserved profile keeps all 133 source meshes plus four V12Clean wheels"),
         Visual.PresentationParts.Num(), 137);
     TestFalse(TEXT("source steering presentation part is identified"),
         Visual.SteeringPresentationPartId.IsNone());
@@ -116,18 +116,18 @@ bool FPinkCabTatra613V12AssetContractTest::RunTest(const FString& Parameters)
     for (const FName WheelId : WheelIds)
     {
         const FPinkCabVehiclePresentationPart* WheelPart = FindPart(Visual, WheelId);
-        TestNotNull(*FString::Printf(TEXT("%s donor wheel exists"), *WheelId.ToString()), WheelPart);
+        TestNotNull(*FString::Printf(TEXT("%s V12Clean wheel exists"), *WheelId.ToString()), WheelPart);
         if (!WheelPart)
         {
             return false;
         }
-        TestTrue(*FString::Printf(TEXT("%s uses the validated donor wheel"), *WheelId.ToString()),
+        TestTrue(*FString::Printf(TEXT("%s uses the validated V12Clean wheel"), *WheelId.ToString()),
             WheelPart->Mesh.ToSoftObjectPath().ToString().Contains(TEXT("Tatra613ArchiveV12Clean/Tatra613_V12_Wheel")));
         TestTrue(*FString::Printf(TEXT("%s transform is positive and non-mirrored"), *WheelId.ToString()),
             IsPositiveFiniteScale(WheelPart->LocalTransform));
         WheelCenters.Add(WheelPart->LocalTransform.GetLocation());
     }
-    TestEqual(TEXT("all four donor wheel centers are unique"), WheelCenters.Num(), 4);
+    TestEqual(TEXT("all four V12Clean wheel centers are unique"), WheelCenters.Num(), 4);
 
     const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
     const USkeletalMeshComponent* Carrier = Pawn ? Pawn->GetMesh() : nullptr;
@@ -163,7 +163,7 @@ bool FPinkCabTatra613DesktopCookContractTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("DefaultGame.ini is readable"), FFileHelper::LoadFileToString(DefaultGame, *ConfigPath));
     TestTrue(TEXT("scene-preserved Tatra meshes are explicitly included in package cook"),
         DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes\")")));
-    TestTrue(TEXT("validated donor wheel subtree is explicitly included in package cook"),
+    TestTrue(TEXT("validated V12Clean wheel subtree is explicitly included in package cook"),
         DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel\")")));
     TestFalse(TEXT("stale donor root is not force-cooked"),
         DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613Donor\")")));
