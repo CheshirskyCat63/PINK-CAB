@@ -90,10 +90,14 @@ jobs:
           Write-Host "CD869_METAROAD_UASSETS=$($roadAssets.Count)"
 
       - name: Commit baked MetaRoad assets once
-        if: ${{ hashFiles('Content/World/L1/Road/**/*.uasset') == '' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
+          $trackedRoadAssets = @(git ls-files 'Content/World/L1/Road/*.uasset' 'Content/World/L1/Road/**/*.uasset')
+          if ($trackedRoadAssets.Count -gt 0) {
+            Write-Host "CD869_METAROAD_COMMIT_SKIP_TRACKED=$($trackedRoadAssets.Count)"
+            exit 0
+          }
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Content/World/L1/Road Content/Dev/Authoring
