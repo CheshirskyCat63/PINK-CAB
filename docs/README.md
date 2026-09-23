@@ -37,7 +37,7 @@ The recovery/admin freeze is over. Gameplay work is allowed.
 The canonical workflow is `.github/workflows/pinkcab-g1-github-control-plane.yml`.
 
 - **fast** — normal engineering iteration: exact-head preflight, zero-debt checks, standalone Game build/sign, cooked-base overlay, packaged Windows runtime/input smoke.
-- **human_gate** — same lightweight dev-build path, delivered as `PINKCAB Latest.lnk`; no full recook and no machine-level signing requirement. Result is technical PASS + `HUMAN_PENDING`.
+- **human_gate** — same lightweight code-only dev-build path, delivered as `PINKCAB Latest.lnk`; no full recook and no machine-level signing requirement. If the latest merge changes cook-sensitive `Content/`, `Config/`, `Plugins/` or `.uproject`, this lane fails closed and requires `release_gate`. Result is technical PASS + `HUMAN_PENDING`.
 - **release_gate** — expensive release evidence only: Editor modules, full automation, fresh cook/package and packaged runtime. Windows machine-level trust / external trusted signing belongs here, not in ordinary development.
 
 Smart App Control / UMCI is therefore a **release-host infrastructure boundary**, not a gameplay acceptance criterion for everyday PINK-CAB development.
