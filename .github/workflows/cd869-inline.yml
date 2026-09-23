@@ -1,0 +1,91 @@
+name: CD-869 Inline Verification
+
+on:
+  push:
+    branches:
+      - feat/CD-869-l1-endless-road
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-inline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    name: Windows runner and MetaRoad preflight
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 15
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Exact Git preflight
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Host "REPO_ROOT=$env:GITHUB_WORKSPACE"
+          Write-Host "BRANCH=$env:GITHUB_REF_NAME"
+          $head = (git rev-parse HEAD).Trim()
+          Write-Host "HEAD=$head"
+          git remote -v
+          git status --short
+          if (@(git status --porcelain).Count -ne 0) {
+            throw 'CD869_PREFLIGHT_DIRTY_CHECKOUT'
+          }
+          Write-Host 'CD869_GIT_PREFLIGHT=PASS'
+
+      - name: UE 5.8 and MetaRoad probe
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path $env:UE_ROOT)) {
+            throw "CD869_UE_ROOT_MISSING: $env:UE_ROOT"
+          }
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          if (-not (Test-Path $editor)) {
+            throw "CD869_EDITOR_MISSING: $editor"
+          }
+          Write-Host "CD869_UE_EDITOR=$editor"
+
+          $roots = @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Plugins'),
+            (Join-Path $env:UE_ROOT 'Engine\Plugins')
+          ) | Where-Object { Test-Path $_ }
+
+          $plugins = @()
+          foreach ($root in $roots) {
+            $plugins += Get-ChildItem -Path $root -Filter '*.uplugin' -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.Name -match 'MetaRoad|UnrealDrive' -or
+                $_.FullName -match 'MetaRoad|UnrealDrive'
+              }
+          }
+
+          if ($plugins.Count -eq 0) {
+            Write-Host 'CD869_METAROAD=NOT_FOUND'
+            throw 'CD869_METAROAD_REQUIRED'
+          }
+
+          foreach ($plugin in $plugins) {
+            Write-Host "CD869_METAROAD_PLUGIN=$($plugin.FullName)"
+            try {
+              $json = Get-Content -Raw -LiteralPath $plugin.FullName | ConvertFrom-Json
+              Write-Host "CD869_METAROAD_VERSION=$($json.VersionName)"
+              Write-Host "CD869_METAROAD_FRIENDLY=$($json.FriendlyName)"
+              Write-Host "CD869_METAROAD_ENABLED_BY_DEFAULT=$($json.EnabledByDefault)"
+            } catch {
+              Write-Host "CD869_METAROAD_DESCRIPTOR_PARSE_WARNING=$($_.Exception.Message)"
+            }
+          }
+
+          Write-Host 'CD869_METAROAD_PREFLIGHT=PASS'
