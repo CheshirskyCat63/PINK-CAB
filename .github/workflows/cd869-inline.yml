@@ -169,3 +169,25 @@ jobs:
           if ($queue.Count -eq 0) { throw 'CD869_AUTOMATION_QUEUE_MARKER_MISSING' }
           if ($fails.Count -gt 0) { throw "CD869_AUTOMATION_FAILURES=$($fails.Count)" }
           Write-Host "CD869_FOCUSED_TESTS=PASS $($queue[-1].Line)"
+
+      - name: Run existing 2048-window materialization regression
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\\GitHubGate\\CD869_MATERIALIZATION.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.Materialization" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if (Test-Path $log) {
+            Get-Content $log |
+              Select-String -Pattern 'LongRunBoundedTraversal|Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' |
+              Select-Object -Last 100 |
+              ForEach-Object { Write-Host $_.Line }
+          }
+          if ($exit -ne 0) { exit $exit }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          if ($queue.Count -eq 0) { throw 'CD869_MATERIALIZATION_QUEUE_MARKER_MISSING' }
+          $fails = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($fails.Count -gt 0) { throw "CD869_MATERIALIZATION_FAILURES=$($fails.Count)" }
+          Write-Host "CD869_MATERIALIZATION=PASS $($queue[-1].Line)"
