@@ -1,112 +1,76 @@
-# PINK CAB · FIRST EURO 12-Month Program Roadmap
+# PINK CAB · FIRST EURO Execution Roadmap
 
-**Status:** CURRENT DEPENDENCY/DELIVERY MIRROR / NOT A PROMISE OF CALENDAR DATES
-**Product:** `CD-519`
-**BASE-100:** `CD-746`; scope `CD-753`; readiness `CD-660/CD-661`
-**Confluence:** `11239425`, FIRST EURO roadmap `6651945`, L1→L2 roadmap `8716289`
+**Status:** CURRENT EXECUTION MIRROR  
+**Product root:** `CD-519`  
+**Mechanics Freeze owner:** `CD-848`  
+**Scope owner:** `CD-753`  
+**Canonical branch:** `main`
 
-## Roadmap rule
+## Execution rule
 
-The previous Week-1…Week-8 FIRST EURO and Month-5…12 online sequence are **SUPERSEDED**. FIRST EURO now means the first 12 months ending in a complete **PC single-player** product.
+PINK-CAB is no longer in recovery/bootstrap mode. New implementation follows:
 
-This roadmap gives dependency order. Research/calibration can overlap; acceptance cannot skip required predecessor contracts/evidence.
+`main → one Jira-keyed task branch → focused FAST verification → PR/review → merge → human gate only where required`
 
-## Phase 0 · BASE-100 / foundation
+No parallel recovery lane, second vehicle solver, or feature-specific CI ecosystem is allowed.
 
-Owners `CD-746/CD-747/CD-753`, open decisions `CD-588/CD-673`.
+## Production technology
 
-Close code-facing owner decisions and exact bootstrap stack sufficiently for START-90. Lock project/module ownership, engine/plugin/version manifest, config/data conventions, save/schema/migrations, logging/build/package/evidence and hot-path rules.
+- Unreal Engine 5.8 / current installed 5.8.2 line.
+- Native Chaos Vehicles behind the PINK-CAB dynamics provider is the sole hero-car road-dynamics owner.
+- Vehicle Health + bounded authored/native damage owns functional damage consequences.
+- FGear/VDS material is archived research only.
+- Presentation/model geometry cannot own physics, control, persistence or economy state.
 
-Prefer engine/ready plugin/asset solutions before custom frameworks. A vendor system is isolated behind a PINK CAB adapter.
+## Current finite Mechanics Freeze queue
 
-## Phase 1 · Hero Tatra foundation
+### R01 · CD-869 — L1 → L2 → L1 route + streaming closure
+One representative forward/return route; deterministic CityCode reconstruction; bounded active/recent chunks; no voids, duplicate persistent deltas or forced reset.
 
-Owners `CD-730..740`, handling `CD-729`, input `CD-520/CD-733`.
+### R02 · CD-870 — Pickup/dropoff + parking acceptance
+Close official-stop/curb/full-stop eligibility, physical passenger exchange and parking acceptance as one player-visible loop.
 
-Order: pin FGear+VDS → authoritative Tatra profile → normalized input → dry/wet/storm calibration → Tatra Expression → VDS deformation → Vehicle Health bridge → damage/save → integrated vehicle proof `CD-738`.
+### R03 · CD-871 — Garage / parts / repair transaction closure
+One consistent automotive ServiceNode transaction path using existing Economy, Vehicle Health and persistence owners.
 
-No parallel hero-Tatra vehicle or deformation solver.
+### R04 · CD-872 — Moving refuel loop closure
+Bounded moving-refuel session over shared FuelTank/Economy/VehicleTelemetry/RoadGraph with exactly-once settlement.
 
-## Phase 2 · Taxi / fare / passenger core
+### R05 · CD-873 — Wet-weather driving contract closure
+Verify wet/storm surface behavior remains recoverable, manual and consistent with the accepted no-assist steering/Chaos contract.
 
-Owners `CD-749`, existing `CD-522/CD-720/CD-721/CD-724`, Neural/passenger `CD-570/CD-571`.
+### R06 · CD-874 — Bounded traffic + incident population closure
+Bound logical/physical traffic materialization, incidents and persistence without unbounded simulation or standing-jam assumptions.
 
-Implement one taxi-work/FareSession pipeline, full-stop pickup/drop-off, physical door contract, taximeter, payment/evasion idempotency, passenger logical/materialized split, persistent PassengerIdentity, repeat clients and basic Neural messages/history/repeat orders.
+### R07 · CD-875 — Repeat-client identity + persistence closure
+Stable PassengerIdentity, history/contact eligibility and repeat-order continuity through save/reload.
 
-## Phase 3 · State / economy / workday / persistence
+### R08 · CD-876 — Daughter FIRST EURO bounded role closure
+Close only the first-year daughter role required by current product scope; do not expand into post-year lifestyle/social systems.
 
-Owners `CD-750`, `CD-560/CD-569/CD-598/CD-601/CD-602`.
+### R09 · CD-877 — Minimal Neural profile/contact/thread closure
+First-year bounded Neural: persistent profile/contact/message/repeat-client surface without broad social-sim ownership.
 
-One EconomyService/transaction ledger, workday/session state, save/checkpoint/recovery behavior, schema migration and anti-duplication tests. Insurance-specific state is POST-FIRST-EURO; retain only generic RecoveryPolicy/RecoveryHook.
+### R10 · CD-878 — Payment receipt + fines projection closure
+Close payment/receipt/fines player-facing projection on top of existing exactly-once transaction truth.
 
-## Phase 4 · CityCode / road graph / streaming
+### R11 · CD-879 — terminal FIRST EURO Mechanics Freeze evidence audit
+Reconcile all included/excluded rows, run full exact-candidate automation/package/runtime evidence, perform one consolidated human pass, and close `CD-848` only if no included row remains open.
 
-Owners `CD-751`, `CD-565/CD-589`.
+## Vehicle/model lane
 
-Implement reconstructable `CityCode + GeneratorVersion + ContentSetVersion + persistent deltas`, deterministic IDs, one road/lane graph, UE World Partition/PCG where suitable plus thin PINK CAB recipe logic, bounded logical populations/materialization and reverse reconstruction.
+`CD-856` pre-model handoff is DONE. `CD-855` is a separate presentation/provenance consumer and may proceed without reopening vehicle physics or input authority.
 
-## Phase 5 · Traffic / rules / enforcement facts
+The donor Tatra commercial modification/redistribution permission is not proven. It is an asset-release blocker only; internal engineering may continue with the accepted working presentation until CD-855 records permission or replaces the donor.
 
-Owners `CD-567/CD-591/CD-751`.
+## Delivery / verification lanes
 
-Deliver moving no-signal traffic, playable-gap constraints, incidents/bypass, routing/rule lookup and stable `EnforcementEvent` facts consumed by first-year fines/reputation. Full Taxi Regulator is POST-FIRST-EURO.
+- **fast**: everyday engineering gate; no full recook.
+- **human_gate**: lightweight test delivery to `PINKCAB Latest.lnk`; technical PASS never implies owner acceptance.
+- **release_gate**: full automation + fresh cook/package + packaged runtime; release-host signing/trust belongs here.
 
-## Phase 6 · Level1 complete
+Build success never equals gameplay verification. Documentation never equals implementation.
 
-Owners/gates `CD-678/CD-679`, QA `CD-700..703`, vertical `CD-592/CD-701`.
+## Post-FIRST-EURO
 
-Deliver five-lane Level1, surfaces, moving traffic, seven-band wallride, five-lane opposite freight ceiling, load-sensitive contact, exact linear residual function `5.0 s @1657 kg → 4.0 s @2107 kg`, poplar side-swap, incidents, deterministic reconstruction and Corridor Zero proof.
-
-## Phase 7 · Right-entry interchange
-
-Owners `CD-680/CD-681/CD-704` plus detailed implementation tasks.
-
-Deliver deterministic right-entry pipe/tube families with the same FGear Tatra profile and road graph; no interchange-specific vehicle solver.
-
-## Phase 8 · Automotive ServiceNodes
-
-Owners `CD-576/CD-711/CD-713`, BASE-100 `CD-752`.
-
-Implement one shared ServiceNode transition/persistence architecture for Parking, Garage/Tuning, Parts Shop, Repair/Service and Practice Hangar where Level1 requires it. Preserve one Tatra, CityCode, passenger/fare, money, inventory, VehicleBuild and Vehicle Health identity.
-
-Lifestyle/social/common-lobby node runtime is POST-FIRST-EURO.
-
-## Phase 9 · Moving refueling
-
-Owners `CD-540/CD-593/CD-752`.
-
-Implement bounded MovingRefuelSession over shared FuelTank, EconomyService, VehicleTelemetry and RoadGraph; no parallel fuel/money/input/save ownership. Prove success, abort, tolerance loss, collision, save/restart/chunk interruption and exactly-once settlement.
-
-FIRST EURO services only need L1+L2. L3 service gameplay is post-year.
-
-## Phase 10 · Level2 complete
-
-Owners `CD-682/CD-683/CD-705..710`, vehicle boundary `CD-748`.
-
-Deliver suspended bus/metro/stations, final bus profile, two metro tracks per side, station function/geometry/timing and Tatra traversal using the same vehicle/world/persistence foundations. Prove Transit Zero.
-
-## Phase 11 · Integrated FIRST EURO
-
-Owners `CD-594`, readiness/evidence `CD-660/CD-661`, verification matrix.
-
-Prove a complete workday/session with vehicle, taxi/passenger/Neural, economy/save, L1/L2, traffic/rules, automotive ServiceNodes and moving refuel. Run deterministic restart/reload/failure paths, full two-hour soak under the final shift-timer semantics, packaged PC build and release acceptance.
-
-## Explicit POST-FIRST-EURO program
-
-Not first-year gates:
-
-- multiplayer/coop/common rooms/online vehicle/racing/moderation;
-- Level3 gameplay;
-- mall/food/bar/club/social ServiceNodes;
-- full Taxi Regulator/inspection gameplay;
-- daily insurance purchase/premium/policy/claim/extra-life system.
-
-Legacy Jira gates/issues for these may remain as future backlog authorities, but they cannot block FIRST EURO or appear as year-one acceptance requirements.
-
-## Current owner-decision dependency
-
-Technical Owner Pack 01 (`docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md`, `CD-673`) is the active closure queue. Any proposed default remains unowned until accepted. Pure plugin constants become CALIBRATION once observable owner behavior/range/test target is locked.
-
-## Status rule
-
-A phase can be fully SPECIFIED without being IMPLEMENTED. A phase can be IMPLEMENTED without being VERIFIED. Only exact build/runtime evidence closes verification.
+Explicitly outside this queue: multiplayer/coop/common rooms, Level 3 gameplay, lifestyle/social ServiceNodes, full Taxi Regulator, daily insurance purchase/claim system and broad online/social expansion.

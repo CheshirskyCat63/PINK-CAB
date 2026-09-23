@@ -3,7 +3,7 @@
 **Status:** CURRENT IMPLEMENTATION-FACING PREPRODUCTION AUTHORITY
 **Jira:** `CD-746`; domain packs `CD-747..753`
 **Confluence:** `11239425` — `40 · PINK CAB · BASE-100 Code Architecture & FIRST EURO 12M Contract`
-**Runtime:** SPECIFIED / NOT IMPLEMENTED / NOT VERIFIED
+**Runtime:** ARCHITECTURE AUTHORITY; implementation/verification state is tracked per exact subsystem SHA/evidence
 
 ## 1. BASE-100 definition
 
@@ -198,7 +198,13 @@ Adopt the proven engineering discipline, not DEADCORN gameplay architecture:
 - avoid oversized managers/controllers and mixed debug/production responsibility;
 - documentation establishes specification, never runtime verification.
 
-## 14. Readiness semantics
+## 14. Current execution relationship
+
+BASE-100 remains the implementation-facing architecture/specification reference. It is not a second backlog and is not a blanket development HOLD. Current gameplay closure runs through Jira `CD-848` children `CD-869..CD-879` on canonical `main`.
+
+The owner-accepted working executable baseline is `8168d72406af6934ab20eace583c2b895f0620b7` / Actions run `35809749568`. That evidence proves the accepted baseline only; later feature tasks require their own exact-candidate verification.
+
+## 15. Readiness semantics
 
 `START-90` means the first-year implementation can start without known structural rewrites or programmer-invented gameplay decisions. Late calibration values may remain tunable when they already have a versioned data owner, range/seed and acceptance contract.
 

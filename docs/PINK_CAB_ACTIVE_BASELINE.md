@@ -1,217 +1,85 @@
 # PINK CAB · Active Product Baseline
 
-Status: ACTIVE PRODUCT AUTHORITY COMPANION
+**Status:** CURRENT ACTIVE PRODUCT / DEVELOPMENT-READY  
+**Product root:** `CD-519`  
+**Current broader mechanics owner:** `CD-848`  
+**Canonical Git:** `CheshirskyCat63/PINK-CAB` → `main`
 
-## Owner-accepted working baseline · 2026-09-23
+## Owner-accepted working runtime
 
-- Runtime source SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
+- source SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
 - GitHub Actions run: `35809749568`
-- Successful job: `PINK-CAB code-only standalone human build`
-- Delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`
-- Desktop handoff: `PINKCAB Latest.lnk`
-- PR #7: MERGED
-- Canonical integration merge: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
-- Accepted SHA → integration tree: zero changed files
-- Administrative cleanup: CD-868 DONE
-- Canonical development branch: `main`
+- successful job: `PINK-CAB code-only standalone human build`
+- integration merge: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
+- CD-868 control-plane cleanup: DONE
+- current development branch: `main`
 
-This is the owner-accepted **working baseline**, not a declaration that all FIRST EURO scope is complete. Future gameplay changes need a new exact SHA and new human acceptance before superseding it.
-Jira root: `CD-519`
-BASE-100 code architecture: `docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md` / Confluence `11239425` / `CD-746..753`
-Readiness: `docs/PINK_CAB_START90_READINESS.md` / Confluence `6553617` / `CD-660/CD-661`
-Confluence baseline: `5537802`
-Vehicle technology: `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md` / page `13303842` / `CD-785..CD-792`
-Control/mechanics release: `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md` / Confluence `16744449` / `CD-848`
-Handling companion: `docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md` / page `6225936` / `CD-648`
-Mass/load: `docs/PINK_CAB_VEHICLE_MASS_LOAD_DYNAMICS.md`
-Future daily insurance authority: `docs/PINK_CAB_DAILY_INSURANCE_CRASH_RECOVERY.md` / page `10321936` / `CD-741..745` — POST-FIRST-EURO
-Repository: `CheshirskyCat63/PINK-CAB` is the sole active PINK CAB technical truth; `DEADRACE` is legacy/migration-source only.
+This is the immutable owner-accepted working executable baseline. Later sanitation/documentation/CI commits may advance `main`, but they do not retroactively rename that accepted binary. A future gameplay baseline supersedes it only after new exact-candidate evidence and owner acceptance.
 
-> **CONTROL-PLANE FREEZE · 2026-09-22**  
-> Current execution authority: `docs/CONTROL_PLANE.md` → Jira `CD-519 / CD-848` → Confluence 47 → Git `main`.  
-> `CD-868` is DONE; PR #7 is MERGED/CLOSED; `CD-855` and `CD-860` are BACKLOG. Recovery Input Contract R1 is current. Owner-accepted working runtime baseline: `8168d72406af6934ab20eace583c2b895f0620b7` / run `35809749568`.  
-> This baseline remains product context; future mutable execution status/SHA claims must come from the control plane and GitHub.
+## Current vehicle/control authority
 
-## Current control/mechanics precedence
+Production vehicle physics is **Unreal Engine 5.8 Native Chaos Vehicles** behind `IPinkCabVehicleDynamicsProvider`. FGear/VDS are archived research only.
 
-The 2026-09-18 owner correction takes precedence for vehicle controls/mechanics. See [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md) and Confluence [page 16744449](https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/16744449/47+PINK+CAB+Control+Vehicle+Mechanics+Release+Contract). Older 530i, left-forward reverse, fixed 0.20–1.20 clutch-range, START→ATTENTION→GO and yaw-edge-guard wording is superseded. The corrected matrix is SPECIFIED / NOT RUNTIME VERIFIED.
+Current cockpit/input behavior:
 
-## Product / FIRST EURO horizon
+- mouse steers by default;
+- Space owns gaze/free-look while held;
+- `1–4` are ephemeral quick access for turn signals / horn / gearbox / handbrake;
+- RMB is optional contextual capture/retain and never actuates by itself;
+- LMB and mouse wheel may execute authored contextual actions without RMB first;
+- Gearbox/Handbrake may be manipulated directly through the active contextual target;
+- Q/W/E = clutch/brake/throttle with one wheel recipient priority E → W → Q;
+- sustained same-direction wheel bursts accelerate progressively; pause/reversal resets the burst;
+- steering is manual/no-assist: heavy at standstill, lighter rolling, calmer at speed;
+- H-pattern = 1/3/5 top, 2/4/R bottom, neutral cross-gate;
+- requested vs engaged gear remain separate;
+- no auto-throttle, auto-rev-match, auto-countersteer, yaw rescue, ABS or ESP.
 
-PINK CAB is a first-person arcade-sim taxi/work/vehicle-parkour game in a persistent, effectively endless retrofuturist longitudinal megacity. The car is the workplace rather than an abstract avatar.
+Authority: `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`, Recovery Input Contract R1, Confluence 16744449, Jira CD-848.
 
-**FIRST EURO = first 12 months of development = PC single-player product.** Full Level 1 + Level 2 gameplay/runtime belongs inside this horizon. Repeat clients/basic Neural, automotive ServiceNodes and moving refueling are also FIRST EURO systems.
+## Code / architecture state
 
-POST-FIRST-EURO implementation: multiplayer/coop/common rooms/online clubs; Level 3 gameplay; lifestyle ServiceNodes such as mall/food/bar/club; full Taxi Regulator; daily insurance. FIRST EURO preserves only the extension interfaces needed to add these later without core rewrites.
+- primitive FIRST EURO gameplay foundation: code-complete under `CD-793`;
+- playable cockpit/build gate: `CD-823` DONE;
+- canonical input compliance: `CD-825` DONE;
+- vehicle technology reconciliation: `CD-843` DONE;
+- pre-model handoff: `CD-856` DONE;
+- strict code-health debt baseline: **0 items**;
+- one production solver per responsibility;
+- runtime domains remain separated across Core / Vehicle / Taxi / World / Traffic / Economy / Persistence / Interaction.
 
-The player is a woman around 45, **1.65 m / 58 kg**, driving one neon-pink bespoke early/Gen-1 Tatra 603-family taxi. Her 17-year-old daughter, **1.55 m / 49 kg**, occupies the rear/service area and progresses through `daughter → conductor/service role → later onboard operator`. No third permanent conductor NPC exists.
+## Current FIRST EURO execution
 
-## BASE-100 readiness meaning
+The project is no longer blocked by recovery or administrative freeze. Current finite closure queue:
 
-BASE-100 measures **code/logic/numeric/technical specification coverage** for FIRST EURO, not visual completion. Visual art, mesh/material/light polish, decorative animation/audio and narrative presentation are excluded unless they create an implementation-facing state/input/output/performance contract.
+`CD-869 → CD-870 → CD-871 → CD-872 → CD-873 → CD-874 → CD-875 → CD-876 → CD-877 → CD-878 → CD-879`
 
-Every runtime domain must expose: `PURPOSE → BUY/ENGINE/WRITE → AUTHORITATIVE OWNER → STATE MACHINE → INPUTS → OUTPUT EVENTS → DATA MODEL → NUMERIC CONFIG → PERSISTENCE → DEPENDENCIES → FAILURE MODES → PERFORMANCE BOUNDS → TEST FIXTURES → EXTENSION POINTS`.
+This closes representative L1↔L2 streaming, pickup/dropoff, automotive services, moving fuel, wet driving, traffic/incidents, repeat clients, daughter role, minimal Neural, payment/fines and finally the terminal Mechanics Freeze evidence audit.
 
-Prefer proven Unreal features/plugins/assets over custom frameworks. Selected third-party systems sit behind PINK CAB adapters. One authoritative owner per responsibility; no competing production solvers. C++ owns interfaces/state/persistence/invariants; Blueprint remains thin composition/orchestration; DataAssets/DataTables/config own tunable values.
+## Delivery policy
 
-## Historical START-90 snapshot — 2026-09-12
+The canonical GitHub workflow has three distinct purposes:
 
-Technical Owner Pack 01 contains **196 code-facing rows**: 102 LOCKED, 3 CALIBRATION, 69 PROPOSED DEFAULT, 22 OPEN.
+- `fast` — ordinary engineering verification;
+- `human_gate` — lightweight exact-head dev/test delivery to `PINKCAB Latest.lnk`, no full recook;
+- `release_gate` — heavy full regression + fresh cook/package/runtime evidence.
 
-Scoring: LOCKED/CALIBRATION = 1.0; PROPOSED DEFAULT = 0.5; OPEN = 0.0.
+Windows Smart App Control / UMCI signing requirements for Editor/full cook are a **release-host infrastructure boundary**, not an everyday gameplay-development blocker.
 
-**Current item-weighted START-90 specification readiness = 71.2%. Gate FAIL. Gap = 18.8 percentage points.**
+## Product / world boundary
 
-Domain snapshot: CORE 69.1%; VEHICLE 71.4%; TAXI 85.0%; STATE 92.9%; WORLD 57.8%; SERVICE 56.5%. SCOPE `CD-753` is separately 100% locked.
+PINK CAB is a first-person taxi-work / arcade-sim / vehicle-parkour game in an effectively endless retrofuturist longitudinal city. FIRST EURO is PC single-player with Level 1 + approved Level 2 gameplay, hero Tatra, taxi/fare/passenger/payment loop, repeat clients/basic Neural, CityCode/persistence/streaming/road graph/traffic/rules/fines, automotive ServiceNodes, moving refuel and build/save/QA foundations.
 
-If all 69 proposed defaults are accepted, score becomes 174/196 = 88.8%. At least 3 of the remaining 22 OPEN rows must then close to cross START-90 at 177/196 = 90.31%.
+Multiplayer, Level 3 gameplay, lifestyle/social ServiceNodes, full Taxi Regulator and daily insurance implementation are post-FIRST-EURO.
 
-Historical ≈59% and 38.2% scores are retired. Broad production remains HOLD; narrow bootstrap/specification/calibration/admin work is allowed.
+## Asset provenance
 
-## Hero Tatra / technology
+The current donor Tatra is allowed only as internal development/working-baseline material. Commercial modification/redistribution permission is not proven. `docs/ASSET_LICENSE_LEDGER.csv` records the donor as `BLOCKED_NO_COMMERCIAL_PERMISSION`.
 
-Locked identity:
+`CD-855` owns permission evidence or legal replacement before public/commercial release. This does **not** block internal gameplay development.
 
-- early/Gen-1 bespoke Tatra 603-family;
-- rear-mounted air-cooled V8, RWD;
-- three front lamps; center lamp steering-linked/directional and somewhat farther-reading;
-- rear/tail intentionally stretched without uniform body rescale;
-- passenger side has no fixed B-pillar;
-- opposed passenger doors create one wide continuous right-side aperture;
-- physical in-cabin passenger-door lever.
+## Truth rule
 
-Technology stack:
+`CANON → SPECIFIED → IMPLEMENTED → VERIFIED`
 
-- **Chaos Vehicles / native Unreal physics** = sole production road-dynamics owner;
-- damage/destruction = bounded authored damage states + detachable parts + pooled debris + selective native Chaos events;
-- required third-party vehicle/damage plugins = **none**;
-- FGear/VDS references are archived research only, not production dependencies or authority;
-- PINK CAB code = input/profile adapters, Tatra Expression, Vehicle Health, persistence and normalized telemetry;
-- no parallel competing hero-Tatra dynamics solver or hidden second destruction authority without an explicit migration decision.
-
-## Handling — E34-like control / Tatra expression
-
-BMW E34 **535i** is the current gameplay capability/control reference only: calm center, progressive steering, predictable combined grip/release, readable/catchable RWD oversteer, straight-line composure and communicative braking.
-
-Not imported: BMW front-engine layout, ABS, donor power/top-speed, exact BMW tire/brake/suspension/chassis hardware or interior.
-
-PINK CAB retains no ABS, no ESP, current **180 hp / 240 Nm** and **195 km/h** terminal target.
-
-Wet high-speed behavior is locked: rain + rapid lane change above roughly 160 km/h + maintained/excess throttle may progressively saturate rear combined grip and lead to spin; easing excessive throttle normally restores rear lateral reserve and lets the player recover through steering. No scripted threshold, automatic countersteer or ESP rescue.
-
-Speed character: 0–100 lively/comfortable; 100–140 confident; 140–170 visibly barge-like and suspension-busy; 170–195 still power-capable while chassis/road workload becomes the challenge.
-
-Chaos owns physical trajectory/forces. Tatra Expression may slightly amplify roll/pitch/heave, body/cabin shake, trim rattle, steering tremor and bounded camera motion but cannot independently change grip or collision outcome.
-
-## Closed Tatra calibration baseline
-
-The latest 50-question handling pack is retired from owner intake. Low-level values are CALIBRATION inside the locked observable contract.
-
-Current targets: 45/55 F/R @1657 kg; historical chassis baseline ~2750 mm wheelbase / ~1485 mm front track / ~1400 mm rear track; tall 185R15-like visual tires; 41°±2° inner-wheel lock; ~2.5 steering-wheel turns lock-to-lock; no mouse dead-zone; 18–40° useful sideslip; ~4.5–5.5° physical roll @~0.8g; ~1.35× nominal visual roll; 60/40 starting brake bias; mild LSD; ~1700 Nm/rear-wheel handbrake seed. **Clutch release timing remains adjustable but its final numeric range is RECONCILE/NOT OWNER-LOCKED after the 2026-09-18 correction.** 1657 kg remains the headline mass benchmark.
-
-## Mass / load
-
-- base Tatra **1450 kg**;
-- fully fueled **1550 kg**;
-- fuel contribution **100 kg**;
-- heroine **58 kg**;
-- daughter **49 kg**;
-- female passenger **55–70 kg**;
-- male passenger **65–90 kg**;
-- maximum passengers 5;
-- runtime total = base + current fuel + heroine + daughter + exact boarded passenger masses;
-- reference full-fuel crew-only **1657 kg**;
-- declared max passenger fixture **2107 kg**.
-
-More load modestly worsens acceleration/braking, increases roll/pitch/settling/expression, and modestly improves abrupt wallride-separation resistance at matched conditions. One continuous handling model remains.
-
-Level1 residual magnetism is **linear by total mass**: **5.0 s @1657 kg → 4.0 s @2107 kg**, lighter states capped at 5.0 s. Exact reacquisition reset semantics remain owner-open `M05`.
-
-## Input / physical controls
-
-Current grammar (Recovery Input Contract R1, owner correction 2026-09-23): mouse steers by default; hold Space for gaze/free-look and target search; `1–4` quick-recall the saved physical targets for turn signals / horn / gearbox / handbrake without actuating them, and the quick prompt disappears when the number key is released. RMB optionally acquires/retains **any valid selected control** but never actuates it by itself. LMB and mouse wheel may execute their contextual action directly without an RMB prerequisite; LMB may directly manipulate Gearbox/Handbrake, while RMB remains useful for retaining the target. During lever manipulation mouse XY belongs to the lever and steering holds.
-
-Steering uses a manual/no-assist rack feel: heavy/slow at standstill, lighter once rolling, and calmer rather than sharper at high speed. Steering, throttle, brake, clutch state/release speed and handbrake are continuous. Q+wheel adjusts clutch release timing; E+wheel doses throttle and must be used again on every new launch; W+wheel doses brake; W+E may coexist. If Q/W/E overlap, the wheel has one recipient with priority E → W → Q. The H-gate is 1/3/5 over 2/4/R with a neutral cross-gate. No Drift Mode, auto-throttle, auto-rev-match, auto-countersteer, yaw rescue, ABS or ESP.
-
-Input reaches the Chaos-backed `IPinkCabVehicleDynamicsProvider` through the PINK CAB adapter; cockpit controls publish semantic commands/events rather than directly mutating unrelated subsystem state. FIRST EURO semantic KBM rebinding is locked under C08 and cannot change this physical-control model. One C++ semantic router owns raw KBM intake, one bounded target is active, and valid-target feedback is a textless translucent reticle that brightens to a white-matte state. Left/right hand choice is presentation only and may switch automatically; instruments/controls must work before full hand animation fidelity.
-
-## Core taxi work
-
-`ORDER / ROUTE → SEE PHYSICAL PASSENGER GROUP → APPROACH OFFICIAL STOP OR CURB → FULL STOP → ASSESS → ADMIT/DECLINE → PHYSICAL DOOR LEVER → PILLARLESS APERTURE → GROUP BOARDS → DRIVE → FULL STOP DESTINATION → PAYMENT/CONSEQUENCE → DOORS OPEN → EXIT → NEXT`
-
-Route is provided. Ordinary roads have no traffic lights and no systemic standing traffic jam. Pickup/dropoff require full stop. Groups 1–5 may board as one compressed event after stop + door opening; seats rear3→front2; actual passenger mass enters/exits exactly once.
-
-Physical taximeter = **distance + elapsed fare time**. `METERED` and `OFF_METER` are explicit. Curb pickup may offer higher tips/off-meter opportunity with higher non-payment/complaint/rule risk. Unpaid escape can occur only after doors open; committed payment blocks ordinary unpaid escape. Exact full-stop epsilon/dwell and meter/receipt timing remain owner-open in F04–F08/CD-672.
-
-## Repeat clients / basic Neural — FIRST EURO
-
-FIRST EURO includes persistent repeat clients and a compact Neural layer without broad social simulation.
-
-Procedural PassengerTemplate and persistent PassengerIdentity are distinct. A persistent identity can retain stable ID, trip history, relationship/preferences, contact permission, repeat-order eligibility and simple data-driven messages. Passenger identities may exist logically without a materialized Actor. Repeat orders re-enter the normal Order/Fare flow; Neural never owns taxi, vehicle or economy truth.
-
-## Damage / mechanical health
-
-`CD-600` is RESOLVED/DONE. FIRST EURO includes persistent authored damage-state consequences, glass/lamp damage, door jam/latch, tire/wheel path, authored alignment/suspension consequences, brake heat/fade/hydraulic health, **clutch heat/wear/torque-transfer degradation**, **gearbox/transmission conflict wear/damage**, and **air-cooled V8 oil/head/fan/oil-cooler/airflow thermal health**, plus repair/persistence.
-
-Generic coolant/radiator-overheat wording is SUPERSEDED. Full soft-body structural fracture, detailed engine internals, CFD/fluid volumes, detailed tire thermodynamics, catastrophic fuel explosion/fire chain, centimeter brake plumbing and occupant injury are off/post-sale by default.
-
-## Daily insurance / terminal recovery
-
-Daily insurance mechanics under `CD-741..745` are preserved as future backlog authority but are **not implemented inside the first 12-month FIRST EURO product** and do not reduce its BASE-100/START-90 readiness.
-
-FIRST EURO keeps only a generic `RecoveryPolicy/RecoveryHook` extension boundary connecting terminal vehicle state, Workday/Session and Economy/Persistence. No insurance toggle, premium, claim, policy persistence or extra-life transaction is required in year one. FIRST EURO terminal recovery is **LOCKED under `I06` / CD-750**: active fare fails, Workday ends, atomic save commits, and the still-damaged Tatra returns through Repair next Workday with no free reset; fee/debt fallback remains under Economy policy.
-
-## Persistent city / Level 1 / Level 2
-
-The city is an effectively endless longitudinal network reconstructed from `CityCode + GeneratorVersion + ContentSetVersion + persistent deltas`.
-
-Level1: five express lanes; right-side ordinary exits/interchanges; lower passenger cars + motorcycles/sidecars; no ordinary lower heavy freight/buses; no traffic lights/systemic standing jams; road defects; debris transition; seven-band wallride; five-lane freight ceiling always opposite lower road; ceiling/poplar fast side-swap.
-
-Level2 is fully inside FIRST EURO and owns suspended bus + metro + stations. Bus lane count remains calibration/greybox after its architecture contract; metro has two tracks per side. Direct Tatra-on-metro driving is not canon unless separately locked. Exact station gameplay function remains owner-open `N05`.
-
-Level3 gameplay is POST-FIRST-EURO; first-year CityCode/road schema must only retain a compatible future tier extension boundary.
-
-Prefer Unreal World Partition/PCG/engine streaming plus a thin deterministic PINK CAB recipe layer rather than a custom world-streaming engine. One machine-readable road/lane graph should feed generation, routing, traffic and rule lookup.
-
-## Traffic / enforcement interface
-
-Ordinary distant traffic should use bounded logical/kinematic simulation rather than hero-level Chaos for every vehicle. Physically relevant traffic may materialize near the player/collision context. Traffic populations, incidents and queues must remain bounded.
-
-Full Taxi Regulator/inspection gameplay under `CD-723` is POST-FIRST-EURO. FIRST EURO still defines a stable `EnforcementEvent` contract and ordinary rules/fines may consume those events. A future regulator subscribes without changing event producers.
-
-## Automotive ServiceNodes — FIRST EURO
-
-FIRST EURO ServiceNodes are:
-
-- Parking;
-- Garage/Tuning;
-- Parts Shop;
-- Repair/Service;
-- **Practice Hangar only where Level1 training/acceptance requires it.**
-
-They share one bounded destination/transition architecture with exact return to the same Tatra/CityCode and no duplicated vehicle/economy/persistence state. Parts and repairs use common inventory/VehicleBuild/Vehicle Health/Economy services rather than one-off systems.
-
-Mall/food/bar/club/social lifestyle interiors are POST-FIRST-EURO. ServiceNode implementation form and Parking save/day-end role remain owner-open `O02/O03`.
-
-## Moving refueling — FIRST EURO
-
-Moving refueling is a first-year gameplay mechanic. It uses the common FuelTank, EconomyService, VehicleTelemetry and RoadGraph contracts and owns only its refueling session/state machine. Fuel transfer and money settlement must be save/crash/retry safe and exactly-once. NPC/hose/animation presentation follows the state machine and is never authoritative gameplay truth. Queue/slot, gap/tolerance, settlement and insufficient-funds behavior remain `P03/P05/P09/P11` owner-open.
-
-## Production architecture priority
-
-1. BASE-100 core/runtime/data/input/plugin/evidence contract (`CD-746/CD-747`);
-2. native Chaos baseline/calibration and Tatra profile (`CD-785..CD-788`);
-3. analog input, wet handling and Tatra Expression (`CD-733..735`);
-4. native bounded destruction, Vehicle Health and damage persistence (`CD-790` plus current persistence owners);
-5. integrated native vehicle proof (`CD-792`);
-6. FareSession/passenger exchange + repeat-client/basic Neural contracts (`CD-749` plus existing fare/passenger owners);
-7. Economy/Workday/save/exactly-once transaction layer (`CD-750`);
-8. CityCode/world streaming/road graph/traffic/enforcement interface (`CD-751`);
-9. automotive ServiceNodes + moving refuel (`CD-752`);
-10. full Level1+Level2 composition and acceptance; post-year systems remain extension-only.
-
-## Verification
-
-Canonical runtime evidence now exists for the native Chaos vehicle/core/playable path through `CD-792`, `CD-802` and `CD-823..829`. Remaining unresolved work is design/authority reconciliation and later asset/content substitution; documentation alone still cannot promote unverified future mechanics.
-
-Current code-only START-90 score is **66.6%** under `docs/PINK_CAB_START90_READINESS.md`; gate FAILS. PF-00 bootstrap and PF-01 Core Contracts have exact-build executable evidence; later systems remain NOT IMPLEMENTED / NOT VERIFIED until their own evidence exists.
+Confluence establishes durable design authority. Jira owns live work/dependencies/evidence. Git owns code/tests/build history. Runtime evidence decides implemented/verified state.
