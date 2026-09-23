@@ -13,6 +13,8 @@ on:
           - human_gate
   issue_comment:
     types: [created]
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
@@ -27,7 +29,7 @@ concurrency:
 
 jobs:
   admin_delete_merged_recovery:
-    if: ${{ github.event_name == 'issue_comment' && github.event.comment.user.login == 'CheshirskyCat63' && github.event.comment.body == '/admin-delete-merged-recovery' }}
+    if: ${{ github.event_name == 'issues' && github.event.action == 'opened' && github.event.issue.user.login == 'CheshirskyCat63' && github.event.issue.title == 'ADMIN RUN · delete merged recovery ref' }}
     name: Delete merged inactive recovery branch
     runs-on: ubuntu-latest
     steps:
