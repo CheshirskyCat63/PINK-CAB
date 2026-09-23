@@ -7,6 +7,26 @@ from pathlib import Path
 
 SCRIPT_SUFFIXES = {".py", ".ps1", ".sh", ".bat", ".cmd"}
 
+FORBIDDEN_ACTIVE_TOOL_NAMES = {
+    "build_tatra_v12_polished.py",
+    "import_tatra_v12_clean.py",
+    "report_v12_unreal_assets.py",
+    "export_tatra_desktop.py",
+    "import_tatra_desktop.py",
+    "export_tatra_faithful.py",
+    "import_tatra_faithful.py",
+}
+
+STALE_CONTENT_ROOTS = {
+    "Content/Dev/Vehicles/Tatra613Donor",
+    "Content/Dev/Vehicles/Tatra613ArchiveV12",
+    "Content/Dev/Vehicles/Tatra613SceneProbe",
+    "Content/Dev/Vehicles/Tatra613DesktopClean",
+    "Content/Dev/Vehicles/Tatra613DesktopFaithful",
+    "Content/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Body",
+    "Content/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Steering",
+}
+
 FORBIDDEN_ACTIVE_SCRIPT_PATTERNS = {
     "personal_user_path": re.compile(r"[A-Za-z]:\\Users\\", re.IGNORECASE),
     "local_worktree_path": re.compile(r"(?:[\\/])\.worktrees(?:[\\/])", re.IGNORECASE),
@@ -37,6 +57,12 @@ def scan_repository(root: Path) -> list[dict[str, str]]:
             relative_to_scripts = path.relative_to(scripts_root)
             if "archive" in relative_to_scripts.parts:
                 continue
+            if path.name in FORBIDDEN_ACTIVE_TOOL_NAMES:
+                violations.append({
+                    "rule": "forbidden_active_tool",
+                    "path": path.relative_to(root).as_posix(),
+                    "detail": "superseded Tatra recovery/presentation tool must stay archived",
+                })
             text = path.read_text(encoding="utf-8-sig", errors="replace")
             for rule, pattern in FORBIDDEN_ACTIVE_SCRIPT_PATTERNS.items():
                 if pattern.search(text):
@@ -45,6 +71,14 @@ def scan_repository(root: Path) -> list[dict[str, str]]:
                         "path": path.relative_to(root).as_posix(),
                         "detail": "machine-specific path is forbidden in active tooling",
                     })
+
+    for relative in sorted(STALE_CONTENT_ROOTS):
+        if (root / relative).exists():
+            violations.append({
+                "rule": "stale_content_root",
+                "path": relative,
+                "detail": "unreferenced Tatra recovery asset tree must stay absent",
+            })
 
     config_path = root / "Config" / "DefaultGame.ini"
     if not config_path.exists():
