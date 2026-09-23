@@ -62,7 +62,7 @@ function Get-State {
         Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } |
         Select-Object -Last 1
     if (-not $line) { return $null }
-    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) paused=(?<paused>\d+) worlddt=(?<worlddt>-?[\d.]+) awake=(?<awake>\d+) velcm=(?<velcm>-?[\d.]+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) longcm=(?<longcm>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) aimvalid=(?<aimvalid>\d+) aimyaw=(?<aimyaw>-?[\d.]+) aimpitch=(?<aimpitch>-?[\d.]+) wheels=(?<wheels>\d+) qheld=(?<qheld>\d+) wheld=(?<wheld>\d+) eheld=(?<eheld>\d+) wheelpending=(?<wheelpending>-?\d+) wheelrecipient=(?<wheelrecipient>-?\d+) throttletarget=(?<throttletarget>-?[\d.]+) launchserial=(?<launchserial>\d+)'
+    $rx = 'PINKCAB_GATE_STATE menu=(?<menu>\d+) paused=(?<paused>\d+) worlddt=(?<worlddt>-?[\d.]+) awake=(?<awake>\d+) velcm=(?<velcm>-?[\d.]+) ignition=(?<ignition>\d+) requested=(?<requested>-?\d+) engaged=(?<engaged>-?\d+) throttle=(?<throttle>-?[\d.]+) brake=(?<brake>-?[\d.]+) clutch=(?<clutch>-?[\d.]+) handbrake=(?<handbrake>-?[\d.]+) steering=(?<steering>-?[\d.]+) speed=(?<speed>-?[\d.]+) dist=(?<dist>-?[\d.]+) longcm=(?<longcm>-?[\d.]+) gearx=(?<gearx>-?[\d.]+) geary=(?<geary>-?[\d.]+) target=(?<target>\S+) grip=(?<grip>\d+) manipulation=(?<manip>\d+) gaze=(?<gaze>\d+) camera=(?<camera>\d+) aimvalid=(?<aimvalid>\d+) aimyaw=(?<aimyaw>-?[\d.]+) aimpitch=(?<aimpitch>-?[\d.]+) wheels=(?<wheels>\d+) wheelpending=(?<wheelpending>-?\d+) wheelrecipient=(?<wheelrecipient>-?\d+) throttletarget=(?<throttletarget>-?[\d.]+) launchserial=(?<launchserial>\d+)'
     $m = [regex]::Match($line,$rx)
     if (-not $m.Success) { return $null }
     [pscustomobject]@{
@@ -93,9 +93,6 @@ function Get-State {
         aimyaw=[double]$m.Groups['aimyaw'].Value
         aimpitch=[double]$m.Groups['aimpitch'].Value
         wheels=[int]$m.Groups['wheels'].Value
-        qheld=[int]$m.Groups['qheld'].Value
-        wheld=[int]$m.Groups['wheld'].Value
-        eheld=[int]$m.Groups['eheld'].Value
         wheelpending=[int]$m.Groups['wheelpending'].Value
         wheelrecipient=[int]$m.Groups['wheelrecipient'].Value
         throttletarget=[double]$m.Groups['throttletarget'].Value
