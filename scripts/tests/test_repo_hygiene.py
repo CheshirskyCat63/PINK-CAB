@@ -31,13 +31,6 @@ class RepoHygieneTests(unittest.TestCase):
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("personal_user_path", rules)
 
-    def test_ignores_archived_script_history(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            write(root, "scripts/archive/old.py", 'path = r"C:\\Users\\Developer\\Downloads\\asset.glb"\n')
-            write(root, "Config/DefaultGame.ini", clean_config())
-            self.assertEqual([], scan_repository(root))
-
     def test_rejects_broad_tatra_cook_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -45,6 +38,14 @@ class RepoHygieneTests(unittest.TestCase):
                 + '+DirectoriesToAlwaysCook=(Path="/Game/Dev/Vehicles/Tatra613Donor")\n')
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("forbidden_broad_cook", rules)
+
+    def test_rejects_tool_archive_in_current_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "scripts/archive/old.py", "print('old')\n")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("stale_tool_archive", rules)
 
     def test_rejects_stale_tatra_content_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
