@@ -24,6 +24,7 @@ registry.wait_for_completion()
 rows = []
 external_total = 0
 asset_total = 0
+active_root_counts = {}
 
 def under_any(path, roots):
     return any(path == root or path.startswith(root + "/") for root in roots)
@@ -54,6 +55,12 @@ for root in STALE_ROOTS:
             })
     external_total += len(root_external)
 
+for root in ACTIVE_ROOTS:
+    count = len(registry.get_assets_by_path(root, recursive=True))
+    active_root_counts[root] = count
+    if count == 0:
+        raise RuntimeError("Active Tatra asset root is empty: " + root)
+
 project_dir = unreal.Paths.project_dir()
 out_dir = os.path.join(project_dir, "Saved", "GitHubGate")
 os.makedirs(out_dir, exist_ok=True)
@@ -64,12 +71,14 @@ payload = {
     "asset_count": asset_total,
     "assets_with_external_referencers": len(rows),
     "external_referencer_root_total": external_total,
+    "active_root_counts": active_root_counts,
     "rows": rows,
 }
 with open(out_path, "w", encoding="utf-8") as handle:
     json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 unreal.log(
-    f"TATRA_STALE_REFERENCE_SCAN_DONE assets={asset_total} "
-    f"assets_with_external_refs={len(rows)} report={out_path}"
+    f"TATRA_STALE_REFERENCE_SCAN_DONE stale_assets={asset_total} "
+    f"assets_with_external_refs={len(rows)} active_roots={active_root_counts} "
+    f"report={out_path}"
 )
