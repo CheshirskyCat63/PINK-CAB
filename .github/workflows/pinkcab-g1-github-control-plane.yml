@@ -15,7 +15,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   statuses: write
   issues: read
@@ -26,6 +26,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  admin_delete_merged_recovery:
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && github.event.comment.body == '/admin-delete-merged-recovery' }}
+    name: Delete merged inactive recovery branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete recovery ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" --delete fix/CD-848-recovery-r1-input-contract
+          echo "MERGED_RECOVERY_REF_DELETED"
+
   standalone_code_only:
     if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && github.event.comment.body == '/pinkcab-standalone' }}
     name: PINK-CAB code-only standalone human build
