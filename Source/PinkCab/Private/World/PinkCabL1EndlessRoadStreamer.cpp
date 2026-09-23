@@ -4,6 +4,128 @@
 #include "World/PinkCabL1RoadChunkActor.h"
 #include "World/PinkCabWorldMaterializationPolicy.h"
 
+
+namespace PinkCabL1EndlessRoadStreamer
+{
+bool BuildRoadGraph(
+    const FPinkCabCityIdentity& City,
+    const FPinkCabL1EndlessRoadWindow& Window,
+    FPinkCabRoadGraph& OutGraph)
+{
+    for (const FPinkCabChunkCoord& Coord : Window.DesiredCoords)
+    {
+        if (!FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(
+                City, Coord.Longitudinal, OutGraph))
+        {
+            return false;
+        }
+    }
+    return OutGraph.NumLanes() ==
+        FPinkCabL1EndlessRoadModel::PoolSize *
+        FPinkCabL1EndlessRoadModel::GroundLaneCount;
+}
+
+void BuildCandidates(
+    const FPinkCabCityIdentity& City,
+    const FPinkCabL1EndlessRoadWindow& Window,
+    TArray<FPinkCabWorldChunkCandidate>& OutCandidates,
+    TMap<FString, int32>& OutChunkIndexById)
+{
+    OutCandidates.Reserve(Window.DesiredCoords.Num());
+    for (const FPinkCabChunkCoord& Coord : Window.DesiredCoords)
+    {
+        FPinkCabWorldChunkCandidate Candidate;
+        Candidate.Coord = Coord;
+        Candidate.ChunkId = FPinkCabChunkId::From(City, Coord);
+        OutChunkIndexById.Add(
+            Candidate.ChunkId.Serialize(), Coord.Longitudinal);
+        OutCandidates.Add(MoveTemp(Candidate));
+    }
+}
+
+FPinkCabWorldMaterializationSettings BuildSettings()
+{
+    FPinkCabWorldMaterializationSettings Settings;
+    Settings.MaxMaterializedChunks = FPinkCabL1EndlessRoadModel::PoolSize;
+    Settings.MaxDistanceSquared =
+        static_cast<int64>(FPinkCabL1EndlessRoadModel::AheadCount) *
+        FPinkCabL1EndlessRoadModel::AheadCount;
+    Settings.AllowedLayers = {0};
+    Settings.MaxAnchorRequests = 0;
+    return Settings;
+}
+
+void ClearDematerialized(
+    const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool,
+    const TArray<FPinkCabChunkId>& Ids)
+{
+    TSet<FString> Keys;
+    for (const FPinkCabChunkId& Id : Ids)
+    {
+        Keys.Add(Id.Serialize());
+    }
+    for (APinkCabL1RoadChunkActor* Chunk : Pool)
+    {
+        if (Chunk && Chunk->IsBound() &&
+            Keys.Contains(Chunk->GetBoundChunkId().Serialize()))
+        {
+            Chunk->ClearBinding();
+        }
+    }
+}
+
+bool IsAlreadyBound(
+    const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool,
+    const FPinkCabChunkId& Id)
+{
+    for (const APinkCabL1RoadChunkActor* Chunk : Pool)
+    {
+        if (Chunk && Chunk->IsBound() && Chunk->GetBoundChunkId() == Id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+APinkCabL1RoadChunkActor* FindFree(
+    const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool)
+{
+    for (APinkCabL1RoadChunkActor* Chunk : Pool)
+    {
+        if (Chunk && !Chunk->IsBound())
+        {
+            return Chunk;
+        }
+    }
+    return nullptr;
+}
+
+bool BindMaterialized(
+    const FPinkCabCityIdentity& City,
+    const FPinkCabWorldMaterializationResult& Result,
+    const TMap<FString, int32>& ChunkIndexById,
+    const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool)
+{
+    for (const FPinkCabChunkId& Id : Result.MaterializeChunkIds)
+    {
+        if (IsAlreadyBound(Pool, Id))
+        {
+            continue;
+        }
+
+        const int32* ChunkIndex = ChunkIndexById.Find(Id.Serialize());
+        APinkCabL1RoadChunkActor* FreeChunk = FindFree(Pool);
+        if (!ChunkIndex || !FreeChunk ||
+            !FreeChunk->BindChunk(City, *ChunkIndex, Id))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+}
+
 APinkCabL1EndlessRoadStreamer::APinkCabL1EndlessRoadStreamer()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -107,124 +229,39 @@ bool APinkCabL1EndlessRoadStreamer::RefreshForState(
 
     const FPinkCabL1EndlessRoadWindow DesiredWindow =
         FPinkCabL1EndlessRoadModel::BuildWindow(
-            RequestedChunkIndex,
-            RequestedDirection);
+            RequestedChunkIndex, RequestedDirection);
 
     FPinkCabRoadGraph DesiredRoadGraph;
-    for (const FPinkCabChunkCoord& Coord : DesiredWindow.DesiredCoords)
-    {
-        if (!FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(
-                CityIdentity,
-                Coord.Longitudinal,
-                DesiredRoadGraph))
-        {
-            return false;
-        }
-    }
-
-    const int32 ExpectedLaneCount =
-        FPinkCabL1EndlessRoadModel::PoolSize *
-        FPinkCabL1EndlessRoadModel::GroundLaneCount;
-    if (DesiredRoadGraph.NumLanes() != ExpectedLaneCount)
+    if (!PinkCabL1EndlessRoadStreamer::BuildRoadGraph(
+            CityIdentity, DesiredWindow, DesiredRoadGraph))
     {
         return false;
     }
 
     TArray<FPinkCabWorldChunkCandidate> Candidates;
-    Candidates.Reserve(DesiredWindow.DesiredCoords.Num());
-
     TMap<FString, int32> ChunkIndexById;
-    for (const FPinkCabChunkCoord& Coord : DesiredWindow.DesiredCoords)
-    {
-        FPinkCabWorldChunkCandidate Candidate;
-        Candidate.Coord = Coord;
-        Candidate.ChunkId = FPinkCabChunkId::From(CityIdentity, Coord);
-        ChunkIndexById.Add(Candidate.ChunkId.Serialize(), Coord.Longitudinal);
-        Candidates.Add(MoveTemp(Candidate));
-    }
-
-    FPinkCabWorldMaterializationSettings Settings;
-    Settings.MaxMaterializedChunks = FPinkCabL1EndlessRoadModel::PoolSize;
-    Settings.MaxDistanceSquared =
-        static_cast<int64>(FPinkCabL1EndlessRoadModel::AheadCount) *
-        FPinkCabL1EndlessRoadModel::AheadCount;
-    Settings.AllowedLayers = {0};
-    Settings.MaxAnchorRequests = 0;
-
-    const TArray<FPinkCabChunkId> PreviousMaterialized = GetActiveChunkIds();
+    PinkCabL1EndlessRoadStreamer::BuildCandidates(
+        CityIdentity, DesiredWindow, Candidates, ChunkIndexById);
 
     FPinkCabWorldMaterializationResult Result;
     if (!FPinkCabWorldMaterializationPolicy::BuildWindow(
             {RequestedChunkIndex, 0, 0},
             Candidates,
-            Settings,
-            PreviousMaterialized,
-            Result))
+            PinkCabL1EndlessRoadStreamer::BuildSettings(),
+            GetActiveChunkIds(),
+            Result) ||
+        Result.MaterializeChunkIds.Num() !=
+            FPinkCabL1EndlessRoadModel::PoolSize)
     {
         return false;
     }
 
-    if (Result.MaterializeChunkIds.Num() !=
-        FPinkCabL1EndlessRoadModel::PoolSize)
+    PinkCabL1EndlessRoadStreamer::ClearDematerialized(
+        ChunkPool, Result.DematerializeChunkIds);
+    if (!PinkCabL1EndlessRoadStreamer::BindMaterialized(
+            CityIdentity, Result, ChunkIndexById, ChunkPool))
     {
         return false;
-    }
-
-    TSet<FString> DematerializeKeys;
-    for (const FPinkCabChunkId& Id : Result.DematerializeChunkIds)
-    {
-        DematerializeKeys.Add(Id.Serialize());
-    }
-
-    for (APinkCabL1RoadChunkActor* Chunk : ChunkPool)
-    {
-        if (Chunk &&
-            Chunk->IsBound() &&
-            DematerializeKeys.Contains(Chunk->GetBoundChunkId().Serialize()))
-        {
-            Chunk->ClearBinding();
-        }
-    }
-
-    for (const FPinkCabChunkId& Id : Result.MaterializeChunkIds)
-    {
-        bool bAlreadyBound = false;
-        for (APinkCabL1RoadChunkActor* Chunk : ChunkPool)
-        {
-            if (Chunk &&
-                Chunk->IsBound() &&
-                Chunk->GetBoundChunkId() == Id)
-            {
-                bAlreadyBound = true;
-                break;
-            }
-        }
-        if (bAlreadyBound)
-        {
-            continue;
-        }
-
-        const int32* ChunkIndex = ChunkIndexById.Find(Id.Serialize());
-        if (!ChunkIndex)
-        {
-            return false;
-        }
-
-        APinkCabL1RoadChunkActor* FreeChunk = nullptr;
-        for (APinkCabL1RoadChunkActor* Chunk : ChunkPool)
-        {
-            if (Chunk && !Chunk->IsBound())
-            {
-                FreeChunk = Chunk;
-                break;
-            }
-        }
-
-        if (!FreeChunk ||
-            !FreeChunk->BindChunk(CityIdentity, *ChunkIndex, Id))
-        {
-            return false;
-        }
     }
 
     CurrentChunkIndex = RequestedChunkIndex;
