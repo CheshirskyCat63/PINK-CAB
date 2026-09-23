@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "World/PinkCabCityIdentity.h"
 #include "World/PinkCabL1EndlessRoadModel.h"
+#include "World/PinkCabRoadGraph.h"
 #include "PinkCabL1EndlessRoadStreamer.generated.h"
 
 class APinkCabL1RoadChunkActor;
@@ -41,6 +42,16 @@ public:
         return LastMaterializationSignature;
     }
 
+    int32 GetActiveRoadGraphLaneCount() const
+    {
+        return ActiveRoadGraph.NumLanes();
+    }
+
+    FString GetActiveRoadGraphSignature() const
+    {
+        return ActiveRoadGraph.GetTopologySignature();
+    }
+
 private:
     bool EnsurePool();
 
@@ -61,5 +72,6 @@ private:
         EPinkCabLongitudinalTravelDirection::Positive;
     int32 CurrentChunkIndex = INDEX_NONE;
     FString LastMaterializationSignature;
+    FPinkCabRoadGraph ActiveRoadGraph;
     bool bHasMaterializedState = false;
 };
