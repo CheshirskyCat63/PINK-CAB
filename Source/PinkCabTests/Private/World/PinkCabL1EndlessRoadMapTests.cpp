@@ -139,6 +139,12 @@ bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameter
             TEXT("CD869_ROAD_MATERIAL_SLOT[%d]=%s"),
             Index,
             *Path));
+        TestTrue(
+            *FString::Printf(TEXT("road material slot %d is project-owned"), Index),
+            Path.StartsWith(TEXT("/Game/World/L1/Road/Materials/")));
+        TestFalse(
+            *FString::Printf(TEXT("road material slot %d has no runtime MetaRoad dependency"), Index),
+            Path.StartsWith(TEXT("/MetaRoad/")));
         TestFalse(
             *FString::Printf(TEXT("road material slot %d is not Engine default"), Index),
             Path.Contains(TEXT("/Engine/EngineMaterials/DefaultMaterial")));
