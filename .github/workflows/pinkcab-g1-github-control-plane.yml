@@ -62,7 +62,7 @@ jobs:
           ref: ${{ env.CANDIDATE_REF }}
           fetch-depth: 0
           lfs: true
-          clean: true
+          clean: false
 
       - name: Exact-head preflight and zero-debt
         id: preflight
