@@ -8,9 +8,9 @@ from pathlib import Path
 SCRIPT_SUFFIXES = {".py", ".ps1", ".sh", ".bat", ".cmd"}
 
 FORBIDDEN_ACTIVE_SCRIPT_PATTERNS = {
-    "personal_user_path": re.compile(r"[A-Za-z]:\\\\Users\\\\", re.IGNORECASE),
-    "local_worktree_path": re.compile(r"(?:[\\\\/])\\.worktrees(?:[\\\\/])", re.IGNORECASE),
-    "downloads_path": re.compile(r"[A-Za-z]:\\\\[^\\\\\r\n]*\\\\Downloads\\\\", re.IGNORECASE),
+    "personal_user_path": re.compile(r"[A-Za-z]:\\Users\\", re.IGNORECASE),
+    "local_worktree_path": re.compile(r"(?:[\\/])\.worktrees(?:[\\/])", re.IGNORECASE),
+    "downloads_path": re.compile(r"[A-Za-z]:\\[^\\\r\n]*\\Downloads\\", re.IGNORECASE),
 }
 
 REQUIRED_COOK_LINES = {
