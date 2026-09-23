@@ -41,6 +41,22 @@ class RepoHygieneTests(unittest.TestCase):
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("forbidden_broad_cook", rules)
 
+    def test_rejects_stale_tatra_content_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Content/Dev/Vehicles/Tatra613Donor/Old.uasset", "pointer")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("stale_content_root", rules)
+
+    def test_rejects_superseded_active_tatra_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "scripts/import_tatra_v12_clean.py", "print('old')\n")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("forbidden_active_tool", rules)
+
     def test_clean_repository_shape_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
