@@ -28,7 +28,7 @@
 
 Documentation never implies runtime verification. Exact executable evidence wins for implementation/verification status.
 
-The 2026-09-18 control/mechanics owner correction is SPECIFIED but its QA-01..QA-20 matrix remains NOT RUN until exact executable evidence exists.
+Current working vehicle/control baseline is owner-accepted at exact source SHA `8168d72406af6934ab20eace583c2b895f0620b7` / GitHub Actions run `35809749568`. This acceptance proves the working baseline the owner tested; it does not imply every broader QA-01..QA-20 or FIRST EURO feature is complete.
 
 ## FIRST EURO
 
@@ -48,7 +48,7 @@ The current executable path is already verified through clean build, automation,
 
 ## Development entry
 
-Current work keeps full Mechanics Freeze governance separate from the hero-vehicle model lane. `CD-856` is the terminal handoff owner; `CD-855` proceeds only against that verified pre-model and asset-import contract. `main` remains canonical integration. Use short-lived Jira-keyed branches/worktrees and read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
+Current work keeps full Mechanics Freeze governance separate from the frozen working vehicle baseline. `main` is the sole active integration branch; use one short-lived Jira-keyed task branch and one PR per change. The merged recovery history is evidence only, not a continuing execution lane. Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
 
 Historical PRE-FGEAR material remains in the repository for audit context only; it must not be interpreted as the next production step.
 
