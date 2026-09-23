@@ -150,6 +150,41 @@ jobs:
           git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
           Write-Host "CD869_ENDLESS_MAP_COMMIT=$((git rev-parse HEAD).Trim())"
 
+      - name: Generate project-owned L1 runtime materials once
+        if: ${{ hashFiles('Content/World/L1/Road/Materials/*.uasset') == '' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_RUNTIME_MATERIALS.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
+            throw 'CD869_RUNTIME_MATERIAL_GENERATOR_FAILED'
+          }
+          if (-not (Select-String -Path $log -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)) {
+            throw 'CD869_RUNTIME_MATERIAL_OWNERSHIP_MARKER_MISSING'
+          }
+          Write-Host 'CD869_RUNTIME_MATERIAL_GENERATED=PASS'
+
+      - name: Commit project-owned L1 runtime materials once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tracked = @(git ls-files 'Content/World/L1/Road/Materials/*.uasset')
+          if ($tracked.Count -ge 3) {
+            Write-Host "CD869_RUNTIME_MATERIAL_COMMIT_SKIP_TRACKED=$($tracked.Count)"
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road
+          if (git diff --cached --quiet) { throw 'CD869_RUNTIME_MATERIALS_NOT_STAGED' }
+          git commit -m 'asset(CD-869): own L1 runtime road materials [skip ci]'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "CD869_RUNTIME_MATERIAL_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+
       - name: Run focused endless-road automation
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
