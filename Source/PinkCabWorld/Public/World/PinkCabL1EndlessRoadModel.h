@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "World/PinkCabChunkId.h"
 
+class FPinkCabRoadGraph;
+
 enum class EPinkCabLongitudinalTravelDirection : int8
 {
     Negative = -1,
@@ -36,4 +38,9 @@ public:
     static FPinkCabL1EndlessRoadWindow BuildWindow(
         int32 CurrentChunkIndex,
         EPinkCabLongitudinalTravelDirection Direction);
+
+    static bool AppendStraightChunkLanes(
+        const FPinkCabCityIdentity& City,
+        int32 ChunkIndex,
+        FPinkCabRoadGraph& InOutGraph);
 };
