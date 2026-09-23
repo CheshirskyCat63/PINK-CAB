@@ -23,7 +23,7 @@ The accepted SHA remains immutable executable evidence. Administrative descendan
 
 PR #7 is merged/closed. PRs #3–#6 are historical/closed.
 
-The legacy recovery ref `fix/CD-848-recovery-r1-input-contract` is not an execution lane. It was fast-forwarded to the merged history after PR #7. New work follows:
+The legacy recovery ref `fix/CD-848-recovery-r1-input-contract` is retained only as a merged/inactive compatibility alias because the connected GitHub API does not expose delete-ref. It must always point to the same SHA as `main` and is never an execution lane. New work follows:
 
 `main → one Jira-keyed task branch → one PR → verify → merge`
 
@@ -90,7 +90,7 @@ Normal development sequence:
 4. only for genuine human candidates: full regression/package/runtime delivery;
 5. human acceptance/rejection.
 
-The standalone code-only lane exists for the current Windows Code Integrity constraint and must preserve its eligibility guard: no cooked Content/Config overlay drift relative to its declared package base.
+The code-only standalone lane that produced the accepted `8168d724...` build is historical evidence only and is no longer an active control-plane lane. The current canonical workflow is manual-only with `fast` and `human_gate`, both targeting `main`.
 
 Do not spend full package resources on documentation-only administration.
 
