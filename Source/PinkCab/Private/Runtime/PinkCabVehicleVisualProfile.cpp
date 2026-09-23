@@ -80,7 +80,7 @@ bool FPinkCabVehicleVisualProfile::HasCabinAsset() const
         || (bUseExteriorAsCabinWhenCabinMissing && HasExteriorAsset());
 }
 
-FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613Donor()
+FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613ScenePreserved()
 {
     FPinkCabVehicleVisualProfile Result;
     Result.ProfileId = TEXT("PinkCab.Visual.Tatra613.ScenePreserved");
