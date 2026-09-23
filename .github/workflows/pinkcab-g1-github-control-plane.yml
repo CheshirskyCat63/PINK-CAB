@@ -209,6 +209,48 @@ jobs:
           & .\scripts\build.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Prepare freshly-built PINK-CAB binaries for local verification
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ev = Join-Path $env:GITHUB_WORKSPACE $env:EVIDENCE_DIR
+          New-Item -ItemType Directory -Force -Path $ev | Out-Null
+          $binRoot = Join-Path $env:GITHUB_WORKSPACE "Binaries\Win64"
+          $projectBins = @()
+          if (Test-Path $binRoot) {
+            $projectBins = @(Get-ChildItem $binRoot -File -ErrorAction Stop | Where-Object {
+              $_.Name -like 'UnrealEditor-PinkCab*.dll' -or
+              $_.Name -like 'PinkCab*.exe' -or
+              $_.Name -like 'PinkCab*.dll'
+            })
+          }
+          foreach ($file in $projectBins) {
+            Unblock-File -LiteralPath $file.FullName -ErrorAction SilentlyContinue
+          }
+          $rows = foreach ($file in $projectBins) {
+            $zone = @(Get-Item -LiteralPath $file.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue)
+            $sig = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            [pscustomobject]@{
+              Name = $file.Name
+              Length = $file.Length
+              ZoneIdentifierPresent = ($zone.Count -gt 0)
+              SignatureStatus = [string]$sig.Status
+              Signer = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '' }
+            }
+          }
+          $rows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $ev "PROJECT_BINARY_TRUST.json")
+          try {
+            Get-WinEvent -LogName 'Microsoft-Windows-CodeIntegrity/Operational' -MaxEvents 80 -ErrorAction Stop |
+              Where-Object { $_.Message -match 'PinkCab|UnrealEditor-PinkCab' } |
+              Select-Object TimeCreated, Id, LevelDisplayName, Message |
+              ConvertTo-Json -Depth 4 |
+              Set-Content (Join-Path $ev "CODE_INTEGRITY_EVENTS_BEFORE_TEST.json")
+          } catch {
+            "CodeIntegrity event log unavailable: $($_.Exception.Message)" |
+              Set-Content (Join-Path $ev "CODE_INTEGRITY_EVENTS_BEFORE_TEST.txt")
+          }
+          Write-Host "PINKCAB_PROJECT_BINARIES_PREPARED count=$($projectBins.Count)"
+
       - name: Fast recovery smoke matrix
         if: ${{ env.GATE_LANE == 'fast' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
