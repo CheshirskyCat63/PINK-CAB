@@ -87,7 +87,7 @@ Normal development sequence:
 1. exact-head preflight;
 2. zero-debt code health;
 3. `fast` for ordinary implementation iteration;
-4. `human_gate` for a lightweight exact-head owner-test build delivered through `PINKCAB Latest.lnk`;
+4. `human_gate` for a lightweight exact-head code-only owner-test build delivered through `PINKCAB Latest.lnk`; cook-sensitive Content/Config/Plugin/project changes fail closed and require `release_gate`;
 5. `release_gate` only when a fresh full automation/cook/package evidence bundle is required;
 6. human acceptance/rejection remains separate from technical PASS.
 
