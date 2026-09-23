@@ -11,8 +11,8 @@ control_plane_cleanup:
     stale_remote_branch_refs:
       count: 0
       status: COMPLETE_2026_09_23
-      remaining_branches: [main, fix/CD-848-recovery-r1-input-contract, fix/CD-848-sac-safe-runtime-gate]
-      inactive_aliases: [fix/CD-848-recovery-r1-input-contract, fix/CD-848-sac-safe-runtime-gate]
+      remaining_branches: [main, fix/CD-848-recovery-r1-input-contract, fix/CD-848-sac-safe-runtime-gate, chore/CD-868-final-control-plane-cleanup]
+      inactive_aliases: [fix/CD-848-recovery-r1-input-contract, fix/CD-848-sac-safe-runtime-gate, chore/CD-868-final-control-plane-cleanup]
       alias_status: INACTIVE_MUST_EQUAL_MAIN
       alias_policy: retained_only_because_connected_github_api_has_no_delete_ref
       aliases_must_equal_main: true
