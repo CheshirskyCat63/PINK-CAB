@@ -18,8 +18,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabL1EndlessRoadMapCompositionTest::RunTest(const FString& Parameters)
 {
     const FString MapPackage = TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight");
-    TestTrue(TEXT("endless Level 1 candidate map package exists"),
-        FPackageName::DoesPackageExist(MapPackage));
+    const bool bMapExists = FPackageName::DoesPackageExist(MapPackage);
+    TestTrue(TEXT("endless Level 1 candidate map package exists"), bMapExists);
+    if (!bMapExists)
+    {
+        return false;
+    }
 
     const bool bLoaded = FEditorFileUtils::LoadMap(MapPackage, false, true);
     TestTrue(TEXT("endless Level 1 candidate map loads"), bLoaded);
