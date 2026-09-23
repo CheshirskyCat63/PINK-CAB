@@ -94,7 +94,26 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host "Game executable dev-signing: PASS"
 
 if ($NeedsRecook) {
-    Write-Host "Recook requires Editor commandlet trust; building and signing Editor modules first."
+    $DevSubject = "CN=CHESHIRE DIVISION PINKCAB DEV"
+    $DevCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
+        Where-Object { $_.Subject -eq $DevSubject -and $_.HasPrivateKey } |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
+    $MachineRoot = if ($DevCert) {
+        Get-ChildItem Cert:\LocalMachine\Root -ErrorAction SilentlyContinue |
+            Where-Object { $_.Thumbprint -eq $DevCert.Thumbprint } |
+            Select-Object -First 1
+    }
+    $MachinePublisher = if ($DevCert) {
+        Get-ChildItem Cert:\LocalMachine\TrustedPublisher -ErrorAction SilentlyContinue |
+            Where-Object { $_.Thumbprint -eq $DevCert.Thumbprint } |
+            Select-Object -First 1
+    }
+    if (-not $DevCert -or -not $MachineRoot -or -not $MachinePublisher) {
+        throw "PINKCAB_RECOOK_TRUST_REQUIRED: code-only FAST delivery is available, but recook requires one-time machine trust for the PINK-CAB dev signer or external Trusted Signing."
+    }
+
+    Write-Host "Recook trust preflight: PASS; building and signing Editor modules."
     & $BuildBat PinkCabEditor Win64 Development $Project -WaitMutex -NoHotReloadFromIDE
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $EditorPattern = Join-Path $RepoRoot "Binaries\Win64\UnrealEditor-PinkCab*.dll"
