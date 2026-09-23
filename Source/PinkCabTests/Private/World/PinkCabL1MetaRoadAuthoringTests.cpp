@@ -3,6 +3,12 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
 #include "UObject/SavePackage.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "MaterialEditingLibrary.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialExpressionConstant.h"
+#include "Materials/MaterialExpressionConstant3Vector.h"
+#include "Modules/ModuleManager.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Editor.h"
@@ -135,6 +141,133 @@ bool SaveGeneratedMeshPackage(UStaticMesh& Mesh, FAutomationTestBase& Test)
         *FString::Printf(TEXT("generated mesh package saved: %s"), *PackageName),
         bSaved);
     return bSaved;
+}
+
+bool SaveAssetPackage(UObject& Asset, FAutomationTestBase& Test)
+{
+    UPackage* Package = Asset.GetOutermost();
+    Test.TestNotNull(TEXT("generated asset has package"), Package);
+    if (!Package)
+    {
+        return false;
+    }
+
+    const FString PackageName = Package->GetName();
+    const FString Filename = FPackageName::LongPackageNameToFilename(
+        PackageName, FPackageName::GetAssetPackageExtension());
+    Package->MarkPackageDirty();
+
+    FSavePackageArgs SaveArgs;
+    SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+    SaveArgs.SaveFlags = SAVE_NoError;
+    const bool bSaved = UPackage::SavePackage(
+        Package, &Asset, *Filename, SaveArgs);
+    Test.TestTrue(
+        *FString::Printf(TEXT("asset package saved: %s"), *PackageName),
+        bSaved);
+    return bSaved;
+}
+
+UMaterial* CreateSimpleSurfaceMaterial(
+    const TCHAR* PackageName,
+    const TCHAR* AssetName,
+    const FLinearColor& BaseColor,
+    const float Roughness,
+    const float Specular,
+    FAutomationTestBase& Test)
+{
+    const FString ObjectPath = FString::Printf(
+        TEXT("%s.%s"), PackageName, AssetName);
+    if (UMaterial* Existing = LoadObject<UMaterial>(nullptr, *ObjectPath))
+    {
+        return Existing;
+    }
+
+    UPackage* Package = CreatePackage(PackageName);
+    Test.TestNotNull(TEXT("material package created"), Package);
+    if (!Package)
+    {
+        return nullptr;
+    }
+
+    UMaterial* Material = NewObject<UMaterial>(
+        Package,
+        FName(AssetName),
+        RF_Public | RF_Standalone | RF_Transactional);
+    Test.TestNotNull(TEXT("project-owned road material created"), Material);
+    if (!Material)
+    {
+        return nullptr;
+    }
+
+    UMaterialExpressionConstant3Vector* Color =
+        Cast<UMaterialExpressionConstant3Vector>(
+            UMaterialEditingLibrary::CreateMaterialExpression(
+                Material,
+                UMaterialExpressionConstant3Vector::StaticClass(),
+                -420,
+                -100));
+    UMaterialExpressionConstant* RoughnessNode =
+        Cast<UMaterialExpressionConstant>(
+            UMaterialEditingLibrary::CreateMaterialExpression(
+                Material,
+                UMaterialExpressionConstant::StaticClass(),
+                -420,
+                20));
+    UMaterialExpressionConstant* SpecularNode =
+        Cast<UMaterialExpressionConstant>(
+            UMaterialEditingLibrary::CreateMaterialExpression(
+                Material,
+                UMaterialExpressionConstant::StaticClass(),
+                -420,
+                120));
+
+    Test.TestNotNull(TEXT("base-color expression created"), Color);
+    Test.TestNotNull(TEXT("roughness expression created"), RoughnessNode);
+    Test.TestNotNull(TEXT("specular expression created"), SpecularNode);
+    if (!Color || !RoughnessNode || !SpecularNode)
+    {
+        return nullptr;
+    }
+
+    Color->Constant = BaseColor;
+    RoughnessNode->R = Roughness;
+    SpecularNode->R = Specular;
+
+    UMaterialEditingLibrary::ConnectMaterialProperty(
+        Color, FString(), MP_BaseColor);
+    UMaterialEditingLibrary::ConnectMaterialProperty(
+        RoughnessNode, FString(), MP_Roughness);
+    UMaterialEditingLibrary::ConnectMaterialProperty(
+        SpecularNode, FString(), MP_Specular);
+    UMaterialEditingLibrary::RecompileMaterial(Material);
+
+    FAssetRegistryModule::AssetCreated(Material);
+    Material->PostEditChange();
+    if (!SaveAssetPackage(*Material, Test))
+    {
+        return nullptr;
+    }
+    return Material;
+}
+
+UMaterial* ResolveProjectMaterialForSlot(
+    const FStaticMaterial& Slot,
+    UMaterial* Asphalt,
+    UMaterial* Divider,
+    UMaterial* Shoulder)
+{
+    const FString SlotName = Slot.MaterialSlotName.ToString();
+    if (SlotName.Contains(TEXT("Median"), ESearchCase::IgnoreCase)
+        || SlotName.Contains(TEXT("Divider"), ESearchCase::IgnoreCase))
+    {
+        return Divider;
+    }
+    if (SlotName.Contains(TEXT("Shoulder"), ESearchCase::IgnoreCase))
+    {
+        return Shoulder;
+    }
+    return Asphalt;
 }
 
 struct FAuthoringState
@@ -327,6 +460,91 @@ bool FPinkCabGenerateL1EndlessMetaRoadAssets::RunTest(const FString& Parameters)
     }
 
     ADD_LATENT_AUTOMATION_COMMAND(FFinishMetaRoadBakeCommand(this, State));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabGenerateL1EndlessRoadRuntimeMaterials,
+    "PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
+    const FString& Parameters)
+{
+    using namespace PinkCabL1MetaRoadAuthoring;
+
+    UStaticMesh* Road = LoadObject<UStaticMesh>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
+    TestNotNull(TEXT("baked road surface loads for runtime material ownership"), Road);
+    if (!Road)
+    {
+        return false;
+    }
+
+    UMaterial* Asphalt = CreateSimpleSurfaceMaterial(
+        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt"),
+        TEXT("M_PC_L1_Asphalt"),
+        FLinearColor(0.030f, 0.034f, 0.040f, 1.0f),
+        0.70f,
+        0.24f,
+        *this);
+    UMaterial* Divider = CreateSimpleSurfaceMaterial(
+        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_GreenDivider"),
+        TEXT("M_PC_L1_GreenDivider"),
+        FLinearColor(0.025f, 0.070f, 0.030f, 1.0f),
+        0.88f,
+        0.10f,
+        *this);
+    UMaterial* Shoulder = CreateSimpleSurfaceMaterial(
+        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Shoulder"),
+        TEXT("M_PC_L1_Shoulder"),
+        FLinearColor(0.045f, 0.048f, 0.052f, 1.0f),
+        0.78f,
+        0.18f,
+        *this);
+
+    if (!Asphalt || !Divider || !Shoulder)
+    {
+        return false;
+    }
+
+    TArray<FStaticMaterial>& Slots = Road->GetStaticMaterials();
+    TestTrue(TEXT("baked road exposes material slots"), Slots.Num() > 0);
+    for (int32 Index = 0; Index < Slots.Num(); ++Index)
+    {
+        const FString SlotName = Slots[Index].MaterialSlotName.ToString();
+        AddInfo(FString::Printf(
+            TEXT("CD869_ROAD_SLOT_NAME[%d]=%s"),
+            Index,
+            *SlotName));
+        Road->SetMaterial(
+            Index,
+            ResolveProjectMaterialForSlot(
+                Slots[Index], Asphalt, Divider, Shoulder));
+    }
+
+    Road->PostEditChange();
+    const bool bSavedRoad = SaveGeneratedMeshPackage(*Road, *this);
+    TestTrue(TEXT("road surface saved after project material rebinding"), bSavedRoad);
+
+    for (int32 Index = 0; Index < Road->GetStaticMaterials().Num(); ++Index)
+    {
+        UMaterialInterface* Material =
+            Road->GetStaticMaterials()[Index].MaterialInterface;
+        TestNotNull(TEXT("runtime road material remains assigned"), Material);
+        if (Material)
+        {
+            const FString Path = Material->GetPathName();
+            TestTrue(TEXT("runtime material is owned by PINK-CAB content"),
+                Path.StartsWith(TEXT("/Game/World/L1/Road/Materials/")));
+            TestFalse(TEXT("runtime material no longer depends on MetaRoad content"),
+                Path.StartsWith(TEXT("/MetaRoad/")));
+        }
+    }
+
+    AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
     return true;
 }
 
