@@ -278,9 +278,9 @@ bool FPinkCabGenerateL1EndlessMetaRoadAssets::RunTest(const FString& Parameters)
     State->StartedAtSeconds = FPlatformTime::Seconds();
 
     FEditorModeTools& ModeTools = GLevelEditorModeTools();
-    ModeTools.ActivateMode(EM_MetaRoadEditorModeId);
+    ModeTools.ActivateMode(UMetaRoadEditorMode::EM_MetaRoadEditorModeId);
     UMetaRoadEditorMode* MetaRoadMode =
-        Cast<UMetaRoadEditorMode>(ModeTools.GetActiveScriptableMode(EM_MetaRoadEditorModeId));
+        Cast<UMetaRoadEditorMode>(ModeTools.GetActiveScriptableMode(UMetaRoadEditorMode::EM_MetaRoadEditorModeId));
     TestNotNull(TEXT("exported MetaRoad editor mode activated"), MetaRoadMode);
     if (!MetaRoadMode)
     {
