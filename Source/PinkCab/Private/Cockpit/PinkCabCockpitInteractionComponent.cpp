@@ -180,6 +180,33 @@ bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(const int32 SignedStep
     return true;
 }
 
+bool UPinkCabCockpitInteractionComponent::TrySelectContextualTarget(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const UPinkCabCockpitAssemblyComponent* Assembly)
+{
+    if (!Assembly)
+    {
+        return false;
+    }
+    const bool bDirectActionRequested =
+        Frame.bMomentaryHeld || Frame.WheelSteps != 0;
+    if (!Frame.bGripHeld && !bDirectActionRequested)
+    {
+        return false;
+    }
+    if (bCurrentTargetFromQuickRecall
+        || !GetCurrentQuickTargetId().IsNone()
+        || bGearboxStageFromClutchHeld)
+    {
+        return false;
+    }
+
+    const FName ContextTarget = Assembly->ResolveGazeTarget(
+        Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+    SetCurrentTarget(SpecForTargetId(ContextTarget));
+    return true;
+}
+
 void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
     const FPinkCabCockpitInteractionFrame& Frame,
     const UPinkCabCockpitAssemblyComponent* Assembly)
@@ -209,20 +236,10 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
         return;
     }
 
-    // RMB captures/retains a control, but it is not a prerequisite for
-    // contextual action. LMB and wheel may directly operate the centered
-    // authored control without first pressing RMB.
-    const bool bDirectActionRequested =
-        Frame.bMomentaryHeld || Frame.WheelSteps != 0;
-    if ((Frame.bGripHeld || bDirectActionRequested)
-        && Assembly
-        && !bCurrentTargetFromQuickRecall
-        && GetCurrentQuickTargetId().IsNone()
-        && !bGearboxStageFromClutchHeld)
+    // RMB captures/retains a control. LMB and wheel can also directly select
+    // and operate the centered contextual control without an RMB prerequisite.
+    if (TrySelectContextualTarget(Frame, Assembly))
     {
-        const FName ContextTarget = Assembly->ResolveGazeTarget(
-            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
-        SetCurrentTarget(SpecForTargetId(ContextTarget));
         return;
     }
 
