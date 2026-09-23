@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   statuses: write
   issues: read
   pull-requests: read
@@ -25,6 +26,235 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  standalone_code_only:
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && github.event.comment.body == '/pinkcab-standalone' }}
+    name: PINK-CAB code-only standalone human build
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 45
+    env:
+      PINKCAB_UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      GATE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      CANDIDATE_REF: fix/CD-848-recovery-r1-input-contract
+      BASE_PACKAGE_SHA: 8bed51e5c47e037eb45a670f9d6c1c2cdd28b712
+      BASE_PACKAGE_ARTIFACT_ID: 10703918068
+    steps:
+      - name: Checkout exact recovery candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_REF }}
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Verify code-only overlay eligibility
+        id: preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          git lfs pull
+          $sha = (git rev-parse HEAD).Trim()
+          $expectedLine = @(git ls-remote origin "refs/heads/$env:CANDIDATE_REF" | Select-Object -First 1)
+          if ($expectedLine.Count -eq 0) { throw "Recovery ref not found." }
+          $expected = (($expectedLine[0] -split "\s+")[0]).Trim()
+          if ($sha -ne $expected) { throw "Exact-head violation: checkout=$sha remote=$expected" }
+          $changed = @(git diff --name-only "$env:BASE_PACKAGE_SHA..$sha")
+          $content = @($changed | Where-Object { $_ -like 'Content/*' })
+          $config = @($changed | Where-Object { $_ -like 'Config/*' })
+          if ($content.Count -gt 0 -or $config.Count -gt 0) {
+            throw "Code-only overlay forbidden: Content=$($content.Count) Config=$($config.Count)"
+          }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CANDIDATE_SHA=$sha" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "candidate_sha=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $body = @{
+            state = 'pending'
+            context = 'cheshire/pinkcab-standalone'
+            description = 'Code-only standalone human build running'
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$sha" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          } -ContentType 'application/json' -Body $body | Out-Null
+          Write-Host "CODE_ONLY_ELIGIBLE source=$sha base=$env:BASE_PACKAGE_SHA"
+
+      - name: Build monolithic Win64 Development game target
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $buildBat = Join-Path $env:PINKCAB_UE_ROOT "Engine\Build\BatchFiles\Build.bat"
+          $project = Join-Path $env:GITHUB_WORKSPACE "PinkCab.uproject"
+          & $buildBat PinkCab Win64 Development "-Project=$project" -WaitMutex -NoHotReloadFromIDE
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exeCandidates = @(Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE "Binaries\Win64") -File -Filter 'PinkCab*.exe' |
+            Sort-Object LastWriteTimeUtc -Descending)
+          if ($exeCandidates.Count -eq 0) { throw "Fresh PinkCab game executable not found." }
+          $gameExe = $exeCandidates[0].FullName
+          "FRESH_GAME_EXE=$gameExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "FRESH_GAME_EXE=$gameExe"
+          $projectDlls = @(Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE "Binaries\Win64") -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like 'PinkCab*.dll' -and $_.Name -notlike 'UnrealEditor-*' })
+          if ($projectDlls.Count -gt 0) {
+            $projectDlls | ForEach-Object { Write-Host "runtime_dll=$($_.FullName)" }
+            throw "Game target is not monolithic; code-only standalone overlay would still depend on unsigned DLLs."
+          }
+          Write-Host "MONOLITHIC_GAME_BUILD_PASS"
+
+      - name: Resolve last cooked package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sourcePayload = $null
+          if (Test-Path $env:GATE_ROOT_BASE) {
+            $roots = @(Get-ChildItem $env:GATE_ROOT_BASE -Directory -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTimeUtc -Descending)
+            foreach ($root in $roots) {
+              $candidate = Join-Path $root.FullName "Windows"
+              if ((Test-Path (Join-Path $candidate "PinkCab.exe")) -and
+                  (Test-Path (Join-Path $candidate "PinkCab\Binaries\Win64\PinkCab.exe"))) {
+                $buildShaPath = Join-Path $root.FullName "BUILD_SHA.txt"
+                $buildSha = if (Test-Path $buildShaPath) { (Get-Content $buildShaPath -Raw).Trim() } else { '' }
+                if ($buildSha -eq $env:BASE_PACKAGE_SHA -or $root.Name -like '*8bed51e*') {
+                  $sourcePayload = $candidate
+                  break
+                }
+              }
+            }
+          }
+
+          if (-not $sourcePayload) {
+            $zip = Join-Path $env:RUNNER_TEMP "PINKCAB_BASE_PACKAGE.zip"
+            $extract = Join-Path $env:RUNNER_TEMP "PINKCAB_BASE_PACKAGE"
+            Remove-Item $zip -Force -ErrorAction SilentlyContinue
+            Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+            $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2022-11-28'
+            }
+            $uri = "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/actions/artifacts/$env:BASE_PACKAGE_ARTIFACT_ID/zip"
+            Invoke-WebRequest -Uri $uri -Headers $headers -OutFile $zip -MaximumRedirection 5
+            Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+            if ((Test-Path (Join-Path $extract "PinkCab.exe")) -and
+                (Test-Path (Join-Path $extract "PinkCab\Binaries\Win64\PinkCab.exe"))) {
+              $sourcePayload = $extract
+            } elseif ((Test-Path (Join-Path $extract "Windows\PinkCab.exe")) -and
+                      (Test-Path (Join-Path $extract "Windows\PinkCab\Binaries\Win64\PinkCab.exe"))) {
+              $sourcePayload = Join-Path $extract "Windows"
+            } else {
+              throw "Downloaded base package layout not recognized."
+            }
+          }
+          "BASE_WINDOWS_PAYLOAD=$sourcePayload" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "BASE_WINDOWS_PAYLOAD=$sourcePayload"
+
+      - name: Assemble and smoke standalone human candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $short = $env:CANDIDATE_SHA.Substring(0,7)
+          $delivery = Join-Path $env:GATE_ROOT_BASE ("CODEONLY_" + $short + "_RUN" + $env:GITHUB_RUN_ID)
+          if (Test-Path $delivery) { throw "Immutable delivery path already exists: $delivery" }
+          $windows = Join-Path $delivery "Windows"
+          New-Item -ItemType Directory -Force -Path $windows | Out-Null
+          Copy-Item -Path (Join-Path $env:BASE_WINDOWS_PAYLOAD "*") -Destination $windows -Recurse -Force
+
+          $inner = Join-Path $windows "PinkCab\Binaries\Win64\PinkCab.exe"
+          $outer = Join-Path $windows "PinkCab.exe"
+          if (-not (Test-Path $inner) -or -not (Test-Path $outer)) {
+            throw "Base staged package is incomplete."
+          }
+          Copy-Item -LiteralPath $env:FRESH_GAME_EXE -Destination $inner -Force
+
+          @(
+            "status=CODE_ONLY_HUMAN_PENDING",
+            "source_sha=$env:CANDIDATE_SHA",
+            "base_cooked_sha=$env:BASE_PACKAGE_SHA",
+            "workflow_run_id=$env:GITHUB_RUN_ID",
+            "content_changed_since_base=0",
+            "config_changed_since_base=0",
+            "reason=Enterprise Code Integrity blocks unsigned UnrealEditor project DLLs; monolithic Game target overlays unchanged cooked content"
+          ) | Set-Content (Join-Path $delivery "GATE_MANIFEST.txt")
+          Set-Content (Join-Path $delivery "BUILD_SHA.txt") $env:CANDIDATE_SHA -NoNewline
+
+          $log = Join-Path $delivery "STANDALONE_SMOKE.log"
+          $proc = Start-Process -FilePath $inner -WorkingDirectory (Split-Path $inner) -ArgumentList @(
+            "-log","-windowed","-ResX=1280","-ResY=720","-PinkCabGateTelemetry","-abslog=$log"
+          ) -PassThru
+          Start-Sleep -Seconds 10
+          $proc.Refresh()
+          if ($proc.HasExited) {
+            throw "Fresh monolithic standalone exited during smoke; exit=$($proc.ExitCode)"
+          }
+          if (-not (Test-Path $log)) { throw "Standalone smoke log missing." }
+          $critical = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Log[A-Za-z0-9_]+: Error:')
+          if ($critical.Count -gt 0) {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            throw "Standalone smoke critical entries=$($critical.Count)"
+          }
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Milliseconds 300
+
+          $desktop = [Environment]::GetFolderPath("Desktop")
+          if (-not [string]::IsNullOrWhiteSpace($desktop) -and (Test-Path $desktop)) {
+            $latest = Join-Path $desktop "PINKCAB Latest.lnk"
+            Remove-Item -LiteralPath $latest -Force -ErrorAction SilentlyContinue
+            $ws = New-Object -ComObject WScript.Shell
+            $s = $ws.CreateShortcut($latest)
+            $s.TargetPath = $outer
+            $s.WorkingDirectory = $windows
+            $s.Description = "PINK CAB $short code-only human candidate"
+            $s.Save()
+          }
+
+          # The runner normally kills child processes at job cleanup. Clear its
+          # tracking marker for the final human process so the game stays open.
+          $env:RUNNER_TRACKING_ID = ""
+          $launched = Start-Process -FilePath $inner -WorkingDirectory (Split-Path $inner) -ArgumentList @(
+            "-log","-windowed","-ResX=1280","-ResY=720"
+          ) -PassThru
+          Start-Sleep -Seconds 3
+          $launched.Refresh()
+          if ($launched.HasExited) {
+            throw "Final standalone human candidate did not remain running."
+          }
+          "DELIVERY_ROOT=$delivery" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "STANDALONE_HUMAN_BUILD_RUNNING pid=$($launched.Id) root=$delivery"
+
+      - name: Publish standalone human candidate status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CANDIDATE_SHA)) { exit 0 }
+          $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $description = if ($state -eq 'success') {
+            'Code-only standalone running; HUMAN_PENDING'
+          } else {
+            'Code-only standalone build failed'
+          }
+          $body = @{
+            state = $state
+            context = 'cheshire/pinkcab-standalone'
+            description = $description
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:CANDIDATE_SHA" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          } -ContentType 'application/json' -Body $body | Out-Null
+
   gate:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human')) }}
     name: Exact-head PINK-CAB verification
