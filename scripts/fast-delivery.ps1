@@ -2,7 +2,8 @@
 param(
     [string]$TestFilter = "PinkCab.Cockpit.Playable.Runtime",
     [string]$EngineRoot = $env:PINKCAB_UE_ROOT,
-    [string]$IterationBuild = "E:\CHESHIRE_DIVISION\Builds\PINKCAB\OwnerIteration",
+    [string]$IterationBuild = $env:PINKCAB_ITERATION_BUILD,
+    [string]$ShortcutPath = $env:PINKCAB_LATEST_SHORTCUT,
     [switch]$SkipTests,
     [switch]$ForceRecook,
     [switch]$PlanOnly
@@ -17,13 +18,22 @@ if ([string]::IsNullOrWhiteSpace($EngineRoot)) {
 $BuildBat = Join-Path $EngineRoot "Engine\Build\BatchFiles\Build.bat"
 $RunUAT = Join-Path $EngineRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $EditorCmd = Join-Path $EngineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
-$ShortcutPath = "C:\Users\CheCat\Desktop\PINKCAB Latest.lnk"
+if ([string]::IsNullOrWhiteSpace($IterationBuild)) {
+    $IterationBuild = Join-Path $RepoRoot "Artifacts\OwnerIteration"
+}
+if ([string]::IsNullOrWhiteSpace($ShortcutPath)) {
+    $Desktop = [Environment]::GetFolderPath("Desktop")
+    if ([string]::IsNullOrWhiteSpace($Desktop)) {
+        throw "Desktop path is unavailable; set PINKCAB_LATEST_SHORTCUT explicitly."
+    }
+    $ShortcutPath = Join-Path $Desktop "PINKCAB Latest.lnk"
+}
 
 foreach ($Required in @($Project, $BuildBat, $RunUAT, $EditorCmd)) {
     if (-not (Test-Path $Required)) { throw "Required path missing: $Required" }
 }
 if ([string]::IsNullOrWhiteSpace($env:TMP)) {
-    $env:TMP = if ($env:TEMP) { $env:TEMP } else { "E:\CHESHIRE_DIVISION\Temp\pinkcab-fast" }
+    $env:TMP = if ($env:TEMP) { $env:TEMP } else { [System.IO.Path]::GetTempPath() }
 }
 
 $Status = @(git -C $RepoRoot status --porcelain)
