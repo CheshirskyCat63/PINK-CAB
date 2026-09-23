@@ -55,35 +55,27 @@ jobs:
           Write-Host "CD869_METAROAD_VERSION=$($meta.VersionName)"
           Write-Host 'CD869_PREFLIGHT=PASS'
 
-      - name: Inspect public MetaRoad editor API
+      - name: Inspect MetaRoad generation naming and default surfaces
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
           $pluginRoot = Split-Path -Parent $env:METAROAD_PLUGIN
-          function Dump-Source([string]$RelativePath, [int]$MaxLines = 620) {
+          function Dump-Source([string]$RelativePath, [int]$MaxLines) {
             $full = Join-Path $pluginRoot $RelativePath
-            if (-not (Test-Path $full)) {
-              Write-Host "CD869_SOURCE_MISSING=$RelativePath"
-              return
-            }
             Write-Host "CD869_SOURCE_BEGIN=$RelativePath"
-            $lineNo = 0
-            Get-Content -LiteralPath $full | ForEach-Object {
-              $lineNo++
-              if ($lineNo -le $MaxLines) {
-                Write-Host ("{0:D4}: {1}" -f $lineNo,$_)
+            if (Test-Path $full) {
+              $lineNo=0
+              Get-Content -LiteralPath $full | ForEach-Object {
+                $lineNo++
+                if ($lineNo -le $MaxLines) { Write-Host ("{0:D4}: {1}" -f $lineNo,$_) }
               }
             }
             Write-Host "CD869_SOURCE_END=$RelativePath"
           }
-
-          Dump-Source 'Source\MetaRoadEditor\Public\EditorMode\MetaRoadBakeHost.h' 520
-          Dump-Source 'Source\MetaRoadEditor\Public\EditorMode\MetaRoadEditorMode.h' 620
-          Dump-Source 'Source\MetaRoadEditor\Public\EditorMode\MetaRoadBakeSettings.h' 420
-          Dump-Source 'Source\MetaRoadEditor\Public\Utils\AssetUtils.h' 520
-          Dump-Source 'Source\MetaRoadEditor\MetaRoadEditor.Build.cs' 360
-          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadEditorMode.cpp' 620
-          Dump-Source 'Source\MetaRoad\Private\MetaRoadTypes.cpp' 760
+          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadBakeHost.cpp' 760
+          Dump-Source 'Source\MetaRoad\Private\MetaRoadSettings.cpp' 280
+          Dump-Source 'Source\MetaRoad\Private\RoadSplineComponent.cpp' 760
+          Dump-Source 'Source\MetaRoad\Public\MetaRoadTypes.h' 940
 
       - name: Build PinkCabEditor incrementally
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
