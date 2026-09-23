@@ -2,37 +2,48 @@ product: PINK CAB
 product_root: CD-519
 repository: CheshirskyCat63/PINK-CAB
 repository_status: active-dedicated-pink-cab
-working_branch: fix/CD-848-recovery-r1-input-contract
+working_branch: main
 clean_repository_target: PINK-CAB
 clean_repository_status: complete
-snapshot_date: 2026-09-22
+snapshot_date: 2026-09-23
 control_plane_cleanup:
   remaining_admin_gates:
     stale_remote_branch_refs:
       count: 0
       status: COMPLETE_2026_09_22
       remaining_branches: [main, fix/CD-848-recovery-r1-input-contract]
+      recovery_ref_status: MERGED_IDENTICAL_INACTIVE_ALIAS
       active_execution_lane: false
     jira_plan_downgrade:
       target: FREE
-      status: HUMAN_BILLING_GATE
+      status: ACCOUNT_SETTING_NOT_PRODUCTION_BLOCKER
       eligibility: jira_users_lte_10_and_storage_within_free_allowance
       paid_features_not_required_by_pipeline: [audit_logs, rovo_ai, advanced_permission_editing, high_jira_automation_quota]
-  status: ACTIVE_ADMIN_FREEZE
+  status: COMPLETE_WORKING_BASELINE_FROZEN
   owner: CD-868
   product_root: CD-519
   mechanics_recovery_owner: CD-848
-  active_git_pr: 7
-  active_git_branch: fix/CD-848-recovery-r1-input-contract
+  active_git_pr: null
+  active_git_branch: main
   canonical_target_branch: main
   heavy_ci_trigger: manual_only
-  gameplay_changes_allowed: false
-  latest_auto_gate_run: 35746083559
-  latest_auto_gate_result: FAIL_PACKAGED_WINDOWS_OS_INPUT_THROTTLE_DOSING
-  human_gate: NOT_ACCEPTED
+  gameplay_changes_allowed: true
+  latest_auto_gate_run: 35809749568
+  latest_auto_gate_result: SUCCESS_CODE_ONLY_STANDALONE_HUMAN_BUILD
+  human_gate: OWNER_ACCEPTED_2026_09_23
   stale_prs_closed: [3, 4, 5, 6]
+  merged_recovery_pr: 7
+  integration_merge_sha: 865e8f77dde4af1f5c5bee8d49754628b6494db4
+  accepted_working_baseline:
+    source_sha: 8168d72406af6934ab20eace583c2b895f0620b7
+    actions_run: 35809749568
+    job: PINK-CAB_code-only_standalone_human_build
+    result: SUCCESS
+    owner_acceptance: ACCEPTED_2026_09_23
+    delivery_root: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568
+    immutable_evidence: true
   archived_unique_branch_material: docs/archive
-  resume_rule: control_plane_clean_then_fresh_exact_head_auto_gate_then_human_acceptance
+  resume_rule: main_then_one_task_branch_then_verify_then_merge_then_new_human_acceptance_for_superseding_runtime
 
 legacy_migration_source: CheshirskyCat63/DEADRACE
 legacy_staging_branch: dev/pinkcab-pre-fgear-20260911
@@ -46,7 +57,7 @@ maturity:
   canon: defined
   specification: partial
   implementation: core_code_complete_primitive_only
-  verification: recovery_exact_head_auto_gate_failed_human_not_accepted
+  verification: owner_accepted_working_baseline_8168d724
   truth_rule: CANON_to_SPECIFIED_to_IMPLEMENTED_to_VERIFIED
   documentation_never_equals_runtime_verification: true
 
@@ -246,8 +257,8 @@ current_canon:
     owner: CD-848
     confluence_page: 16744449
     git_mirror: docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md
-    status: RECOVERY_R1_ACTIVE_AUTO_GATE_FAILED_HUMAN_PENDING
-    qa_status: exact_head_8bed51e_auto_build_tests_package_pass_os_input_fail_throttle_dosing
+    status: WORKING_BASELINE_OWNER_ACCEPTED_2026_09_23
+    qa_status: accepted_sha_8168d724_run_35809749568_code_only_standalone_success_owner_accepted
     runtime_technology: UE_5_8_2_Native_Chaos_Vehicles
     explicit_supersessions: [throttle_reset_is_not_defect, old_attention_go_grammar, old_left_forward_reverse_plane, fixed_0_20_1_20_clutch_range_owner_lock, BMW_E34_530i_reference, yaw_rescue_allowance]
 
@@ -271,8 +282,8 @@ current_canon:
     semantic_input_router: one_cpp_enhanced_input_router_distributes_semantic_state_and_commands_no_feature_system_reads_raw_keys
     physical_control_contract: one_reusable_control_interface_each_control_declares_supported_gestures_and_emits_semantic_events
     recovery_r1_grip_semantics: RMB_grips_or_retains_selected_lever_without_actuation
-    recovery_r1_lever_manipulation: RMB_plus_LMB_required_mouse_XY_routes_to_lever_only_while_both_held
-    recovery_r1_release_semantics: releasing_LMB_returns_mouse_XY_to_steering_while_RMB_may_remain_held
+    recovery_r1_lever_manipulation: LMB_may_directly_manipulate_contextual_Gearbox_or_Handbrake_RMB_is_optional_retain_mouse_XY_routes_only_to_active_lever
+    recovery_r1_release_semantics: ending_lever_manipulation_returns_mouse_XY_to_steering_RMB_release_ends_optional_retain
     control_to_subsystem_rule: controls_never_reach_directly_into_unrelated_taxi_economy_vehicle_internals
     reticle_feedback: translucent_default_valid_target_brightens_to_white_matte_less_transparent_no_text_labels
     hand_selection: interaction_truth_hand_agnostic_left_or_right_hand_chosen_automatically_by_presentation_context
@@ -340,7 +351,7 @@ current_canon:
     status: IMPLEMENTED_VERIFIED_PRE_MODEL_CONTRACT
     git_freeze: docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md
     asset_import_contract: docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md
-    model_integration_may_proceed: false_during_control_plane_cleanup_and_until_current_recovery_human_gate
+    model_integration_may_proceed: true_when_reactivated_under_current_task_and_asset_provenance
     full_mechanics_freeze_implied: false
     final_model_complete: false
     presentation_may_replace_assets_without_gameplay_rewrite: true
