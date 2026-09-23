@@ -1,5 +1,7 @@
 import unreal, os
-srcdir=r"C:\Users\CheCat\Downloads\tatra_613_1975-1996\v12_clean"
+srcdir=os.environ.get("PINKCAB_TATRA_V12_CLEAN_DIR")
+if not srcdir:
+    raise RuntimeError("PINKCAB_TATRA_V12_CLEAN_DIR is required")
 dst='/Game/Dev/Vehicles/Tatra613ArchiveV12Clean'
 asset_tools=unreal.AssetToolsHelpers.get_asset_tools()
 for fn in ['Tatra613_V12_Body.glb','Tatra613_V12_Steering.glb','Tatra613_V12_Wheel.glb']:
