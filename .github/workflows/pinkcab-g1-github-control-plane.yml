@@ -251,6 +251,25 @@ jobs:
           }
           Write-Host "PINKCAB_PROJECT_BINARIES_PREPARED count=$($projectBins.Count)"
 
+      - name: Normalize locally built PINK-CAB binaries
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $binaries = @(Get-ChildItem -Path .\Binaries\Win64 -File -ErrorAction Stop |
+            Where-Object { $_.Name -like 'UnrealEditor-PinkCab*.dll' -or $_.Name -like 'PinkCab*.exe' })
+          if ($binaries.Count -eq 0) {
+            throw "No locally built PINK-CAB binaries found after successful editor build."
+          }
+          foreach ($binary in $binaries) {
+            $zoneBefore = @(Get-Item -LiteralPath $binary.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue)
+            Write-Host "binary=$($binary.Name) zone_before=$($zoneBefore.Count)"
+            Unblock-File -LiteralPath $binary.FullName -ErrorAction Stop
+            $zoneAfter = @(Get-Item -LiteralPath $binary.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue)
+            $sig = Get-AuthenticodeSignature -LiteralPath $binary.FullName
+            Write-Host "binary=$($binary.Name) zone_after=$($zoneAfter.Count) signature=$($sig.Status)"
+          }
+          Write-Host "PINKCAB_LOCAL_BINARY_NORMALIZATION_PASS"
+
       - name: Fast recovery smoke matrix
         if: ${{ env.GATE_LANE == 'fast' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
