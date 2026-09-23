@@ -17,6 +17,13 @@ FORBIDDEN_ACTIVE_TOOL_NAMES = {
     "import_tatra_faithful.py",
 }
 
+
+STALE_ACTIVE_DOC_PATHS = {
+    "docs/recovery/C01_C16_EXECUTION_LEDGER.md",
+    "docs/recovery/GITHUB_CONTROL_PLANE_R1.md",
+    "docs/recovery/RECOVERY_INPUT_OWNERSHIP_R1.md",
+}
+
 STALE_CONTENT_ROOTS = {
     "Content/Dev/Vehicles/Tatra613Donor",
     "Content/Dev/Vehicles/Tatra613ArchiveV12",
@@ -85,6 +92,14 @@ def scan_repository(root: Path) -> list[dict[str, str]]:
                 "rule": "stale_content_root",
                 "path": relative,
                 "detail": "unreferenced Tatra recovery asset tree must stay absent",
+            })
+
+    for relative in sorted(STALE_ACTIVE_DOC_PATHS):
+        if (root / relative).exists():
+            violations.append({
+                "rule": "stale_active_doc",
+                "path": relative,
+                "detail": "superseded recovery/control-plane document belongs in Git history, not active docs",
             })
 
     config_path = root / "Config" / "DefaultGame.ini"

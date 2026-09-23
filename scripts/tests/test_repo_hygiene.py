@@ -47,6 +47,14 @@ class RepoHygieneTests(unittest.TestCase):
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("stale_tool_archive", rules)
 
+    def test_rejects_superseded_active_recovery_doc(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "docs/recovery/GITHUB_CONTROL_PLANE_R1.md", "# old\n")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("stale_active_doc", rules)
+
     def test_rejects_stale_tatra_content_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
