@@ -36,7 +36,7 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
     GENERATED_BODY()
 
     static FPinkCabVehicleVisualProfile Fallback();
-    static FPinkCabVehicleVisualProfile Tatra613Donor();
+    static FPinkCabVehicleVisualProfile Tatra613ScenePreserved();
 
     bool IsValid() const;
     bool HasExteriorAsset() const;
