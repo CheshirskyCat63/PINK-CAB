@@ -12,6 +12,9 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $RepoRoot "Saved\Reports\code-health.json"
 }
 
+& python (Join-Path $RepoRoot "scripts\repo_hygiene.py") --root $RepoRoot
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $Args = @(
     (Join-Path $RepoRoot "scripts\code_health.py"),
     "--root", $RepoRoot,

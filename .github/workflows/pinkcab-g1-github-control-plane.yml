@@ -266,7 +266,7 @@ jobs:
           }
           Write-Host "PINKCAB_LOCAL_BINARY_NORMALIZATION_PASS"
 
-      - name: Fast recovery smoke matrix
+      - name: Fast verification matrix
         if: ${{ env.GATE_LANE == 'fast' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -299,7 +299,7 @@ jobs:
           $summary | Set-Content (Join-Path $ev "FAST_MATRIX.txt")
           Write-Host "FAST_MATRIX_PASS count=$($summary.Count)"
 
-      - name: Input and recovery automated matrix
+      - name: Input and control automated matrix
         if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -409,36 +409,23 @@ jobs:
           "alive=$alive; map=$($map.Count); critical=0" | Set-Content "$env:EVIDENCE_DIR\PACKAGED_SMOKE_SUMMARY.txt"
           Write-Host "PACKAGED_SMOKE_PASS"
 
-      - name: Deliver packaged diagnostic candidate before OS-input gate
+      - name: Record packaged diagnostic workspace evidence
         if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = "Stop"
           $sha = (git rev-parse HEAD).Trim()
-          $short = $sha.Substring(0,7)
-          $diagName = "DIAG_RECOVERY_$short" + "_RUN" + $env:GITHUB_RUN_ID + "_A" + $env:GITHUB_RUN_ATTEMPT
-          $diagRoot = Join-Path $env:GATE_ROOT_BASE $diagName
-          if (Test-Path $diagRoot) { throw "Immutable diagnostic path already exists: $diagRoot" }
-
-          New-Item -ItemType Directory -Force -Path $diagRoot | Out-Null
-          Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\*") -Destination $diagRoot -Recurse -Force
-          $outer = Join-Path $diagRoot "Windows\PinkCab.exe"
-          if (-not (Test-Path $outer)) { throw "Diagnostic outer exe missing." }
-
+          $outer = Join-Path $env:GITHUB_WORKSPACE "Artifacts\Package\Windows\PinkCab.exe"
+          if (-not (Test-Path $outer)) { throw "Diagnostic workspace package missing." }
           @(
-            "status=DIAGNOSTIC_ONLY",
+            "status=DIAGNOSTIC_WORKSPACE_ONLY",
             "human_status=HUMAN_PENDING",
             "source_sha=$sha",
             "workflow_run_id=$env:GITHUB_RUN_ID",
-            "reason=fresh recovery package delivered before synthetic OS-input gate"
-          ) | Set-Content (Join-Path $diagRoot "DIAGNOSTIC_BUILD_INFO.txt")
-          Set-Content (Join-Path $diagRoot "BUILD_SHA.txt") $sha -NoNewline
-
-          # Diagnostic packages are evidence only. They must never replace the
-          # owner's PINKCAB Latest shortcut before the packaged OS-input gate passes.
-          "diagnostic_root=$diagRoot" | Set-Content "$env:EVIDENCE_DIR\DIAGNOSTIC_DELIVERY.txt"
-          "desktop_shortcut=NOT_UPDATED_DIAGNOSTIC_ONLY" | Add-Content "$env:EVIDENCE_DIR\DIAGNOSTIC_DELIVERY.txt"
-          Write-Host "DIAGNOSTIC_BUILD_READY=$diagRoot"
+            "package_root=$env:GITHUB_WORKSPACE\Artifacts\Package",
+            "persistent_runner_copy=NOT_CREATED"
+          ) | Set-Content "$env:EVIDENCE_DIR\DIAGNOSTIC_DELIVERY.txt"
+          Write-Host "DIAGNOSTIC_WORKSPACE_ONLY"
 
       - name: Packaged Windows OS-input route and render evidence
         if: ${{ env.GATE_LANE == 'human_gate' }}
