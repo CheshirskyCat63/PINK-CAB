@@ -4,24 +4,79 @@
     "Category": "",
     "Description": "PINK CAB",
     "Modules": [
-        {"Name": "PinkCabCore", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabInteraction", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabVehicle", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabEconomy", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabWorld", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabTraffic", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabTaxi", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabPersistence", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCab", "Type": "Runtime", "LoadingPhase": "Default"},
-        {"Name": "PinkCabTests", "Type": "Editor", "LoadingPhase": "Default"}
+        {
+            "Name": "PinkCabCore",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabInteraction",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabVehicle",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabEconomy",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabWorld",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabTraffic",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabTaxi",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabPersistence",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCab",
+            "Type": "Runtime",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "PinkCabTests",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        }
     ],
     "Plugins": [
-        {"Name": "AndroidFileServer", "Enabled": false},
-        {"Name": "ChaosVehiclesPlugin", "Enabled": true},
+        {
+            "Name": "AndroidFileServer",
+            "Enabled": false
+        },
+        {
+            "Name": "ChaosVehiclesPlugin",
+            "Enabled": true
+        },
         {
             "Name": "MetaRoad",
             "Enabled": true,
-            "TargetAllowList": ["Editor"]
+            "TargetAllowList": [
+                "Editor"
+            ]
+        },
+        {
+            "Name": "StructUtils",
+            "Enabled": true,
+            "TargetAllowList": [
+                "Editor"
+            ]
         }
     ]
 }
