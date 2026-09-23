@@ -161,8 +161,12 @@ bool FPinkCabTatra613DesktopCookContractTest::RunTest(const FString& Parameters)
     FString DefaultGame;
     const FString ConfigPath = FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("DefaultGame.ini"));
     TestTrue(TEXT("DefaultGame.ini is readable"), FFileHelper::LoadFileToString(DefaultGame, *ConfigPath));
-    TestTrue(TEXT("desktop Tatra root is explicitly included in package cook"),
-        DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613DesktopScene\")")));
+    TestTrue(TEXT("scene-preserved Tatra meshes are explicitly included in package cook"),
+        DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes\")")));
+    TestTrue(TEXT("validated donor wheel subtree is explicitly included in package cook"),
+        DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel\")")));
+    TestFalse(TEXT("stale donor root is not force-cooked"),
+        DefaultGame.Contains(TEXT("+DirectoriesToAlwaysCook=(Path=\"/Game/Dev/Vehicles/Tatra613Donor\")")));
     return true;
 }
 
