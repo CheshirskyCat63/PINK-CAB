@@ -32,10 +32,9 @@ public class PinkCabGateRuntimeTarget : TargetRules
         bOverrideBuildEnvironment = true;
         LinkType = TargetLinkType.Monolithic;
         bBuildRequiresCookedData = false;
-        bBuildWithEditorOnlyData = true;
-        bBuildDeveloperTools = true;
-        bForceBuildTargetPlatforms = true;
-        bForceBuildShaderFormats = true;
-        bForceCompileDevelopmentAutomationTests = true;
+        // Keep this target deliberately runtime-only. Editor/developer tool flags
+        // pull UnrealEd/MovieSceneTools into a Game target and defeat the SAC-safe
+        // separation. Runtime acceptance uses production telemetry instead.
+        bBuildWithEditorOnlyData = false;
     }
 }
