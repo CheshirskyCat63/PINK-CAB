@@ -14,101 +14,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight:
-    name: Windows runner and MetaRoad preflight
-    runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 15
-    env:
-      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
-
-    steps:
-      - name: Checkout exact candidate
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
-          clean: true
-
-      - name: Exact Git preflight
-        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Write-Host "REPO_ROOT=$env:GITHUB_WORKSPACE"
-          Write-Host "BRANCH=$env:GITHUB_REF_NAME"
-          $head = (git rev-parse HEAD).Trim()
-          Write-Host "HEAD=$head"
-          git remote -v
-          git status --short
-          if (@(git status --porcelain).Count -ne 0) {
-            throw 'CD869_PREFLIGHT_DIRTY_CHECKOUT'
-          }
-          Write-Host 'CD869_GIT_PREFLIGHT=PASS'
-
-      - name: UE 5.8 and MetaRoad probe
-        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if (-not (Test-Path $env:UE_ROOT)) {
-            throw "CD869_UE_ROOT_MISSING: $env:UE_ROOT"
-          }
-          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
-          if (-not (Test-Path $editor)) {
-            throw "CD869_EDITOR_MISSING: $editor"
-          }
-          Write-Host "CD869_UE_EDITOR=$editor"
-
-          $roots = @(
-            (Join-Path $env:GITHUB_WORKSPACE 'Plugins'),
-            (Join-Path $env:UE_ROOT 'Engine\Plugins')
-          ) | Where-Object { Test-Path $_ }
-
-          $plugins = @()
-          foreach ($root in $roots) {
-            $plugins += Get-ChildItem -Path $root -Filter '*.uplugin' -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object {
-                $_.Name -match 'MetaRoad|UnrealDrive' -or
-                $_.FullName -match 'MetaRoad|UnrealDrive'
-              }
-          }
-
-          if ($plugins.Count -eq 0) {
-            Write-Host 'CD869_METAROAD=NOT_FOUND'
-            throw 'CD869_METAROAD_REQUIRED'
-          }
-
-          foreach ($plugin in $plugins) {
-            Write-Host "CD869_METAROAD_PLUGIN=$($plugin.FullName)"
-            try {
-              $json = Get-Content -Raw -LiteralPath $plugin.FullName | ConvertFrom-Json
-              Write-Host "CD869_METAROAD_VERSION=$($json.VersionName)"
-              Write-Host "CD869_METAROAD_FRIENDLY=$($json.FriendlyName)"
-              Write-Host "CD869_METAROAD_ENABLED_BY_DEFAULT=$($json.EnabledByDefault)"
-            } catch {
-              Write-Host "CD869_METAROAD_DESCRIPTOR_PARSE_WARNING=$($_.Exception.Message)"
-            }
-          }
-
-          Write-Host 'CD869_METAROAD_PREFLIGHT=PASS'
-
-
   verify:
-    name: Build and focused endless-road tests
-    needs: preflight
+    name: Exact-head endless-road TDD gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 45
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      METAROAD_PLUGIN: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4\MetaRoad.uplugin
       TEST_LOG: Saved\GitHubGate\CD869_ENDLESS_ROAD.log
 
     steps:
-      - name: Checkout exact candidate
+      - name: Checkout exact candidate without deleting warm Unreal caches
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
-          clean: true
+          clean: false
 
-      - name: Build PinkCabEditor
+      - name: Exact-head preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne $env:GITHUB_SHA) {
+            throw "CD869_EXACT_HEAD_MISMATCH: $head != $env:GITHUB_SHA"
+          }
+          $tracked = @(git status --porcelain --untracked-files=no)
+          if ($tracked.Count -ne 0) {
+            $tracked | ForEach-Object { Write-Host $_ }
+            throw 'CD869_TRACKED_CHECKOUT_DIRTY'
+          }
+          if (-not (Test-Path (Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'))) {
+            throw 'CD869_UE58_MISSING'
+          }
+          if (-not (Test-Path $env:METAROAD_PLUGIN)) {
+            throw "CD869_METAROAD_MISSING: $env:METAROAD_PLUGIN"
+          }
+          $meta = Get-Content -Raw -LiteralPath $env:METAROAD_PLUGIN | ConvertFrom-Json
+          Write-Host "CD869_HEAD=$head"
+          Write-Host "CD869_METAROAD_VERSION=$($meta.VersionName)"
+          Write-Host 'CD869_PREFLIGHT=PASS'
+
+      - name: Build PinkCabEditor incrementally
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
