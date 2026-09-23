@@ -1,7 +1,9 @@
 import bpy, os
 from mathutils import Vector
-src=r"C:\Users\CheCat\Downloads\tatra_613_1975-1996\scene.gltf"
-outdir=r"C:\Users\CheCat\Downloads\tatra_613_1975-1996\v12_clean"
+src=os.environ.get("PINKCAB_TATRA_SOURCE_GLTF")
+outdir=os.environ.get("PINKCAB_TATRA_V12_CLEAN_DIR")
+if not src or not outdir:
+    raise RuntimeError("PINKCAB_TATRA_SOURCE_GLTF and PINKCAB_TATRA_V12_CLEAN_DIR are required")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 def descendants(root):
