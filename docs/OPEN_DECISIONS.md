@@ -34,7 +34,7 @@ FIRST EURO includes full L1+L2; hero Tatra; taxi/fare/passenger; persistent repe
 
 Post-FIRST-EURO implementation: multiplayer/coop/shared rooms/network stack, including cross-player PassengerIdentity review propagation/community reputation; L3 gameplay; lifestyle ServiceNodes; full Taxi Regulator; daily insurance.
 
-Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 readiness is **71.2%** from 196 Technical Owner Pack rows.
+Previous ≈59% six-domain readiness snapshot is historical. Current normalized code-only START-90 planning snapshot is **72.7%** from 196 Technical Owner Pack rows. It tracks unresolved specification decisions and is not a blanket development hold.
 
 ## `OD-ARCH-BUY-BEFORE-BUILD-001` — LOCKED DIRECTION
 
