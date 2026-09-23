@@ -109,6 +109,47 @@ jobs:
             throw 'CD869_METAROAD_ASSETS_NOT_STAGED'
           }
 
+      - name: Generate endless Level 1 candidate map once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $trackedMap = @(git ls-files 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap')
+          if ($trackedMap.Count -gt 0) {
+            Write-Host 'CD869_ENDLESS_MAP_TRACKED=1'
+            exit 0
+          }
+
+          $mapFile = Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps\L_PinkCab_L1_EndlessStraight.umap'
+          Remove-Item -LiteralPath $mapFile -Force -ErrorAction SilentlyContinue
+
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_MAP_GENERATOR.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path $mapFile)) { throw 'CD869_ENDLESS_MAP_NOT_GENERATED' }
+          if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
+            throw 'CD869_ENDLESS_MAP_GENERATOR_FAILED'
+          }
+          Write-Host 'CD869_ENDLESS_MAP_GENERATED=PASS'
+
+      - name: Commit endless Level 1 candidate map once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $trackedMap = @(git ls-files 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap')
+          if ($trackedMap.Count -gt 0) {
+            Write-Host 'CD869_ENDLESS_MAP_COMMIT_SKIP_TRACKED=1'
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap
+          if (git diff --cached --quiet) { throw 'CD869_ENDLESS_MAP_NOT_STAGED' }
+          git commit -m 'asset(CD-869): add endless Level 1 candidate map [skip ci]'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "CD869_ENDLESS_MAP_COMMIT=$((git rev-parse HEAD).Trim())"
+
       - name: Run focused endless-road automation
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
