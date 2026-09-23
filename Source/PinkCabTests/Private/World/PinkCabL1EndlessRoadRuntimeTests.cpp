@@ -230,6 +230,12 @@ bool FPinkCabL1EndlessRoadStreamerWindowTest::RunTest(const FString& Parameters)
         {-2, -1, 0, 1, 2, 3, 4});
     TestEqual(TEXT("exactly seven physical road actors exist"),
         PinkCabL1EndlessRoadStreamerTests::CountChunkActors(*World), 7);
+    TestEqual(TEXT("active road graph owns fourteen lanes per materialized chunk"),
+        Streamer->GetActiveRoadGraphLaneCount(),
+        FPinkCabL1EndlessRoadModel::PoolSize *
+            FPinkCabL1EndlessRoadModel::GroundLaneCount);
+    TestFalse(TEXT("active road graph exposes a deterministic topology signature"),
+        Streamer->GetActiveRoadGraphSignature().IsEmpty());
 
     TestTrue(TEXT("next positive chunk refreshes by reuse"),
         Streamer->RefreshForState(FVector(150000.0, 0.0, 0.0), FVector(100.0, 0.0, 0.0)));
@@ -284,6 +290,10 @@ bool FPinkCabL1EndlessRoadStreamerLongRunTest::RunTest(const FString& Parameters
     const FString OriginIdA =
         PinkCabL1EndlessRoadStreamerTests::FindActiveIdForIndex(*Streamer, 0);
     TestFalse(TEXT("origin logical id is present"), OriginIdA.IsEmpty());
+    const FString OriginGraphSignatureA =
+        Streamer->GetActiveRoadGraphSignature();
+    TestFalse(TEXT("origin active road graph signature exists"),
+        OriginGraphSignatureA.IsEmpty());
 
     bool bAllRefreshes = true;
     int32 MaxPool = Streamer->GetPoolSize();
@@ -324,6 +334,9 @@ bool FPinkCabL1EndlessRoadStreamerLongRunTest::RunTest(const FString& Parameters
     const FString OriginIdB =
         PinkCabL1EndlessRoadStreamerTests::FindActiveIdForIndex(*Streamer, 0);
     TestEqual(TEXT("origin logical identity reconstructs exactly"), OriginIdB, OriginIdA);
+    TestEqual(TEXT("origin active RoadGraph reconstructs exactly"),
+        Streamer->GetActiveRoadGraphSignature(),
+        OriginGraphSignatureA);
     TestEqual(TEXT("return still has seven physical actors"),
         PinkCabL1EndlessRoadStreamerTests::CountChunkActors(*World), 7);
     return true;
