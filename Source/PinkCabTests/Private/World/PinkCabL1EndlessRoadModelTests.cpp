@@ -148,4 +148,109 @@ bool FPinkCabL1EndlessRoadDirectionHysteresisTest::RunTest(const FString& Parame
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadTopologyTest,
+    "PinkCab.World.L1EndlessRoad.Model.StraightChunkTopology",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadTopologyTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabCityIdentity City =
+        FPinkCabCityIdentity::Create(TEXT("L1-ENDLESS"), TEXT("gen-v1"), TEXT("road-v1"));
+
+    FPinkCabRoadGraph Graph;
+    TestTrue(TEXT("one straight chunk appends"),
+        FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 0, Graph));
+    TestEqual(TEXT("one chunk contributes fourteen ground lanes"),
+        Graph.NumLanes(), FPinkCabL1EndlessRoadModel::GroundLaneCount);
+
+    const FPinkCabChunkId Chunk0 = FPinkCabChunkId::From(City, {0, 0, 0});
+    const FPinkCabChunkId Chunk1 = FPinkCabChunkId::From(City, {1, 0, 0});
+
+    for (int32 Lane = 0; Lane < 5; ++Lane)
+    {
+        TestNotNull(TEXT("positive express lane exists"),
+            Graph.FindLane(FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 0, Lane)));
+        TestNotNull(TEXT("negative express lane exists"),
+            Graph.FindLane(FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 1, Lane)));
+    }
+    for (int32 Lane = 0; Lane < 2; ++Lane)
+    {
+        TestNotNull(TEXT("positive local lane exists"),
+            Graph.FindLane(FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 2, Lane)));
+        TestNotNull(TEXT("negative local lane exists"),
+            Graph.FindLane(FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 3, Lane)));
+    }
+
+    TestNotEqual(TEXT("same lane slot in adjacent chunk has distinct lane id"),
+        FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 0, 0).Serialize(),
+        FPinkCabRoadGraph::MakeLaneId(City, Chunk1, 0, 0).Serialize());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadSeamConnectivityTest,
+    "PinkCab.World.L1EndlessRoad.Model.AdjacentChunkConnectivity",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadSeamConnectivityTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabCityIdentity City =
+        FPinkCabCityIdentity::Create(TEXT("L1-ENDLESS"), TEXT("gen-v1"), TEXT("road-v1"));
+
+    FPinkCabRoadGraph Graph;
+    TestTrue(TEXT("chunk zero appends"),
+        FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 0, Graph));
+    TestTrue(TEXT("chunk one appends"),
+        FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 1, Graph));
+    TestEqual(TEXT("two chunks contribute twenty eight lanes"), Graph.NumLanes(), 28);
+
+    const FPinkCabChunkId Chunk0 = FPinkCabChunkId::From(City, {0, 0, 0});
+    const FPinkCabChunkId Chunk1 = FPinkCabChunkId::From(City, {1, 0, 0});
+
+    const FPinkCabLaneId Positive0 = FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 0, 0);
+    const FPinkCabLaneId Positive1 = FPinkCabRoadGraph::MakeLaneId(City, Chunk1, 0, 0);
+    const TArray<FPinkCabLaneId> PositiveNext = Graph.GetNextLanes(Positive0);
+    TestTrue(TEXT("positive carriageway crosses seam into same lane slot"),
+        PositiveNext.ContainsByPredicate([&](const FPinkCabLaneId& Id)
+        {
+            return Id == Positive1;
+        }));
+
+    const FPinkCabLaneId Negative1 = FPinkCabRoadGraph::MakeLaneId(City, Chunk1, 1, 0);
+    const FPinkCabLaneId Negative0 = FPinkCabRoadGraph::MakeLaneId(City, Chunk0, 1, 0);
+    const TArray<FPinkCabLaneId> NegativeNext = Graph.GetNextLanes(Negative1);
+    TestTrue(TEXT("negative carriageway crosses seam toward previous chunk"),
+        NegativeNext.ContainsByPredicate([&](const FPinkCabLaneId& Id)
+        {
+            return Id == Negative0;
+        }));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadTopologyReconstructionTest,
+    "PinkCab.World.L1EndlessRoad.Model.TopologyReconstruction",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadTopologyReconstructionTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabCityIdentity City =
+        FPinkCabCityIdentity::Create(TEXT("L1-ENDLESS"), TEXT("gen-v1"), TEXT("road-v1"));
+
+    FPinkCabRoadGraph Forward;
+    TestTrue(TEXT("forward chunk zero"), FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 0, Forward));
+    TestTrue(TEXT("forward chunk one"), FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 1, Forward));
+
+    FPinkCabRoadGraph ReverseInsertion;
+    TestTrue(TEXT("reverse insertion chunk one"), FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 1, ReverseInsertion));
+    TestTrue(TEXT("reverse insertion chunk zero"), FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(City, 0, ReverseInsertion));
+
+    TestEqual(TEXT("topology signature ignores chunk insertion order"),
+        Forward.GetTopologySignature(),
+        ReverseInsertion.GetTopologySignature());
+    return true;
+}
+
 #endif
