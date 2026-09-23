@@ -266,7 +266,7 @@ jobs:
           }
           Write-Host "PINKCAB_LOCAL_BINARY_NORMALIZATION_PASS"
 
-      - name: Fast recovery smoke matrix
+      - name: Fast verification matrix
         if: ${{ env.GATE_LANE == 'fast' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -299,7 +299,7 @@ jobs:
           $summary | Set-Content (Join-Path $ev "FAST_MATRIX.txt")
           Write-Host "FAST_MATRIX_PASS count=$($summary.Count)"
 
-      - name: Input and recovery automated matrix
+      - name: Input and control automated matrix
         if: ${{ env.GATE_LANE == 'human_gate' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
