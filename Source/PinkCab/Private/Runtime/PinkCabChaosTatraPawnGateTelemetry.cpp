@@ -6,8 +6,6 @@
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitSlot.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "GameFramework/PlayerController.h"
-#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 
 namespace
@@ -136,16 +134,6 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
         CockpitState.GetIgnitionState() == EPinkCabIgnitionState::Running;
     const bool bDriverCameraActive =
         DriverCamera && DriverCamera->IsActive();
-    const bool bWorldPaused = UGameplayStatics::IsGamePaused(this);
-    const float WorldDeltaSeconds = GetWorld() ? GetWorld()->GetDeltaSeconds() : -1.0f;
-    const float ActorVelocityCmPerSec = GetVelocity().Size2D();
-    const APlayerController* PC = Cast<APlayerController>(GetController());
-    const bool bQHeld = PC && PC->IsInputKeyDown(EKeys::Q);
-    const bool bWHeld = PC && PC->IsInputKeyDown(EKeys::W);
-    const bool bEHeld = PC && PC->IsInputKeyDown(EKeys::E);
-    const int32 WheelRecipient = static_cast<int32>(VehicleControlRuntime.GetLastWheelRecipient());
-    const float ThrottleTarget = VehicleControlRuntime.GetThrottleTarget();
-    const uint32 LaunchSerial = VehicleControlRuntime.GetLaunchSerial();
     USkeletalMeshComponent* VehicleMesh = GetMesh();
     const bool bAnyRigidBodyAwake =
         VehicleMesh && VehicleMesh->IsAnyRigidBodyAwake();
@@ -153,12 +141,12 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
     UE_LOG(
         LogTemp,
         Display,
-        TEXT("PINKCAB_GATE_STATE menu=%d paused=%d worlddt=%.4f awake=%d velcm=%.3f ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f longcm=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d gaze=%d camera=%d aimvalid=%d aimyaw=%.2f aimpitch=%.2f wheels=%d qheld=%d wheld=%d eheld=%d wheelpending=%d wheelrecipient=%d throttletarget=%.3f launchserial=%u contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
+        TEXT("PINKCAB_GATE_STATE menu=%d paused=%d worlddt=%.4f awake=%d velcm=%.3f ignition=%d requested=%d engaged=%d throttle=%.3f brake=%.3f clutch=%.3f handbrake=%.3f steering=%.3f speed=%.3f dist=%.1f longcm=%.1f gearx=%.3f geary=%.3f target=%s grip=%d manipulation=%d gaze=%d camera=%d aimvalid=%d aimyaw=%.2f aimpitch=%.2f wheels=%d wheelpending=%d wheelrecipient=%d throttletarget=%.3f launchserial=%u contacts=%d chaos_current=%d chaos_target=%d rpm=%.1f rear_drive=(%.1f,%.1f) rear_brake=(%.1f,%.1f)"),
         static_cast<int32>(IsSystemMenuOpen()),
-        static_cast<int32>(bWorldPaused),
-        WorldDeltaSeconds,
+        static_cast<int32>(UGameplayStatics::IsGamePaused(this)),
+        GetWorld() ? GetWorld()->GetDeltaSeconds() : -1.0f,
         static_cast<int32>(bAnyRigidBodyAwake),
-        ActorVelocityCmPerSec,
+        GetVelocity().Size2D(),
         static_cast<int32>(bIgnitionRunning),
         GetRequestedGear(),
         GetEngagedGear(),
@@ -181,13 +169,10 @@ void APinkCabChaosTatraPawn::EmitPackagedGateTelemetry(const double NowSeconds)
         Aim.IgnitionYawDeg,
         Aim.IgnitionPitchDeg,
         Chaos.WheelCount,
-        static_cast<int32>(bQHeld),
-        static_cast<int32>(bWHeld),
-        static_cast<int32>(bEHeld),
         PendingMouseWheelSteps,
-        WheelRecipient,
-        ThrottleTarget,
-        LaunchSerial,
+        static_cast<int32>(VehicleControlRuntime.GetLastWheelRecipient()),
+        VehicleControlRuntime.GetThrottleTarget(),
+        VehicleControlRuntime.GetLaunchSerial(),
         Chaos.ContactCount,
         Chaos.CurrentGear,
         Chaos.TargetGear,
