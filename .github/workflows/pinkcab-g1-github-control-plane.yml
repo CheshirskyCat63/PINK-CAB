@@ -95,6 +95,25 @@ jobs:
           $body=@{state='pending';context=$context;description="PINK-CAB $env:GATE_LANE running";target_url="$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"}|ConvertTo-Json
           Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$env:CANDIDATE_SHA" -Headers @{Authorization="Bearer $env:GH_TOKEN";Accept='application/vnd.github+json'} -ContentType 'application/json' -Body $body | Out-Null
 
+      - name: Human-gate release trust preflight
+        if: ${{ env.GATE_LANE == 'human_gate' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $subject='CN=CHESHIRE DIVISION PINKCAB DEV'
+          $cert=Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
+            Where-Object {$_.Subject -eq $subject -and $_.HasPrivateKey} |
+            Sort-Object NotAfter -Descending | Select-Object -First 1
+          if(-not $cert){throw 'PINKCAB_RELEASE_TRUST_REQUIRED: dev signing identity is missing'}
+          $root=Get-ChildItem Cert:\LocalMachine\Root -ErrorAction SilentlyContinue |
+            Where-Object {$_.Thumbprint -eq $cert.Thumbprint} | Select-Object -First 1
+          $publisher=Get-ChildItem Cert:\LocalMachine\TrustedPublisher -ErrorAction SilentlyContinue |
+            Where-Object {$_.Thumbprint -eq $cert.Thumbprint} | Select-Object -First 1
+          if(-not $root -or -not $publisher){
+            throw 'PINKCAB_RELEASE_TRUST_REQUIRED: enforced Smart App Control requires the PINK-CAB dev signer in LocalMachine Root + TrustedPublisher (or external Trusted Signing) before Editor commandlets/full cook can run'
+          }
+          Write-Host "PINKCAB_RELEASE_MACHINE_TRUST=PASS Thumbprint=$($cert.Thumbprint)"
+
       - name: Build standalone game executable
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
