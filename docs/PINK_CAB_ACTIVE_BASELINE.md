@@ -1,6 +1,21 @@
 # PINK CAB · Active Product Baseline
 
 Status: ACTIVE PRODUCT AUTHORITY COMPANION
+
+## Owner-accepted working baseline · 2026-09-23
+
+- Runtime source SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
+- GitHub Actions run: `35809749568`
+- Successful job: `PINK-CAB code-only standalone human build`
+- Delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`
+- Desktop handoff: `PINKCAB Latest.lnk`
+- PR #7: MERGED
+- Canonical integration merge: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
+- Accepted SHA → integration tree: zero changed files
+- Administrative cleanup: CD-868 DONE
+- Canonical development branch: `main`
+
+This is the owner-accepted **working baseline**, not a declaration that all FIRST EURO scope is complete. Future gameplay changes need a new exact SHA and new human acceptance before superseding it.
 Jira root: `CD-519`
 BASE-100 code architecture: `docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md` / Confluence `11239425` / `CD-746..753`
 Readiness: `docs/PINK_CAB_START90_READINESS.md` / Confluence `6553617` / `CD-660/CD-661`
