@@ -2,6 +2,8 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabL1TraversalState.h"
+#include "Vehicle/PinkCabL1TraversalConfig.h"
+#include "Vehicle/PinkCabL1TraversalTransitionPolicy.h"
 
 namespace PinkCabL1TraversalTests
 {
@@ -159,6 +161,41 @@ bool FPinkCabL1UnsupportedMassTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("unsupported mass fails closed"), Result.Phase, EPinkCabL1TraversalPhase::Failed);
     TestEqual(TEXT("unsupported mass reason"), Result.Failure, EPinkCabL1TraversalFailure::UnsupportedMass);
     TestFalse(TEXT("unsupported mass emits no constraint"), Result.bConstraintRequested);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1TransitionPolicySeamTest,
+    "PinkCab.Vertical.L1.Traversal.TransitionPolicySeam",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1TransitionPolicySeamTest::RunTest(const FString& Parameters)
+{
+    FPinkCabL1TraversalConfig Config;
+    TestTrue(TEXT("road accepts wall"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromRoad(
+            Config, EPinkCabVerticalContactKind::WallLeft));
+    TestTrue(TEXT("road accepts freight"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromRoad(
+            Config, EPinkCabVerticalContactKind::FreightCeiling));
+    TestTrue(TEXT("road accepts gap hook"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromRoad(
+            Config, EPinkCabVerticalContactKind::PoplarGapHook));
+    TestFalse(TEXT("road rejects receiving strip"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromRoad(
+            Config, EPinkCabVerticalContactKind::ReceivingStrip));
+    TestTrue(TEXT("wall accepts receiving strip"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromWall(
+            Config, EPinkCabVerticalContactKind::ReceivingStrip));
+
+    Config.bAllowWallToGapTransfer = false;
+    TestFalse(TEXT("config can close only wall-to-gap transition"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromWall(
+            Config, EPinkCabVerticalContactKind::PoplarGapHook));
+    TestTrue(TEXT("wall-to-freight remains allowed"),
+        FPinkCabL1TraversalTransitionPolicy::CanEnterFromWall(
+            Config, EPinkCabVerticalContactKind::FreightCeiling));
     return true;
 }
 

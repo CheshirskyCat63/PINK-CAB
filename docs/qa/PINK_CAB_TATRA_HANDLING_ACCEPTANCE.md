@@ -1,15 +1,15 @@
 # PINK CAB QA · Tatra Handling Acceptance
 
 **Status:** QA SPECIFIED — RUNTIME NOT VERIFIED
-**Authority:** `docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`
-**Vehicle stack:** `docs/PINK_CAB_VEHICLE_TECH_STACK_FGEAR_VDS.md`
-**Jira:** owner `CD-729`; FGear profile `CD-732`; wet calibration `CD-734`; expression `CD-735`; integrated QA `CD-738`; telemetry `CD-657`; acceptance `CD-658`; mass/vertical `CD-701`
+**Authority:** `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md` + `docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md`
+**Vehicle stack:** `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`
+**Jira:** handling owner `CD-648`; steering `CD-649`; handbrake `CD-653`; clutch `CD-659`; telemetry `CD-657`; acceptance `CD-658`; mass/vertical `CD-701`; technology reconciliation `CD-843`
 
-Every result records exact build/commit, UE/FGear/VDS versions as relevant, Tatra physics/tire/surface/expression profile versions and exact load fixture.
+Every result records exact build/commit, UE 5.8.x / Chaos profile versions as relevant, Tatra physics/tire/surface/expression profile versions and exact load fixture.
 
 ## PC-T-HND-000 · Sole solver
 
-Pass: hero Tatra road forces come from FGear; no parallel Chaos/custom tire/suspension/drivetrain solver contributes forces. VDS deformation and Tatra Expression are separate from road solver.
+Pass: hero Tatra road forces come from native Chaos Vehicles through the PINK CAB provider; no parallel second tire/suspension/drivetrain solver contributes forces. Presentation/expression stays separate from road-dynamics authority.
 
 ## PC-T-HND-001 · Low-speed steering precision
 
@@ -37,7 +37,7 @@ Measure speed-gain target family: `1.00 <=40 / ~0.72 @100 / ~0.52 @160 / ~0.42 @
 
 ## PC-T-GRP-001 · Progressive grip release
 
-Run dry/wet/storm slip sweeps in FGear. Reject tire-force cliffs, hidden drift-tire swaps or binary grip modes. Dry/wet/storm μ seeds are calibration inputs, not acceptance law by themselves.
+Run dry/wet/storm slip sweeps in the native Chaos/PINK CAB profile. Reject tire-force cliffs, hidden drift-tire swaps or binary grip modes. Dry/wet/storm μ seeds are calibration inputs, not acceptance law by themselves.
 
 ## PC-T-WET-001 · Wet >160 maintained-throttle escalation
 
@@ -53,7 +53,7 @@ Pass: rear longitudinal demand drops, lateral reserve recovers, and player steer
 
 ## PC-T-DRIFT-001 · Entry families
 
-Throttle, weight-transfer/lift and analog handbrake can each produce rear-slip entry through one continuous FGear tire model. Useful sustained sideslip target = **18–40°**.
+Throttle, weight-transfer/lift and analog handbrake can each produce rear-slip entry through one continuous Chaos/PINK CAB tire model. Useful sustained sideslip target = **18–40°**.
 
 ## PC-T-DRIFT-002 · Recovery
 
@@ -61,7 +61,7 @@ Competent trace recovers representative slide through player steering/throttle t
 
 ## PC-T-DRIFT-003 · Full spin remains possible
 
-Committed bad input can exceed 90° sideslip/complete spin. Any C+ yaw edge guard remains bounded/separately logged.
+Committed bad input can exceed 90° sideslip/complete spin. No C+ yaw edge guard/yaw rescue may contribute.
 
 ## PC-T-ELEC-001 · ABS absent
 
@@ -89,7 +89,7 @@ Clutch physical state remains continuous/deterministic through Q press/release.
 
 ## PC-T-CL-002 · Release-speed fine control
 
-Contextual wheel changes **release-speed setting**, never instantaneous clutch pressure. Verify ordered durations across at least 10 representative positions and confirm implementation exposes **>=64 smooth addressable settings** across approximately **0.20–1.20 s** envelope.
+Contextual wheel changes **release-speed setting**, never instantaneous clutch pressure. Verify ordered durations across at least 10 representative positions and verify monotonic player-adjustable release timing across representative settings. The final numeric range is a reconciliation item and is **not a locked pass criterion** until explicitly accepted.
 
 ## PC-T-LAUNCH-001 · Start outcomes
 
@@ -97,7 +97,7 @@ Deterministic throttle + release-speed matrix demonstrates real stall possibilit
 
 ## PC-T-BODY-001 · Physical vs expression channels
 
-Changing only expression profile may change visible/camera/audio roll/pitch/heave/shake, never FGear tire forces/collision/trajectory beyond numerical noise.
+Changing only expression profile may change visible/camera/audio roll/pitch/heave/shake, never Chaos tire forces/collision/trajectory beyond numerical noise.
 
 ## PC-T-BODY-002 · Speed expression ladder
 
@@ -109,7 +109,7 @@ At ~0.8g target physical roll roughly **4.5–5.5°**. Nominal visible roll begi
 
 ## PC-T-SURF-001 · Rut
 
-Verify `RUT → FGEAR WHEEL/SUSPENSION → PHYSICAL BODY → STEERING TREMOR → EXPRESSION → AUDIO/VFX`. No random shake without owning physical/surface state.
+Verify `RUT → CHAOS WHEEL/SUSPENSION → PHYSICAL BODY → STEERING TREMOR → EXPRESSION → AUDIO/VFX`. No random shake without owning physical/surface state.
 
 ## PC-T-SURF-002 · Pothole / patch / crack
 
@@ -139,7 +139,7 @@ For `1657 < m < 2107`, expected `timeout_s = 5.0 - (m - 1657)/450`. Test at leas
 
 ## PC-T-DMG-001 · Damage does not bypass handling ownership
 
-VDS deformation alone must not mutate FGear handling. Only authored Vehicle Health consequence from configured hit zone may alter approved FGear/runtime parameters. Compare cosmetic dent vs wheel-corner damage.
+Presentation/deformation alone must not mutate Chaos handling. Only authored Vehicle Health consequences from configured hit zones may alter approved runtime parameters. Compare cosmetic dent vs wheel-corner damage.
 
 ## PC-T-DET-001 · Cross-FPS replay
 
@@ -153,7 +153,13 @@ Fail on NaN/inf, stuck controls, unexplained energy gain, growing oscillation, h
 
 ## Required telemetry
 
-Build/commit; UE/FGear/VDS/profile versions; total mass/fuel/occupants; speed; raw/filtered steering/gain/road-wheel angles; throttle/brake/clutch/handbrake; clutch release-speed; gear/rpm/torque; wheel loads/slip/forces; yaw/sideslip; suspension travel/velocity; physical roll/pitch/heave; expression channels separately; surface id; camera/cabin/trim; yaw-edge-guard term; damage/hit-zone consequence id; `ABS=false`; `ESP=false`; evidence artifact.
+Build/commit; UE/Chaos/PINK CAB profile versions; total mass/fuel/occupants; speed; raw/filtered steering/gain/road-wheel angles; throttle/brake/clutch/handbrake; clutch release-speed; gear/rpm/torque; wheel loads/slip/forces; yaw/sideslip; suspension travel/velocity; physical roll/pitch/heave; expression channels separately; surface id; camera/cabin/trim; yaw-rescue contribution (must be zero); damage/hit-zone consequence id; `ABS=false`; `ESP=false`; evidence artifact.
+
+## 2026-09-18 release-matrix overlay
+
+The canonical control/mechanics release checks `QA-01..QA-20` are defined in [`PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md`](../PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md). They include steering sign/FPS, per-launch E+wheel reset, wheel-recipient routing, continuous half-clutch, H-gate/N topology, requested-vs-engaged refusal behavior, analog handbrake, no hidden assist, stall/restart, drivetrain-damage persistence and the 30-minute normal-driving owner gate.
+
+All are **NOT RUN** until exact executable evidence is captured.
 
 ## Maturity
 

@@ -3,7 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCockpitVisualMappingTest,
@@ -12,16 +12,24 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabCockpitVisualMappingTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("full left steering maps to -450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), -450.0f);
-    TestEqual(TEXT("full right steering maps to 450 degrees"),
-        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), 450.0f);
+    TestEqual(TEXT("semantic full left maps through Tatra wheel adapter to +450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(-1.0f), 450.0f);
+    TestEqual(TEXT("semantic full right maps through Tatra wheel adapter to -450 degrees"),
+        UPinkCabCockpitVisualDriverComponent::SteeringAngleDegrees(1.0f), -450.0f);
     TestEqual(TEXT("full pedal travel is bounded"),
         UPinkCabCockpitVisualDriverComponent::PedalTravelDegrees(1.0f), 18.0f);
     TestEqual(TEXT("half handbrake gets proportional lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -16.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(0.5f), -10.0f);
     TestEqual(TEXT("full handbrake gets bounded lever angle"),
-        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -32.0f);
+        UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(1.0f), -20.0f);
+    TestEqual(TEXT("cold temperature needle starts at low stop"),
+        UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(0.0f), -60.0f);
+    TestEqual(TEXT("full fuel needle reaches high stop"),
+        UPinkCabCockpitVisualDriverComponent::FuelNeedleAngleDegrees(1.0f), 60.0f);
+    TestEqual(TEXT("speedometer midpoint is 110 kmh"),
+        UPinkCabCockpitVisualDriverComponent::SpeedometerNeedleAngleDegrees(110.0f), 0.0f);
+    TestEqual(TEXT("tachometer midpoint is 3500 rpm"),
+        UPinkCabCockpitVisualDriverComponent::TachometerNeedleAngleDegrees(3500.0f), 0.0f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -32,11 +40,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabCockpitVisualGearPoseTest::RunTest(const FString& Parameters)
 {
     const FVector Neutral = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(0);
-    const FVector Reverse = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(-1);
+    const FVector First = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(1);
+    const FVector Second = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(2);
     const FVector Fifth = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(5);
+    const FVector Reverse = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(-1);
     TestEqual(TEXT("neutral gear lever is centered"), Neutral, FVector::ZeroVector);
-    TestTrue(TEXT("reverse has distinct lever pose"), Reverse != Neutral);
-    TestTrue(TEXT("fifth has distinct lever pose"), Fifth != Neutral && Fifth != Reverse);
+    TestTrue(TEXT("first is physical forward-left"), First.X < 0.0f && First.Y < 0.0f);
+    TestTrue(TEXT("second is physical rear-left"), Second.X < 0.0f && Second.Y > 0.0f);
+    TestTrue(TEXT("fifth is physical forward-right"), Fifth.X > 0.0f && Fifth.Y < 0.0f);
+    TestTrue(TEXT("reverse is physical rear-right"), Reverse.X > 0.0f && Reverse.Y > 0.0f);
     return true;
 }
 
@@ -72,4 +84,19 @@ bool FPinkCabCockpitPresentationFlagsTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabSteeringGeometricPivotTest,
+    "PinkCab.Cockpit.VisualDriver.SteeringGeometricPivot",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabSteeringGeometricPivotTest::RunTest(const FString& Parameters)
+{
+    const FTransform Base(FRotator(0.0f, 180.0f, 0.0f), FVector(48.0f, -44.0f, 82.0f), FVector::OneVector);
+    const FVector MeshCenter(8.0f, -3.0f, 2.0f);
+    const FRotator Offset(0.0f, 0.0f, 90.0f);
+    const FVector Before = Base.TransformPosition(MeshCenter);
+    const FVector NewLocation = UPinkCabCockpitVisualDriverComponent::PivotCompensatedLocation(Base, MeshCenter, Offset);
+    const FTransform After(Base.Rotator() + Offset, NewLocation, Base.GetScale3D());
+    TestTrue(TEXT("steering mesh center remains fixed while wheel rotates"), Before.Equals(After.TransformPosition(MeshCenter), 0.01f));
+    return true;
+}
 #endif

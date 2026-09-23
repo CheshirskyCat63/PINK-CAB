@@ -49,12 +49,12 @@ Older START→ATTENTION→GO wording is superseded where it conflicts with this 
 
 The later owner correction supersedes the old interpretation that RMB+XY alone manipulates Gearbox/Handbrake.
 
-- RMB = acquire/retain the selected physical control only.
-- RMB alone keeps mouse XY on steering; it does not move Gearbox or Handbrake.
-- LMB while RMB is holding Gearbox/Handbrake begins lever manipulation and transfers mouse XY exclusively to that lever.
-- While lever manipulation is active, the current steering command is held; it is not reset and the same XY sample is not also applied to steering.
-- Releasing LMB ends lever manipulation and returns XY to steering even if RMB remains held.
-- Releasing RMB ends the grip. A consumed quick-recall target must no longer remain eligible for ghost input/prompt.
+- RMB = optional universal acquire/retain for any valid selected physical control. RMB by itself never actuates that control.
+- LMB and mouse wheel do **not** require RMB first: when the remembered/current target supports the gesture, they execute that contextual action directly.
+- LMB on Gearbox/Handbrake may begin direct lever manipulation without RMB; RMB remains available when the driver wants to retain the target.
+- While lever manipulation is active, mouse XY belongs exclusively to that lever and the current steering command is held.
+- Releasing LMB ends lever manipulation and returns XY to steering. Releasing RMB ends only the optional retain.
+- Quick recall `1/2/3/4` is visually key-held only: its prompt disappears immediately on key release even if the underlying remembered target remains available for tap-then-act.
 - Gear request is produced by the physical H-gate path; actual engagement remains owned by the common validator. LMB/RMB release never performs a second commit.
 - Q may stage Gearbox while clutch remains independent, but Q never grips/manipulates the lever and cannot steal an active grip.
 
@@ -95,6 +95,7 @@ Steering, throttle, brake, clutch and handbrake are continuous states/commands.
 - 25%, 50% and 100% handbrake pull must produce distinguishable braking;
 - brake and throttle remain independently controllable and may coexist;
 - wheel routing must never apply one detent to both pedal logic and a cockpit control.
+- isolated wheel detents remain precise; sustained same-direction wheel input accelerates progressively, while a pause or direction reversal resets the burst response.
 
 ### Clutch numeric range
 
@@ -145,7 +146,7 @@ Balance target: a healthy car should survive **30 minutes of normal active urban
 These are implementation tasks/findings, not runtime proof:
 
 - explicit steering-sign inversion exists in the Chaos provider path; trace the full sign chain and fix only the wrong conversion;
-- current steering gain changes strongly with speed; measure full transfer behavior and FPS sensitivity;
+- steering is explicitly **manual / no hydraulic or electric assist**: heavy and slow at standstill, lighter once rolling, but high-speed target gain and response must calm rather than increase; measure full transfer behavior and FPS sensitivity;
 - mouse delta clamp/interpolation may lose or accumulate fast motion; verify at 30/60/120 FPS;
 - per-launch throttle target reset is required; verify exactly one reset per new launch;
 - current clutch bridge behaves like a binary threshold; replace with continuous torque transfer;

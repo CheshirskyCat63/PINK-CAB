@@ -19,6 +19,11 @@ FName UPinkCabCockpitInteractionComponent::TargetForQuickSlot(const int32 Slot)
     }
 }
 
+bool UPinkCabCockpitInteractionComponent::IsLeverManipulationTarget(const FName TargetId)
+{
+    return TargetId == TEXT("Gearbox") || TargetId == TEXT("Handbrake");
+}
+
 FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::SpecForTargetId(const FName TargetId)
 {
     return PinkCabInteractionSpecForTargetId(TargetId);
@@ -28,8 +33,15 @@ void UPinkCabCockpitInteractionComponent::SetQuickSlotHeld(const int32 Slot, con
 {
     if (Slot < 1 || Slot > QuickSlots.Num()) return;
     FQuickSlotState& State = QuickSlots[Slot - 1];
-    if (bHeld && !State.bHeld) State.PressSerial = NextPressSerial++;
+    if (bHeld && !State.bHeld)
+    {
+        State.PressSerial = NextPressSerial++;
+        CurrentTarget = SpecForTargetId(TargetForQuickSlot(Slot));
+        bCurrentTargetFromQuickRecall = !CurrentTarget.Id.IsNone();
+        bCurrentTargetRecallConsumed = false;
+    }
     State.bHeld = bHeld;
+    ClearConsumedRecallIfIdle();
 }
 
 FName UPinkCabCockpitInteractionComponent::GetCurrentQuickTargetId() const
@@ -51,6 +63,36 @@ FName UPinkCabCockpitInteractionComponent::GetCurrentQuickTargetId() const
 void UPinkCabCockpitInteractionComponent::SetCurrentTarget(const FPinkCabInteractionControlSpec& Spec)
 {
     CurrentTarget = Spec;
+    bCurrentTargetFromQuickRecall = false;
+    bCurrentTargetRecallConsumed = false;
+}
+
+void UPinkCabCockpitInteractionComponent::MarkRecalledTargetConsumed(const FName TargetId)
+{
+    if (TargetId.IsNone()) return;
+    if (bCurrentTargetFromQuickRecall && CurrentTarget.Id == TargetId)
+    {
+        bCurrentTargetRecallConsumed = true;
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::ClearConsumedRecallIfIdle()
+{
+    // Quick access is ephemeral UI/target ownership. Once every 1/2/3/4 key
+    // is released it must disappear immediately unless an interaction that
+    // started while it was held is still active.
+    if (!bCurrentTargetFromQuickRecall
+        || bGripActive
+        || bMomentaryActive
+        || bManipulationActive
+        || !GetCurrentQuickTargetId().IsNone())
+    {
+        return;
+    }
+
+    CurrentTarget = {};
+    bCurrentTargetFromQuickRecall = false;
+    bCurrentTargetRecallConsumed = false;
 }
 
 FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiveSpec() const
@@ -64,7 +106,15 @@ FPinkCabInteractionControlSpec UPinkCabCockpitInteractionComponent::ResolveActiv
         return SpecForTargetId(ActiveGripTargetId);
     }
     const FName QuickTarget = GetCurrentQuickTargetId();
-    return QuickTarget.IsNone() ? CurrentTarget : SpecForTargetId(QuickTarget);
+    if (!QuickTarget.IsNone())
+    {
+        return SpecForTargetId(QuickTarget);
+    }
+    if (bGearboxStageFromClutchHeld)
+    {
+        return SpecForTargetId(TEXT("Gearbox"));
+    }
+    return CurrentTarget;
 }
 
 FName UPinkCabCockpitInteractionComponent::GetCurrentTargetId() const
@@ -75,9 +125,10 @@ FName UPinkCabCockpitInteractionComponent::GetCurrentTargetId() const
 bool UPinkCabCockpitInteractionComponent::BeginGrip(FPinkCabInteractionEvent& OutEvent)
 {
     const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
-    if (Spec.Id.IsNone() || !Spec.bSupportsGrip) return false;
+    if (Spec.Id.IsNone()) return false;
     bGripActive = true;
     ActiveGripTargetId = Spec.Id;
+    MarkRecalledTargetConsumed(Spec.Id);
     OutEvent = {Spec.Id, EPinkCabInteractionGesture::GripBegin, 1};
     return true;
 }
@@ -87,7 +138,9 @@ bool UPinkCabCockpitInteractionComponent::EndGrip(FPinkCabInteractionEvent& OutE
     if (!bGripActive || ActiveGripTargetId.IsNone()) return false;
     OutEvent = {ActiveGripTargetId, EPinkCabInteractionGesture::GripBegin, -1};
     bGripActive = false;
+    bManipulationActive = false;
     ActiveGripTargetId = NAME_None;
+    ClearConsumedRecallIfIdle();
     return true;
 }
 
@@ -97,6 +150,7 @@ bool UPinkCabCockpitInteractionComponent::BeginMomentary(const double NowSeconds
     if (Spec.Id.IsNone() || !Spec.bSupportsMomentary) return false;
     bMomentaryActive = true;
     ActiveMomentaryTargetId = Spec.Id;
+    MarkRecalledTargetConsumed(Spec.Id);
     MomentaryStartSeconds = NowSeconds;
     ++ActuationSerial;
     OutEvent = {Spec.Id, EPinkCabInteractionGesture::PressHold, 1};
@@ -111,6 +165,7 @@ bool UPinkCabCockpitInteractionComponent::EndMomentary(const double NowSeconds, 
     OutEvent = {ActiveMomentaryTargetId, EPinkCabInteractionGesture::PressHold, -1};
     bMomentaryActive = false;
     ActiveMomentaryTargetId = NAME_None;
+    ClearConsumedRecallIfIdle();
     return true;
 }
 
@@ -118,10 +173,137 @@ bool UPinkCabCockpitInteractionComponent::BuildWheelEvent(const int32 SignedStep
 {
     const FPinkCabInteractionControlSpec Spec = ResolveActiveSpec();
     if (SignedSteps == 0 || Spec.Id.IsNone() || !Spec.bSupportsWheel) return false;
-    if (Spec.bSupportsGrip && (!bGripActive || ActiveGripTargetId != Spec.Id)) return false;
     ++ActuationSerial;
+    MarkRecalledTargetConsumed(Spec.Id);
     OutEvent = {Spec.Id, EPinkCabInteractionGesture::WheelIncrement, SignedSteps};
+    ClearConsumedRecallIfIdle();
     return true;
+}
+
+bool UPinkCabCockpitInteractionComponent::TrySelectContextualTarget(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const UPinkCabCockpitAssemblyComponent* Assembly)
+{
+    if (!Assembly)
+    {
+        return false;
+    }
+    const bool bDirectActionRequested =
+        Frame.bMomentaryHeld || Frame.WheelSteps != 0;
+    if (!Frame.bGripHeld && !bDirectActionRequested)
+    {
+        return false;
+    }
+    if (bCurrentTargetFromQuickRecall
+        || !GetCurrentQuickTargetId().IsNone()
+        || bGearboxStageFromClutchHeld)
+    {
+        return false;
+    }
+
+    const FName ContextTarget = Assembly->ResolveGazeTarget(
+        Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+    SetCurrentTarget(SpecForTargetId(ContextTarget));
+    return true;
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    const UPinkCabCockpitAssemblyComponent* Assembly)
+{
+    if (bGripActive || bMomentaryActive)
+    {
+        return;
+    }
+
+    // A recalled control (1/2/3/4, including Q staging the gearbox) is an
+    // explicit driver choice. RMB must grip that target instead of replacing
+    // it with a center-ray miss on the next frame.
+    if (Frame.bGripHeld
+        && ((bCurrentTargetFromQuickRecall && !CurrentTarget.Id.IsNone())
+            || bGearboxStageFromClutchHeld))
+    {
+        return;
+    }
+
+    // Space is an explicit gaze-selection mode and may intentionally replace
+    // the staged target with what the driver is looking at.
+    if (Frame.bGazeHeld && Assembly)
+    {
+        const FName GazeTarget = Assembly->ResolveGazeTarget(
+            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
+        SetCurrentTarget(SpecForTargetId(GazeTarget));
+        return;
+    }
+
+    // RMB captures/retains a control. LMB and wheel can also directly select
+    // and operate the centered contextual control without an RMB prerequisite.
+    if (TrySelectContextualTarget(Frame, Assembly))
+    {
+        return;
+    }
+
+    if (!Frame.bGazeHeld
+        && GetCurrentQuickTargetId().IsNone()
+        && !bCurrentTargetFromQuickRecall)
+    {
+        SetCurrentTarget({});
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateGripState(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    FPinkCabInteractionEvent Event;
+    if (Frame.bGripHeld && !bGripActive)
+    {
+        if (BeginGrip(Event)) OutActuationEvents.Add(Event);
+    }
+    else if (!Frame.bGripHeld && bGripActive)
+    {
+        if (EndGrip(Event)) OutActuationEvents.Add(Event);
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateManipulationState(
+    const FPinkCabCockpitInteractionFrame& Frame)
+{
+    const FName CandidateTarget = bGripActive
+        ? ActiveGripTargetId
+        : (bManipulationActive && !ActiveManipulationTargetId.IsNone()
+            ? ActiveManipulationTargetId
+            : ResolveActiveSpec().Id);
+    bManipulationActive =
+        Frame.bMomentaryHeld
+        && IsLeverManipulationTarget(CandidateTarget);
+    ActiveManipulationTargetId =
+        bManipulationActive ? CandidateTarget : NAME_None;
+}
+
+void UPinkCabCockpitInteractionComponent::UpdateMomentaryState(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    FPinkCabInteractionEvent Event;
+    if (Frame.bMomentaryHeld && !bMomentaryActive)
+    {
+        if (BeginMomentary(Frame.NowSeconds, Event)) OutActuationEvents.Add(Event);
+        return;
+    }
+    if (!Frame.bMomentaryHeld && bMomentaryActive
+        && EndMomentary(Frame.NowSeconds, Event))
+    {
+        OutActuationEvents.Add(Event);
+    }
+}
+
+void UPinkCabCockpitInteractionComponent::AppendWheelEvent(
+    const FPinkCabCockpitInteractionFrame& Frame,
+    TArray<FPinkCabInteractionEvent>& OutActuationEvents)
+{
+    FPinkCabInteractionEvent Event;
+    if (BuildWheelEvent(Frame.WheelSteps, Event)) OutActuationEvents.Add(Event);
 }
 
 void UPinkCabCockpitInteractionComponent::ProcessFrame(
@@ -134,47 +316,14 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     SetQuickSlotHeld(2, Frame.bQuickRecall2Held);
     SetQuickSlotHeld(3, Frame.bQuickRecall3Held);
     SetQuickSlotHeld(4, Frame.bQuickRecall4Held);
+    bGearboxStageFromClutchHeld = Frame.bGearboxStageFromClutchHeld;
 
-    if (Frame.bGazeHeld && Assembly && !bGripActive && !bMomentaryActive)
-    {
-        const FName GazeTarget = Assembly->ResolveGazeTarget(
-            Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
-        SetCurrentTarget(SpecForTargetId(GazeTarget));
-    }
-    else if (!Frame.bGazeHeld && GetCurrentQuickTargetId().IsNone() && !bGripActive && !bMomentaryActive)
-    {
-        SetCurrentTarget({});
-    }
-
-    FPinkCabInteractionEvent Event;
-    if (Frame.bGripHeld && !bGripActive)
-    {
-        BeginGrip(Event);
-    }
-    else if (!Frame.bGripHeld && bGripActive)
-    {
-        EndGrip(Event);
-    }
-
-    if (Frame.bMomentaryHeld && !bMomentaryActive)
-    {
-        if (BeginMomentary(Frame.NowSeconds, Event))
-        {
-            OutActuationEvents.Add(Event);
-        }
-    }
-    else if (!Frame.bMomentaryHeld && bMomentaryActive)
-    {
-        if (EndMomentary(Frame.NowSeconds, Event))
-        {
-            OutActuationEvents.Add(Event);
-        }
-    }
-
-    if (BuildWheelEvent(Frame.WheelSteps, Event))
-    {
-        OutActuationEvents.Add(Event);
-    }
+    UpdateTargetSelection(Frame, Assembly);
+    UpdateGripState(Frame, OutActuationEvents);
+    UpdateManipulationState(Frame);
+    UpdateMomentaryState(Frame, OutActuationEvents);
+    AppendWheelEvent(Frame, OutActuationEvents);
+    ClearConsumedRecallIfIdle();
 }
 
 void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
@@ -188,8 +337,13 @@ void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
     bGazeHeld = false;
     for (FQuickSlotState& Slot : QuickSlots) Slot.bHeld = false;
     CurrentTarget = {};
+    bCurrentTargetFromQuickRecall = false;
+    bCurrentTargetRecallConsumed = false;
+    bGearboxStageFromClutchHeld = false;
     bGripActive = false;
+    bManipulationActive = false;
     ActiveGripTargetId = NAME_None;
+    ActiveManipulationTargetId = NAME_None;
     bMomentaryActive = false;
     ActiveMomentaryTargetId = NAME_None;
     MomentaryStartSeconds = 0.0;

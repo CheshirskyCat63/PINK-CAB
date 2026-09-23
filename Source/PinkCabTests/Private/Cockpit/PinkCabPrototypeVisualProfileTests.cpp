@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabPrototypeVisualProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPrototypeVisualProfileDefaultsTest,
@@ -24,6 +25,13 @@ bool FPinkCabPrototypeVisualProfileDefaultsTest::RunTest(const FString& Paramete
     TestEqual(TEXT("rear-right wheel bone"), Profile.WheelBones[3], FName(TEXT("Phys_Wheel_BR")));
     TestFalse(TEXT("driver transform is explicit, not implicit identity"),
         Profile.DriverTransform.Equals(FTransform::Identity));
+
+    const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Fallback();
+    TestTrue(TEXT("visual profile is valid without donor art"), Visual.IsValid());
+    TestFalse(TEXT("fallback visual profile has no exterior donor"), Visual.HasExteriorAsset());
+    TestFalse(TEXT("fallback visual profile has no cabin donor"), Visual.HasCabinAsset());
+    TestEqual(TEXT("visual profile identity is independent from physics chassis"),
+        Visual.ProfileId, FName(TEXT("PinkCab.Visual.Fallback")));
     return true;
 }
 

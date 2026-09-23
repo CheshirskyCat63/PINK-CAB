@@ -56,11 +56,11 @@ bool FPinkCabCockpitGearAndHandbrakeTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("handbrake engages"), State.IsHandbrakeEngaged());
 
     State.AdjustClutchReleaseSpeed(1);
-    TestTrue(TEXT("positive clutch wheel step changes release calibration"), State.GetClutchReleaseSeconds() > 0.70f);
+    TestTrue(TEXT("positive clutch wheel step makes release faster"), State.GetClutchReleaseSeconds() < 0.70f);
     State.AdjustClutchReleaseSpeed(999);
-    TestEqual(TEXT("clutch release clamps at slow envelope"), State.GetClutchReleaseSeconds(), 1.20f);
+    TestEqual(TEXT("positive clutch wheel clamps at fast envelope"), State.GetClutchReleaseSeconds(), 0.20f);
     State.AdjustClutchReleaseSpeed(-999);
-    TestEqual(TEXT("clutch release clamps at fast envelope"), State.GetClutchReleaseSeconds(), 0.20f);
+    TestEqual(TEXT("negative clutch wheel clamps at slow envelope"), State.GetClutchReleaseSeconds(), 1.20f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -100,29 +100,26 @@ bool FPinkCabCockpitInteractionRouterTest::RunTest(const FString& Parameters)
 {
     FPinkCabCockpitState State;
 
-    TestTrue(TEXT("gearbox wheel event is consumed"),
+    TestFalse(TEXT("gearbox wheel cannot bypass mouse H-gate"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Gearbox")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("gearbox event selects first"), State.GetSelectedGear(), 1);
+    TestEqual(TEXT("rejected gearbox wheel leaves neutral intent"), State.GetSelectedGear(), 0);
 
     TestFalse(TEXT("handbrake rejects momentary toggle semantics"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::PressHold, 1}, State));
-    TestTrue(TEXT("handbrake wheel decrement is consumed"),
+    TestFalse(TEXT("handbrake wheel cannot bypass mouse actuator"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, -1}, State));
-    TestEqual(TEXT("handbrake wheel moves one calibration step"), State.GetHandbrakeAmount(), 63.0f / 64.0f);
-    TestTrue(TEXT("handbrake wheel increment restores full command"),
-        FPinkCabCockpitInteractionRouter::Apply(
-            {FName(TEXT("Handbrake")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
-    TestEqual(TEXT("handbrake returns to full"), State.GetHandbrakeAmount(), 1.0f);
+    TestEqual(TEXT("rejected handbrake wheel preserves parking position"),
+        State.GetHandbrakeAmount(), 1.0f);
 
     const float ClutchReleaseBefore = State.GetClutchReleaseSeconds();
     TestTrue(TEXT("clutch pedal wheel event is consumed"),
         FPinkCabCockpitInteractionRouter::Apply(
             {FName(TEXT("ClutchPedal")), EPinkCabInteractionGesture::WheelIncrement, 1}, State));
     TestTrue(TEXT("clutch pedal wheel changes release speed only"),
-        State.GetClutchReleaseSeconds() > ClutchReleaseBefore);
+        State.GetClutchReleaseSeconds() < ClutchReleaseBefore);
 
     TestTrue(TEXT("ignition press starts engine"),
         FPinkCabCockpitInteractionRouter::Apply(

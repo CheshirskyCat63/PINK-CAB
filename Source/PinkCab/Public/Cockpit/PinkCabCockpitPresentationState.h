@@ -10,7 +10,11 @@ struct FPinkCabCockpitPresentationState
     float Throttle = 0.0f;
     float SpeedKmh = 0.0f;
     float EngineRpm = 0.0f;
+    float Fuel01 = 1.0f;
+    float EngineTemperature01 = 0.15f;
     int32 SelectedGear = 0;
+    bool bGearLeverDragging = false;
+    FVector2D GearLeverCursor = FVector2D::ZeroVector;
 
     bool bIgnitionRunning = false;
     float Handbrake = 1.0f;

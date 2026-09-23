@@ -1,0 +1,180 @@
+﻿{
+  "version": 1,
+  "concerns": [
+    {
+      "id": "passenger_snapshot_state",
+      "owner_domain": "Taxi",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerSnapshot.h",
+      "test_prefix": "PinkCab.Taxi.PassengerSnapshot"
+    },
+    {
+      "id": "vehicle_state_snapshot",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleStateSnapshot.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabVehicleStateSnapshot.cpp",
+      "test_prefix": "PinkCab.Vehicle.LiveState"
+    },
+    {
+      "id": "fare_runtime_state_snapshot",
+      "owner_domain": "Taxi",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareRuntimeStateSnapshot.h",
+      "test_prefix": "PinkCab.Persistence.FareRuntimeSnapshot"
+    },
+    {
+      "id": "service_snapshot_state",
+      "owner_domain": "Service",
+      "public_contract": "Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h",
+      "implementation_root": "Source/PinkCab/Public/Service/PinkCabServiceSnapshotTypes.h",
+      "test_prefix": "PinkCab.Service.Snapshot"
+    },
+    {
+      "id": "runtime_composition",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp",
+      "test_prefix": "PinkCab.Runtime.Composition"
+    },
+    {
+      "id": "vehicle_visual_presentation",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabVehicleVisualProfile.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabVehicleVisualShellComponent.cpp",
+      "test_prefix": "PinkCab.Vehicle.Visual"
+    },
+    {
+      "id": "driver_ui",
+      "owner_domain": "Runtime",
+      "public_contract": "Source/PinkCab/Public/Runtime/PinkCabDriverUiComponent.h",
+      "implementation_root": "Source/PinkCab/Private/Runtime/PinkCabDriverUiComponent.cpp",
+      "test_prefix": "PinkCab.UI.SystemMenu"
+    },
+    {
+      "id": "vehicle_control_orchestration",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h",
+      "implementation_root": "Source/PinkCab/Private/Vehicle/PinkCabVehicleControlRuntime.cpp",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime.Runtime"
+    },
+    {
+      "id": "steering",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime.Steering"
+    },
+    {
+      "id": "gearbox",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime.Gearbox"
+    },
+    {
+      "id": "clutch",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime"
+    },
+    {
+      "id": "throttle",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime"
+    },
+    {
+      "id": "brake",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime"
+    },
+    {
+      "id": "handbrake",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h",
+      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime.Handbrake"
+    },
+    {
+      "id": "device_input_sign",
+      "owner_domain": "Interaction",
+      "public_contract": "Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h",
+      "implementation_root": "Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h",
+      "test_prefix": "PinkCab.Vehicle.ControlRuntime"
+    },
+    {
+      "id": "player_input_capture",
+      "owner_domain": "Interaction",
+      "public_contract": "Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h",
+      "implementation_root": "Source/PinkCabInteraction/Private/Interaction/PinkCabPlayerInputAdapter.cpp",
+      "test_prefix": "PinkCab.Interaction.PlayerInput"
+    },
+    {
+      "id": "chaos_translation",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
+      "test_prefix": "PinkCab.Vehicle.ChaosBaseline"
+    },
+    {
+      "id": "fare",
+      "owner_domain": "Taxi",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h",
+      "test_prefix": "PinkCab.Taxi"
+    },
+    {
+      "id": "passenger",
+      "owner_domain": "Taxi",
+      "public_contract": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h",
+      "implementation_root": "Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h",
+      "test_prefix": "PinkCab.Taxi.Passenger"
+    },
+    {
+      "id": "economy",
+      "owner_domain": "Economy",
+      "public_contract": "Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h",
+      "implementation_root": "Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h",
+      "test_prefix": "PinkCab.Economy"
+    },
+    {
+      "id": "vehicle_snapshot_archive",
+      "owner_domain": "Persistence",
+      "public_contract": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "implementation_root": "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
+      "test_prefix": "PinkCab.Persistence.VehicleSnapshot"
+    },
+    {
+      "id": "game_persistence",
+      "owner_domain": "Persistence",
+      "public_contract": "Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h",
+      "implementation_root": "Source/PinkCab/Public/Persistence/PinkCabGamePersistenceCoordinator.h",
+      "test_prefix": "PinkCab.Persistence"
+    },
+    {
+      "id": "world_route",
+      "owner_domain": "World",
+      "public_contract": "Source/PinkCabWorld/Public/World/PinkCabRouteService.h",
+      "implementation_root": "Source/PinkCabWorld/Public/World/PinkCabRouteService.h",
+      "test_prefix": "PinkCab.World.Routing"
+    },
+    {
+      "id": "traffic",
+      "owner_domain": "Traffic",
+      "public_contract": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h",
+      "implementation_root": "Source/PinkCabTraffic/Public/Traffic/PinkCabTrafficFlow.h",
+      "test_prefix": "PinkCab.Traffic"
+    },
+    {
+      "id": "cockpit_presentation",
+      "owner_domain": "Cockpit",
+      "public_contract": "Source/PinkCab/Public/Cockpit/PinkCabCockpitPresentationState.h",
+      "implementation_root": "Source/PinkCab/Private/Cockpit/PinkCabCockpitVisualDriverComponent.cpp",
+      "test_prefix": "PinkCab.Cockpit.VisualDriver"
+    }
+  ]
+}

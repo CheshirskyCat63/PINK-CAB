@@ -3,12 +3,18 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Engine/SkeletalMesh.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Engine/SkinnedAsset.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabTatraProfile.h"
+#include "Vehicle/PinkCabSteeringController.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Runtime/PinkCabVehicleVisualProfile.h"
+#include "PhysicsEngine/BodyInstance.h"
+#include "PhysicsEngine/BodySetup.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPawnBaselineConfigTest,
@@ -59,6 +65,72 @@ bool FPinkCabChaosWheelRolesTest::RunTest(const FString& Parameters)
     return true;
 }
 
+namespace
+{
+FVector ResolveChaosWheelRestPosition(
+    const APinkCabChaosTatraPawn& Pawn,
+    const FChaosWheelSetup& Setup)
+{
+    const USkeletalMeshComponent* Mesh = Pawn.GetMesh();
+    const USkinnedAsset* Asset = Mesh ? Mesh->GetSkinnedAsset() : nullptr;
+    FVector Offset = Setup.WheelClass.GetDefaultObject()->Offset + Setup.AdditionalOffset;
+    if (!Mesh || !Asset || Setup.BoneName.IsNone())
+    {
+        return Offset;
+    }
+
+    const FVector BonePosition =
+        Asset->GetComposedRefPoseMatrix(Setup.BoneName).GetOrigin() * Mesh->GetRelativeScale3D();
+    FMatrix RootBodyMatrix = FMatrix::Identity;
+    if (const FBodyInstance* BodyInstance = Mesh->GetBodyInstance())
+    {
+        if (BodyInstance->BodySetup.IsValid())
+        {
+            RootBodyMatrix = Asset->GetComposedRefPoseMatrix(BodyInstance->BodySetup->BoneName);
+        }
+    }
+    return Offset + RootBodyMatrix.InverseTransformPosition(BonePosition);
+}
+
+const FPinkCabVehiclePresentationPart* FindPresentationPart(
+    const FPinkCabVehicleVisualProfile& Profile,
+    const FName PartId)
+{
+    return Profile.PresentationParts.FindByPredicate([PartId](const FPinkCabVehiclePresentationPart& Part)
+    {
+        return Part.PartId == PartId;
+    });
+}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosTatraWheelGeometryBindingTest,
+    "PinkCab.Vehicle.ChaosBaseline.Pawn.TatraWheelGeometryBinding",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosTatraWheelGeometryBindingTest::RunTest(const FString& Parameters)
+{
+    const APinkCabChaosTatraPawn* Pawn = GetDefault<APinkCabChaosTatraPawn>();
+    const UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+    TestNotNull(TEXT("Tatra pawn owns Chaos movement"), Movement);
+    if (!Movement || Movement->WheelSetups.Num() != 4)
+    {
+        return false;
+    }
+
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const FChaosWheelSetup& Setup = Movement->WheelSetups[Index];
+        TestFalse(
+            *FString::Printf(TEXT("physical wheel %d keeps a prototype wheel bone"), Index),
+            Setup.BoneName.IsNone());
+        TestTrue(
+            *FString::Printf(TEXT("physical wheel %d is isolated from Tatra presentation offsets"), Index),
+            Setup.AdditionalOffset.IsNearlyZero(0.01f));
+    }
+    return true;
+}
+
 #endif
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -70,22 +142,33 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabChaosMouseSteeringContractTest::RunTest(const FString& Parameters)
 {
-    const float First = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.0f, 10.0f, false);
-    TestEqual(TEXT("mouse right stays semantic right-positive before Chaos adaptation"), First, 0.25f);
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
 
-    const float Tiny = APinkCabChaosTatraPawn::IntegrateMouseSteering(First, -0.1f, false);
-    TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"), Tiny < First);
+    FPinkCabSteeringController Steering(Config);
+    const float First = Steering.Step(
+        50.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 1.0f);
+    TestTrue(TEXT("mouse right stays semantic right-positive before Chaos adaptation"), First > 0.0f);
 
-    const float GazeHeld = APinkCabChaosTatraPawn::IntegrateMouseSteering(Tiny, 50.0f, true);
-    TestEqual(TEXT("Space gaze hold preserves steering command"), GazeHeld, Tiny);
+    const float CursorBeforeTiny = Steering.GetVirtualCursor();
+    Steering.Step(-0.1f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 1.0f);
+    TestTrue(TEXT("no center dead-zone swallows tiny mouse delta"),
+        Steering.GetVirtualCursor() < CursorBeforeTiny);
 
-    const float Clamped = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.95f, 20.0f, false);
-    TestEqual(TEXT("steering command clamps at full lock"), Clamped, 1.0f);
+    const float BeforeGaze = Steering.GetSteering();
+    const float GazeHeld = Steering.Step(
+        50.0f, true, 120.0f, EPinkCabVehicleMotionMode::Moving, 1.0f);
+    TestEqual(TEXT("Space gaze hold preserves steering command"), GazeHeld, BeforeGaze);
 
-    const float LowSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(0.0f);
-    const float HighSpeedGain = APinkCabChaosTatraPawn::SteeringGainForSpeed(195.0f);
-    TestTrue(TEXT("high-speed steering reduces mouse sensitivity"), HighSpeedGain < LowSpeedGain);
-    TestTrue(TEXT("high-speed steering keeps deliberate authority"), HighSpeedGain > 0.0f);
+    FPinkCabSteeringController Slow(Config);
+    FPinkCabSteeringController Fast(Config);
+    const float SlowResult = Slow.Step(
+        100.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.1f);
+    const float FastResult = Fast.Step(
+        100.0f, false, 160.0f, EPinkCabVehicleMotionMode::Moving, 0.1f);
+    TestTrue(TEXT("stationary steering is heavier than moving high-speed response"),
+        FMath::Abs(SlowResult) < FMath::Abs(FastResult));
+    TestTrue(TEXT("steering remains bounded"), FMath::Abs(FastResult) <= 1.0f);
     return true;
 }
 
@@ -128,29 +211,64 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 {
     UChaosWheeledVehicleMovementComponent* Movement = NewObject<UChaosWheeledVehicleMovementComponent>();
+    FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal)
+        .ApplyToMovement(*Movement);
     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
     FPinkCabVehicleControlState Controls;
     FPinkCabCockpitState Cockpit;
 
+    Controls.SetSteering(0.40f);
+    TestTrue(TEXT("semantic right-positive steering reaches Chaos adapter"),
+        Provider.ApplyControls(Controls));
+    TestTrue(TEXT("Chaos vehicle-space steering preserves player-facing right-positive"),
+        FMath::IsNearlyEqual(Movement->GetSteeringInput(), 0.40f, 1.e-4f));
+
+    Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestFalse(TEXT("engine off disables mechanical simulation"), Movement->bMechanicalSimEnabled);
-    TestTrue(TEXT("default handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
+    TestEqual(TEXT("analog handbrake command remains continuous through provider"),
+        Provider.GetLastControls().Handbrake, 0.37f);
 
     Cockpit.StartEngine();
-    Cockpit.SetHandbrakeEngaged(false);
     Cockpit.ShiftBy(1);
+    Controls.SetThrottle(0.6f);
     Controls.SetClutch(0.0f);
+    Controls.SetDriveline(1, 1, 1.0f);
     TestTrue(TEXT("running cockpit reapplies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
     TestTrue(TEXT("running ignition enables mechanical simulation"), Movement->bMechanicalSimEnabled);
-    TestFalse(TEXT("released handbrake reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("bool handbrake remains disabled after reapply"), Movement->GetHandbrakeInput());
     TestFalse(TEXT("cockpit gearbox disables automatic shifting"), Movement->GetUseAutoGears());
-    TestEqual(TEXT("selected first gear reaches Chaos when clutch is released"), Movement->GetTargetGear(), 1);
+    TestFalse(TEXT("manual H-gate disables Chaos arcade reverse-as-brake override"),
+        Movement->bReverseAsBrake);
+    TestFalse(TEXT("manual H-gate disables throttle-as-brake companion behavior"),
+        Movement->bThrottleAsBrake);
+    TestEqual(TEXT("fully coupled engaged first reaches Chaos"), Movement->GetTargetGear(), 1);
+
+    Controls.SetClutch(0.5f);
+    Controls.SetDriveline(1, 1, 0.5f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    TestEqual(TEXT("partial coupling keeps Chaos transmission neutral"), Movement->GetTargetGear(), 0);
+    const float PoweredPartialTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
+    TestTrue(TEXT("partial coupling produces continuous external rear torque"),
+        PoweredPartialTorque > 0.0f);
+
+    // Owner authority forbids hidden launch assistance. Zero pedal command must
+    // never synthesize rear-wheel drive torque, even at the clutch bite point.
+    Controls.SetThrottle(0.0f);
+    FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
+    const float ZeroPedalTorque =
+        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
+    TestEqual(TEXT("partial clutch carries zero synthetic torque with zero throttle"),
+        ZeroPedalTorque, 0.0f);
 
     Controls.SetClutch(1.0f);
+    Controls.SetDriveline(1, 1, 0.0f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
-    TestEqual(TEXT("pressed clutch disengages drivetrain through neutral gate"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("fully pressed clutch carries zero transmission gear"), Movement->GetTargetGear(), 0);
     return true;
 }
 

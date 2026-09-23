@@ -31,38 +31,14 @@ enum class EPinkCabCockpitSlot : uint8
     Radio,
     RearViewMirror,
     LeftMirror,
-    RightMirror
+    RightMirror,
+    TemperatureNeedle,
+    FuelNeedle,
+    SpeedometerNeedle,
+    TachometerNeedle
 };
 
-inline FName PinkCabCockpitSlotId(const EPinkCabCockpitSlot Slot)
-{
-    switch (Slot)
-    {
-    case EPinkCabCockpitSlot::DriverCamera: return TEXT("DriverCamera");
-    case EPinkCabCockpitSlot::SteeringWheel: return TEXT("SteeringWheel");
-    case EPinkCabCockpitSlot::ClutchPedal: return TEXT("ClutchPedal");
-    case EPinkCabCockpitSlot::BrakePedal: return TEXT("BrakePedal");
-    case EPinkCabCockpitSlot::ThrottlePedal: return TEXT("ThrottlePedal");
-    case EPinkCabCockpitSlot::Gearbox: return TEXT("Gearbox");
-    case EPinkCabCockpitSlot::Handbrake: return TEXT("Handbrake");
-    case EPinkCabCockpitSlot::Ignition: return TEXT("Ignition");
-    case EPinkCabCockpitSlot::TurnSignals: return TEXT("TurnSignals");
-    case EPinkCabCockpitSlot::Horn: return TEXT("Horn");
-    case EPinkCabCockpitSlot::Lights: return TEXT("Lights");
-    case EPinkCabCockpitSlot::Wipers: return TEXT("Wipers");
-    case EPinkCabCockpitSlot::Washer: return TEXT("Washer");
-    case EPinkCabCockpitSlot::Taximeter: return TEXT("Taximeter");
-    case EPinkCabCockpitSlot::PassengerDoor: return TEXT("PassengerDoor");
-    case EPinkCabCockpitSlot::Dashboard: return TEXT("Dashboard");
-    case EPinkCabCockpitSlot::Warnings: return TEXT("Warnings");
-    case EPinkCabCockpitSlot::Navigation: return TEXT("Navigation");
-    case EPinkCabCockpitSlot::Radio: return TEXT("Radio");
-    case EPinkCabCockpitSlot::RearViewMirror: return TEXT("RearViewMirror");
-    case EPinkCabCockpitSlot::LeftMirror: return TEXT("LeftMirror");
-    case EPinkCabCockpitSlot::RightMirror: return TEXT("RightMirror");
-    default: return NAME_None;
-    }
-}
+PINKCAB_API FName PinkCabCockpitSlotId(EPinkCabCockpitSlot Slot);
 
 USTRUCT(BlueprintType)
 struct PINKCAB_API FPinkCabCockpitSlotDefinition
@@ -73,27 +49,8 @@ struct PINKCAB_API FPinkCabCockpitSlotDefinition
     FPinkCabCockpitSlotDefinition(const EPinkCabCockpitSlot InSlot, const FName InStableId)
         : Slot(InSlot), StableId(InStableId) {}
 
-    FPinkCabInteractionControlSpec ToInteractionSpec() const
-    {
-        return {StableId, bSupportsGrip, bSupportsMomentary, bSupportsWheel};
-    }
-
-    static bool ValidateUnique(const TArray<FPinkCabCockpitSlotDefinition>& Definitions)
-    {
-        TSet<FName> SeenIds;
-        TSet<uint8> SeenSlots;
-        for (const FPinkCabCockpitSlotDefinition& Definition : Definitions)
-        {
-            const uint8 RawSlot = static_cast<uint8>(Definition.Slot);
-            if (Definition.StableId.IsNone() || SeenIds.Contains(Definition.StableId) || SeenSlots.Contains(RawSlot))
-            {
-                return false;
-            }
-            SeenIds.Add(Definition.StableId);
-            SeenSlots.Add(RawSlot);
-        }
-        return true;
-    }
+    FPinkCabInteractionControlSpec ToInteractionSpec() const;
+    static bool ValidateUnique(const TArray<FPinkCabCockpitSlotDefinition>& Definitions);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Cockpit")
     EPinkCabCockpitSlot Slot = EPinkCabCockpitSlot::DriverCamera;

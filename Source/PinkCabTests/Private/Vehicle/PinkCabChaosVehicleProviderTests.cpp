@@ -3,6 +3,10 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosProviderControlMappingTest,
@@ -22,10 +26,14 @@ bool FPinkCabChaosProviderControlMappingTest::RunTest(const FString& Parameters)
     Controls.SetHandbrake(0.80f);
 
     TestTrue(TEXT("provider accepts normalized controls"), Provider.ApplyControls(Controls));
-    TestEqual(TEXT("semantic right-positive steering is adapted to Chaos right-steer sign"), Movement->GetSteeringInput(), -0.35f);
-    TestEqual(TEXT("throttle reaches Chaos"), Movement->GetThrottleInput(), 0.72f);
+    TestEqual(TEXT("Chaos vehicle-space steering preserves semantic right-positive"),
+        Movement->GetSteeringInput(), 0.35f);
+    TestEqual(TEXT("pedal linkage response reaches Chaos"),
+        Movement->GetThrottleInput(), FPinkCabThrottleResponse::ToEngineThrottle(0.72f));
     TestEqual(TEXT("brake reaches Chaos"), Movement->GetBrakeInput(), 0.18f);
-    TestTrue(TEXT("handbrake threshold reaches Chaos"), Movement->GetHandbrakeInput());
+    TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
+    TestEqual(TEXT("provider retains continuous analog handbrake command"),
+        Provider.GetLastControls().Handbrake, 0.80f);
     FPinkCabVehicleTelemetry Telemetry;
     TestTrue(TEXT("provider returns telemetry"), Provider.ReadTelemetry(Telemetry));
     TestEqual(TEXT("telemetry preserves semantic right-positive steering"), Telemetry.NormalizedSteering, 0.35f);
@@ -48,6 +56,80 @@ bool FPinkCabChaosProviderNullGuardTest::RunTest(const FString& Parameters)
     FPinkCabVehicleTelemetry Telemetry;
     TestFalse(TEXT("null provider rejects controls"), Provider.ApplyControls(FPinkCabVehicleControlState()));
     TestFalse(TEXT("null provider rejects telemetry"), Provider.ReadTelemetry(Telemetry));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosBridgeZeroThrottleNoSyntheticTorqueTest,
+    "PinkCab.Vehicle.ChaosBaseline.Provider.ZeroThrottleNoSyntheticDriveTorque",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosBridgeZeroThrottleNoSyntheticTorqueTest::RunTest(const FString& Parameters)
+{
+    UChaosWheeledVehicleMovementComponent* Movement =
+        NewObject<UChaosWheeledVehicleMovementComponent>();
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    Profile.ApplyToMovement(*Movement);
+
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    FPinkCabCockpitState Cockpit;
+    Cockpit.StartEngine();
+
+    FPinkCabVehicleControlState Controls;
+    Controls.SetThrottle(0.0f);
+    Controls.SetDriveline(1, 1, 0.50f);
+    Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+    TestTrue(TEXT("bridge accepts configured zero-throttle partial-clutch state"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
+    TestEqual(TEXT("zero throttle must not fabricate rear drive torque"),
+        Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+    TestEqual(TEXT("provider still receives the real zero pedal command"),
+        Provider.GetLastControls().Throttle, 0.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosBridgeFullCouplingBoundaryTest,
+    "PinkCab.Vehicle.ChaosBaseline.Provider.FullCouplingBoundary",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosBridgeFullCouplingBoundaryTest::RunTest(const FString& Parameters)
+{
+    UChaosWheeledVehicleMovementComponent* Movement =
+        NewObject<UChaosWheeledVehicleMovementComponent>();
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    Profile.ApplyToMovement(*Movement);
+
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    FPinkCabCockpitState Cockpit;
+    Cockpit.StartEngine();
+
+    FPinkCabVehicleControlState Partial;
+    Partial.SetThrottle(0.25f);
+    Partial.SetDriveline(1, 1, 0.999f);
+    Partial.SetDrivetrainTorqueCapacity(1.0f);
+    TestTrue(TEXT("99.9 percent coupling is accepted"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Partial, Provider));
+    TestEqual(TEXT("partial clutch keeps Chaos transmission neutral until physically full coupling"),
+        Movement->GetTargetGear(), 0);
+    TestTrue(TEXT("partial clutch still carries authored continuous external torque"),
+        FMath::Abs(Partial.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER);
+
+    FPinkCabVehicleControlState Full;
+    Full.SetThrottle(0.25f);
+    Full.SetDriveline(1, 1, 1.0f);
+    Full.SetDrivetrainTorqueCapacity(1.0f);
+    TestTrue(TEXT("full coupling is accepted"),
+        FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Full, Provider));
+    TestEqual(TEXT("only full coupling hands engaged gear to Chaos transmission"),
+        Movement->GetTargetGear(), 1);
+    TestEqual(TEXT("full coupling stops the partial-clutch external torque path"),
+        Full.ExternalRearDriveTorquePerWheelNm, 0.0f);
     return true;
 }
 

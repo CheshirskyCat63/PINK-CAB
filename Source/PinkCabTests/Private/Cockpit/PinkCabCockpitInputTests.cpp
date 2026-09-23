@@ -3,12 +3,15 @@
 #include "Misc/AutomationTest.h"
 #include "InputCoreTypes.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
+#include "Cockpit/PinkCabCockpitAssemblyComponent.h"
+#include "Components/SceneComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Interaction/PinkCabSemanticInputRouter.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabSteeringController.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCanonicalBindingComplianceTest,
@@ -34,15 +37,23 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGazeOwnershipComplianceTest::RunTest(const FString& Parameters)
 {
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabSteeringControllerConfig Config;
+    Config.MouseCountsForFullScale = 100.0f;
+    FPinkCabSteeringController Steering(Config);
+
     Interaction->SetGazeHeld(false);
-    const float Steered = APinkCabChaosTatraPawn::IntegrateMouseSteering(0.2f, 10.0f, false, 0.025f);
-    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.2f);
+    const float Steered = Steering.Step(
+        50.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
+    TestTrue(TEXT("mouse changes steering outside gaze"), Steered > 0.0f);
 
     Interaction->SetGazeHeld(true);
-    const float Preserved = APinkCabChaosTatraPawn::IntegrateMouseSteering(Steered, 20.0f, true, 0.025f);
+    const float Preserved = Steering.Step(
+        20.0f, true, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestEqual(TEXT("Space gaze preserves steering command"), Preserved, Steered);
+
     Interaction->SetGazeHeld(false);
-    const float Returned = APinkCabChaosTatraPawn::IntegrateMouseSteering(Preserved, -4.0f, false, 0.025f);
+    const float Returned = Steering.Step(
+        -80.0f, false, 60.0f, EPinkCabVehicleMotionMode::Moving, 0.5f);
     TestTrue(TEXT("Space release returns mouse to steering"), Returned < Preserved);
     return true;
 }
@@ -64,7 +75,214 @@ bool FPinkCabQuickRecallComplianceTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("release falls back to older held quick key"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("TurnSignals")));
     Interaction->SetQuickSlotHeld(1, false);
     TestTrue(TEXT("all released clears quick target"), Interaction->GetCurrentQuickTargetId().IsNone());
+    TestTrue(TEXT("all released clears visible quick-access target"),
+        Interaction->GetCurrentTargetId().IsNone());
     TestEqual(TEXT("release still does not actuate"), Interaction->GetActuationSerial(), Before);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabQuickRecallGripLatchTest,
+    "PinkCab.Cockpit.Input.QuickRecallGripLatch",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabQuickRecallGripLatchTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bQuickRecall4Held = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("4 recalls handbrake without actuation"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
+    const uint32 Before = Interaction->GetActuationSerial();
+
+    Frame.bGripHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB acquires quick-recall target while key is held"),
+        Interaction->IsGripActive());
+    TestEqual(TEXT("quick-recall target retained by RMB is the handbrake"),
+        Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
+    TestEqual(TEXT("quick recall plus grip still does not actuate"),
+        Interaction->GetActuationSerial(), Before);
+
+    Frame.bQuickRecall4Held = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-key release does not break an active RMB grip"),
+        Interaction->IsGripActive());
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-access target disappears after grip release"),
+        Interaction->GetCurrentTargetId().IsNone());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabConsumedRecallLifecycleTest,
+    "PinkCab.Cockpit.Input.Recovery.ConsumedRecallLifecycle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabConsumedRecallLifecycleTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bQuickRecall4Held = true;
+    Frame.bGripHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB acquires recalled handbrake while quick key is held"),
+        Interaction->IsGripActive());
+
+    Frame.bQuickRecall4Held = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB keeps handbrake after quick key release"),
+        Interaction->IsGripActive());
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release ends handbrake grip"), Interaction->IsGripActive());
+    TestTrue(TEXT("released quick access leaves no stale handbrake target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Interaction->ResetTransientInputState();
+    Frame = {};
+    Frame.bQuickRecall2Held = true;
+    Frame.bMomentaryHeld = true;
+    Frame.NowSeconds = 1.0;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB starts recalled horn directly without RMB"),
+        Interaction->IsMomentaryActive());
+
+    Frame.bQuickRecall2Held = false;
+    Frame.NowSeconds = 1.05;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-key release does not interrupt held horn action"),
+        Interaction->IsMomentaryActive());
+
+    Frame.bMomentaryHeld = false;
+    Frame.NowSeconds = 1.1;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("LMB release ends horn action"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("released quick access leaves no stale horn target"),
+        Interaction->GetCurrentTargetId().IsNone());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchGearboxStageLifecycleTest,
+    "PinkCab.Cockpit.Input.Recovery.ClutchGearboxStageLifecycle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchGearboxStageLifecycleTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Frame.bGearboxStageFromClutchHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("Q held stages gearbox without actuation"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Gearbox")));
+    TestFalse(TEXT("Q staging never grips"), Interaction->IsGripActive());
+    TestEqual(TEXT("Q staging emits no action event"), Events.Num(), 0);
+
+    Frame.bGearboxStageFromClutchHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("Q release removes ephemeral gearbox stage"),
+        Interaction->GetCurrentTargetId().IsNone());
+    TestEqual(TEXT("Q release emits no action event"), Events.Num(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabLeverReleaseOrderRecoveryTest,
+    "PinkCab.Cockpit.Input.Recovery.LeverReleaseOrder",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabLeverReleaseOrderRecoveryTest::RunTest(const FString& Parameters)
+{
+    auto StartGearboxSession = [](
+        UPinkCabCockpitInteractionComponent& Interaction,
+        FPinkCabCockpitInteractionFrame& Frame,
+        TArray<FPinkCabInteractionEvent>& Events)
+    {
+        Frame = {};
+        Frame.bQuickRecall3Held = true;
+        Frame.bGripHeld = true;
+        Frame.bMomentaryHeld = true;
+        Interaction.ProcessFrame(Frame, nullptr, Events);
+        Frame.bQuickRecall3Held = false;
+        Events.Reset();
+        Interaction.ProcessFrame(Frame, nullptr, Events);
+    };
+
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    StartGearboxSession(*Interaction, Frame, Events);
+    TestTrue(TEXT("precondition RMB grip is active"), Interaction->IsGripActive());
+    TestTrue(TEXT("precondition LMB manipulation is active"), Interaction->IsManipulationActive());
+
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB release keeps RMB grip"), Interaction->IsGripActive());
+    TestFalse(TEXT("LMB release ends lever manipulation"), Interaction->IsManipulationActive());
+    TestEqual(TEXT("LMB release creates no duplicate gearbox action"), Events.Num(), 0);
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release ends remaining grip"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB release emits exactly one grip-end event"), Events.Num(), 1);
+    TestTrue(TEXT("complete release clears consumed gearbox target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Interaction->ResetTransientInputState();
+    Events.Reset();
+    StartGearboxSession(*Interaction, Frame, Events);
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB-first release immediately ends manipulation"),
+        Interaction->IsManipulationActive());
+    TestFalse(TEXT("RMB-first release ends grip"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB-first release emits one grip-end event"), Events.Num(), 1);
+    TestTrue(TEXT("RMB-first release consumes and clears gearbox target"),
+        Interaction->GetCurrentTargetId().IsNone());
+
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("late LMB release cannot create a second commit"), Events.Num(), 0);
+
+    Interaction->ResetTransientInputState();
+    Events.Reset();
+    StartGearboxSession(*Interaction, Frame, Events);
+    Frame.bGripHeld = false;
+    Frame.bMomentaryHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestEqual(TEXT("same-frame LMB+RMB release emits one release event"), Events.Num(), 1);
+    TestFalse(TEXT("same-frame release leaves no grip"), Interaction->IsGripActive());
+    TestFalse(TEXT("same-frame release leaves no manipulation"), Interaction->IsManipulationActive());
+    TestTrue(TEXT("same-frame release leaves no ghost target"),
+        Interaction->GetCurrentTargetId().IsNone());
     return true;
 }
 
@@ -78,13 +296,18 @@ bool FPinkCabGripComplianceTest::RunTest(const FString& Parameters)
     UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
     FPinkCabInteractionEvent Event;
-    TestFalse(TEXT("RMB rejects target without grip capability"), Interaction->BeginGrip(Event));
+    const uint32 Before = Interaction->GetActuationSerial();
+    TestTrue(TEXT("RMB may retain any valid control including a button"),
+        Interaction->BeginGrip(Event));
+    TestTrue(TEXT("universal RMB retain is active"), Interaction->IsGripActive());
+    TestEqual(TEXT("RMB retain alone never actuates the control"),
+        Interaction->GetActuationSerial(), Before);
+    TestTrue(TEXT("RMB release ends retained button target"), Interaction->EndGrip(Event));
 
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
-    const uint32 Before = Interaction->GetActuationSerial();
-    TestTrue(TEXT("RMB grips grip-capable target"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("RMB also retains lever controls"), Interaction->BeginGrip(Event));
     TestTrue(TEXT("grip state is retained"), Interaction->IsGripActive());
-    TestEqual(TEXT("grip alone never actuates"), Interaction->GetActuationSerial(), Before);
+    TestEqual(TEXT("grip alone still never actuates"), Interaction->GetActuationSerial(), Before);
     TestTrue(TEXT("RMB release ends grip"), Interaction->EndGrip(Event));
     TestFalse(TEXT("grip release clears hand ownership"), Interaction->IsGripActive());
     return true;
@@ -123,11 +346,18 @@ bool FPinkCabWheelComplianceTest::RunTest(const FString& Parameters)
     FPinkCabInteractionEvent Event;
     Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Horn"), false, true, false));
     TestFalse(TEXT("wheel rejects control without wheel capability"), Interaction->BuildWheelEvent(1, Event));
-    Interaction->SetCurrentTarget(FPinkCabInteractionControlSpec(TEXT("Gearbox"), true, false, true));
-    TestFalse(TEXT("wheel cannot move a grip-required control before RMB grip"), Interaction->BuildWheelEvent(-1, Event));
-    TestTrue(TEXT("RMB establishes grip for gearbox"), Interaction->BeginGrip(Event));
-    TestTrue(TEXT("wheel emits after authored grip"), Interaction->BuildWheelEvent(-1, Event));
-    TestEqual(TEXT("wheel keeps signed step"), Event.SignedValue, -1);
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("Gearbox")));
+    TestFalse(TEXT("gearbox wheel is disabled because H-gate owns mouse travel"),
+        Interaction->BuildWheelEvent(-1, Event));
+
+    Interaction->SetCurrentTarget(PinkCabInteractionSpecForTargetId(TEXT("PassengerDoor")));
+    TestTrue(TEXT("wheel directly moves a contextual wheel control without RMB"),
+        Interaction->BuildWheelEvent(-1, Event));
+    TestEqual(TEXT("direct wheel keeps signed step"), Event.SignedValue, -1);
+    TestTrue(TEXT("RMB may still retain the same authored wheel control"), Interaction->BeginGrip(Event));
+    TestTrue(TEXT("wheel continues to work while RMB retains the control"),
+        Interaction->BuildWheelEvent(-1, Event));
+    TestEqual(TEXT("retained wheel keeps signed step"), Event.SignedValue, -1);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -195,12 +425,15 @@ bool FPinkCabInteractionFrameProcessorTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("frame processor emits horn press"), Events.Num(), 1);
     TestEqual(TEXT("frame processor targets recalled horn"), Events[0].TargetId, FName(TEXT("Horn")));
 
+    Frame.bQuickRecall2Held = false;
     Frame.bMomentaryHeld = false;
     Frame.NowSeconds = 10.2;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestEqual(TEXT("frame processor emits horn release"), Events.Num(), 1);
-    TestEqual(TEXT("release keeps horn target"), Events[0].TargetId, FName(TEXT("Horn")));
+    TestEqual(TEXT("release event keeps horn target"), Events[0].TargetId, FName(TEXT("Horn")));
+    TestTrue(TEXT("quick-access label clears after key and action release"),
+        Interaction->GetCurrentTargetId().IsNone());
     return true;
 }
 
@@ -229,6 +462,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabContinuousHandbrakeComplianceTest::RunTest(const FString& Parameters)
 {
+    const FPinkCabInteractionControlSpec Spec =
+        PinkCabInteractionSpecForTargetId(TEXT("Handbrake"));
+    TestTrue(TEXT("handbrake requires RMB grip"), Spec.bSupportsGrip);
+    TestFalse(TEXT("handbrake no longer uses wheel actuation"), Spec.bSupportsWheel);
+
     FPinkCabCockpitState State;
     State.SetHandbrakeAmount(0.37f);
     TestEqual(TEXT("handbrake preserves intermediate analog command"), State.GetHandbrakeAmount(), 0.37f);
@@ -260,6 +498,167 @@ bool FPinkCabPawnTransientCleanupComplianceTest::RunTest(const FString& Paramete
     TestFalse(TEXT("pawn cleanup releases gaze"), Interaction->IsGazeHeld());
     TestFalse(TEXT("pawn cleanup releases grip"), Interaction->IsGripActive());
     TestTrue(TEXT("pawn cleanup releases quick recall"), Interaction->GetCurrentQuickTargetId().IsNone());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPrimaryPointerGearboxGripTest,
+    "PinkCab.Cockpit.Input.Compliance.PrimaryPointerGearboxGrip",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabPrimaryPointerGearboxGripTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    FPinkCabCockpitInteractionFrame Frame;
+    Frame.bQuickRecall3Held = true;
+    Frame.bMomentaryHeld = true;
+    Frame.NowSeconds = 1.0;
+    TArray<FPinkCabInteractionEvent> Events;
+
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("direct LMB does not invent an RMB grip"), Interaction->IsGripActive());
+    TestTrue(TEXT("LMB directly starts contextual gearbox manipulation without RMB"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("direct LMB manipulation targets gearbox"),
+        Interaction->GetActiveManipulationTargetId(), FName(TEXT("Gearbox")));
+    TestEqual(TEXT("direct lever manipulation emits no fake momentary event"), Events.Num(), 0);
+
+    Events.Reset();
+    Frame.bMomentaryHeld = false;
+    Frame.bGripHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB grips the gearbox"), Interaction->IsGripActive());
+    TestFalse(TEXT("RMB alone only holds the gearbox ready"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("RMB emits one contextual grip-begin event"), Events.Num(), 1);
+    if (Events.Num() == 1)
+    {
+        TestEqual(TEXT("grip begin keeps gearbox target"), Events[0].TargetId, FName(TEXT("Gearbox")));
+        TestEqual(TEXT("grip begin uses grip gesture"), Events[0].Gesture, EPinkCabInteractionGesture::GripBegin);
+        TestEqual(TEXT("grip begin signed value is positive"), Events[0].SignedValue, 1);
+    }
+
+    Events.Reset();
+    Frame.bMomentaryHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("LMB while RMB holds gearbox starts manipulation"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("lever manipulation itself does not emit a duplicate momentary action"),
+        Events.Num(), 0);
+
+    Frame.bMomentaryHeld = false;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("LMB release stops manipulation while RMB keeps grip"),
+        Interaction->IsManipulationActive());
+    TestTrue(TEXT("RMB still retains gearbox after LMB release"),
+        Interaction->IsGripActive());
+
+    Events.Reset();
+    Frame.bGripHeld = false;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestFalse(TEXT("RMB release returns gearbox grip ownership"), Interaction->IsGripActive());
+    TestFalse(TEXT("RMB release leaves no manipulation active"),
+        Interaction->IsManipulationActive());
+    TestEqual(TEXT("RMB release emits one contextual grip-end event"), Events.Num(), 1);
+    if (Events.Num() == 1)
+    {
+        TestEqual(TEXT("grip release keeps gearbox target"), Events[0].TargetId, FName(TEXT("Gearbox")));
+        TestEqual(TEXT("grip release is signed negative"), Events[0].SignedValue, -1);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContextualRmbPickTest,
+    "PinkCab.Cockpit.Input.Compliance.ContextualRmbPickWithoutSpace",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabContextualRmbPickTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction = NewObject<UPinkCabCockpitInteractionComponent>();
+    UPinkCabCockpitAssemblyComponent* Assembly = NewObject<UPinkCabCockpitAssemblyComponent>();
+    USceneComponent* DoorControl = NewObject<USceneComponent>();
+    DoorControl->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+    Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::PassengerDoor, DoorControl);
+
+    FPinkCabCockpitInteractionFrame Frame;
+    Frame.bGripHeld = true;
+    Frame.bGazeHeld = false;
+    Frame.GazeOrigin = FVector::ZeroVector;
+    Frame.GazeForward = FVector::ForwardVector;
+    Frame.GazeMaxDistanceCm = 250.0f;
+    Frame.NowSeconds = 2.0;
+
+    TArray<FPinkCabInteractionEvent> Events;
+    Interaction->ProcessFrame(Frame, Assembly, Events);
+
+    TestEqual(TEXT("RMB alone picks the centered contextual physical target"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("PassengerDoor")));
+    TestTrue(TEXT("RMB alone acquires contextual grip without Space"), Interaction->IsGripActive());
+    TestEqual(TEXT("contextual RMB emits grip-begin event"), Events.Num(), 1);
+    return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabDirectContextualActionPickTest,
+    "PinkCab.Cockpit.Input.Compliance.DirectContextualActionPickWithoutRmb",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabDirectContextualActionPickTest::RunTest(const FString& Parameters)
+{
+    {
+        UPinkCabCockpitInteractionComponent* Interaction =
+            NewObject<UPinkCabCockpitInteractionComponent>();
+        UPinkCabCockpitAssemblyComponent* Assembly =
+            NewObject<UPinkCabCockpitAssemblyComponent>();
+        USceneComponent* Horn = NewObject<USceneComponent>();
+        Horn->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+        Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::Horn, Horn);
+
+        FPinkCabCockpitInteractionFrame Frame;
+        Frame.bMomentaryHeld = true;
+        Frame.GazeOrigin = FVector::ZeroVector;
+        Frame.GazeForward = FVector::ForwardVector;
+        Frame.GazeMaxDistanceCm = 250.0f;
+        Frame.NowSeconds = 1.0;
+        TArray<FPinkCabInteractionEvent> Events;
+        Interaction->ProcessFrame(Frame, Assembly, Events);
+
+        TestFalse(TEXT("direct LMB does not invent RMB grip"), Interaction->IsGripActive());
+        TestTrue(TEXT("direct LMB center-picks and presses horn"),
+            Interaction->IsMomentaryActive());
+        TestEqual(TEXT("direct LMB emits horn press"), Events.Num(), 1);
+        if (Events.Num() == 1)
+        {
+            TestEqual(TEXT("direct LMB contextual target is horn"),
+                Events[0].TargetId, FName(TEXT("Horn")));
+        }
+    }
+
+    {
+        UPinkCabCockpitInteractionComponent* Interaction =
+            NewObject<UPinkCabCockpitInteractionComponent>();
+        UPinkCabCockpitAssemblyComponent* Assembly =
+            NewObject<UPinkCabCockpitAssemblyComponent>();
+        USceneComponent* Signals = NewObject<USceneComponent>();
+        Signals->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+        Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::TurnSignals, Signals);
+
+        FPinkCabCockpitInteractionFrame Frame;
+        Frame.WheelSteps = 2;
+        Frame.GazeOrigin = FVector::ZeroVector;
+        Frame.GazeForward = FVector::ForwardVector;
+        Frame.GazeMaxDistanceCm = 250.0f;
+        TArray<FPinkCabInteractionEvent> Events;
+        Interaction->ProcessFrame(Frame, Assembly, Events);
+
+        TestFalse(TEXT("direct wheel does not invent RMB grip"), Interaction->IsGripActive());
+        TestEqual(TEXT("direct wheel emits one contextual event"), Events.Num(), 1);
+        if (Events.Num() == 1)
+        {
+            TestEqual(TEXT("direct wheel contextual target is turn signals"),
+                Events[0].TargetId, FName(TEXT("TurnSignals")));
+            TestEqual(TEXT("accelerated signed wheel magnitude is preserved"),
+                Events[0].SignedValue, 2);
+        }
+    }
     return true;
 }
 

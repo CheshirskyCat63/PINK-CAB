@@ -15,6 +15,36 @@ void ApplyDefaultInteractionMetadata(FPinkCabCockpitSlotDefinition& Definition)
     Definition.bSupportsMomentary = Spec.bSupportsMomentary;
     Definition.bSupportsWheel = Spec.bSupportsWheel;
 }
+
+bool CanApplyVisualBinding(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitVisualBinding& Binding)
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Binding.Slot);
+    if (!Component) return false;
+    if ((!Binding.MeshOverride.IsNull() || !Binding.MaterialOverride.IsNull())
+        && !Cast<UStaticMeshComponent>(Component))
+    {
+        return false;
+    }
+    if (!Binding.MeshOverride.IsNull() && !Binding.MeshOverride.LoadSynchronous()) return false;
+    if (!Binding.MaterialOverride.IsNull() && !Binding.MaterialOverride.LoadSynchronous()) return false;
+    return true;
+}
+
+void ApplyVisualBinding(
+    UPinkCabCockpitAssemblyComponent& Assembly,
+    const FPinkCabCockpitVisualBinding& Binding)
+{
+    USceneComponent* Component = Assembly.GetSlotComponent(Binding.Slot);
+    Component->SetRelativeTransform(Binding.LocalTransform);
+    if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
+    {
+        if (!Binding.MeshOverride.IsNull()) StaticMesh->SetStaticMesh(Binding.MeshOverride.Get());
+        if (!Binding.MaterialOverride.IsNull()) StaticMesh->SetMaterial(0, Binding.MaterialOverride.Get());
+        StaticMesh->SetHiddenInGame(!Binding.bShowAnchorMesh);
+    }
+}
 }
 
 
@@ -32,6 +62,30 @@ void UPinkCabCockpitAssemblyComponent::BeginPlay()
     Super::BeginPlay();
     IndexConfiguredSlots();
     BuildPrimitiveShell();
+    CaptureVisualBaseline();
+}
+
+
+void UPinkCabCockpitAssemblyComponent::CaptureVisualBaseline()
+{
+    if (bVisualBaselineCaptured) return;
+    BaselineTransforms.Reset();
+    BaselineMeshes.Reset();
+    BaselineMaterials.Reset();
+    BaselineHiddenInGame.Reset();
+    for (const TPair<uint8, TObjectPtr<USceneComponent>>& Pair : SlotComponents)
+    {
+        USceneComponent* Component = Pair.Value.Get();
+        if (!Component) continue;
+        BaselineTransforms.Add(Pair.Key, Component->GetRelativeTransform());
+        if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Component))
+        {
+            BaselineMeshes.Add(Pair.Key, StaticMesh->GetStaticMesh());
+            BaselineMaterials.Add(Pair.Key, StaticMesh->GetMaterial(0));
+            BaselineHiddenInGame.Add(Pair.Key, StaticMesh->bHiddenInGame);
+        }
+    }
+    bVisualBaselineCaptured = true;
 }
 
 void UPinkCabCockpitAssemblyComponent::IndexConfiguredSlots()
@@ -97,6 +151,70 @@ void UPinkCabCockpitAssemblyComponent::RegisterExternalSlot(const EPinkCabCockpi
     }
 }
 
+
+void UPinkCabCockpitAssemblyComponent::SetGeneratedVisualMode(
+    const bool bShowFallbackShell,
+    TConstArrayView<FPinkCabCockpitVisualBinding> ActiveBindings)
+{
+    for (UStaticMeshComponent* Component : GeneratedPrimitives)
+    {
+        if (Component) Component->SetHiddenInGame(!bShowFallbackShell);
+    }
+    if (bShowFallbackShell) return;
+
+    for (const FPinkCabCockpitVisualBinding& Binding : ActiveBindings)
+    {
+        if (!Binding.bShowAnchorMesh) continue;
+        if (UStaticMeshComponent* Component = Cast<UStaticMeshComponent>(GetSlotComponent(Binding.Slot)))
+        {
+            Component->SetHiddenInGame(false);
+        }
+    }
+}
+
+void UPinkCabCockpitAssemblyComponent::ResetVisualBindings()
+{
+    if (!bVisualBaselineCaptured) CaptureVisualBaseline();
+    for (const TPair<uint8, FTransform>& Pair : BaselineTransforms)
+    {
+        if (TObjectPtr<USceneComponent>* Found = SlotComponents.Find(Pair.Key))
+        {
+            if (USceneComponent* Component = Found->Get()) Component->SetRelativeTransform(Pair.Value);
+        }
+    }
+    for (const TPair<uint8, TObjectPtr<UStaticMesh>>& Pair : BaselineMeshes)
+    {
+        if (TObjectPtr<USceneComponent>* Found = SlotComponents.Find(Pair.Key))
+        {
+            if (UStaticMeshComponent* StaticMesh = Cast<UStaticMeshComponent>(Found->Get()))
+            {
+                StaticMesh->SetStaticMesh(Pair.Value.Get());
+                if (TObjectPtr<UMaterialInterface>* Material = BaselineMaterials.Find(Pair.Key))
+                    StaticMesh->SetMaterial(0, Material->Get());
+                StaticMesh->SetHiddenInGame(BaselineHiddenInGame.FindRef(Pair.Key));
+            }
+        }
+    }
+}
+
+bool UPinkCabCockpitAssemblyComponent::ApplyVisualBindings(
+    TConstArrayView<FPinkCabCockpitVisualBinding> Bindings)
+{
+    if (!FPinkCabCockpitVisualBinding::ValidateUnique(Bindings)) return false;
+    if (!bVisualBaselineCaptured) CaptureVisualBaseline();
+    for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
+    {
+        if (!CanApplyVisualBinding(*this, Binding)) return false;
+    }
+
+    ResetVisualBindings();
+    for (const FPinkCabCockpitVisualBinding& Binding : Bindings)
+    {
+        ApplyVisualBinding(*this, Binding);
+    }
+    return true;
+}
+
 FName UPinkCabCockpitAssemblyComponent::ResolveGazeTarget(
     const FVector& WorldOrigin,
     const FVector& WorldForward,
@@ -109,7 +227,7 @@ FName UPinkCabCockpitAssemblyComponent::ResolveGazeTarget(
 
     TArray<FPinkCabInteractionCandidate> Candidates;
     Candidates.Reserve(FMath::Min(MaxCandidates, 22));
-    for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::RightMirror) && Candidates.Num() < MaxCandidates; ++Raw)
+    for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::TachometerNeedle) && Candidates.Num() < MaxCandidates; ++Raw)
     {
         const EPinkCabCockpitSlot Slot = static_cast<EPinkCabCockpitSlot>(Raw);
         const USceneComponent* Component = GetSlotComponent(Slot);
@@ -166,6 +284,7 @@ UStaticMeshComponent* UPinkCabCockpitAssemblyComponent::AddPrimitive(
     Component->SetGenerateOverlapEvents(false);
     Component->SetCastShadow(false);
     Component->RegisterComponent();
+    GeneratedPrimitives.Add(Component);
 
     if (bRegisterSlot) SlotComponents.Add(static_cast<uint8>(Slot), Component);
     return Component;
@@ -201,10 +320,10 @@ void UPinkCabCockpitAssemblyComponent::BuildPrimitiveShell()
         FVector(0.16f, 0.08f, 0.05f), EPinkCabCockpitSlot::BrakePedal);
     AddPrimitive(TEXT("CockpitThrottlePedal"), CubeMesh, FVector(30.0f, -25.0f, 58.0f), FRotator(18.0f, 0.0f, 0.0f),
         FVector(0.18f, 0.07f, 0.04f), EPinkCabCockpitSlot::ThrottlePedal);
-    AddPrimitive(TEXT("CockpitGearbox"), CylinderMesh, FVector(-12.0f, 7.0f, 76.0f), FRotator::ZeroRotator,
-        FVector(0.08f, 0.08f, 0.32f), EPinkCabCockpitSlot::Gearbox);
+    AddPrimitive(TEXT("CockpitGearbox"), CylinderMesh, FVector(-8.0f, 7.0f, 74.0f), FRotator::ZeroRotator,
+        FVector(0.032f, 0.032f, 0.18f), EPinkCabCockpitSlot::Gearbox);
     AddPrimitive(TEXT("CockpitHandbrake"), CubeMesh, FVector(-35.0f, 18.0f, 69.0f), FRotator(0.0f, -18.0f, 0.0f),
-        FVector(0.34f, 0.05f, 0.05f), EPinkCabCockpitSlot::Handbrake);
+        FVector(0.22f, 0.05f, 0.05f), EPinkCabCockpitSlot::Handbrake);
     AddPrimitive(TEXT("CockpitTaximeter"), CubeMesh, FVector(54.0f, 22.0f, 120.0f), FRotator::ZeroRotator,
         FVector(0.23f, 0.28f, 0.15f), EPinkCabCockpitSlot::Taximeter);
     AddPrimitive(TEXT("CockpitNavigation"), CubeMesh, FVector(51.0f, -3.0f, 112.0f), FRotator::ZeroRotator,
@@ -233,4 +352,12 @@ void UPinkCabCockpitAssemblyComponent::BuildPrimitiveShell()
         FVector(0.05f, 0.16f, 0.12f), EPinkCabCockpitSlot::LeftMirror);
     AddPrimitive(TEXT("CockpitRightMirror"), CubeMesh, FVector(28.0f, 105.0f, 125.0f), FRotator::ZeroRotator,
         FVector(0.05f, 0.16f, 0.12f), EPinkCabCockpitSlot::RightMirror);
+    AddPrimitive(TEXT("CockpitTemperatureNeedle"), CubeMesh, FVector::ZeroVector, FRotator::ZeroRotator,
+        FVector(0.001f), EPinkCabCockpitSlot::TemperatureNeedle);
+    AddPrimitive(TEXT("CockpitFuelNeedle"), CubeMesh, FVector::ZeroVector, FRotator::ZeroRotator,
+        FVector(0.001f), EPinkCabCockpitSlot::FuelNeedle);
+    AddPrimitive(TEXT("CockpitSpeedometerNeedle"), CubeMesh, FVector::ZeroVector, FRotator::ZeroRotator,
+        FVector(0.001f), EPinkCabCockpitSlot::SpeedometerNeedle);
+    AddPrimitive(TEXT("CockpitTachometerNeedle"), CubeMesh, FVector::ZeroVector, FRotator::ZeroRotator,
+        FVector(0.001f), EPinkCabCockpitSlot::TachometerNeedle);
 }

@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "source_roots": [
+    "Source/PinkCab",
+    "Source/PinkCabCore",
+    "Source/PinkCabInteraction",
+    "Source/PinkCabVehicle",
+    "Source/PinkCabEconomy",
+    "Source/PinkCabWorld",
+    "Source/PinkCabTraffic",
+    "Source/PinkCabTaxi",
+    "Source/PinkCabPersistence"
+  ],
+  "domains": [
+    "Core",
+    "Interaction",
+    "Vehicle",
+    "Taxi",
+    "Economy",
+    "World",
+    "Traffic",
+    "Persistence",
+    "Service",
+    "Cockpit",
+    "Enforcement"
+  ],
+  "thresholds": {
+    "cpp_loc": 350,
+    "header_loc": 250,
+    "function_loc": 80,
+    "complexity": 15
+  },
+  "raw_input": {
+    "allowed_prefixes": [
+      "Source/PinkCabInteraction/Public/Interaction",
+      "Source/PinkCabInteraction/Private/Interaction"
+    ],
+    "patterns": [
+      "IsInputKeyDown(",
+      "GetInputAnalogKeyState(",
+      "GetRawKeyValue(",
+      "InputKey(",
+      "GetInputMouseDelta(",
+      "WasInputKeyJustPressed("
+    ]
+  },
+  "chaos_writes": {
+    "allowed_files": [
+      "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"
+    ],
+    "patterns": [
+      "SetSteeringInput(",
+      "SetThrottleInput(",
+      "SetBrakeInput(",
+      "SetHandbrakeInput(",
+      "SetDriveTorque(",
+      "SetBrakeTorque(",
+      "SetTorqueCombineMethod("
+    ]
+  },
+  "forbidden_dependencies": [
+    {
+      "from": [
+        "Core",
+        "Interaction",
+        "Vehicle",
+        "Taxi",
+        "Economy",
+        "World",
+        "Traffic",
+        "Service",
+        "Cockpit",
+        "Enforcement"
+      ],
+      "to": [
+        "Persistence"
+      ]
+    },
+    {
+      "from": [
+        "Vehicle"
+      ],
+      "to": [
+        "Cockpit",
+        "Taxi",
+        "Service"
+      ]
+    }
+  ],
+  "allowlist": [],
+  "ownership_manifest": "Config/ArchitectureOwnership.json",
+  "onboarding_doc": "docs/ENGINEERING_START_HERE.md",
+  "module_contract": {
+    "required_modules": [
+      "PinkCabCore",
+      "PinkCabInteraction",
+      "PinkCabVehicle",
+      "PinkCabTaxi",
+      "PinkCabEconomy",
+      "PinkCabWorld",
+      "PinkCabTraffic",
+      "PinkCabPersistence"
+    ],
+    "allowed_project_dependencies": {
+      "PinkCabCore": [],
+      "PinkCabInteraction": [
+        "PinkCabCore"
+      ],
+      "PinkCabVehicle": [
+        "PinkCabCore"
+      ],
+      "PinkCabEconomy": [
+        "PinkCabCore"
+      ],
+      "PinkCabWorld": [
+        "PinkCabCore"
+      ],
+      "PinkCabTraffic": [
+        "PinkCabCore",
+        "PinkCabWorld"
+      ],
+      "PinkCabTaxi": [
+        "PinkCabCore",
+        "PinkCabEconomy",
+        "PinkCabVehicle",
+        "PinkCabWorld"
+      ],
+      "PinkCabPersistence": [
+        "PinkCabCore",
+        "PinkCabVehicle",
+        "PinkCabTaxi",
+        "PinkCabEconomy",
+        "PinkCabWorld",
+        "PinkCabTraffic"
+      ],
+      "PinkCab": [
+        "PinkCabCore",
+        "PinkCabInteraction",
+        "PinkCabVehicle",
+        "PinkCabTaxi",
+        "PinkCabEconomy",
+        "PinkCabWorld",
+        "PinkCabTraffic",
+        "PinkCabPersistence"
+      ]
+    }
+  }
+}

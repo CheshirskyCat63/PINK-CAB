@@ -1,0 +1,2704 @@
+{
+  "schema": "pinkcab.g1.tasks.v1",
+  "recovery_date": "2026-09-20",
+  "source_snapshot_sha": "8a70dfa5f4120fce63ab6f0cfc9235128987da77",
+  "source_file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+  "note": "83/83 queue identity/dependencies/gate/scope are exact recovered structure. Exact long-body text is preserved only where retrieved verbatim/near-verbatim; other detail fields remain null rather than invented. Current implementation truth must be reconciled with Git/Jira/runtime.",
+  "validation": {
+    "count": 83,
+    "unique_ids": 83,
+    "expected_count": 83,
+    "missing_dependencies": [],
+    "dependency_cycles": [],
+    "gate_counts": {
+      "T-BASE": 4,
+      "T-RC": 15,
+      "H-INP": 7,
+      "H-VEH": 9,
+      "H-CAB": 12,
+      "H-AUD": 5,
+      "H-ROAD": 10,
+      "T-WORLD": 13,
+      "POST-G1": 8
+    },
+    "exact_or_partial_detail_records": 5,
+    "structural_only_records": 78
+  },
+  "shared_execution_protocol": {
+    "source": "PINKCAB_G1_Master_Plan.md#doc-09",
+    "steps": [
+      "Evidence before change: exact source/build ID + task-specific observed scenario.",
+      "RED criterion: failing test/runtime fixture or negative registry/doc example before fix where technically applicable.",
+      "Minimal working step: smallest owner-scoped change that addresses the task output.",
+      "Verification: fresh real execution; subjective items remain HUMAN_PENDING.",
+      "Integration boundary: affected consumers + focused/domain suite + git diff --check + code-health for source edits; ID/link/schema checks for docs/inventory.",
+      "Reviewable checkpoint: TaskId, exact SHA/BuildId, paths, expected/observed, commands, logs/video/telemetry; allowlisted commit scope only."
+    ],
+    "close_rule": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build."
+  },
+  "tasks": [
+    {
+      "id": "ADM-01",
+      "result": "Exact runtime baseline",
+      "depends": [],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "RECOVERED_EXACT_DETAIL_PARTIAL",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ADM-01"
+      },
+      "contract_refs": [
+        "docs/recovery/PINKCAB_G1_RECOVERY_2026-09-20.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": [
+        "CD-559",
+        "CD-855"
+      ],
+      "owner": "Production / release",
+      "files": [
+        "docs/AUTHORITY.yaml",
+        "docs/ENGINEERING_START_HERE.md",
+        "docs/verification",
+        "existing Jira/Confluence authority"
+      ],
+      "acceptance_output": "Один baseline record с путями и hashes; несовпадение явно BLOCKED, ни одна чужая правка не потеряна.",
+      "evidence_before_change": "Сравнить 8a70dfa marker с фактическим новым HEAD; stale PR description не считать evidence.",
+      "red_criterion": null,
+      "minimal_working_step": "Сопоставить shortcut, BUILD_SHA, worktree HEAD, PR head, source/config/content manifest и exe hash; снять status и сохранить read-only baseline.",
+      "cannot_close_if": "Baseline record с путями/hashes не доказан, mandatory case не запускался либо evidence относится к другому билду.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ADM-02",
+      "result": "Authority / superseded rules reconciliation",
+      "depends": [
+        "ADM-01"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "RECOVERED_EXACT_DETAIL_PARTIAL",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ADM-02"
+      },
+      "contract_refs": [
+        "docs/recovery/PINKCAB_G1_RECOVERY_2026-09-20.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": [
+        "CD-848",
+        "CD-841"
+      ],
+      "owner": "Production / release",
+      "files": [
+        "docs/AUTHORITY.yaml",
+        "docs/ENGINEERING_START_HERE.md",
+        "docs/verification",
+        "existing Jira/Confluence authority"
+      ],
+      "acceptance_output": "Каждый конфликт имеет winning source и scope; FGear/VDS/530i/левый R не возвращены.",
+      "evidence_before_change": "Поиск stale terms различает historical quote и active requirement; links разрешаются.",
+      "red_criterion": null,
+      "minimal_working_step": "Прочитать актуальные изменения page 16744449 и current docs; занести conflicts из 01 в authority ledger; scoped supersession notes после разрешения записей.",
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ADM-03",
+      "result": "Legacy + source folders inventory",
+      "depends": [
+        "ADM-01"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ADM-03"
+      },
+      "contract_refs": [
+        "docs/recovery/PINKCAB_G1_RECOVERY_2026-09-20.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ADM-04",
+      "result": "Freeze G1 scope + Jira mapping",
+      "depends": [
+        "ADM-02"
+      ],
+      "gate": "T-BASE",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "RECOVERED_EXACT_DETAIL_PARTIAL",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ADM-04"
+      },
+      "contract_refs": [
+        "docs/recovery/PINKCAB_G1_RECOVERY_2026-09-20.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": [
+        "CD-519",
+        "CD-848",
+        "CD-855",
+        "CD-797"
+      ],
+      "owner": "Production / release",
+      "files": [
+        "docs/AUTHORITY.yaml",
+        "docs/ENGINEERING_START_HERE.md",
+        "docs/verification",
+        "existing Jira/Confluence authority"
+      ],
+      "acceptance_output": "Нет duplicate backlog; historical DONE отделён от новой приёмки; G1 не закрывает весь FIRST EURO.",
+      "evidence_before_change": "Проверить 100-point city denominator и G1 mandatory 50; ни один POST task не dependency G1.",
+      "red_criterion": null,
+      "minimal_working_step": "Создать mapping TaskId→existing key после duplicate search; принять G1 как отдельный milestone; перечислить обязательные criteria и STOP.",
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ASSET-01",
+      "result": "Admission ledger of downloaded assets",
+      "depends": [
+        "ADM-03"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ASSET-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ASSET-02",
+      "result": "Marathon rights or legal fallback",
+      "depends": [
+        "ASSET-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ASSET-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ASSET-03",
+      "result": "Replaceable Tatra contract",
+      "depends": [
+        "ASSET-02"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ASSET-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "ASSET-04",
+      "result": "Future material-supply contract",
+      "depends": [
+        "ASSET-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "ASSET-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-01",
+      "result": "Characterize physical input",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-02",
+      "result": "Single XY + wheel arbiter",
+      "depends": [
+        "INP-01"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-03",
+      "result": "Typed button/toggle/rotary contract",
+      "depends": [
+        "INP-02"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-04",
+      "result": "Q staging + active-hand priority",
+      "depends": [
+        "INP-02"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-05",
+      "result": "Capture cancellation + focus recovery",
+      "depends": [
+        "INP-03",
+        "INP-04"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "RECOVERED_EXACT_DETAIL_PARTIAL",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": "Alt-tab не включает передачу позже, не зависает horn/throttle; первый кадр возврата чистый.",
+      "evidence_before_change": "QA-G1-008/013/021; menu midshift, disconnect mouse, rapid pause/resume.",
+      "red_criterion": null,
+      "minimal_working_step": "Очистить transient held states, pending requests, residual delta; actual engaged gear/health сохраняются законно.",
+      "cannot_close_if": "Focus/capture recovery не доказан fresh execution evidence.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-06",
+      "result": "Real H-gate + input direction",
+      "depends": [
+        "INP-05"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "INP-07",
+      "result": "Control hints + parameters",
+      "depends": [
+        "INP-06"
+      ],
+      "gate": "H-INP",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "INP-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-01",
+      "result": "Reproduce immobility in packaged build",
+      "depends": [
+        "ADM-01",
+        "INP-01"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "RECOVERED_EXACT_DETAIL_PARTIAL",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": [
+        "CD-855",
+        "CD-648"
+      ],
+      "owner": "PinkCabVehicle",
+      "files": [
+        "Source/PinkCabVehicle/Private/Vehicle",
+        "Source/PinkCab/Private/Vehicle/PinkCabVehicleControlRuntime.cpp",
+        "Source/PinkCabTests/Private/Vehicle"
+      ],
+      "acceptance_output": "Одна доказанная причинная цепочка; сохранены broken input/contact trace и reproduction steps.",
+      "evidence_before_change": "QA-G1-002/003 на flat и current map, fresh и copied save; не менять мощность для маскировки.",
+      "red_criterion": "Подготовить воспроизводящий failing test либо runtime fixture до исправления; failure должен означать нарушение поведения, не broken runner.",
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-02",
+      "result": "Align physical + visible wheels",
+      "depends": [
+        "VEH-01",
+        "ASSET-03"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-03",
+      "result": "Spawn readiness + settled menu car",
+      "depends": [
+        "VEH-02"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-04",
+      "result": "250 hp / 8500 RPM torque + gearing",
+      "depends": [
+        "VEH-03"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-05",
+      "result": "Stationary→rolling steering feel",
+      "depends": [
+        "VEH-04"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-06",
+      "result": "Continuous clutch + honest launch",
+      "depends": [
+        "VEH-04",
+        "INP-06"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-07",
+      "result": "Brakes + dual-mode handbrake",
+      "depends": [
+        "VEH-06"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-08",
+      "result": "Suspension, mass + road test course",
+      "depends": [
+        "VEH-05",
+        "VEH-07"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-08"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "VEH-09",
+      "result": "Vehicle-health normal-drive balance",
+      "depends": [
+        "VEH-08"
+      ],
+      "gate": "H-VEH",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "VEH-09"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-01",
+      "result": "Finalize fitted control inventory",
+      "depends": [
+        "ASSET-03",
+        "INP-03"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-02",
+      "result": "Stable pivots + local animations",
+      "depends": [
+        "CAB-01"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-03",
+      "result": "Hands reach/grip/operate/release",
+      "depends": [
+        "CAB-02",
+        "INP-04"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-04",
+      "result": "Instruments + telltales",
+      "depends": [
+        "CAB-02",
+        "VEH-04"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-05",
+      "result": "Vehicle lighting + road signals",
+      "depends": [
+        "CAB-02"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-06",
+      "result": "Glass/windows/wipers",
+      "depends": [
+        "CAB-02"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-07",
+      "result": "Mirrors + fixed optics",
+      "depends": [
+        "CAB-06"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-08",
+      "result": "Doors/HVAC/radio/secondary controls",
+      "depends": [
+        "CAB-03",
+        "CAB-05",
+        "CAB-06",
+        "INP-07"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-08"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAB-09",
+      "result": "Full cabin parity acceptance",
+      "depends": [
+        "CAB-04",
+        "CAB-07",
+        "CAB-08"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAB-09"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/03_INPUT_AND_CABIN_MATRIX.md",
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAM-01",
+      "result": "Measured rear-seat camera path",
+      "depends": [
+        "VEH-03",
+        "ASSET-03"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAM-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAM-02",
+      "result": "Intro blend + input handoff",
+      "depends": [
+        "CAM-01",
+        "INP-05"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAM-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CAM-03",
+      "result": "Pause/Continue/Load camera integration",
+      "depends": [
+        "CAM-02",
+        "SYS-01"
+      ],
+      "gate": "H-CAB",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CAM-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "AUD-01",
+      "result": "Audio-event inventory + rights",
+      "depends": [
+        "CAB-01",
+        "ASSET-02"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "AUD-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "AUD-02",
+      "result": "Engine load/RPM/compressor mix",
+      "depends": [
+        "AUD-01",
+        "VEH-04"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "AUD-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "AUD-03",
+      "result": "Tires/road/suspension/transmission sounds",
+      "depends": [
+        "AUD-02",
+        "VEH-08"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "AUD-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "AUD-04",
+      "result": "Cabin/radio/acoustic transitions",
+      "depends": [
+        "AUD-03",
+        "CAB-08",
+        "CAM-02"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "AUD-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "AUD-05",
+      "result": "Mix gate + asset substitution test",
+      "depends": [
+        "AUD-04",
+        "CAB-09"
+      ],
+      "gate": "H-AUD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "AUD-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/04_VEHICLE_CAMERA_AUDIO.md",
+        "docs/recovery/chapters/06_ASSETS_AND_LICENSES.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-01",
+      "result": "Approve lower-level road section",
+      "depends": [
+        "ADM-04",
+        "VEH-08"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-02",
+      "result": "Road kit + smooth seams",
+      "depends": [
+        "CITY-01"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-03",
+      "result": "Physical defects + surface library",
+      "depends": [
+        "CITY-02",
+        "VEH-08"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-04",
+      "result": "Signs/markings + rule records",
+      "depends": [
+        "CITY-03",
+        "ASSET-01"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-05",
+      "result": "Right exits/local road/parking loop",
+      "depends": [
+        "CITY-04"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-06",
+      "result": "Spider/loop/oval/figure-eight graph family",
+      "depends": [
+        "CITY-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-07",
+      "result": "Pipe through panel building",
+      "depends": [
+        "CITY-06"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-08",
+      "result": "Facades/median/infrastructure/density",
+      "depends": [
+        "CITY-07",
+        "ASSET-04"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-08"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-09",
+      "result": "PINK CAB night lighting + weather",
+      "depends": [
+        "CITY-08",
+        "CAB-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-09"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "CITY-10",
+      "result": "City audio + VFX theatre",
+      "depends": [
+        "CITY-09",
+        "AUD-05"
+      ],
+      "gate": "H-ROAD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "CITY-10"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-01",
+      "result": "Characterize existing generator contracts",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-02",
+      "result": "Versioned recipes + chunk lifecycle",
+      "depends": [
+        "STR-01",
+        "CITY-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-03",
+      "result": "Speed/route-aware lookahead + pooling",
+      "depends": [
+        "STR-02",
+        "CITY-06"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-04",
+      "result": "Reverse reconstruction + world deltas",
+      "depends": [
+        "STR-03",
+        "SYS-01"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-05",
+      "result": "Long-range precision + origin contract",
+      "depends": [
+        "STR-04"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-06",
+      "result": "Fault injection + resource cleanup",
+      "depends": [
+        "STR-05",
+        "TRA-04",
+        "CITY-10"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "STR-07",
+      "result": "Infinite-city acceptance",
+      "depends": [
+        "STR-06",
+        "TRA-06"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "STR-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-01",
+      "result": "Choose one admitted traffic model",
+      "depends": [
+        "ASSET-01",
+        "CITY-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-02",
+      "result": "Lane following/headway + bounded entities",
+      "depends": [
+        "TRA-01",
+        "STR-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-03",
+      "result": "Lane change/right merge/exits",
+      "depends": [
+        "TRA-02",
+        "CITY-05"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-04",
+      "result": "Near/far handoff/collision/cleanup",
+      "depends": [
+        "TRA-03",
+        "STR-03"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-05",
+      "result": "Rules/camera/fines/service boundaries",
+      "depends": [
+        "TRA-04",
+        "CITY-04",
+        "SYS-02"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "TRA-06",
+      "result": "Provisional AI demonstration gate",
+      "depends": [
+        "TRA-05"
+      ],
+      "gate": "T-WORLD",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "TRA-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "SYS-01",
+      "result": "Baseline save schemas + cabin state",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "SYS-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "SYS-02",
+      "result": "Taxi economy/workday reconciliation",
+      "depends": [
+        "SYS-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "SYS-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "SYS-03",
+      "result": "Vehicle/cabin persistence integration",
+      "depends": [
+        "SYS-02",
+        "CAB-09",
+        "VEH-09"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "SYS-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "SYS-04",
+      "result": "Service/recovery practical loop",
+      "depends": [
+        "SYS-03",
+        "CITY-05"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "SYS-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-01",
+      "result": "Strict zero-debt architecture + regression map",
+      "depends": [
+        "ADM-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-02",
+      "result": "Hardware + production budgets",
+      "depends": [
+        "VEH-08",
+        "CITY-08",
+        "TRA-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-03",
+      "result": "Packaged integration regression",
+      "depends": [
+        "CAM-03",
+        "AUD-05",
+        "SYS-04",
+        "STR-07",
+        "QA-01"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-04",
+      "result": "30 min + 2 h soak with resource series",
+      "depends": [
+        "QA-03",
+        "QA-02"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-05",
+      "result": "Independent review + findings closure",
+      "depends": [
+        "QA-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-06",
+      "result": "Release manifest/notes/rollback",
+      "depends": [
+        "QA-05",
+        "ASSET-04"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "QA-07",
+      "result": "Human shareholder gate + STOP",
+      "depends": [
+        "QA-06"
+      ],
+      "gate": "T-RC",
+      "scope": "G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "QA-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/07_GATES_AND_QA.md",
+        "docs/recovery/chapters/08_ADMIN_AND_RELEASE.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-01",
+      "result": "Asset swap wave after G1",
+      "depends": [
+        "QA-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-01"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-02",
+      "result": "L1 debris wallride seven-band mechanics",
+      "depends": [
+        "QA-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-02"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-03",
+      "result": "Five-lane opposite freight ceiling magnet",
+      "depends": [
+        "POST-02"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-03"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-04",
+      "result": "Practice Hangar/incidents/city life",
+      "depends": [
+        "POST-03"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-04"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-05",
+      "result": "Level 2 transit + vertical links",
+      "depends": [
+        "POST-04"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-05"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-06",
+      "result": "Final traffic AI roster + city art",
+      "depends": [
+        "POST-05",
+        "POST-01"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-06"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-07",
+      "result": "FIRST EURO release hardening",
+      "depends": [
+        "POST-06"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-07"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    },
+    {
+      "id": "POST-08",
+      "result": "Full Neural/L3/online future discovery",
+      "depends": [
+        "POST-07"
+      ],
+      "gate": "POST-G1",
+      "scope": "POST_G1",
+      "plan_state": "PLANNED_NOT_RUN",
+      "implementation_truth": "REQUIRES_CURRENT_JIRA_GIT_RUNTIME_RECONCILIATION",
+      "body_recovery_state": "STRUCTURAL_RECOVERY__EXACT_LONG_BODY_NOT_MATERIALIZED",
+      "source": {
+        "file_library_id": "file_00000000c19881fd8bd8899125ca2545",
+        "section": "09_TASK_BACKLOG.md",
+        "anchor": "POST-08"
+      },
+      "contract_refs": [
+        "docs/recovery/chapters/05_CITY_LEVEL1.md",
+        "docs/recovery/chapters/10_ASSET_REGISTER.md",
+        "docs/recovery/chapters/12_DETAILED_PROTOCOLS.md"
+      ],
+      "jira_candidates": null,
+      "owner": null,
+      "files": null,
+      "acceptance_output": null,
+      "evidence_before_change": null,
+      "red_criterion": null,
+      "minimal_working_step": null,
+      "cannot_close_if": "Do not close if mandatory cases were not run, task output is not proven, or evidence belongs to another build.",
+      "shared_execution_protocol_ref": "shared_execution_protocol"
+    }
+  ]
+}

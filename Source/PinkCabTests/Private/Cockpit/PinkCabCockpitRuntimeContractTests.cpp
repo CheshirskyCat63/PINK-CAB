@@ -5,7 +5,7 @@
 #include "EngineUtils.h"
 #include "Camera/CameraComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 class FPinkCabCockpitRuntimeContractCommand final : public IAutomationLatentCommand
 {
@@ -40,12 +40,13 @@ public:
             return true;
         }
 
-        for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::RightMirror); ++Raw)
+        for (uint8 Raw = 0; Raw <= static_cast<uint8>(EPinkCabCockpitSlot::TachometerNeedle); ++Raw)
         {
             const EPinkCabCockpitSlot Slot = static_cast<EPinkCabCockpitSlot>(Raw);
             Test->TestNotNull(*FString::Printf(TEXT("slot %s has an anchor"), *PinkCabCockpitSlotId(Slot).ToString()), Assembly->GetSlotComponent(Slot));
         }
-        Test->TestEqual(TEXT("all stable cockpit slots are registered"), Assembly->GetRegisteredSlotCount(), 22);
+        Test->TestEqual(TEXT("all stable cockpit slots are registered"), Assembly->GetRegisteredSlotCount(),
+            static_cast<int32>(EPinkCabCockpitSlot::TachometerNeedle) + 1);
 
         const UCameraComponent* DriverCamera = Pawn->GetDriverCamera();
         Test->TestTrue(TEXT("driver camera is active in normal play"), DriverCamera && DriverCamera->IsActive());

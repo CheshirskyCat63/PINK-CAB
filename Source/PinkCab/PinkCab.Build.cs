@@ -8,7 +8,8 @@ public class PinkCab : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
-            "ChaosVehicles", "PhysicsCore"
+            "ChaosVehicles", "PhysicsCore", "Slate", "SlateCore",
+            "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld", "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence"
         });
     }
 }

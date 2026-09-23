@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPhysicalProfileAuthorityTest,
@@ -16,19 +17,66 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("reference service mass"), Profile.ReferenceMassKg.Value, 1657.0f);
     TestEqual(TEXT("mass is product design authority"), Profile.ReferenceMassKg.Authority,
         EPinkCabPhysicalParameterAuthority::DesignTarget);
-    TestEqual(TEXT("historical wheelbase source"), Profile.WheelbaseMm.Value, 2750.0f);
+    TestEqual(TEXT("Tatra 613 wheelbase source"), Profile.WheelbaseMm.Value, 2980.0f);
+    TestEqual(TEXT("Tatra 613 front track source"), Profile.FrontTrackMm.Value, 1520.0f);
+    TestEqual(TEXT("Tatra 613 rear track source"), Profile.RearTrackMm.Value, 1520.0f);
     TestEqual(TEXT("wheelbase is source authority"), Profile.WheelbaseMm.Authority,
         EPinkCabPhysicalParameterAuthority::Source);
-    TestEqual(TEXT("Tatra torque target"), Profile.MaxTorqueNm.Value, 240.0f);
+    TestEqual(TEXT("FIRST EURO boosted power target"), Profile.MaxPowerHp.Value, 250.0f);
+    TestEqual(TEXT("FIRST EURO boosted torque target"), Profile.MaxTorqueNm.Value, 260.0f);
+    TestEqual(TEXT("high-rev redline target"), Profile.EngineMaxRpm.Value, 8500.0f);
+    TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
+    const float RedlineTorqueFactor = Profile.NormalizedTorqueCurve.Value.Last().Y;
+    const float RedlinePowerHp = Profile.MaxTorqueNm.Value * RedlineTorqueFactor * Profile.EngineMaxRpm.Value / 7127.0f;
+    TestTrue(TEXT("redline stays around 250 honest horsepower"), FMath::IsNearlyEqual(RedlinePowerHp, 250.0f, 5.0f));
     TestEqual(TEXT("torque is design target"), Profile.MaxTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::DesignTarget);
     TestEqual(TEXT("terminal speed target"), Profile.TerminalTargetKmh.Value, 195.0f);
+    TestEqual(TEXT("first ratio is short enough to turn excess launch torque into tire slip"),
+        Profile.ForwardGearRatios.Value[0], 4.6f);
+    TestEqual(TEXT("reverse ratio mirrors first for strong controllable reverse launch"),
+        Profile.ReverseGearRatios.Value[0], 4.6f);
+    TestTrue(TEXT("rear drive axle has lower grip than front for power oversteer"),
+        Profile.RearWheel.FrictionForceMultiplier.Value
+            < Profile.FrontWheel.FrictionForceMultiplier.Value);
+    TestEqual(TEXT("nominal rear grip targets progressive throttle wheelspin"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.50f);
+    // Use a conservative rear-heavy 60% static load budget. The actual Tatra
+    // is rear-engined, so a 50/50 estimate would understate rear grip and make
+    // the 50% wheelspin threshold look easier than it is in runtime.
+    const float RearGripBudgetN =
+        Profile.ReferenceMassKg.Value * 9.81f * 0.60f
+        * Profile.RearWheel.FrictionForceMultiplier.Value;
+    const float RadiusM = Profile.RearWheel.WheelRadiusCm.Value / 100.0f;
+    const float AxleDriveForceAt2000N =
+        Profile.MaxTorqueNm.Value * 0.95f
+        * Profile.ForwardGearRatios.Value[0]
+        * Profile.FinalDriveRatio.Value
+        / RadiusM;
+    const float QuarterPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float HalfPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+    // Static-load math is only a conservative sanity band. Runtime wheel/contact
+    // tests are authoritative for the desired 25% clean / 50% wheelspin split.
+    TestTrue(TEXT("25 percent pedal stays near the rear static grip budget after linkage response"),
+        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 1.20f);
+    TestTrue(TEXT("50 percent pedal can cross rear static grip budget after linkage response"),
+        AxleDriveForceAt2000N * HalfPedalEngineThrottle > RearGripBudgetN);
+    TestTrue(TEXT("full throttle substantially exceeds rear grip for burnout"),
+        AxleDriveForceAt2000N > RearGripBudgetN * 1.8f);
     TestEqual(TEXT("front steering lock target"), Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
     TestFalse(TEXT("front ABS disabled"), Profile.FrontWheel.bABSEnabled.Value);
     TestFalse(TEXT("rear ABS disabled"), Profile.RearWheel.bABSEnabled.Value);
     TestFalse(TEXT("front traction control disabled"), Profile.FrontWheel.bTractionControlEnabled.Value);
     TestFalse(TEXT("rear traction control disabled"), Profile.RearWheel.bTractionControlEnabled.Value);
     TestEqual(TEXT("rear handbrake seed"), Profile.RearWheel.MaxHandBrakeTorqueNm.Value, 1700.0f);
+    TestEqual(TEXT("nominal suspension is softened for visible travel"), Profile.FrontWheel.SpringRate.Value, 170.0f);
+    TestEqual(TEXT("front suspension bump travel keeps pre-integration seed"), Profile.FrontWheel.SuspensionMaxRaiseCm.Value, 8.0f);
+    TestEqual(TEXT("front suspension droop travel keeps pre-integration seed"), Profile.FrontWheel.SuspensionMaxDropCm.Value, 8.0f);
+    TestEqual(TEXT("rear suspension bump travel keeps pre-integration seed"), Profile.RearWheel.SuspensionMaxRaiseCm.Value, 9.0f);
+    TestEqual(TEXT("rear suspension droop travel keeps pre-integration seed"), Profile.RearWheel.SuspensionMaxDropCm.Value, 9.0f);
+    TestEqual(TEXT("suspension damping is compliant"), Profile.FrontWheel.SuspensionDampingRatio.Value, 0.38f);
     TestEqual(TEXT("handbrake seed is calibration"), Profile.RearWheel.MaxHandBrakeTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::Calibration);
     TestEqual(TEXT("nominal spring is softened from the wooden prototype"),
@@ -75,7 +123,7 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Vehicle/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
 
@@ -93,6 +141,8 @@ bool FPinkCabChaosPhysicalProfileAppliedDefaultsTest::RunTest(const FString& Par
     TestNotNull(TEXT("movement exists"), Movement);
     TestEqual(TEXT("pawn mass comes from profile"), Movement->Mass, Profile.ReferenceMassKg.Value);
     TestEqual(TEXT("engine torque comes from profile"), Movement->EngineSetup.MaxTorque, Profile.MaxTorqueNm.Value);
+    TestEqual(TEXT("engine redline comes from profile"), Movement->EngineSetup.MaxRPM, Profile.EngineMaxRpm.Value);
+    TestEqual(TEXT("engine rev-up inertia comes from profile"), Movement->EngineSetup.EngineRevUpMOI, Profile.EngineRevUpMOI.Value);
     TestEqual(TEXT("front radius comes from profile"), Front->WheelRadius, Profile.FrontWheel.WheelRadiusCm.Value);
     TestEqual(TEXT("front spring comes from profile"), Front->SpringRate, Profile.FrontWheel.SpringRate.Value);
     TestEqual(TEXT("rear steer comes from profile"), Rear->MaxSteerAngle, Profile.RearWheel.MaxSteerAngleDeg.Value);

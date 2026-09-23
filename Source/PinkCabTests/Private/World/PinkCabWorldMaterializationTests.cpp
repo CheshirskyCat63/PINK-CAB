@@ -137,4 +137,78 @@ bool FPinkCabWorldMaterializationAnchorRequestTest::RunTest(const FString& Param
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabWorldMaterializationLongRunBoundedTest,
+    "PinkCab.World.Materialization.LongRunBoundedTraversal",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabWorldMaterializationLongRunBoundedTest::RunTest(const FString& Parameters)
+{
+    constexpr int32 TraversalChunks = 2048;
+    constexpr int32 MaxMaterialized = 3;
+    const FPinkCabCityIdentity City = FPinkCabCityIdentity::Create(TEXT("MAT-LONG"), TEXT("gen-1"), TEXT("content-1"));
+    TArray<FPinkCabWorldChunkCandidate> Candidates;
+    Candidates.Reserve(TraversalChunks + 11);
+    for (int32 X = -5; X <= TraversalChunks + 5; ++X)
+    {
+        Candidates.Add(Candidate(City, X, 0, 0));
+    }
+
+    const FPinkCabWorldMaterializationSettings Policy = Settings(MaxMaterialized);
+    FPinkCabWorldMaterializationResult Start;
+    TestTrue(TEXT("long-run start window builds"),
+        FPinkCabWorldMaterializationPolicy::BuildWindow({0, 0, 0}, Candidates, Policy, {}, Start));
+
+    TArray<FPinkCabChunkId> Previous = Start.MaterializeChunkIds;
+    TSet<FString> SeenChunkIds;
+    for (const FPinkCabChunkId& Id : Previous)
+    {
+        SeenChunkIds.Add(Id.Serialize());
+    }
+
+    int32 MaxActiveSeen = Previous.Num();
+    int32 MaxDematerializedSeen = 0;
+    bool bAllWindowsBuilt = true;
+    bool bAllSetsUnique = true;
+    for (int32 X = 1; X <= TraversalChunks; ++X)
+    {
+        FPinkCabWorldMaterializationResult Step;
+        if (!FPinkCabWorldMaterializationPolicy::BuildWindow({X, 0, 0}, Candidates, Policy, Previous, Step))
+        {
+            bAllWindowsBuilt = false;
+            break;
+        }
+
+        MaxActiveSeen = FMath::Max(MaxActiveSeen, Step.MaterializeChunkIds.Num());
+        MaxDematerializedSeen = FMath::Max(MaxDematerializedSeen, Step.DematerializeChunkIds.Num());
+        TSet<FString> ActiveIds;
+        for (const FPinkCabChunkId& Id : Step.MaterializeChunkIds)
+        {
+            const FString Serialized = Id.Serialize();
+            bAllSetsUnique &= !ActiveIds.Contains(Serialized);
+            ActiveIds.Add(Serialized);
+            SeenChunkIds.Add(Serialized);
+        }
+        Previous = MoveTemp(Step.MaterializeChunkIds);
+    }
+
+    FPinkCabWorldMaterializationResult Returned;
+    const bool bReturned = FPinkCabWorldMaterializationPolicy::BuildWindow(
+        {0, 0, 0}, Candidates, Policy, Previous, Returned);
+
+    TestTrue(TEXT("all 2048 sequential streaming windows build"), bAllWindowsBuilt);
+    TestTrue(TEXT("active chunk ids remain unique"), bAllSetsUnique);
+    TestTrue(TEXT("active materialization never exceeds hard cap"), MaxActiveSeen <= MaxMaterialized);
+    TestTrue(TEXT("dematerialization work remains bounded by previous active set"), MaxDematerializedSeen <= MaxMaterialized);
+    TestTrue(TEXT("long traversal visits more than one thousand stable chunk ids"), SeenChunkIds.Num() > 1000);
+    TestTrue(TEXT("return window builds after long traversal"), bReturned);
+    if (bReturned)
+    {
+        TestEqual(TEXT("return after long traversal reproduces origin signature"), Returned.RequestSignature, Start.RequestSignature);
+        TestTrue(TEXT("return active set remains bounded"), Returned.MaterializeChunkIds.Num() <= MaxMaterialized);
+    }
+    return true;
+}
+
 #endif
