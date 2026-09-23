@@ -104,6 +104,10 @@ public:
         if (!State->bPrepared)
         {
             Pawn->SetSystemMenuOpen(false);
+            // Match the proven Chaos runtime smoke harness: disable only the
+            // gameplay Pawn tick so live keyboard sampling cannot overwrite
+            // the direct test controls. Chaos movement components keep ticking.
+            Pawn->SetActorTickEnabled(false);
 
             const FVector SeamStart(99950.0, 1300.0, 180.0);
             Pawn->SetActorLocation(
