@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: cd869-inline-${{ github.ref }}
@@ -55,28 +55,6 @@ jobs:
           Write-Host "CD869_METAROAD_VERSION=$($meta.VersionName)"
           Write-Host 'CD869_PREFLIGHT=PASS'
 
-      - name: Inspect MetaRoad generation naming and default surfaces
-        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $pluginRoot = Split-Path -Parent $env:METAROAD_PLUGIN
-          function Dump-Source([string]$RelativePath, [int]$MaxLines) {
-            $full = Join-Path $pluginRoot $RelativePath
-            Write-Host "CD869_SOURCE_BEGIN=$RelativePath"
-            if (Test-Path $full) {
-              $lineNo=0
-              Get-Content -LiteralPath $full | ForEach-Object {
-                $lineNo++
-                if ($lineNo -le $MaxLines) { Write-Host ("{0:D4}: {1}" -f $lineNo,$_) }
-              }
-            }
-            Write-Host "CD869_SOURCE_END=$RelativePath"
-          }
-          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadBakeHost.cpp' 760
-          Dump-Source 'Source\MetaRoad\Private\MetaRoadSettings.cpp' 280
-          Dump-Source 'Source\MetaRoad\Private\RoadSplineComponent.cpp' 760
-          Dump-Source 'Source\MetaRoad\Public\MetaRoadTypes.h' 940
-
       - name: Build PinkCabEditor incrementally
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -86,6 +64,46 @@ jobs:
           & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host 'CD869_EDITOR_BUILD=PASS'
+
+      - name: Author and bake 1000m MetaRoad module once
+        if: ${{ hashFiles('Content/World/L1/Road/**/*.uasset') == '' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_METAROAD_AUTHOR.log'
+          New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if (Test-Path $log) {
+            Get-Content $log | Select-String -Pattern 'CD869_METAROAD_BAKE|MetaRoad generated|Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
+          }
+          if ($exit -ne 0) { exit $exit }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $fails = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($queue.Count -eq 0 -or $fails.Count -gt 0) {
+            throw "CD869_METAROAD_AUTHORING_FAILED queue=$($queue.Count) fails=$($fails.Count)"
+          }
+          $roadAssets = @(Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road') -Filter '*.uasset' -Recurse -ErrorAction SilentlyContinue)
+          if ($roadAssets.Count -eq 0) { throw 'CD869_METAROAD_BAKE_PRODUCED_NO_UASSETS' }
+          Write-Host "CD869_METAROAD_UASSETS=$($roadAssets.Count)"
+
+      - name: Commit baked MetaRoad assets once
+        if: ${{ hashFiles('Content/World/L1/Road/**/*.uasset') == '' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road Content/Dev/Authoring
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'asset(CD-869): bake MetaRoad L1 straight module [skip ci]'
+            git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+            Write-Host "CD869_METAROAD_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+          } else {
+            throw 'CD869_METAROAD_ASSETS_NOT_STAGED'
+          }
 
       - name: Run focused endless-road automation
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
