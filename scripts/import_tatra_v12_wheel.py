@@ -6,10 +6,18 @@ if not srcdir:
     raise RuntimeError("PINKCAB_TATRA_V12_CLEAN_DIR is required")
 
 src=os.path.join(srcdir,"Tatra613_V12_Wheel.glb")
-dst="/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel"
+base_root="/Game/Dev/Vehicles/Tatra613ArchiveV12Clean"
+dst=base_root+"/Tatra613_V12_Wheel"
+stale_roots=[
+    base_root+"/Tatra613_V12_Body",
+    base_root+"/Tatra613_V12_Steering",
+]
 if not os.path.isfile(src):
     raise RuntimeError("Tatra wheel GLB missing: "+src)
 
+for stale in stale_roots:
+    if unreal.EditorAssetLibrary.does_directory_exist(stale):
+        unreal.EditorAssetLibrary.delete_directory(stale)
 if unreal.EditorAssetLibrary.does_directory_exist(dst):
     unreal.EditorAssetLibrary.delete_directory(dst)
 
@@ -23,9 +31,17 @@ task.save=True
 asset_tools.import_asset_tasks([task])
 
 unreal.EditorAssetLibrary.save_directory(
-    "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean",
+    base_root,
     only_if_is_dirty=False,
     recursive=True)
+
+unexpected=[
+    path for path in unreal.EditorAssetLibrary.list_assets(
+        base_root,recursive=True,include_folder=False)
+    if not str(path).startswith(dst+"/")
+]
+if unexpected:
+    raise RuntimeError("Unexpected assets remain in canonical V12Clean root: "+str(unexpected))
 
 wheel_path=(
     "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/"
