@@ -34,6 +34,8 @@ jobs:
       EVIDENCE_DIR: Saved\GitHubGate
       GATE_LANE: ${{ inputs.lane }}
       CANDIDATE_REF: main
+      TEMP: E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\tmp
+      TMP: E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\tmp
 
     steps:
       - name: Verify PINK-CAB runner
@@ -43,6 +45,7 @@ jobs:
           if(-not (Test-Path 'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner')){throw 'PINK-CAB runner marker missing'}
           if(-not (Test-Path $env:PINKCAB_UE_ROOT)){throw 'UE 5.8 root missing'}
           if(-not (Test-Path "$env:ACCEPTED_BASE\Windows\PinkCab\Binaries\Win64\PinkCab.exe")){throw 'accepted cooked base missing'}
+          New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
           Write-Host 'PINKCAB_EXECUTION_HOST_OK'
 
       - name: Reap stale PINK-CAB Unreal processes
