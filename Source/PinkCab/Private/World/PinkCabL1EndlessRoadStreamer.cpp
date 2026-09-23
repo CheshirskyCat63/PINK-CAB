@@ -110,6 +110,26 @@ bool APinkCabL1EndlessRoadStreamer::RefreshForState(
             RequestedChunkIndex,
             RequestedDirection);
 
+    FPinkCabRoadGraph DesiredRoadGraph;
+    for (const FPinkCabChunkCoord& Coord : DesiredWindow.DesiredCoords)
+    {
+        if (!FPinkCabL1EndlessRoadModel::AppendStraightChunkLanes(
+                CityIdentity,
+                Coord.Longitudinal,
+                DesiredRoadGraph))
+        {
+            return false;
+        }
+    }
+
+    const int32 ExpectedLaneCount =
+        FPinkCabL1EndlessRoadModel::PoolSize *
+        FPinkCabL1EndlessRoadModel::GroundLaneCount;
+    if (DesiredRoadGraph.NumLanes() != ExpectedLaneCount)
+    {
+        return false;
+    }
+
     TArray<FPinkCabWorldChunkCandidate> Candidates;
     Candidates.Reserve(DesiredWindow.DesiredCoords.Num());
 
@@ -210,6 +230,7 @@ bool APinkCabL1EndlessRoadStreamer::RefreshForState(
     CurrentChunkIndex = RequestedChunkIndex;
     StableTravelDirection = RequestedDirection;
     LastMaterializationSignature = Result.RequestSignature;
+    ActiveRoadGraph = MoveTemp(DesiredRoadGraph);
     bHasMaterializedState = true;
     return GetActiveChunkCount() == FPinkCabL1EndlessRoadModel::PoolSize;
 }
