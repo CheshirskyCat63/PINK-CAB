@@ -5,6 +5,8 @@
 #include "FileHelpers.h"
 #include "Editor.h"
 #include "EngineUtils.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 #include "World/PinkCabL1RoadChunkActor.h"
@@ -96,6 +98,55 @@ bool FPinkCabL1EndlessRoadMapCompositionTest::RunTest(const FString& Parameters)
 
     TestTrue(TEXT("candidate map passes MapCheck"),
         GEditor->Exec(World, TEXT("MAP CHECK"), *GLog));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadMaterialContractTest,
+    "PinkCab.World.L1EndlessRoad.Asset.MaterialContract",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameters)
+{
+    UStaticMesh* Road = LoadObject<UStaticMesh>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
+    TestNotNull(TEXT("baked MetaRoad road surface loads"), Road);
+    if (!Road)
+    {
+        return false;
+    }
+
+    const TArray<FStaticMaterial>& Materials = Road->GetStaticMaterials();
+    TestTrue(TEXT("baked road has at least one authored material slot"),
+        Materials.Num() > 0);
+
+    int32 ValidMaterials = 0;
+    for (int32 Index = 0; Index < Materials.Num(); ++Index)
+    {
+        UMaterialInterface* Material = Materials[Index].MaterialInterface;
+        TestNotNull(
+            *FString::Printf(TEXT("road material slot %d is assigned"), Index),
+            Material);
+        if (!Material)
+        {
+            continue;
+        }
+
+        const FString Path = Material->GetPathName();
+        AddInfo(FString::Printf(
+            TEXT("CD869_ROAD_MATERIAL_SLOT[%d]=%s"),
+            Index,
+            *Path));
+        TestFalse(
+            *FString::Printf(TEXT("road material slot %d is not Engine default"), Index),
+            Path.Contains(TEXT("/Engine/EngineMaterials/DefaultMaterial")));
+        ++ValidMaterials;
+    }
+
+    TestEqual(TEXT("every baked road material slot is assigned"),
+        ValidMaterials, Materials.Num());
     return true;
 }
 
