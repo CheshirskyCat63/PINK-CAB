@@ -12,6 +12,10 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $RepoRoot "PinkCab.uproject"
+$BuildTemp = if ($env:PINKCAB_BUILD_TEMP) { $env:PINKCAB_BUILD_TEMP } else { Join-Path $RepoRoot "Saved\BuildTemp" }
+New-Item -ItemType Directory -Force -Path $BuildTemp | Out-Null
+$env:TEMP = $BuildTemp
+$env:TMP = $BuildTemp
 if ([string]::IsNullOrWhiteSpace($EngineRoot)) {
     $EngineRoot = "C:\Program Files\Epic Games\UE_5.8"
 }
