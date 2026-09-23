@@ -71,6 +71,9 @@ private:
     FPinkCabInteractionControlSpec ResolveActiveSpec() const;
     void MarkRecalledTargetConsumed(FName TargetId);
     void ClearConsumedRecallIfIdle();
+    bool TrySelectContextualTarget(
+        const FPinkCabCockpitInteractionFrame& Frame,
+        const UPinkCabCockpitAssemblyComponent* Assembly);
     void UpdateTargetSelection(
         const FPinkCabCockpitInteractionFrame& Frame,
         const UPinkCabCockpitAssemblyComponent* Assembly);
