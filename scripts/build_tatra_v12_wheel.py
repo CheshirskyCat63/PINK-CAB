@@ -37,12 +37,23 @@ def select_join(names):
         bpy.ops.object.join()
     return bpy.context.view_layer.objects.active
 
+def set_pbr(mat, color, metallic, roughness):
+    mat.diffuse_color=(*color,1.0)
+    if mat.use_nodes and mat.node_tree:
+        bsdf=next((node for node in mat.node_tree.nodes if node.type=='BSDF_PRINCIPLED'),None)
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value=(*color,1.0)
+            if 'Metallic' in bsdf.inputs:
+                bsdf.inputs['Metallic'].default_value=metallic
+            if 'Roughness' in bsdf.inputs:
+                bsdf.inputs['Roughness'].default_value=roughness
+
 for mat in bpy.data.materials:
     name=mat.name.lower()
     if 't613_black' in name:
-        mat.diffuse_color=(0.012,0.014,0.018,1.0)
+        set_pbr(mat,(0.012,0.014,0.018),0.0,0.48)
     elif 't613_chrome' in name:
-        mat.diffuse_color=(0.30,0.32,0.35,1.0)
+        set_pbr(mat,(0.30,0.32,0.35),0.9,0.18)
 
 obj=select_join({'wheel.002','wheel.001','wheel'})
 bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
