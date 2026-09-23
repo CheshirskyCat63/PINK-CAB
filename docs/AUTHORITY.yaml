@@ -10,9 +10,11 @@ control_plane_cleanup:
   remaining_admin_gates:
     stale_remote_branch_refs:
       count: 0
-      status: COMPLETE_2026_09_22
+      status: COMPLETE_2026_09_23
       remaining_branches: [main, fix/CD-848-recovery-r1-input-contract]
       recovery_ref_status: MERGED_IDENTICAL_INACTIVE_ALIAS
+      recovery_ref_policy: retained_only_because_connected_github_api_has_no_delete_ref
+      recovery_ref_must_equal_main: true
       active_execution_lane: false
     jira_plan_downgrade:
       target: FREE
@@ -27,6 +29,9 @@ control_plane_cleanup:
   active_git_branch: main
   canonical_target_branch: main
   heavy_ci_trigger: manual_only
+  current_workflow_lanes: [fast, human_gate]
+  current_workflow_candidate_ref: main
+  historical_standalone_lane: accepted_evidence_only_not_current_execution
   gameplay_changes_allowed: true
   latest_auto_gate_run: 35809749568
   latest_auto_gate_result: SUCCESS_CODE_ONLY_STANDALONE_HUMAN_BUILD
