@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 SCRIPT_SUFFIXES = {".py", ".ps1", ".sh", ".bat", ".cmd"}
+SOURCE_SUFFIXES = {".cpp", ".h"}
 
 FORBIDDEN_ACTIVE_TOOL_NAMES = {
     "build_tatra_v12_polished.py",
@@ -55,6 +56,10 @@ FORBIDDEN_ACTIVE_SCRIPT_PATTERNS = {
     "downloads_path": re.compile(r"[A-Za-z]:\\[^\\\r\n]*\\Downloads\\", re.IGNORECASE),
 }
 
+FORBIDDEN_SOURCE_PATTERNS = {
+    "legacy_tatra_visual_factory": re.compile(r"\bTatra613Donor\s*\("),
+}
+
 REQUIRED_COOK_LINES = {
     '+DirectoriesToAlwaysCook=(Path="/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel")',
     '+DirectoriesToAlwaysCook=(Path="/Game/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes")',
@@ -99,6 +104,27 @@ def scan_repository(root: Path) -> list[dict[str, str]]:
                         "rule": rule,
                         "path": path.relative_to(root).as_posix(),
                         "detail": "machine-specific path is forbidden in active tooling",
+                    })
+
+    source_root = root / "Source"
+    if source_root.exists():
+        for path in sorted(source_root.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in SOURCE_SUFFIXES:
+                continue
+            relative = path.relative_to(root).as_posix()
+            if "Tatra613Donor" in path.name:
+                violations.append({
+                    "rule": "legacy_tatra_visual_factory",
+                    "path": relative,
+                    "detail": "legacy donor visual-profile naming is forbidden in active Source",
+                })
+            text = path.read_text(encoding="utf-8-sig", errors="replace")
+            for rule, pattern in FORBIDDEN_SOURCE_PATTERNS.items():
+                if pattern.search(text):
+                    violations.append({
+                        "rule": rule,
+                        "path": relative,
+                        "detail": "legacy donor visual-profile naming is forbidden in active Source",
                     })
 
     for relative in sorted(STALE_CONTENT_ROOTS):
