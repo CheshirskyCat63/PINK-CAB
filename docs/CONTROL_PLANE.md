@@ -1,163 +1,131 @@
 # PINK-CAB Control Plane
 
-Status: **ADMIN FREEZE / CLEANUP ACTIVE**  
-Date: **2026-09-22**
+Status: **WORKING BASELINE FROZEN / ADMIN CLEAN**  
+Date: **2026-09-23**
 
-## One current execution path
+## Canonical production truth
 
 - Product root: Jira **CD-519**
-- Mechanics / recovery owner: Jira **CD-848**
-- Administrative hygiene owner: Jira **CD-868**
-- Canonical mechanics authority: Confluence **47 · Control & Vehicle Mechanics Release Contract** (page 16744449)
-- Canonical pre-model handoff: Confluence page **15663105** (sole current “46”)
-- Git target branch: **main**
-- Single active implementation PR: **#7**
-- Single active implementation branch: **fix/CD-848-recovery-r1-input-contract**
+- Mechanics / continuing FIRST EURO owner: Jira **CD-848**
+- Administrative cleanup gate: Jira **CD-868 — DONE**
+- Canonical Git branch: **main**
+- Active implementation PRs: **none**
+- Accepted working runtime SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
+- Accepted GitHub Actions run: **35809749568**
+- Accepted job: **PINK-CAB code-only standalone human build — SUCCESS**
+- Accepted local delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`
+- Desktop handoff: `PINKCAB Latest.lnk`
+- Integration merge commit: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
 - Production vehicle technology: **Unreal Engine 5.8.2 native Chaos Vehicles**
-- FGear/VDS: **archived research only**
+- FGear / Vehicle Damage System: **archived research only**
 
-Older PRs #3–#6 are closed historical evidence. Recovery pages 48/48A…48G are archived planning/provenance, not current status.
+The accepted SHA remains immutable executable evidence. Administrative descendants on `main` do not retroactively change that binary.
 
-## Current technical truth
+PR #7 is merged/closed. PRs #3–#6 are historical/closed.
 
-Last runtime-affecting candidate before administrative-only cleanup:
+The legacy recovery ref `fix/CD-848-recovery-r1-input-contract` is not an execution lane. It was fast-forwarded to the merged history after PR #7. New work follows:
 
-`8bed51e5c47e037eb45a670f9d6c1c2cdd28b712`
+`main → one Jira-keyed task branch → one PR → verify → merge`
 
-GitHub Actions run `35746083559`:
+## Accepted runtime evidence
 
-- strict code health: PASS
-- PinkCabEditor build: PASS
-- focused recovery automation: PASS
-- full PinkCab automation: PASS
-- Win64 package: PASS
-- packaged smoke / critical scan: PASS
-- packaged Windows OS-input route: **FAIL**
-- failure point: throttle dosing
-- immutable HUMAN_PENDING promotion: not executed
-- current HUMAN acceptance: **NO**
+Owner acceptance freezes `8168d724...` as the current **working baseline**, not as a claim that all FIRST EURO scope is finished.
 
-Administrative commits after that SHA do not claim gameplay improvement.
+Observed runtime evidence from the accepted build:
 
-## Recovery Input Contract R1
+- PinkCab monolithic Win64 Development target built successfully;
+- code-health zero-debt preflight passed in the standalone lane;
+- game process remained running after smoke;
+- UE 5.8.2 initialized on Windows;
+- D3D12 selected the NVIDIA GeForce RTX 4090 Laptop GPU;
+- Chaos physics initialized;
+- `/Game/Dev/Maps/L_PinkCab_ChaosWeave` loaded and entered play;
+- the owner-supplied runtime log fragment contains no fatal/assert/ensure/unhandled-exception evidence.
 
-- mouse = steering by default
-- Space = gaze/look; release returns mouse to steering
-- Q = clutch
-- W = brake
-- E = throttle
-- Q/W/E + wheel = analog dosing; overlap priority E → W → Q
-- 1/2/3/4 = quick target recall only; recall does not actuate and its prompt is visible only while the number key is held
-- RMB = optional universal acquire/retain for any valid current target; RMB alone never actuates
-- LMB / wheel = contextual action directly; neither requires RMB as a prefix
-- LMB may directly manipulate Gearbox/Handbrake; RMB remains optional retain
-- while lever manipulation is active, mouse XY belongs to the lever and steering holds
-- releasing LMB returns XY to steering; releasing RMB ends optional retain
-- sustained same-direction wheel input progressively accelerates; pause/reversal resets the wheel burst
-- steering = manual/no-assist: heavy at standstill, lighter once rolling, calmer at high speed
-- focus/menu loss clears transient capture
-- no hidden auto-throttle, rev-match, countersteer, yaw rescue, ABS or ESP
+Non-blocking log noise for this baseline:
 
-## Resource policy
+- PIX capture DLL absent when not launched through PIX;
+- RenderDoc not attached;
+- stable PSO cache absent;
+- AudioCapture implementation absent;
+- ru-RU localization falls back to English;
+- PlayerStart fallback warning;
+- render-thread safety warning for `r.MotionVectorSimulation`.
 
-There is one GitHub Actions workflow: `.github/workflows/pinkcab-g1-github-control-plane.yml`.
+These items are not promoted to gameplay blockers by this baseline acceptance. Performance/content work may address them later where a specific gate requires it.
 
-It is **manual-only**.
+## Current input / cockpit contract
 
-Dispatch modes:
+- mouse = steering by default;
+- Space = gaze/look; release returns mouse to steering;
+- Q = clutch;
+- W = brake;
+- E = throttle;
+- Q/W/E + wheel = analog dosing; overlap priority **E → W → Q**;
+- 1/2/3/4 = ephemeral quick access for turn signals / horn / gearbox / handbrake;
+- quick-access prompt disappears when the number key is released;
+- RMB = optional contextual capture/retain of a valid control; RMB alone never actuates it;
+- LMB and mouse wheel may perform the authored contextual action directly without an RMB prerequisite;
+- Gearbox/Handbrake may be directly manipulated by LMB on the active/contextual target; RMB remains useful when the driver wants the target retained;
+- during lever manipulation mouse XY belongs only to the lever and the current steering command is held;
+- after manipulation ends, mouse XY returns to steering;
+- sustained same-direction wheel input progressively accelerates; pause or direction reversal resets the burst;
+- steering is manual/no-assist: heavy at standstill, lighter once rolling, calmer rather than sharper at high speed;
+- focus/menu loss clears transient interaction ownership;
+- no hidden auto-throttle, rev-match, countersteer, yaw rescue, ABS or ESP.
 
-### fast — default
+Detailed authority: `docs/recovery/RECOVERY_INPUT_CONTRACT_R1.md`.
 
-Use during normal iteration.
+## GitHub execution policy
 
-Runs:
-- exact-head preflight
-- zero-debt code health
-- incremental PinkCabEditor build
-- five focused recovery suites:
-  - `PinkCab.G1.HInp`
-  - `PinkCab.Cockpit.Input.Recovery`
-  - `PinkCab.Vehicle.ChaosBaseline.PhysicsOnly`
-  - `PinkCab.Vehicle.Visual.WheelPresentationChaosSync`
-  - `PinkCab.UI.SystemMenu`
+Canonical workflow:
 
-Does **not** package or deliver a human build.
+`.github/workflows/pinkcab-g1-github-control-plane.yml`
 
-### human_gate
+Normal development sequence:
 
-Use only when a build is genuinely ready for owner testing.
+1. exact-head preflight;
+2. zero-debt code health;
+3. fast focused verification;
+4. only for genuine human candidates: full regression/package/runtime delivery;
+5. human acceptance/rejection.
 
-Adds:
-- full recovery matrix
-- full `PinkCab` automation regression
-- Win64 package
-- packaged smoke
-- Windows synthetic OS-input route
-- immutable delivery
-- HUMAN_PENDING shortcut/artifacts
+The standalone code-only lane exists for the current Windows Code Integrity constraint and must preserve its eligibility guard: no cooked Content/Config overlay drift relative to its declared package base.
 
-Rule: **do not spend package/runtime-gate resources on documentation/admin-only changes.**
+Do not spend full package resources on documentation-only administration.
 
 ## Jira active surface
 
-During cleanup, the non-backlog PINK-CAB execution surface is exactly:
+- **CD-519** — active product root, remains IN PROGRESS;
+- **CD-848** — current broader mechanics/FIRST EURO owner, remains IN PROGRESS;
+- **CD-868** — control-plane cleanup, DONE.
 
-- CD-519 — product root
-- CD-848 — mechanics/recovery
-- CD-868 — control-plane cleanup
-
-CD-855 and CD-860 are BACKLOG. Old mechanics cards moved out of UNDER REVIEW remain historical/backlog until reconciled with R1.
+Backlog/history is not an active execution lane merely because it is not Done.
 
 ## Confluence precedence
 
-1. Product Family / Authority Index — page 6586369
-2. Control & Vehicle Mechanics Release Contract — page 16744449
-3. Native Chaos production authority — page 13303842
-4. Canonical pre-model handoff — page 15663105
-5. Detailed current subsystem pages only where they do not conflict with the above
+1. page **6586369** — Product Family / Authority Index
+2. page **16744449** — Control & Vehicle Mechanics Release Contract
+3. page **13303842** — Native Chaos production authority
+4. page **15663105** — canonical pre-model handoff
 
-Pages 48/48A…48G are **RECOVERY ARCHIVE**.  
-Former duplicate page 15826945 is **ARCHIVE**, not a competing page 46.  
-Former 28A FGear-lineage matrix is archived.
+Recovery 48-series, former duplicate 46 and pre-Chaos FGear lineage are archive/history, not current status.
 
+## Resource / cost policy
 
-## SaaS / cost policy
+PINK-CAB remains **FREE-FIRST / RESOURCE-CONSTRAINED**.
 
-PINK-CAB is **FREE-FIRST / RESOURCE-CONSTRAINED**.
+- GitHub + self-hosted Windows UE runner is the technical execution engine.
+- Jira is production tracking truth, not build infrastructure.
+- Jira Free is the preferred account plan when eligible.
+- Billing-plan state is an account setting and is **not** a blocker for the accepted runtime or Git authority.
+- Production must not depend on paid Jira audit logs, Rovo/AI, advanced permission editing or high automation quotas.
+- Any new paid SaaS/plugin/tool requires explicit owner approval and a concrete blocker.
 
-- Jira target plan: **Free**, provided the site remains within Free eligibility (10 Jira users or fewer and storage within the Free allowance).
-- Jira is a production tracker, not the build/test execution engine.
-- Do not depend on paid Jira audit logs, Rovo/AI, advanced permission editing or high automation quotas for the game pipeline.
-- Existing permission schemes may remain preserved after downgrade but Free must not require routine permission-scheme editing.
-- Prefer GitHub + self-hosted Windows UE runner for deterministic technical automation.
-- New paid SaaS/plugin/tool dependencies require explicit owner approval and a concrete blocker they solve.
-- If a workflow can be implemented reliably with current free/native tools, do not introduce a paid dependency.
+## Freeze rule
 
-## Branch hygiene
+The accepted working build remains:
 
-Unique material from superseded branches is preserved under `docs/archive/`.
+`8168d72406af6934ab20eace583c2b895f0620b7 / run 35809749568`
 
-Remote branch cleanup completed on 2026-09-22. Exactly two remote branches remain:
-- `main`
-- `fix/CD-848-recovery-r1-input-contract`
-
-Unique material from superseded branches remains preserved under `docs/archive/`.
-
-New rule after cleanup:
-
-`main → one task branch → one PR → verify → merge → delete branch`
-
-No parallel ownerfix/final/recovery/integration branch chains.
-
-## Resume gate
-
-Gameplay work resumes only when:
-
-1. The remaining Jira billing human gate (Standard → Free) is acknowledged/completed.
-2. PR #7 remains the sole active implementation PR.
-3. No current Confluence page contradicts Recovery R1.
-4. Exact runtime changes use the **fast** lane first.
-5. A candidate intended for owner testing passes **human_gate** lane.
-6. Owner performs the human gate and explicitly accepts/rejects it.
-
-Technical PASS never equals Human Acceptance.
+Do not rewrite its history or relabel a later administrative commit as the accepted executable. Future gameplay changes start from canonical `main`, receive a new exact SHA and new evidence, and supersede the working baseline only after a new human acceptance.
