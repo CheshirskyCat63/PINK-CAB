@@ -23,7 +23,7 @@ The accepted SHA remains immutable executable evidence. Administrative descendan
 
 PR #7 is merged/closed. PRs #3–#6 are historical/closed.
 
-The legacy recovery ref `fix/CD-848-recovery-r1-input-contract` is retained only as a merged/inactive compatibility alias because the connected GitHub API does not expose delete-ref. It must always point to the same SHA as `main` and is never an execution lane. New work follows:
+The legacy refs `fix/CD-848-recovery-r1-input-contract` and `fix/CD-848-sac-safe-runtime-gate` are retained only as inactive compatibility aliases because the connected GitHub API does not expose delete-ref. Both must always point to the same SHA as `main` and are never execution lanes. New work follows:
 
 `main → one Jira-keyed task branch → one PR → verify → merge`
 
@@ -86,13 +86,16 @@ Normal development sequence:
 
 1. exact-head preflight;
 2. zero-debt code health;
-3. fast focused verification;
-4. only for genuine human candidates: full regression/package/runtime delivery;
-5. human acceptance/rejection.
+3. `fast` for ordinary implementation iteration;
+4. `human_gate` for a lightweight exact-head owner-test build delivered through `PINKCAB Latest.lnk`;
+5. `release_gate` only when a fresh full automation/cook/package evidence bundle is required;
+6. human acceptance/rejection remains separate from technical PASS.
 
-The code-only standalone lane that produced the accepted `8168d724...` build is historical evidence only and is no longer an active control-plane lane. The current canonical workflow is manual-only with `fast` and `human_gate`, both targeting `main`.
+The code-only standalone lane that produced the accepted `8168d724...` build is immutable historical evidence. The current canonical workflow is manual-only with `fast`, `human_gate`, and `release_gate`, all targeting `main`.
 
-Do not spend full package resources on documentation-only administration.
+Windows SAC/UMCI machine-level trust belongs only to `release_gate`. It must never block routine `fast` or `human_gate` development delivery.
+
+Do not spend full package resources on documentation-only administration or ordinary handling iteration.
 
 ## Jira active surface
 
