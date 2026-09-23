@@ -23,7 +23,7 @@ The accepted SHA remains immutable executable evidence. Administrative descendan
 
 PR #7 is merged/closed. PRs #3–#6 are historical/closed.
 
-The legacy refs `fix/CD-848-recovery-r1-input-contract` and `fix/CD-848-sac-safe-runtime-gate` are retained only as inactive compatibility aliases because the connected GitHub API does not expose delete-ref. Both must always point to the same SHA as `main` and are never execution lanes. New work follows:
+The refs `fix/CD-848-recovery-r1-input-contract`, `fix/CD-848-sac-safe-runtime-gate`, and `chore/CD-868-final-control-plane-cleanup` are retained only as inactive compatibility aliases because the connected GitHub API does not expose delete-ref. Both must always point to the same SHA as `main` and are never execution lanes. New work follows:
 
 `main → one Jira-keyed task branch → one PR → verify → merge`
 
