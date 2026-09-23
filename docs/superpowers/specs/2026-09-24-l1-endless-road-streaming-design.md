@@ -39,6 +39,16 @@ This produces 14 logical ground lanes in the v1 straight chunk:
 - 2 local lanes direction A;
 - 2 local lanes direction B.
 
+For this first implementation the authoring dimensions are fixed as calibration values, not world-canon promises:
+
+- express lane width: `360 cm`;
+- local lane width: `320 cm`;
+- central green median: `800 cm`;
+- each green/service separation strip: `400 cm`;
+- outer safety shoulder beyond each local road: `100 cm`.
+
+The resulting authored road envelope is approximately `6680 cm` wide before any future sidewalk/building frontage.
+
 Parking bays, building sidewalks and service entrances are omitted from this first visual module. Their future addition must not alter the chunk identity or streaming architecture.
 
 ## 3. Spatial contract
@@ -121,17 +131,23 @@ The physical road geometry being reused does not change that logical identity.
 
 The initial v1 window is fixed at seven physical chunks:
 
-- 2 chunks behind;
+- 2 chunks behind relative to current travel direction;
 - current chunk;
-- 4 chunks ahead.
+- 4 chunks ahead relative to current travel direction.
 
-For current chunk `N`, the desired set is:
+For current chunk `N` while travelling toward positive X, the desired set is:
 
 `[N-2, N-1, N, N+1, N+2, N+3, N+4]`
 
-The window is recomputed when the player changes logical chunk. It is not rebuilt every frame.
+For current chunk `N` while travelling toward negative X, the desired set is:
 
-Forward and reverse driving use the same signed-coordinate rule. No separate reverse streamer exists.
+`[N+2, N+1, N, N-1, N-2, N-3, N-4]`
+
+Travel direction is derived from authoritative vehicle longitudinal velocity with hysteresis. Near standstill, the last non-zero travel direction is retained so the materialization window does not flap while parking or reversing the steering wheel.
+
+The window is recomputed when the player changes logical chunk or when stable travel direction changes. It is not rebuilt every frame.
+
+Forward and reverse driving share one streamer and one signed-coordinate model. No separate reverse streamer exists.
 
 ### 6.3 Pooling
 
@@ -265,16 +281,17 @@ TDD coverage must include:
 
 1. signed longitudinal position → correct chunk index;
 2. exact boundary behavior at 0 / ±100000 cm;
-3. desired seven-chunk window for forward positions;
-4. identical bounded behavior while driving in reverse;
-5. stable `ChunkId` for the same city/chunk after leaving and returning;
-6. no duplicate active logical IDs;
-7. active physical representation count never exceeds seven;
-8. long-run traversal of at least 100 chunks without pool growth;
-9. existing 2048-window materialization tests remain green;
-10. lane IDs remain deterministic across adjacent straight chunks;
-11. teleport/large-index jump rebuilds one bounded window;
-12. missing visual asset fails visibly and does not create unbounded fallback actors.
+3. desired seven-chunk window for positive-X travel;
+4. direction-flipped seven-chunk window for negative-X travel;
+5. standstill hysteresis retains the last stable travel direction;
+6. stable `ChunkId` for the same city/chunk after leaving and returning;
+7. no duplicate active logical IDs;
+8. active physical representation count never exceeds seven;
+9. long-run traversal of at least 100 chunks without pool growth;
+10. existing 2048-window materialization tests remain green;
+11. lane IDs remain deterministic across adjacent straight chunks;
+12. teleport/large-index jump rebuilds one bounded window;
+13. missing visual asset fails visibly and does not create unbounded fallback actors.
 
 ## 12. Runtime acceptance
 
