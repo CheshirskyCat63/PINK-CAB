@@ -54,9 +54,9 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     if (!Assembly || !VisualDriver || !Shell) return true;
     Test->TestEqual(TEXT("playable map starts with Tatra 613 desktop-clean profile"),
         Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
-    Test->TestNotNull(TEXT("playable map starts with visible donor exterior"), Shell->GetExteriorPresentation());
+    Test->TestNotNull(TEXT("playable map starts with visible Tatra presentation"), Shell->GetExteriorPresentation());
     Test->TestNotNull(TEXT("playable map starts with owner-visible source scene"), Shell->GetCabinPresentation());
-    Test->TestEqual(TEXT("playable map renders all 133 source meshes plus four donor wheels"),
+    Test->TestEqual(TEXT("playable map renders all 133 source meshes plus four V12Clean wheels"),
         Shell->GetPresentationPartCount(), 137);
 
     const FPinkCabVehicleVisualProfile& ActiveProfile = Shell->GetProfile();
@@ -110,27 +110,27 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
 
     FPinkCabCockpitPresentationState NeutralState;
     VisualDriver->Apply(*Assembly, NeutralState);
-    FPinkCabVehicleVisualProfile Donor = FPinkCabVehicleVisualProfile::Fallback();
-    Donor.ProfileId = TEXT("PinkCab.Visual.CD855BindingProof");
-    Donor.ExteriorStaticMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Engine/BasicShapes/Cube.Cube")));
-    Donor.bUseExteriorAsCabinWhenCabinMissing = true;
+    FPinkCabVehicleVisualProfile TestProfile = FPinkCabVehicleVisualProfile::Fallback();
+    TestProfile.ProfileId = TEXT("PinkCab.Visual.CD855BindingProof");
+    TestProfile.ExteriorStaticMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Engine/BasicShapes/Cube.Cube")));
+    TestProfile.bUseExteriorAsCabinWhenCabinMissing = true;
 
     FPinkCabCockpitVisualBinding SteeringBinding;
     SteeringBinding.Slot = EPinkCabCockpitSlot::SteeringWheel;
     SteeringBinding.LocalTransform = FTransform(
         FRotator(0.0f, 90.0f, 0.0f), FVector(25.0f, -44.0f, 116.0f), FVector(0.34f, 0.34f, 0.06f));
     SteeringBinding.bShowAnchorMesh = false;
-    Donor.CockpitBindings.Add(SteeringBinding);
+    TestProfile.CockpitBindings.Add(SteeringBinding);
 
-    Test->TestTrue(TEXT("donor profile applies"), Pawn->ApplyVehicleVisualProfile(Donor));
+    Test->TestTrue(TEXT("test visual profile applies"), Pawn->ApplyVehicleVisualProfile(TestProfile));
     Test->TestFalse(TEXT("physics chassis hides without hiding children"), Pawn->GetMesh()->IsVisible());
     Test->TestTrue(TEXT("cockpit remains visible when physics chassis hides"), Assembly->IsVisible());
-    Test->TestNotNull(TEXT("donor exterior presentation exists"), Shell->GetExteriorPresentation());
-    Test->TestNotNull(TEXT("single donor mesh is reused for owner cabin"), Shell->GetCabinPresentation());
-    Test->TestTrue(TEXT("steering anchor moves to donor control location"),
+    Test->TestNotNull(TEXT("test exterior presentation exists"), Shell->GetExteriorPresentation());
+    Test->TestNotNull(TEXT("single test mesh is reused for owner cabin"), Shell->GetCabinPresentation());
+    Test->TestTrue(TEXT("steering anchor moves to test control location"),
         Steering->GetRelativeTransform().Equals(SteeringBinding.LocalTransform, 0.01f));
 
-    Test->TestTrue(TEXT("baked donor control can hide primitive mesh while keeping anchor"),
+    Test->TestTrue(TEXT("baked test control can hide primitive mesh while keeping anchor"),
         SteeringPrimitive && SteeringPrimitive->bHiddenInGame);
     Definition = Assembly->GetSlotDefinition(EPinkCabCockpitSlot::SteeringWheel);
     Test->TestEqual(TEXT("visual binding preserves stable id"), Definition->StableId, StableIdBefore);
@@ -139,16 +139,16 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestEqual(TEXT("visual binding preserves wheel semantics"), Definition->bSupportsWheel, bWheelBefore);
 
     VisualDriver->Apply(*Assembly, NeutralState);
-    Test->TestTrue(TEXT("visual driver recaches donor steering base transform"),
+    Test->TestTrue(TEXT("visual driver recaches test steering base transform"),
         Steering->GetRelativeTransform().Equals(SteeringBinding.LocalTransform, 0.01f));
 
     Test->TestTrue(TEXT("fallback profile reapplies"),
         Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Fallback()));
-    Test->TestTrue(TEXT("physics chassis returns when donor exterior is removed"), Pawn->GetMesh()->IsVisible());
+    Test->TestTrue(TEXT("physics chassis returns when test exterior is removed"), Pawn->GetMesh()->IsVisible());
     Test->TestTrue(TEXT("fallback restores primitive steering visibility"),
         SteeringPrimitive && !SteeringPrimitive->bHiddenInGame);
-    Test->TestTrue(TEXT("donor profile reapplies after fallback"),
-        Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613Donor()));
+    Test->TestTrue(TEXT("scene-preserved profile reapplies after fallback"),
+        Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved()));
     Test->TestEqual(TEXT("desktop-clean profile id restored after fallback proof"),
         Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     return true;
@@ -260,7 +260,7 @@ void ValidateDynamicFrontWheel(
                 FrontPart->LocalTransform.GetLocation(), 0.05f));
         Test.TestTrue(TEXT("visible tyre stays in authored local frame plus suspension travel"),
             FrontVisual->GetRelativeLocation().Equals(ExpectedLocalLocation, 0.25f));
-        Test.TestTrue(TEXT("visible tyre is never teleported away from donor wheel well"),
+        Test.TestTrue(TEXT("visible tyre is never teleported away from authored wheel well"),
             FVector::Distance(
                 FrontVisual->GetRelativeLocation(),
                 FrontPart->LocalTransform.GetLocation()) < 25.0f);

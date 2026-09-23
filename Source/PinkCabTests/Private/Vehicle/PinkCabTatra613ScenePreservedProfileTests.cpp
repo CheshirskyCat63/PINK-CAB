@@ -6,19 +6,19 @@
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabTatra613DonorProfileTest,
-    "PinkCab.Vehicle.Visual.Tatra613DonorProfile",
+    FPinkCabTatra613ScenePreservedProfileTest,
+    "PinkCab.Vehicle.Visual.Tatra613ScenePreservedProfile",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FPinkCabTatra613DonorProfileTest::RunTest(const FString& Parameters)
+bool FPinkCabTatra613ScenePreservedProfileTest::RunTest(const FString& Parameters)
 {
-    const FPinkCabVehicleVisualProfile Profile = FPinkCabVehicleVisualProfile::Tatra613Donor();
-    TestTrue(TEXT("Tatra 613 donor profile validates"), Profile.IsValid());
+    const FPinkCabVehicleVisualProfile Profile = FPinkCabVehicleVisualProfile::Tatra613ScenePreserved();
+    TestTrue(TEXT("Tatra 613 scene-preserved profile validates"), Profile.IsValid());
     TestEqual(TEXT("Tatra 613 desktop scene profile id"), Profile.ProfileId,
         FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
     TestTrue(TEXT("scene profile does not use a merged exterior mesh"), Profile.ExteriorStaticMesh.IsNull());
     TestFalse(TEXT("scene profile does not duplicate exterior into a cabin mesh"), Profile.bUseExteriorAsCabinWhenCabinMissing);
-    TestEqual(TEXT("scene profile contains all 133 source meshes plus four donor wheels"),
+    TestEqual(TEXT("scene profile contains all 133 source meshes plus four V12Clean wheels"),
         Profile.PresentationParts.Num(), 137);
 
     int32 WheelPartCount = 0;

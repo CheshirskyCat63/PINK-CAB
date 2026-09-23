@@ -55,6 +55,22 @@ class RepoHygieneTests(unittest.TestCase):
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("stale_active_doc", rules)
 
+    def test_rejects_legacy_tatra_visual_factory_identifier(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/Test.cpp", "auto Profile = Tatra613Donor();\n")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("legacy_tatra_visual_factory", rules)
+
+    def test_rejects_legacy_tatra_visual_factory_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Source/PinkCabTatra613DonorProfileTests.cpp", "// legacy name\n")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("legacy_tatra_visual_factory", rules)
+
     def test_rejects_stale_template_content(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

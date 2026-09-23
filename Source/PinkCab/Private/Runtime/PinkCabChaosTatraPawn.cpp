@@ -215,7 +215,7 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = PrototypeVisualProfile.WheelBones[3];
 
-    // Physics stays on the proven UE template wheel bones. The Tatra donor
+    // Physics stays on the proven UE template wheel bones. The authored Tatra presentation
     // wheel meshes are presentation-only and must never reposition Chaos wheels.
     // Mixing those coordinate systems can leave all four wheels "in contact"
     // while the template chassis is embedded in the road and unable to move.
@@ -230,7 +230,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     EnsurePlayableLighting();
-    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613Donor());
+    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved());
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();
@@ -274,7 +274,7 @@ void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    // The startup system menu hard-pauses the world after the authored donor
+    // The startup system menu hard-pauses the world after the authored presentation
     // wheels have been grounded. Chaos wheel runtime locations are not a valid
     // presentation pose until gameplay resumes, so keep the authored/rest pose
     // while paused and begin dynamic suspension/steer/spin sync on DRIVE.
