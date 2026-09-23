@@ -1,7 +1,7 @@
 # PINK CAB · START-90 / BASE-100 Readiness Snapshot
 
-**Status:** CURRENT CODE-ONLY SPECIFICATION READINESS
-**Snapshot:** 2026-09-11
+**Status:** HISTORICAL/PLANNING SPECIFICATION READINESS · NOT A DEVELOPMENT BLOCKER
+**Snapshot:** 2026-09-11 methodology; reconciled against current runtime authority 2026-09-23
 **Jira:** `CD-660`, governance `CD-661`, owner register `CD-673`
 **Confluence:** `6553617`
 **Scope:** `CD-753`
@@ -36,7 +36,7 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 
 Current score: `105 + 3 + 69*0.5 = 142.5`; `142.5 / 196 = 72.7%`.
 
-**START-90: FAIL. Gap: 17.3 percentage points.**
+**START-90 planning score: 72.7%.** This score remains useful for unresolved specification inventory, but it no longer blocks ordinary development because an owner-accepted executable baseline and finite CD-848 execution queue now exist.
 
 ## Domain snapshot
 
@@ -70,6 +70,6 @@ Historical ≈59% and 38.2% readiness figures are retired because they used olde
 
 ## Runtime truth
 
-Broad production remains HOLD while START-90 fails. Narrow bootstrap/specification/calibration work is allowed where it closes known contracts without inventing owner decisions.
+This document no longer acts as a broad development HOLD. Unresolved OPEN/PROPOSED rows remain genuine design work and may not be silently promoted, but implementation proceeds through the current CD-848 finite closure queue.
 
-No documentation score establishes runtime implementation. PINK CAB remains **NOT IMPLEMENTED / NOT VERIFIED** until exact executable build/commit/plugin/config/seed evidence exists.
+No documentation score establishes runtime implementation. Current executable truth is owned by the exact accepted runtime baseline `8168d72406af6934ab20eace583c2b895f0620b7` / Actions run `35809749568` plus later exact-task evidence. Specification readiness and runtime verification are separate axes.
