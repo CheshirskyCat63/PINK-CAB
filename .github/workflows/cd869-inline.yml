@@ -55,44 +55,40 @@ jobs:
           Write-Host "CD869_METAROAD_VERSION=$($meta.VersionName)"
           Write-Host 'CD869_PREFLIGHT=PASS'
 
-      - name: Inspect installed MetaRoad authoring API
+      - name: Inspect MetaRoad bake and construction contracts
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
           $pluginRoot = Split-Path -Parent $env:METAROAD_PLUGIN
-          $descriptor = Get-Content -Raw -LiteralPath $env:METAROAD_PLUGIN | ConvertFrom-Json
-          Write-Host 'CD869_METAROAD_MODULES_BEGIN'
-          foreach ($module in @($descriptor.Modules)) {
-            Write-Host ("MODULE Name={0} Type={1} LoadingPhase={2}" -f $module.Name,$module.Type,$module.LoadingPhase)
-          }
-          Write-Host 'CD869_METAROAD_MODULES_END'
-
-          $sourceRoot = Join-Path $pluginRoot 'Source'
-          if (-not (Test-Path $sourceRoot)) {
-            Write-Host 'CD869_METAROAD_SOURCE=ABSENT'
-            exit 0
-          }
-
-          $files = @(Get-ChildItem -Path $sourceRoot -Recurse -File -Include '*.h','*.cpp','*.cs')
-          Write-Host "CD869_METAROAD_SOURCE_FILES=$($files.Count)"
-          Write-Host 'CD869_METAROAD_INTERESTING_FILES_BEGIN'
-          $files |
-            Where-Object { $_.Name -match 'Road|Bake|Mesh|Editor|Blueprint|Spline|Generator|Network' } |
-            Select-Object -First 160 |
-            ForEach-Object { Write-Host $_.FullName }
-          Write-Host 'CD869_METAROAD_INTERESTING_FILES_END'
-
-          Write-Host 'CD869_METAROAD_SYMBOLS_BEGIN'
-          $matches = @($files |
-            Where-Object { $_.Extension -in '.h','.cpp' } |
-            Select-String -Pattern 'UFUNCTION|BlueprintCallable|CallInEditor|Bake|Baking|Generate|CreateRoad|RoadNetwork|MetaRoad|Spline' -ErrorAction SilentlyContinue)
-          $matches |
-            Select-Object -First 320 |
-            ForEach-Object {
-              $relative = $_.Path.Substring($pluginRoot.Length).TrimStart('\')
-              Write-Host ("{0}:{1}: {2}" -f $relative,$_.LineNumber,$_.Line.Trim())
+          function Dump-Source([string]$RelativePath, [int]$MaxLines = 320) {
+            $full = Join-Path $pluginRoot $RelativePath
+            if (-not (Test-Path $full)) {
+              Write-Host "CD869_SOURCE_MISSING=$RelativePath"
+              return
             }
-          Write-Host 'CD869_METAROAD_SYMBOLS_END'
+            Write-Host "CD869_SOURCE_BEGIN=$RelativePath"
+            $lineNo = 0
+            Get-Content -LiteralPath $full | ForEach-Object {
+              $lineNo++
+              if ($lineNo -le $MaxLines) {
+                Write-Host ("{0:D4}: {1}" -f $lineNo,$_)
+              }
+            }
+            Write-Host "CD869_SOURCE_END=$RelativePath"
+          }
+
+          Write-Host 'CD869_BAKE_FILES_BEGIN'
+          Get-ChildItem -Path (Join-Path $pluginRoot 'Source') -Recurse -File |
+            Where-Object { $_.Name -match 'Bake|Baking|MeshBuild' } |
+            ForEach-Object { Write-Host $_.FullName.Substring($pluginRoot.Length).TrimStart('\') }
+          Write-Host 'CD869_BAKE_FILES_END'
+
+          Dump-Source 'Source\MetaRoad\Public\MetaRoadActor.h' 260
+          Dump-Source 'Source\MetaRoad\Public\RoadSplineComponent.h' 420
+          Dump-Source 'Source\MetaRoad\Public\RoadComponent.h' 320
+          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadBakeHost.cpp' 420
+          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadBakeSettings.cpp' 320
+          Dump-Source 'Source\MetaRoadEditor\Private\EditorMode\Widgets\SMetaRoadBakePanel.cpp' 520
 
       - name: Build PinkCabEditor incrementally
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
