@@ -11,7 +11,8 @@
 #include "MetaRoadActor.h"
 #include "RoadSplineComponent.h"
 #include "MetaRoadTypes.h"
-#include "EditorMode/MetaRoadBakeHost.h"
+#include "EditorMode/MetaRoadEditorMode.h"
+#include "EditorModeManager.h"
 #include "EditorMode/MetaRoadBakeSettings.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -112,7 +113,7 @@ struct FAuthoringState
 {
     TWeakObjectPtr<UWorld> World;
     TWeakObjectPtr<AMetaRoad> Road;
-    TStrongObjectPtr<UMetaRoadBakeHost> BakeHost;
+    TWeakObjectPtr<UMetaRoadEditorMode> EditorMode;
     double StartedAtSeconds = 0.0;
 };
 
@@ -128,9 +129,9 @@ public:
 
     virtual bool Update() override
     {
-        if (!State->BakeHost.IsValid() || !State->World.IsValid() || !State->Road.IsValid())
+        if (!State->EditorMode.IsValid() || !State->World.IsValid() || !State->Road.IsValid())
         {
-            Test->AddError(TEXT("MetaRoad authoring state became invalid during bake"));
+            Test->AddError(TEXT("MetaRoad editor-mode authoring state became invalid during bake"));
             return true;
         }
 
@@ -140,12 +141,12 @@ public:
             return true;
         }
 
-        if (State->BakeHost->TickBake(1.0f / 60.0f))
+        // UMetaRoadEditorMode owns and ticks its non-exported UMetaRoadBakeHost internally.
+        // The exported IsBaking()/BakeAll() surface is the supported external integration point.
+        if (State->EditorMode->IsBaking())
         {
             return false;
         }
-
-        Test->TestTrue(TEXT("MetaRoad bake completed"), State->BakeHost->DidComplete());
 
         AActor* Generated = State->Road->LastGeneratedActor;
         Test->TestNotNull(TEXT("MetaRoad produced generated actor"), Generated);
@@ -274,14 +275,22 @@ bool FPinkCabGenerateL1EndlessMetaRoadAssets::RunTest(const FString& Parameters)
     const TSharedRef<FAuthoringState> State = MakeShared<FAuthoringState>();
     State->World = World;
     State->Road = Road;
-    State->BakeHost.Reset(NewObject<UMetaRoadBakeHost>());
     State->StartedAtSeconds = FPlatformTime::Seconds();
 
-    TArray<TWeakObjectPtr<AMetaRoad>> Roads;
-    Roads.Add(Road);
-    State->BakeHost->BeginBakeAsync(World, Roads);
-    TestTrue(TEXT("MetaRoad bake enters running state"), State->BakeHost->IsBaking());
-    if (!State->BakeHost->IsBaking())
+    FEditorModeTools& ModeTools = GLevelEditorModeTools();
+    ModeTools.ActivateMode(EM_MetaRoadEditorModeId);
+    UMetaRoadEditorMode* MetaRoadMode =
+        Cast<UMetaRoadEditorMode>(ModeTools.GetActiveScriptableMode(EM_MetaRoadEditorModeId));
+    TestNotNull(TEXT("exported MetaRoad editor mode activated"), MetaRoadMode);
+    if (!MetaRoadMode)
+    {
+        return false;
+    }
+
+    State->EditorMode = MetaRoadMode;
+    MetaRoadMode->BakeAll();
+    TestTrue(TEXT("MetaRoad bake enters running state through exported editor mode"), MetaRoadMode->IsBaking());
+    if (!MetaRoadMode->IsBaking())
     {
         return false;
     }
