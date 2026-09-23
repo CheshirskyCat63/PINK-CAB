@@ -78,10 +78,13 @@ void UPinkCabCockpitInteractionComponent::MarkRecalledTargetConsumed(const FName
 
 void UPinkCabCockpitInteractionComponent::ClearConsumedRecallIfIdle()
 {
+    // Quick access is ephemeral UI/target ownership. Once every 1/2/3/4 key
+    // is released it must disappear immediately unless an interaction that
+    // started while it was held is still active.
     if (!bCurrentTargetFromQuickRecall
-        || !bCurrentTargetRecallConsumed
         || bGripActive
         || bMomentaryActive
+        || bManipulationActive
         || !GetCurrentQuickTargetId().IsNone())
     {
         return;
@@ -206,9 +209,16 @@ void UPinkCabCockpitInteractionComponent::UpdateTargetSelection(
         return;
     }
 
-    // RMB in ordinary driving mode performs a bounded contextual center pick
-    // only when there is no explicit quick-recall target waiting to be used.
-    if (Frame.bGripHeld && Assembly && !bCurrentTargetFromQuickRecall)
+    // RMB captures/retains a control, but it is not a prerequisite for
+    // contextual action. LMB and wheel may directly operate the centered
+    // authored control without first pressing RMB.
+    const bool bDirectActionRequested =
+        Frame.bMomentaryHeld || Frame.WheelSteps != 0;
+    if ((Frame.bGripHeld || bDirectActionRequested)
+        && Assembly
+        && !bCurrentTargetFromQuickRecall
+        && GetCurrentQuickTargetId().IsNone()
+        && !bGearboxStageFromClutchHeld)
     {
         const FName ContextTarget = Assembly->ResolveGazeTarget(
             Frame.GazeOrigin, Frame.GazeForward, Frame.GazeMaxDistanceCm, Frame.GazeCandidateBudget);
@@ -244,7 +254,9 @@ void UPinkCabCockpitInteractionComponent::UpdateManipulationState(
 {
     const FName CandidateTarget = bGripActive
         ? ActiveGripTargetId
-        : ResolveActiveSpec().Id;
+        : (bManipulationActive && !ActiveManipulationTargetId.IsNone()
+            ? ActiveManipulationTargetId
+            : ResolveActiveSpec().Id);
     bManipulationActive =
         Frame.bMomentaryHeld
         && IsLeverManipulationTarget(CandidateTarget);
@@ -294,6 +306,7 @@ void UPinkCabCockpitInteractionComponent::ProcessFrame(
     UpdateManipulationState(Frame);
     UpdateMomentaryState(Frame, OutActuationEvents);
     AppendWheelEvent(Frame, OutActuationEvents);
+    ClearConsumedRecallIfIdle();
 }
 
 void UPinkCabCockpitInteractionComponent::ResetTransientInputState(
