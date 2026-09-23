@@ -25,6 +25,105 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  policy_diagnostic:
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && github.event.comment.body == '/pinkcab-policy' }}
+    name: PINK-CAB Windows trust diagnostic
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 10
+    steps:
+      - name: Inspect Smart App Control and signing capability
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $out = Join-Path $env:RUNNER_TEMP "PinkCabPolicyDiagnostic"
+          Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $refInfo = Invoke-RestMethod -Method Get -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/git/ref/heads/fix/CD-848-recovery-r1-input-contract" -Headers $headers
+          $candidateSha = [string]$refInfo.object.sha
+
+          $ciTool = Join-Path $env:SystemRoot "System32\CiTool.exe"
+          if (Test-Path $ciTool) {
+            & $ciTool -lp 2>&1 | Tee-Object -FilePath (Join-Path $out "CITOOL_POLICIES.txt")
+          } else {
+            "CiTool.exe not found" | Set-Content (Join-Path $out "CITOOL_POLICIES.txt")
+          }
+
+          $dev = [ordered]@{}
+          foreach ($item in @(
+            @{Name='HKLM_AllowDevelopmentWithoutDevLicense'; Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'; Value='AllowDevelopmentWithoutDevLicense'},
+            @{Name='HKLM_AllowAllTrustedApps'; Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'; Value='AllowAllTrustedApps'}
+          )) {
+            try {
+              $dev[$item.Name] = (Get-ItemPropertyValue -Path $item.Path -Name $item.Value -ErrorAction Stop)
+            } catch {
+              $dev[$item.Name] = $null
+            }
+          }
+          $dev | ConvertTo-Json | Set-Content (Join-Path $out "DEVELOPER_MODE.json")
+
+          $certRows = New-Object System.Collections.Generic.List[object]
+          foreach ($store in @('Cert:\CurrentUser\My','Cert:\LocalMachine\My')) {
+            if (-not (Test-Path $store)) { continue }
+            foreach ($cert in Get-ChildItem $store -ErrorAction SilentlyContinue) {
+              $codeSigning = $false
+              foreach ($eku in @($cert.EnhancedKeyUsageList)) {
+                if ($eku.ObjectId.Value -eq '1.3.6.1.5.5.7.3.3') { $codeSigning = $true }
+              }
+              if ($codeSigning) {
+                $certRows.Add([pscustomobject]@{
+                  Store = $store
+                  Subject = $cert.Subject
+                  Issuer = $cert.Issuer
+                  Thumbprint = $cert.Thumbprint
+                  NotBefore = $cert.NotBefore
+                  NotAfter = $cert.NotAfter
+                  HasPrivateKey = $cert.HasPrivateKey
+                })
+              }
+            }
+          }
+          $certRows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $out "CODE_SIGNING_CERTS.json")
+
+          $kitsRoot = Join-Path ${env:ProgramFiles(x86)} "Windows Kits"
+          $signTools = @()
+          if (Test-Path $kitsRoot) {
+            $signTools = @(Get-ChildItem $kitsRoot -Filter signtool.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
+          }
+          $signTools | Set-Content (Join-Path $out "SIGNTOOL_PATHS.txt")
+
+          $summary = [ordered]@{
+            CandidateSha = $candidateSha
+            CodeSigningCertCount = $certRows.Count
+            CodeSigningPrivateKeyCount = @($certRows | Where-Object HasPrivateKey).Count
+            SignToolCount = $signTools.Count
+            DeveloperMode = $dev['HKLM_AllowDevelopmentWithoutDevLicense']
+          }
+          $summary | ConvertTo-Json | Tee-Object -FilePath (Join-Path $out "SUMMARY.json")
+
+          $runUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $body = @{
+            state = 'success'
+            context = 'cheshire/pinkcab-policy'
+            description = "Read-only Windows trust/signing diagnostic complete"
+            target_url = $runUrl
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/statuses/$candidateSha" -Headers $headers -ContentType 'application/json' -Body $body | Out-Null
+
+      - name: Upload Windows trust diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-Windows-trust-${{ github.run_id }}
+          path: ${{ runner.temp }}\PinkCabPolicyDiagnostic
+          if-no-files-found: error
+          retention-days: 7
   gate:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.number == 7 && github.event.comment.user.login == 'CheshirskyCat63' && (github.event.comment.body == '/pinkcab-fast' || github.event.comment.body == '/pinkcab-human')) }}
     name: Exact-head PINK-CAB verification
