@@ -12,6 +12,10 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $RepoRoot "PinkCab.uproject"
+$BuildTemp = if ($env:PINKCAB_BUILD_TEMP) { $env:PINKCAB_BUILD_TEMP } else { Join-Path $RepoRoot "Saved\BuildTemp" }
+New-Item -ItemType Directory -Force -Path $BuildTemp | Out-Null
+$env:TEMP = $BuildTemp
+$env:TMP = $BuildTemp
 if ([string]::IsNullOrWhiteSpace($EngineRoot)) {
     $EngineRoot = "C:\Program Files\Epic Games\UE_5.8"
 }
@@ -87,32 +91,49 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $BuildWatch.Stop()
 Write-Host ("Game build: {0:n1}s" -f $BuildWatch.Elapsed.TotalSeconds)
 
-if (-not $SkipTests) {
-    $TestLog = Join-Path $RepoRoot "Saved\Logs\FastDelivery_Test.log"
-    Remove-Item $TestLog -Force -ErrorAction SilentlyContinue
-    $TestWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    # -Multiprocess skips TargetPlatformManager's startup ValidatePlatforms UBT
-    # subprocess. This prevents unrelated UE projects from holding the global
-    # Build.bat mutex and stalling a local owner iteration for many minutes.
-    & $EditorCmd $Project -Multiprocess -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$TestLog" "-ExecCmds=Automation RunTests $TestFilter" "-TestExit=Automation Test Queue Empty"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    $TestWatch.Stop()
-    $Success = @(Select-String -Path $TestLog -Pattern 'Test Completed\. Result=\{Success\}')
-    $Failures = @(Select-String -Path $TestLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
-    $Queue = @(Select-String -Path $TestLog -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
-    if ($Queue.Count -eq 0 -or $Success.Count -eq 0 -or $Failures.Count -gt 0) {
-        throw "Targeted automation did not finish green. See $TestLog"
-    }
-    Write-Host ("Targeted test: {0:n1}s; {1}" -f $TestWatch.Elapsed.TotalSeconds, $Queue[-1].Line)
-}
+$GameExe = Join-Path $RepoRoot "Binaries\Win64\PinkCab.exe"
+if (-not (Test-Path $GameExe)) { throw "Game executable missing after build: $GameExe" }
+& (Join-Path $PSScriptRoot "ci\ensure-dev-signing.ps1") -Path $GameExe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Write-Host "Game executable dev-signing: PASS"
 
 if ($NeedsRecook) {
+    $DevSubject = "CN=CHESHIRE DIVISION PINKCAB DEV"
+    $DevCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
+        Where-Object { $_.Subject -eq $DevSubject -and $_.HasPrivateKey } |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
+    $MachineRoot = if ($DevCert) {
+        Get-ChildItem Cert:\LocalMachine\Root -ErrorAction SilentlyContinue |
+            Where-Object { $_.Thumbprint -eq $DevCert.Thumbprint } |
+            Select-Object -First 1
+    }
+    $MachinePublisher = if ($DevCert) {
+        Get-ChildItem Cert:\LocalMachine\TrustedPublisher -ErrorAction SilentlyContinue |
+            Where-Object { $_.Thumbprint -eq $DevCert.Thumbprint } |
+            Select-Object -First 1
+    }
+    if (-not $DevCert -or -not $MachineRoot -or -not $MachinePublisher) {
+        throw "PINKCAB_RECOOK_TRUST_REQUIRED: code-only FAST delivery is available, but recook requires one-time machine trust for the PINK-CAB dev signer or external Trusted Signing."
+    }
+
+    Write-Host "Recook trust preflight: PASS; building and signing Editor modules."
+    & $BuildBat PinkCabEditor Win64 Development $Project -WaitMutex -NoHotReloadFromIDE
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $EditorPattern = Join-Path $RepoRoot "Binaries\Win64\UnrealEditor-PinkCab*.dll"
+    & (Join-Path $PSScriptRoot "ci\ensure-dev-signing.ps1") -Path $EditorPattern
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     $Next = $IterationBuild + "_next"
     if (Test-Path $Next) { Remove-Item $Next -Recurse -Force }
     $PackageWatch = [System.Diagnostics.Stopwatch]::StartNew()
     & $RunUAT -WaitForUATMutex BuildCookRun "-project=$Project" -noP4 -platform=Win64 -clientconfig=Development -skipbuild -cook -forcerecook=false "-map=/Game/Dev/Maps/L_PinkCab_ChaosWeave" -stage -pak -archive -nodebuginfo "-archivedirectory=$Next" -utf8output
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $PackageWatch.Stop()
+    $NextOuter = Join-Path $Next "Windows\PinkCab.exe"
+    $NextInner = Join-Path $Next "Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+    & (Join-Path $PSScriptRoot "ci\ensure-dev-signing.ps1") -Path @($NextOuter, $NextInner)
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Set-Content -Path (Join-Path $Next "BUILD_SHA.txt") -Value $Head -NoNewline
     $Old = $IterationBuild + "_old"
     if (Test-Path $Old) { Remove-Item $Old -Recurse -Force }
@@ -147,6 +168,13 @@ if (-not $Alive -or $Map.Count -eq 0 -or $Critical.Count -gt 0) {
     throw "Packaged smoke failed: alive=$Alive map=$($Map.Count) critical=$($Critical.Count)"
 }
 Write-Host ("Packaged smoke: {0:n1}s, green" -f $SmokeWatch.Elapsed.TotalSeconds)
+
+if (-not $SkipTests) {
+    $GateEvidence = Join-Path $RepoRoot "Saved\FastDeliveryGate"
+    & (Join-Path $PSScriptRoot "ci\packaged-os-input-gate.ps1") -Exe $SmokeExe -EvidenceDir $GateEvidence
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "Windows runtime/input acceptance: PASS"
+}
 
 $OuterExe = Join-Path $IterationBuild "Windows\PinkCab.exe"
 $Ws = New-Object -ComObject WScript.Shell
