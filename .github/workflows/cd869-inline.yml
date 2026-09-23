@@ -30,7 +30,7 @@ jobs:
           clean: true
 
       - name: Exact Git preflight
-        shell: powershell
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Host "REPO_ROOT=$env:GITHUB_WORKSPACE"
@@ -45,7 +45,7 @@ jobs:
           Write-Host 'CD869_GIT_PREFLIGHT=PASS'
 
       - name: UE 5.8 and MetaRoad probe
-        shell: powershell
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
           if (-not (Test-Path $env:UE_ROOT)) {
