@@ -291,5 +291,16 @@ jobs:
           python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .\scripts\code-health.ps1 -RequireZeroDebt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $healthExit = $LASTEXITCODE
+          $report = Join-Path $env:GITHUB_WORKSPACE 'Saved\Reports\code-health.json'
+          if ($healthExit -ne 0 -and (Test-Path $report)) {
+            $json = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
+            foreach ($item in @($json.violations)) {
+              Write-Host ("CD869_CODE_HEALTH_VIOLATION rule={0} path={1} symbol={2} value={3} limit={4}" -f $item.rule,$item.path,$item.symbol,$item.value,$item.limit)
+            }
+            foreach ($item in @($json.baseline_regressions)) {
+              Write-Host ("CD869_CODE_HEALTH_REGRESSION path={0} symbol={1} value={2}" -f $item.path,$item.symbol,$item.value)
+            }
+          }
+          if ($healthExit -ne 0) { exit $healthExit }
           Write-Host 'CD869_ZERO_DEBT=PASS'
