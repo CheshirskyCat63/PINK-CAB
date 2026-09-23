@@ -1,6 +1,9 @@
+import os
 import unreal
 
-src = r"C:\Users\CheCat\Downloads\tatra_613_1975-1996\scene.gltf"
+src = os.environ.get("PINKCAB_TATRA_SOURCE_GLTF")
+if not src:
+    raise RuntimeError("PINKCAB_TATRA_SOURCE_GLTF is required")
 dst = "/Game/Dev/Vehicles/Tatra613ArchiveV12"
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
