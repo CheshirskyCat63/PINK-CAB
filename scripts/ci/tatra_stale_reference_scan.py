@@ -36,7 +36,7 @@ for root in STALE_ROOTS:
         package_name = str(asset.package_name)
         try:
             refs = unreal.EditorAssetLibrary.find_package_referencers_for_asset(
-                package_name, load_assets_to_confirm=True
+                package_name, load_assets_to_confirm=False
             )
         except Exception as exc:
             unreal.log_error(f"TATRA_REF_SCAN_ERROR asset={package_name} error={exc}")
