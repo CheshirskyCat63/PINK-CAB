@@ -47,7 +47,7 @@ PINK CAB runtime vehicle space:
 - negative scale / mirrored presentation is rejected;
 - logical steering sign and Chaos steering sign are separate coordinate spaces; handedness conversion belongs only to the Chaos adapter boundary.
 
-The clean body is currently normalized through `FPinkCabVehicleVisualProfile::Tatra613Donor()` rather than by leaking donor coordinates into gameplay code.
+The active scene-preserved presentation is exposed through `FPinkCabVehicleVisualProfile::Tatra613ScenePreserved()` rather than by leaking source coordinates into gameplay code.
 
 ## 4. Source geometry contract
 
