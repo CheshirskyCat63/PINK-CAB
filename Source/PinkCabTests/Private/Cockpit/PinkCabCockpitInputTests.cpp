@@ -75,6 +75,8 @@ bool FPinkCabQuickRecallComplianceTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("release falls back to older held quick key"), Interaction->GetCurrentQuickTargetId(), FName(TEXT("TurnSignals")));
     Interaction->SetQuickSlotHeld(1, false);
     TestTrue(TEXT("all released clears quick target"), Interaction->GetCurrentQuickTargetId().IsNone());
+    TestTrue(TEXT("all released clears visible quick-access target"),
+        Interaction->GetCurrentTargetId().IsNone());
     TestEqual(TEXT("release still does not actuate"), Interaction->GetActuationSerial(), Before);
     return true;
 }
@@ -96,15 +98,26 @@ bool FPinkCabQuickRecallGripLatchTest::RunTest(const FString& Parameters)
         Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
     const uint32 Before = Interaction->GetActuationSerial();
 
-    Frame.bQuickRecall4Held = false;
     Frame.bGripHeld = true;
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestTrue(TEXT("RMB acquires the remembered quick-recall target"),
+    TestTrue(TEXT("RMB acquires quick-recall target while key is held"),
         Interaction->IsGripActive());
-    TestEqual(TEXT("remembered quick-recall target is the handbrake"),
+    TestEqual(TEXT("quick-recall target retained by RMB is the handbrake"),
         Interaction->GetActiveGripTargetId(), FName(TEXT("Handbrake")));
     TestEqual(TEXT("quick recall plus grip still does not actuate"),
         Interaction->GetActuationSerial(), Before);
+
+    Frame.bQuickRecall4Held = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-key release does not break an active RMB grip"),
+        Interaction->IsGripActive());
+
+    Frame.bGripHeld = false;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-access target disappears after grip release"),
+        Interaction->GetCurrentTargetId().IsNone());
     return true;
 }
 
@@ -121,37 +134,47 @@ bool FPinkCabConsumedRecallLifecycleTest::RunTest(const FString& Parameters)
     TArray<FPinkCabInteractionEvent> Events;
 
     Frame.bQuickRecall4Held = true;
-    Interaction->ProcessFrame(Frame, nullptr, Events);
-    Frame.bQuickRecall4Held = false;
     Frame.bGripHeld = true;
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("RMB acquires recalled handbrake while quick key is held"),
+        Interaction->IsGripActive());
+
+    Frame.bQuickRecall4Held = false;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestTrue(TEXT("RMB acquires recalled handbrake"), Interaction->IsGripActive());
+    TestTrue(TEXT("RMB keeps handbrake after quick key release"),
+        Interaction->IsGripActive());
 
     Frame.bGripHeld = false;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestFalse(TEXT("RMB release ends handbrake grip"), Interaction->IsGripActive());
-    TestTrue(TEXT("consumed recalled handbrake is no longer an eligible target"),
+    TestTrue(TEXT("released quick access leaves no stale handbrake target"),
         Interaction->GetCurrentTargetId().IsNone());
 
     Interaction->ResetTransientInputState();
     Frame = {};
     Frame.bQuickRecall2Held = true;
-    Interaction->ProcessFrame(Frame, nullptr, Events);
-    Frame.bQuickRecall2Held = false;
     Frame.bMomentaryHeld = true;
     Frame.NowSeconds = 1.0;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
-    TestTrue(TEXT("LMB starts recalled horn action"), Interaction->IsMomentaryActive());
+    TestTrue(TEXT("LMB starts recalled horn directly without RMB"),
+        Interaction->IsMomentaryActive());
+
+    Frame.bQuickRecall2Held = false;
+    Frame.NowSeconds = 1.05;
+    Events.Reset();
+    Interaction->ProcessFrame(Frame, nullptr, Events);
+    TestTrue(TEXT("quick-key release does not interrupt held horn action"),
+        Interaction->IsMomentaryActive());
 
     Frame.bMomentaryHeld = false;
     Frame.NowSeconds = 1.1;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestFalse(TEXT("LMB release ends horn action"), Interaction->IsMomentaryActive());
-    TestTrue(TEXT("consumed recalled horn is no longer an eligible target"),
+    TestTrue(TEXT("released quick access leaves no stale horn target"),
         Interaction->GetCurrentTargetId().IsNone());
     return true;
 }
@@ -198,10 +221,10 @@ bool FPinkCabLeverReleaseOrderRecoveryTest::RunTest(const FString& Parameters)
     {
         Frame = {};
         Frame.bQuickRecall3Held = true;
-        Interaction.ProcessFrame(Frame, nullptr, Events);
-        Frame.bQuickRecall3Held = false;
         Frame.bGripHeld = true;
         Frame.bMomentaryHeld = true;
+        Interaction.ProcessFrame(Frame, nullptr, Events);
+        Frame.bQuickRecall3Held = false;
         Events.Reset();
         Interaction.ProcessFrame(Frame, nullptr, Events);
     };
@@ -402,12 +425,15 @@ bool FPinkCabInteractionFrameProcessorTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("frame processor emits horn press"), Events.Num(), 1);
     TestEqual(TEXT("frame processor targets recalled horn"), Events[0].TargetId, FName(TEXT("Horn")));
 
+    Frame.bQuickRecall2Held = false;
     Frame.bMomentaryHeld = false;
     Frame.NowSeconds = 10.2;
     Events.Reset();
     Interaction->ProcessFrame(Frame, nullptr, Events);
     TestEqual(TEXT("frame processor emits horn release"), Events.Num(), 1);
-    TestEqual(TEXT("release keeps horn target"), Events[0].TargetId, FName(TEXT("Horn")));
+    TestEqual(TEXT("release event keeps horn target"), Events[0].TargetId, FName(TEXT("Horn")));
+    TestTrue(TEXT("quick-access label clears after key and action release"),
+        Interaction->GetCurrentTargetId().IsNone());
     return true;
 }
 
@@ -570,4 +596,70 @@ bool FPinkCabContextualRmbPickTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("contextual RMB emits grip-begin event"), Events.Num(), 1);
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabDirectContextualActionPickTest,
+    "PinkCab.Cockpit.Input.Compliance.DirectContextualActionPickWithoutRmb",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabDirectContextualActionPickTest::RunTest(const FString& Parameters)
+{
+    {
+        UPinkCabCockpitInteractionComponent* Interaction =
+            NewObject<UPinkCabCockpitInteractionComponent>();
+        UPinkCabCockpitAssemblyComponent* Assembly =
+            NewObject<UPinkCabCockpitAssemblyComponent>();
+        USceneComponent* Horn = NewObject<USceneComponent>();
+        Horn->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+        Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::Horn, Horn);
+
+        FPinkCabCockpitInteractionFrame Frame;
+        Frame.bMomentaryHeld = true;
+        Frame.GazeOrigin = FVector::ZeroVector;
+        Frame.GazeForward = FVector::ForwardVector;
+        Frame.GazeMaxDistanceCm = 250.0f;
+        Frame.NowSeconds = 1.0;
+        TArray<FPinkCabInteractionEvent> Events;
+        Interaction->ProcessFrame(Frame, Assembly, Events);
+
+        TestFalse(TEXT("direct LMB does not invent RMB grip"), Interaction->IsGripActive());
+        TestTrue(TEXT("direct LMB center-picks and presses horn"),
+            Interaction->IsMomentaryActive());
+        TestEqual(TEXT("direct LMB emits horn press"), Events.Num(), 1);
+        if (Events.Num() == 1)
+        {
+            TestEqual(TEXT("direct LMB contextual target is horn"),
+                Events[0].TargetId, FName(TEXT("Horn")));
+        }
+    }
+
+    {
+        UPinkCabCockpitInteractionComponent* Interaction =
+            NewObject<UPinkCabCockpitInteractionComponent>();
+        UPinkCabCockpitAssemblyComponent* Assembly =
+            NewObject<UPinkCabCockpitAssemblyComponent>();
+        USceneComponent* Signals = NewObject<USceneComponent>();
+        Signals->SetRelativeLocation(FVector(100.0f, 0.0f, 0.0f));
+        Assembly->RegisterExternalSlot(EPinkCabCockpitSlot::TurnSignals, Signals);
+
+        FPinkCabCockpitInteractionFrame Frame;
+        Frame.WheelSteps = 2;
+        Frame.GazeOrigin = FVector::ZeroVector;
+        Frame.GazeForward = FVector::ForwardVector;
+        Frame.GazeMaxDistanceCm = 250.0f;
+        TArray<FPinkCabInteractionEvent> Events;
+        Interaction->ProcessFrame(Frame, Assembly, Events);
+
+        TestFalse(TEXT("direct wheel does not invent RMB grip"), Interaction->IsGripActive());
+        TestEqual(TEXT("direct wheel emits one contextual event"), Events.Num(), 1);
+        if (Events.Num() == 1)
+        {
+            TestEqual(TEXT("direct wheel contextual target is turn signals"),
+                Events[0].TargetId, FName(TEXT("TurnSignals")));
+            TestEqual(TEXT("accelerated signed wheel magnitude is preserved"),
+                Events[0].SignedValue, 2);
+        }
+    }
+    return true;
+}
+
 #endif
