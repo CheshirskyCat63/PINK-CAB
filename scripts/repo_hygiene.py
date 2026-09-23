@@ -50,6 +50,13 @@ def scan_repository(root: Path) -> list[dict[str, str]]:
     violations: list[dict[str, str]] = []
 
     scripts_root = root / "scripts"
+    archive_root = scripts_root / "archive"
+    if archive_root.exists():
+        violations.append({
+            "rule": "stale_tool_archive",
+            "path": "scripts/archive",
+            "detail": "superseded tooling belongs in Git history, not the current checkout",
+        })
     if scripts_root.exists():
         for path in sorted(scripts_root.rglob("*")):
             if not path.is_file() or path.suffix.lower() not in SCRIPT_SUFFIXES:
