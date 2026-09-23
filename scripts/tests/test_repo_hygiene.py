@@ -55,6 +55,14 @@ class RepoHygieneTests(unittest.TestCase):
             rules = [item["rule"] for item in scan_repository(root)]
             self.assertIn("stale_active_doc", rules)
 
+    def test_rejects_stale_template_content(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(root, "Content/Vehicles/SportsCar/Materials/Old.uasset", "pointer")
+            write(root, "Config/DefaultGame.ini", clean_config())
+            rules = [item["rule"] for item in scan_repository(root)]
+            self.assertIn("stale_template_content", rules)
+
     def test_rejects_stale_tatra_content_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
