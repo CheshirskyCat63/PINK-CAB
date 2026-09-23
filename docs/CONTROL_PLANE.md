@@ -47,12 +47,14 @@ Administrative commits after that SHA do not claim gameplay improvement.
 - W = brake
 - E = throttle
 - Q/W/E + wheel = analog dosing; overlap priority E → W → Q
-- 1/2/3/4 = quick target recall only; recall does not actuate
-- RMB = acquire/retain current Gearbox/Handbrake target; RMB alone must not move the lever or steal steering
-- RMB+LMB = lever manipulation
-- while RMB+LMB is held, mouse XY belongs to the lever and steering holds
-- releasing LMB returns XY to steering while RMB may remain held
-- releasing RMB ends grip
+- 1/2/3/4 = quick target recall only; recall does not actuate and its prompt is visible only while the number key is held
+- RMB = optional universal acquire/retain for any valid current target; RMB alone never actuates
+- LMB / wheel = contextual action directly; neither requires RMB as a prefix
+- LMB may directly manipulate Gearbox/Handbrake; RMB remains optional retain
+- while lever manipulation is active, mouse XY belongs to the lever and steering holds
+- releasing LMB returns XY to steering; releasing RMB ends optional retain
+- sustained same-direction wheel input progressively accelerates; pause/reversal resets the wheel burst
+- steering = manual/no-assist: heavy at standstill, lighter once rolling, calmer at high speed
 - focus/menu loss clears transient capture
 - no hidden auto-throttle, rev-match, countersteer, yaw rescue, ABS or ESP
 
