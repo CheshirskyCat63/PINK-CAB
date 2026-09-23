@@ -74,7 +74,7 @@ void ClearDematerialized(
     }
 }
 
-bool IsAlreadyBound(
+bool HasLogicalChunkBinding(
     const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool,
     const FPinkCabChunkId& Id)
 {
@@ -109,7 +109,7 @@ bool BindMaterialized(
 {
     for (const FPinkCabChunkId& Id : Result.MaterializeChunkIds)
     {
-        if (IsAlreadyBound(Pool, Id))
+        if (HasLogicalChunkBinding(Pool, Id))
         {
             continue;
         }
