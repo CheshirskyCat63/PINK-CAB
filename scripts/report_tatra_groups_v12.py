@@ -1,7 +1,10 @@
-import bpy, json
+import bpy, json, os
 from mathutils import Vector
-src=r"C:\Users\CheCat\Downloads\tatra_613_1975-1996\scene.gltf"
-out=r"E:\CHESHIRE_DIVISION\Games\PINK-CAB\.worktrees\cd855-tatra-playable-foundation\Saved\TatraV12_Groups.json"
+project_root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src=os.environ.get("PINKCAB_TATRA_SOURCE_GLTF")
+if not src:
+    raise RuntimeError("PINKCAB_TATRA_SOURCE_GLTF is required")
+out=os.path.join(project_root,"Saved","TatraV12_Groups.json")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 def meshes_under(o):
