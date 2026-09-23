@@ -28,9 +28,9 @@ Future daily insurance authority: `docs/PINK_CAB_DAILY_INSURANCE_CRASH_RECOVERY.
 Repository: `CheshirskyCat63/PINK-CAB` is the sole active PINK CAB technical truth; `DEADRACE` is legacy/migration-source only.
 
 > **CONTROL-PLANE FREEZE · 2026-09-22**  
-> Current execution authority: `docs/CONTROL_PLANE.md` → Jira `CD-519 / CD-848 / CD-868` → Confluence 47 → Git PR #7.  
-> `CD-855` and `CD-860` are BACKLOG. Recovery Input Contract R1 is current. No current vehicle build has HUMAN ACCEPTANCE.  
-> This baseline remains product context; mutable execution status/SHA claims must come from the control plane and GitHub.
+> Current execution authority: `docs/CONTROL_PLANE.md` → Jira `CD-519 / CD-848` → Confluence 47 → Git `main`.  
+> `CD-868` is DONE; PR #7 is MERGED/CLOSED; `CD-855` and `CD-860` are BACKLOG. Recovery Input Contract R1 is current. Owner-accepted working runtime baseline: `8168d72406af6934ab20eace583c2b895f0620b7` / run `35809749568`.  
+> This baseline remains product context; future mutable execution status/SHA claims must come from the control plane and GitHub.
 
 ## Current control/mechanics precedence
 
