@@ -5,14 +5,16 @@
 **Jira umbrella:** `CD-848`
 **Confluence authority:** page `16744449` — `47 · PINK CAB · Control & Vehicle Mechanics Release Contract`
 **Runtime technology:** Unreal Engine 5.8.2 / native Chaos Vehicles
-**Implementation state:** RECOVERY-R1 ACTIVE / ADMIN FREEZE / **AUTO GATE FAILED AT PACKAGED OS-INPUT / HUMAN NOT ACCEPTED**
+**Implementation state:** **WORKING BASELINE OWNER-ACCEPTED · 2026-09-23** · broader FIRST EURO mechanics remain in progress
 
 This file mirrors the owner-approved 2026-09-18 release matrix into Git. It does not claim that the current executable already behaves this way.
 
-> **CONTROL-PLANE STATUS · 2026-09-22**  
-> Single active implementation lane: PR #7 `fix/CD-848-recovery-r1-input-contract` → `main`.  
-> Last runtime-affecting candidate before admin-only cleanup: `8bed51e5c47e037eb45a670f9d6c1c2cdd28b712`; run `35746083559` passed code-health, build, focused/full automation, package and packaged smoke, then **FAILED packaged Windows OS-input throttle dosing**.  
-> No current HUMAN_ACCEPTED vehicle build. Heavy CI is manual-only during cleanup; see `docs/CONTROL_PLANE.md`.
+> **WORKING BASELINE FREEZE · 2026-09-23**  
+> Owner-accepted runtime SHA: `8168d72406af6934ab20eace583c2b895f0620b7`.  
+> GitHub Actions run: `35809749568`; `PINK-CAB code-only standalone human build` = SUCCESS.  
+> Delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`.  
+> PR #7 is merged into `main` through merge commit `865e8f77dde4af1f5c5bee8d49754628b6494db4`; accepted SHA → merge tree diff is zero files.  
+> This freezes a working vehicle/control baseline; it does **not** claim every broader FIRST EURO mechanics or QA item is complete. See `docs/CONTROL_PLANE.md`.
 
 ## 1. Owner control lock
 
@@ -185,7 +187,7 @@ No duplicate control/mechanics Jira task is created. Work is distributed through
 
 ## 8. Release acceptance matrix
 
-All checks below are **NOT RUN** until executable evidence is captured on an exact Git SHA.
+The matrix below remains the broader release checklist. The accepted working baseline supplies exact executable and human evidence for the behavior exercised in that build, but does **not** blanket-promote every QA-01..QA-20 item to PASS.
 
 | ID | Acceptance |
 |---|---|
