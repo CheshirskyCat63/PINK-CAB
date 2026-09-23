@@ -88,7 +88,7 @@ bool FPinkCabL1RoadChunkBindingTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("clear returns actor to unbound state"), Chunk->IsBound());
     TestEqual(TEXT("clear resets bound index"), Chunk->GetBoundChunkIndex(), INDEX_NONE);
     TestFalse(TEXT("clear resets logical id"), Chunk->GetBoundChunkId().IsValid());
-    TestFalse(TEXT("cleared representation is hidden"), !Chunk->IsHidden());
+    TestTrue(TEXT("cleared representation is hidden"), Chunk->IsHidden());
 
     return true;
 }
