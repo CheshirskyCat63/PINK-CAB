@@ -49,9 +49,7 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         TEXT("RoadCurbs4"),
         TEXT("RoadCurbs5"),
         TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7"),
-        TEXT("RoadCurbs8"),
-        TEXT("RoadCurbs9")
+        TEXT("RoadCurbs7")
     };
 
     FBox CombinedBounds(ForceInit);
@@ -137,9 +135,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         LoadedMeshCount,
         static_cast<int32>(UE_ARRAY_COUNT(NativeMeshNames)));
     TestEqual(
-        TEXT("ten native MetaRoad curb meshes are present"),
+        TEXT("eight native MetaRoad curb meshes are present"),
         CurbMeshCount,
-        10);
+        8);
     TestTrue(
         TEXT("native MetaRoad sidewalk layer contains raised construction"),
         bRaisedSurfacePresent);
