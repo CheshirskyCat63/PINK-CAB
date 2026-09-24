@@ -322,6 +322,21 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'R1_SCOPE_AND_ZERO_DEBT=PASS'
 
+      - name: Audit previous R1 HUMAN package input before recook
+        if: ${{ success() }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $previous='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R1_TOPOLOGY_ba6c5e32_RUN35964521090\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $previous)){
+            Write-Host 'R1_PREVIOUS_PACKAGE_AUDIT=SKIP_MISSING'
+            exit 0
+          }
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R1_PREVIOUS_INPUT_AUDIT'
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $previous -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R1_PREVIOUS_PACKAGE_INPUT=PASS'
+
       - name: Close previous PINK-CAB and CI Unreal processes before cook
         if: ${{ always() && !cancelled() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
