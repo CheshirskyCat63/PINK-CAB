@@ -26,6 +26,24 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
         RoadMeshComponent->SetStaticMesh(RoadMeshFinder.Object);
     }
 
+    RoadConstructionComponent =
+        CreateDefaultSubobject<UStaticMeshComponent>(
+            TEXT("RoadConstruction"));
+    RoadConstructionComponent->SetupAttachment(SceneRoot);
+    RoadConstructionComponent->SetMobility(EComponentMobility::Movable);
+    RoadConstructionComponent->SetGenerateOverlapEvents(false);
+    RoadConstructionComponent->SetCollisionEnabled(
+        ECollisionEnabled::NoCollision);
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh>
+        ConstructionMeshFinder(
+            TEXT("/Game/World/L1/Road/RoadConstruction.RoadConstruction"));
+    if (ConstructionMeshFinder.Succeeded())
+    {
+        RoadConstructionComponent->SetStaticMesh(
+            ConstructionMeshFinder.Object);
+    }
+
     SetActorHiddenInGame(true);
     SetActorEnableCollision(false);
 }
@@ -62,7 +80,10 @@ bool APinkCabL1RoadChunkActor::BindChunk(
 
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
-    RoadMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    RoadMeshComponent->SetCollisionEnabled(
+        ECollisionEnabled::QueryAndPhysics);
+    RoadConstructionComponent->SetCollisionEnabled(
+        ECollisionEnabled::QueryAndPhysics);
     return true;
 }
 
@@ -75,7 +96,13 @@ void APinkCabL1RoadChunkActor::ClearBinding()
     SetActorEnableCollision(false);
     if (RoadMeshComponent)
     {
-        RoadMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        RoadMeshComponent->SetCollisionEnabled(
+            ECollisionEnabled::NoCollision);
+    }
+    if (RoadConstructionComponent)
+    {
+        RoadConstructionComponent->SetCollisionEnabled(
+            ECollisionEnabled::NoCollision);
     }
     SetActorHiddenInGame(true);
 }
@@ -83,7 +110,9 @@ void APinkCabL1RoadChunkActor::ClearBinding()
 bool APinkCabL1RoadChunkActor::IsVisualReady() const
 {
     return RoadMeshComponent != nullptr &&
-        RoadMeshComponent->GetStaticMesh() != nullptr;
+        RoadMeshComponent->GetStaticMesh() != nullptr &&
+        RoadConstructionComponent != nullptr &&
+        RoadConstructionComponent->GetStaticMesh() != nullptr;
 }
 
 UStaticMesh* APinkCabL1RoadChunkActor::GetRoadMesh() const
@@ -104,4 +133,27 @@ void APinkCabL1RoadChunkActor::SetRoadMesh(UStaticMesh* Mesh)
     }
 
     RoadMeshComponent->SetStaticMesh(Mesh);
+}
+
+
+UStaticMesh* APinkCabL1RoadChunkActor::GetConstructionMesh() const
+{
+    return RoadConstructionComponent
+        ? RoadConstructionComponent->GetStaticMesh()
+        : nullptr;
+}
+
+void APinkCabL1RoadChunkActor::SetConstructionMesh(UStaticMesh* Mesh)
+{
+    if (!RoadConstructionComponent)
+    {
+        return;
+    }
+
+    if (!Mesh && bBound)
+    {
+        ClearBinding();
+    }
+
+    RoadConstructionComponent->SetStaticMesh(Mesh);
 }
