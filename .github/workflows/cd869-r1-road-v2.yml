@@ -214,7 +214,7 @@ jobs:
           Write-Host "R1_FOCUSED=PASS $($queue[-1].Line)"
 
       - name: Run materialization regression
-        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ success() && steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -229,7 +229,7 @@ jobs:
           Write-Host "R1_MATERIALIZATION=PASS $($queue[-1].Line)"
 
       - name: R1 scope guard and zero-debt
-        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ success() && steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -268,7 +268,7 @@ jobs:
           Write-Host 'R1_OLD_RUNTIME_CLOSED=PASS'
 
       - name: Build cook package R1 human candidate
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -305,7 +305,7 @@ jobs:
           Write-Host 'R1_CONTENT_AWARE_PACKAGE=PASS'
 
       - name: Packaged R1 smoke
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -337,7 +337,7 @@ jobs:
           }
 
       - name: Install and launch R1 HUMAN gate
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
