@@ -364,6 +364,8 @@ public:
         FBox CombinedBounds(ForceInit);
         int32 SavedMeshCount = 0;
         int32 CollisionReadyCount = 0;
+        int32 CanonicalRoadSurfaceCount = 0;
+        int32 SuffixedRoadSurfaceCount = 0;
         for (UStaticMeshComponent* Component : MeshComponents)
         {
             if (!Component)
@@ -383,6 +385,18 @@ public:
                 static_cast<int32>(Component->GetCollisionEnabled())));
             Test->TestTrue(TEXT("generated mesh stored in canonical Level 1 road folder"),
                 PackageName.StartsWith(TEXT("/Game/World/L1/Road/")));
+
+            if (PackageName == TEXT("/Game/World/L1/Road/RoadSurface"))
+            {
+                ++CanonicalRoadSurfaceCount;
+            }
+            else if (PackageName.StartsWith(TEXT("/Game/World/L1/Road/RoadSurface")))
+            {
+                ++SuffixedRoadSurfaceCount;
+                Test->AddError(FString::Printf(
+                    TEXT("non-canonical MetaRoad runtime output generated: %s"),
+                    *PackageName));
+            }
             if (SaveGeneratedMeshPackage(*Mesh, *Test))
             {
                 ++SavedMeshCount;
@@ -398,6 +412,10 @@ public:
 
         Test->TestTrue(TEXT("at least one generated road mesh saved"), SavedMeshCount > 0);
         Test->TestTrue(TEXT("at least one generated road mesh has collision"), CollisionReadyCount > 0);
+        Test->TestEqual(TEXT("exactly one canonical RoadSurface mesh is generated"),
+            CanonicalRoadSurfaceCount, 1);
+        Test->TestEqual(TEXT("no suffixed RoadSurfaceN meshes are generated"),
+            SuffixedRoadSurfaceCount, 0);
 
         if (CombinedBounds.IsValid)
         {
