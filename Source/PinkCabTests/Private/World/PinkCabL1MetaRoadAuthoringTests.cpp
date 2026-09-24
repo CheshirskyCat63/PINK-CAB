@@ -59,6 +59,7 @@ void ConfigureRaisedMetaRoadZone(
 
 FRoadLane MakeSurfaceLane(
     const double WidthCm,
+    const double SectionLengthCm,
     const FRoadZoneType& ZoneType,
     const bool bRaised = false,
     const bool bInsideCurb = true,
@@ -67,7 +68,7 @@ FRoadLane MakeSurfaceLane(
     FRoadLane Lane;
     Lane.Width.Reset();
     Lane.Width.AddKey(0.0, WidthCm);
-    Lane.Width.AddKey(ChunkLengthCm, WidthCm);
+    Lane.Width.AddKey(SectionLengthCm, WidthCm);
     if (bRaised)
     {
         ConfigureRaisedMetaRoadZone(
@@ -82,15 +83,22 @@ FRoadLane MakeSurfaceLane(
 }
 
 FRoadLane MakeAccessBandLane(
+    const double SectionStartCm,
+    const double SectionEndCm,
     const bool bConnectorPavement,
     const FRoadZoneType& ZoneType,
-    const bool bRaised = false)
+    const bool bRaised = false,
+    const bool bInsideCurb = true,
+    const bool bOutsideCurb = true)
 {
     FRoadLane Lane;
     Lane.Width.Reset();
 
-    const double Keys[] = {
-        0.0,
+    TArray<double> AbsoluteKeys = {
+        SectionStartCm,
+        SectionEndCm
+    };
+    const double AccessKeys[] = {
         FPinkCabL1EndlessRoadModel::AccessAStartCm,
         FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm,
         FPinkCabL1EndlessRoadModel::AccessAFullOpenEndCm,
@@ -98,21 +106,30 @@ FRoadLane MakeAccessBandLane(
         FPinkCabL1EndlessRoadModel::AccessBStartCm,
         FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm,
         FPinkCabL1EndlessRoadModel::AccessBFullOpenEndCm,
-        FPinkCabL1EndlessRoadModel::AccessBEndCm,
-        ChunkLengthCm
+        FPinkCabL1EndlessRoadModel::AccessBEndCm
     };
 
-    for (const double X : Keys)
+    for (const double X : AccessKeys)
+    {
+        if (X > SectionStartCm && X < SectionEndCm)
+        {
+            AbsoluteKeys.Add(X);
+        }
+    }
+    AbsoluteKeys.Sort();
+
+    for (const double X : AbsoluteKeys)
     {
         const double Width = bConnectorPavement
             ? FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(X)
             : FPinkCabL1EndlessRoadModel::ResolveAccessSeparatorWidthCm(X);
-        Lane.Width.AddKey(X, Width);
+        Lane.Width.AddKey(X - SectionStartCm, Width);
     }
 
     if (bRaised)
     {
-        ConfigureRaisedMetaRoadZone(Lane, ZoneType, true, true);
+        ConfigureRaisedMetaRoadZone(
+            Lane, ZoneType, bInsideCurb, bOutsideCurb);
     }
     else
     {
@@ -122,13 +139,31 @@ FRoadLane MakeAccessBandLane(
     return Lane;
 }
 
-void AddSideProfile(TArray<FRoadLane>& Lanes)
+bool IsAccessOpeningSection(const double SectionStartCm)
 {
+    return FMath::IsNearlyEqual(
+            SectionStartCm,
+            FPinkCabL1EndlessRoadModel::AccessAStartCm)
+        || FMath::IsNearlyEqual(
+            SectionStartCm,
+            FPinkCabL1EndlessRoadModel::AccessBStartCm);
+}
+
+void AddSideProfile(
+    TArray<FRoadLane>& Lanes,
+    const double SectionStartCm,
+    const double SectionEndCm)
+{
+    const double SectionLengthCm = SectionEndCm - SectionStartCm;
+    const bool bAccessOpeningSection =
+        IsAccessOpeningSection(SectionStartCm);
+
     // R2 native MetaRoad construction. The two 4m half-medians form one
     // 8m central raised island. Only the road-facing edge gets a curb so the
     // two halves meet cleanly at the road centerline.
     Lanes.Add(MakeSurfaceLane(
         HalfCentralMedianCm,
+        SectionLengthCm,
         ERoadZoneTypes::Median,
         true,
         false,
@@ -136,32 +171,63 @@ void AddSideProfile(TArray<FRoadLane>& Lanes)
 
     for (int32 LaneIndex = 0; LaneIndex < 5; ++LaneIndex)
     {
-        Lanes.Add(MakeSurfaceLane(ExpressLaneWidthCm, ERoadZoneTypes::Driving));
+        Lanes.Add(MakeSurfaceLane(
+            ExpressLaneWidthCm,
+            SectionLengthCm,
+            ERoadZoneTypes::Driving));
     }
 
-    // Preserve the accepted R1 access topology exactly: connector pavement
-    // grows while the complementary service separator shrinks. In R2 the
-    // separator itself is a native MetaRoad raised sidewalk-zone using the
-    // plugin's DefaultCurb profile, so openings remain part of the same
-    // authoring system rather than a second overlay mesh.
-    Lanes.Add(MakeAccessBandLane(true, ERoadZoneTypes::Driving));
-    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median, true));
+    // Preserve the accepted R1 variable-width connector and separator.
+    // The service separator remains a native raised MetaRoad sidewalk zone.
+    // In the two access-window sections, BOTH service-separator curb sweeps
+    // are intentionally disabled so MetaRoad leaves a true drivable opening
+    // rather than carrying a curb line across the express<->local connector.
+    // Outside those sections, the human-authored DefaultCurb profile remains.
+    Lanes.Add(MakeAccessBandLane(
+        SectionStartCm,
+        SectionEndCm,
+        true,
+        ERoadZoneTypes::Driving));
+    Lanes.Add(MakeAccessBandLane(
+        SectionStartCm,
+        SectionEndCm,
+        false,
+        ERoadZoneTypes::Median,
+        true,
+        !bAccessOpeningSection,
+        !bAccessOpeningSection));
 
     for (int32 LaneIndex = 0; LaneIndex < 2; ++LaneIndex)
     {
-        Lanes.Add(MakeSurfaceLane(LocalLaneWidthCm, ERoadZoneTypes::Driving));
+        Lanes.Add(MakeSurfaceLane(
+            LocalLaneWidthCm,
+            SectionLengthCm,
+            ERoadZoneTypes::Driving));
     }
 
     // The accepted 1m outer shoulder becomes the native raised road-edge
     // treatment. Only the road-facing edge gets a curb; suppressing the outer
-    // curb keeps the accepted 66.8m envelope exact instead of adding one curb
-    // profile width beyond it.
+    // curb keeps the accepted 66.8m envelope exact.
     Lanes.Add(MakeSurfaceLane(
         OuterShoulderCm,
+        SectionLengthCm,
         ERoadZoneTypes::Shoulder,
         true,
         true,
         false));
+}
+
+void AddRoadSection(
+    FRoadLayout& Layout,
+    const double SectionStartCm,
+    const double SectionEndCm)
+{
+    FRoadLaneSection Section;
+    Section.Side = ERoadLaneSectionSide::Both;
+    Section.SOffset = SectionStartCm;
+    AddSideProfile(Section.Left, SectionStartCm, SectionEndCm);
+    AddSideProfile(Section.Right, SectionStartCm, SectionEndCm);
+    Layout.Sections.Add(MoveTemp(Section));
 }
 
 bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
@@ -197,23 +263,76 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     Layout.Sections.Reset();
     Layout.Direction = ERoadDirection::RightHand;
 
-    FRoadLaneSection Section;
-    Section.Side = ERoadLaneSectionSide::Both;
-    Section.SOffset = 0.0;
-    AddSideProfile(Section.Left);
-    AddSideProfile(Section.Right);
-    Layout.Sections.Add(MoveTemp(Section));
+    // Native MetaRoad lane sections are the free/core way to vary curb
+    // construction along S. Split only at access-window boundaries: geometry,
+    // lane widths and the accepted 1000m topology stay continuous, while the
+    // service-separator curb flags are OFF inside both access windows.
+    const double SectionOffsets[] = {
+        0.0,
+        FPinkCabL1EndlessRoadModel::AccessAStartCm,
+        FPinkCabL1EndlessRoadModel::AccessAEndCm,
+        FPinkCabL1EndlessRoadModel::AccessBStartCm,
+        FPinkCabL1EndlessRoadModel::AccessBEndCm,
+        ChunkLengthCm
+    };
+    for (int32 Index = 0; Index < UE_ARRAY_COUNT(SectionOffsets) - 1; ++Index)
+    {
+        AddRoadSection(
+            Layout,
+            SectionOffsets[Index],
+            SectionOffsets[Index + 1]);
+    }
 
     Spline->UpdateRoadLayout();
     Spline->UpdateLaneSectionBounds();
     Spline->MarkRenderStateDirty();
     Road.MarkPackageDirty();
 
-    Test.TestEqual(TEXT("one MetaRoad lane section"), Layout.Sections.Num(), 1);
-    if (Layout.Sections.Num() == 1)
+    Test.TestEqual(
+        TEXT("five native MetaRoad lane sections preserve two curb openings"),
+        Layout.Sections.Num(),
+        5);
+    if (Layout.Sections.Num() == 5)
     {
-        Test.TestEqual(TEXT("R1 has eleven authored surfaces on left side"), Layout.Sections[0].Left.Num(), 11);
-        Test.TestEqual(TEXT("R1 has eleven authored surfaces on right side"), Layout.Sections[0].Right.Num(), 11);
+        const double ExpectedOffsets[] = {
+            0.0,
+            FPinkCabL1EndlessRoadModel::AccessAStartCm,
+            FPinkCabL1EndlessRoadModel::AccessAEndCm,
+            FPinkCabL1EndlessRoadModel::AccessBStartCm,
+            FPinkCabL1EndlessRoadModel::AccessBEndCm
+        };
+        for (int32 Index = 0; Index < Layout.Sections.Num(); ++Index)
+        {
+            Test.TestTrue(
+                *FString::Printf(
+                    TEXT("section %d keeps accepted R1 longitudinal boundary"),
+                    Index),
+                FMath::IsNearlyEqual(
+                    Layout.Sections[Index].SOffset,
+                    ExpectedOffsets[Index],
+                    0.1));
+            Test.TestEqual(
+                *FString::Printf(
+                    TEXT("section %d has eleven left-side surfaces"),
+                    Index),
+                Layout.Sections[Index].Left.Num(),
+                11);
+            Test.TestEqual(
+                *FString::Printf(
+                    TEXT("section %d has eleven right-side surfaces"),
+                    Index),
+                Layout.Sections[Index].Right.Num(),
+                11);
+        }
+        Test.TestTrue(
+            TEXT("access A section disables service curbs"),
+            IsAccessOpeningSection(Layout.Sections[1].SOffset));
+        Test.TestTrue(
+            TEXT("access B section disables service curbs"),
+            IsAccessOpeningSection(Layout.Sections[3].SOffset));
+        Test.TestFalse(
+            TEXT("straight separator section keeps service curbs"),
+            IsAccessOpeningSection(Layout.Sections[2].SOffset));
     }
     Test.TestTrue(TEXT("straight spline is one kilometre"),
         FMath::IsNearlyEqual(Spline->GetSplineLength(), ChunkLengthCm, 1.0));
