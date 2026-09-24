@@ -1,0 +1,52 @@
+name: CD-869 R2 MetaRoad API snapshot
+on:
+  push:
+    branches: [feat/CD-869-r2-median-separators]
+    paths: [.github/workflows/cd869-r2-metaroad-api-snapshot.yml]
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          clean: false
+      - name: Snapshot only required public API declarations
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location $env:GITHUB_WORKSPACE
+          $root=(Get-ChildItem 'C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace' -Recurse -Filter MetaRoad.uplugin -File | Select-Object -First 1).Directory.FullName
+          if(-not $root){ throw 'METAROAD_NOT_FOUND' }
+          $out='docs\audits\CD869_R2_METAROAD_REQUIRED_API.txt'
+          New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
+          Set-Content $out ('MetaRoad public API snapshot for CD-869 R2; root=' + $root)
+
+          function AddRange([string]$rel,[int]$from,[int]$to){
+            $p=Join-Path $root $rel
+            if(-not (Test-Path $p)){ throw "MISSING $rel" }
+            Add-Content $out ""
+            Add-Content $out ("=== $rel lines $from-$to ===")
+            $a=Get-Content $p
+            for($i=$from;$i -le $to -and $i -le $a.Count;$i++){
+              Add-Content $out ("{0}: {1}" -f $i,$a[$i-1])
+            }
+          }
+
+          AddRange 'Source\MetaRoad\Public\MetaRoadTypes.h' 420 500
+          AddRange 'Source\MetaRoad\Private\MetaRoadTypes.cpp' 875 905
+          AddRange 'Source\MetaRoad\Public\Assets\RoadCurbProfile.h' 1 70
+          AddRange 'Source\MetaRoad\Public\RoadCurbCut.h' 1 125
+          AddRange 'Source\MetaRoad\Public\RoadSplineComponent.h' 1 180
+          AddRange 'Source\MetaRoad\Public\Assets\RoadLaneAttributeZone.h' 1 150
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- $out
+          if(git diff --cached --quiet){ throw 'NO_API_SNAPSHOT_DIFF' }
+          git commit -m 'audit(CD-869): snapshot required MetaRoad public R2 API'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
