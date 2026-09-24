@@ -253,4 +253,80 @@ bool FPinkCabL1EndlessRoadTopologyReconstructionTest::RunTest(const FString& Par
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadR1AccessTopologyTest,
+    "PinkCab.World.L1EndlessRoad.Model.R1AccessTopology",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadR1AccessTopologyTest::RunTest(const FString& Parameters)
+{
+    TestEqual(TEXT("R1 defines exactly two physical access windows"),
+        FPinkCabL1EndlessRoadModel::AccessWindowCount, 2);
+    TestEqual(TEXT("R1 connector reaches the full 4m service band"),
+        FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm, 400.0);
+
+    // Clean seam buffers: the first/last 150m remain the canonical straight cross-section.
+    TestEqual(TEXT("start seam buffer has no connector pavement"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(0.0), 0.0);
+    TestEqual(TEXT("149.999m remains closed"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(14999.9), 0.0);
+    TestEqual(TEXT("end seam buffer remains closed"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(99999.9), 0.0);
+
+    // Window A: 150m → 450m with a fully-open throat around 275–325m.
+    TestEqual(TEXT("window A starts closed at 150m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(15000.0), 0.0);
+    TestTrue(TEXT("window A opens during taper"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(22000.0) > 0.0);
+    TestEqual(TEXT("window A is fully open at 300m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(30000.0), 400.0);
+    TestTrue(TEXT("window A closes after throat"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(40000.0) > 0.0);
+    TestEqual(TEXT("window A closes by 450m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(45000.0), 0.0);
+
+    // Window B mirrors the same geometry later in the kilometre.
+    TestEqual(TEXT("window B starts closed at 550m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(55000.0), 0.0);
+    TestEqual(TEXT("window B is fully open at 700m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(70000.0), 400.0);
+    TestEqual(TEXT("window B closes by 850m"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(85000.0), 0.0);
+
+    // Connector + green/service separator must preserve the same 4m side band.
+    for (const double SampleCm : {0.0, 15000.0, 22000.0, 30000.0, 40000.0,
+                                  45000.0, 50000.0, 55000.0, 70000.0, 85000.0, 99999.9})
+    {
+        const double Connector =
+            FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(SampleCm);
+        const double Separator =
+            FPinkCabL1EndlessRoadModel::ResolveAccessSeparatorWidthCm(SampleCm);
+        TestTrue(TEXT("connector width is bounded"),
+            Connector >= 0.0 && Connector <= 400.0);
+        TestTrue(TEXT("separator width is bounded"),
+            Separator >= 0.0 && Separator <= 400.0);
+        TestTrue(TEXT("connector + separator remains exactly 4m"),
+            FMath::IsNearlyEqual(Connector + Separator, 400.0, 0.01));
+    }
+
+    TestEqual(TEXT("positive travel sees A as exit"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessRole(
+            0, EPinkCabLongitudinalTravelDirection::Positive),
+        EPinkCabL1AccessRole::ExitToLocal);
+    TestEqual(TEXT("positive travel sees B as merge"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessRole(
+            1, EPinkCabLongitudinalTravelDirection::Positive),
+        EPinkCabL1AccessRole::MergeToExpress);
+    TestEqual(TEXT("negative travel sees physical A as merge"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessRole(
+            0, EPinkCabLongitudinalTravelDirection::Negative),
+        EPinkCabL1AccessRole::MergeToExpress);
+    TestEqual(TEXT("negative travel sees physical B as exit"),
+        FPinkCabL1EndlessRoadModel::ResolveAccessRole(
+            1, EPinkCabLongitudinalTravelDirection::Negative),
+        EPinkCabL1AccessRole::ExitToLocal);
+
+    return true;
+}
+
 #endif
