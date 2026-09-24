@@ -88,6 +88,13 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+          $construction=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\RoadConstruction.uasset'
+          if(Test-Path $construction){
+            Remove-Item -LiteralPath $construction -Force
+            Write-Host 'R2_STALE_CONSTRUCTION_REMOVED=1'
+          }
+          if(Test-Path $construction){ throw 'R2_STALE_CONSTRUCTION_DELETE_FAILED' }
+
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_AUTHORING.log'
