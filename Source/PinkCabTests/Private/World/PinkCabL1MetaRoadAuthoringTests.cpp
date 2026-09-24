@@ -783,7 +783,31 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         TEXT("RoadCurbs4"),
         TEXT("RoadCurbs5"),
         TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7")
+        TEXT("RoadCurbs7"),
+        TEXT("RoadCurbs8"),
+        TEXT("RoadCurbs9"),
+        TEXT("RoadCurbs10"),
+        TEXT("RoadCurbs11"),
+        TEXT("RoadCurbs12"),
+        TEXT("RoadCurbs13"),
+        TEXT("RoadCurbs14"),
+        TEXT("RoadCurbs15"),
+        TEXT("RoadCurbs16"),
+        TEXT("RoadCurbs17"),
+        TEXT("RoadCurbs18"),
+        TEXT("RoadCurbs19"),
+        TEXT("RoadCurbs20"),
+        TEXT("RoadCurbs21"),
+        TEXT("RoadCurbs22"),
+        TEXT("RoadCurbs23"),
+        TEXT("RoadCurbs24"),
+        TEXT("RoadCurbs25"),
+        TEXT("RoadCurbs26"),
+        TEXT("RoadCurbs27"),
+        TEXT("RoadCurbs28"),
+        TEXT("RoadCurbs29"),
+        TEXT("RoadCurbs30"),
+        TEXT("RoadCurbs31")
     };
 
     int32 ReboundMeshCount = 0;
