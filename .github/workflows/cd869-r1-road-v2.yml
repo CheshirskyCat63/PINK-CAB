@@ -147,12 +147,7 @@ jobs:
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log'
           New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
 
-          $nativePatterns=@(
-            'RoadSurface*.uasset',
-            'RoadSidewalks*.uasset',
-            'RoadCurbs*.uasset'
-          )
-          foreach($pattern in $nativePatterns){
+          foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset')){
             Get-ChildItem $roadDir -Filter $pattern -File -ErrorAction SilentlyContinue |
               ForEach-Object {
                 Write-Host "R2_REMOVE_PREBAKE=$($_.FullName)"
@@ -180,12 +175,34 @@ jobs:
             'RoadCurbs4.uasset',
             'RoadCurbs5.uasset',
             'RoadCurbs6.uasset',
-            'RoadCurbs7.uasset'
+            'RoadCurbs7.uasset',
+            'RoadCurbs8.uasset',
+            'RoadCurbs9.uasset'
           )
           $actual=@(
             Get-ChildItem $roadDir -File -ErrorAction SilentlyContinue |
               Where-Object {
-                $_.Name -match '^RoadSurface.*\.uasset
+                $_.Name -eq 'RoadSurface.uasset' -or
+                $_.Name -eq 'RoadSidewalks.uasset' -or
+                $_.Name -match '^RoadCurbs(?:[1-9])?\.uasset$'
+              } |
+              Select-Object -ExpandProperty Name |
+              Sort-Object
+          )
+          $expectedSorted=@($expected | Sort-Object)
+          if($actual.Count -ne $expectedSorted.Count -or (Compare-Object $expectedSorted $actual)){
+            $actual | ForEach-Object { Write-Host "R2_NATIVE_ACTUAL=$_" }
+            $expectedSorted | ForEach-Object { Write-Host "R2_NATIVE_EXPECTED=$_" }
+            throw "R2_NATIVE_ASSET_SET_MISMATCH actual=$($actual.Count) expected=$($expectedSorted.Count)"
+          }
+
+          foreach($name in $actual){
+            $asset=Join-Path $roadDir $name
+            $bytes=(Get-Item $asset).Length
+            Write-Host "R2_METAROAD_OUTPUT=$name bytes=$bytes"
+            if($bytes -le 0){ throw "R2_NATIVE_EMPTY_ASSET=$name" }
+          }
+          Write-Host 'R2_METAROAD_NATIVE_BAKE=PASS'
 
       - name: Rebind only runtime materials after MetaRoad bake
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
