@@ -311,18 +311,22 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
                     Layout.Sections[Index].SOffset,
                     ExpectedOffsets[Index],
                     0.1));
+            const int32 ExpectedSurfaceCount =
+                IsAccessOpeningSection(Layout.Sections[Index].SOffset)
+                    ? 11
+                    : 10;
             Test.TestEqual(
                 *FString::Printf(
-                    TEXT("section %d has eleven left-side surfaces"),
+                    TEXT("section %d keeps expected native surface count"),
                     Index),
                 Layout.Sections[Index].Left.Num(),
-                11);
+                ExpectedSurfaceCount);
             Test.TestEqual(
                 *FString::Printf(
-                    TEXT("section %d has eleven right-side surfaces"),
+                    TEXT("section %d keeps mirrored native surface count"),
                     Index),
                 Layout.Sections[Index].Right.Num(),
-                11);
+                ExpectedSurfaceCount);
         }
         Test.TestTrue(
             TEXT("access A section disables service curbs"),
