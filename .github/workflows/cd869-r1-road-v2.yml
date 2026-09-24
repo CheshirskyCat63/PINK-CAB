@@ -1,9 +1,7 @@
 name: CD-869 R1 Road Topology V2
 
 on:
-  push:
-    branches:
-      - feat/CD-869-l1-endless-road
+  workflow_dispatch:
 
 permissions:
   contents: write
