@@ -1,130 +1,130 @@
-﻿run_id=36061687396
-source_sha=84657a6123fc43e5029bf1a480feade89e494b87
-workspace_head=9ea019a619db042037476f63566a2a7abf023b22
-job_status=success
-timestamp_utc=2026-09-24T21:34:42.9329859Z
+﻿run_id=36064151789
+source_sha=9863319b0f16a31383e1524f4f38fed8ed7f849d
+workspace_head=9863319b0f16a31383e1524f4f38fed8ed7f849d
+job_status=failure
+timestamp_utc=2026-09-24T21:53:21.6032442Z
 
 === Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log tail ===
-[2026.09.24-21.31.13:600][640]LogStaticMesh: Display: Создание статичной сетки RoadSidewalks (расчётный объём требуемой памяти: 7.822662 Мбайт)...
-[2026.09.24-21.31.13:615][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadSidewalks)...
-[2026.09.24-21.31.13:624][640]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadSidewalks.RoadSidewalks
-[2026.09.24-21.31.13:633][640]LogStaticMesh: Display: RoadSidewalks содержит касательные с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
-[2026.09.24-21.31.13:633][640]LogStaticMesh: Display: RoadSidewalks содержит бинормали с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
-[2026.09.24-21.31.13:724][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.13:741][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs)...
-[2026.09.24-21.31.13:748][640]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs.RoadCurbs
-[2026.09.24-21.31.13:816][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs1 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.13:833][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs1)...
-[2026.09.24-21.31.13:837][640]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs1.RoadCurbs1
-[2026.09.24-21.31.13:932][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs2 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.13:948][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs2)...
-[2026.09.24-21.31.13:958][640]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadCurbs2.RoadCurbs2
-[2026.09.24-21.31.13:995][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs3 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.14:011][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs3)...
-[2026.09.24-21.31.14:017][640]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs3.RoadCurbs3
-[2026.09.24-21.31.14:055][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs4 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.14:069][640]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs4.RoadCurbs4
-[2026.09.24-21.31.14:072][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs4)...
-[2026.09.24-21.31.14:103][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs5 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.14:120][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs5)...
-[2026.09.24-21.31.14:122][640]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs5.RoadCurbs5
-[2026.09.24-21.31.14:210][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs6 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.14:226][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs6)...
-[2026.09.24-21.31.14:235][640]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadCurbs6.RoadCurbs6
-[2026.09.24-21.31.14:291][640]LogStaticMesh: Display: Создание статичной сетки RoadCurbs7 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-21.31.14:306][640]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs7.RoadCurbs7
-[2026.09.24-21.31.14:308][640]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs7)...
-[2026.09.24-21.31.14:376][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSurface
-[2026.09.24-21.31.14:376][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSurfaceFA3B180E41E7EE811A23F58FE45CE48E.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSurface.uasset'
-[2026.09.24-21.31.14:390][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSidewalks
-[2026.09.24-21.31.14:390][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSidewalks5A01329B49FE56722AE5CB8549331745.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSidewalks.uasset'
-[2026.09.24-21.31.14:401][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs
-[2026.09.24-21.31.14:401][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs5315F1314BA94D1525ADD691C944367F.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs.uasset'
-[2026.09.24-21.31.14:410][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs1
-[2026.09.24-21.31.14:410][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs19F6A8ED24ABD1FFEBCC746B2C0D6C93B.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs1.uasset'
-[2026.09.24-21.31.14:419][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs2
-[2026.09.24-21.31.14:419][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs20E396427464E853A389900B142986409.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs2.uasset'
-[2026.09.24-21.31.14:428][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs3
-[2026.09.24-21.31.14:428][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs3725AF4844CF1794732288C80A3A8DFF7.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs3.uasset'
-[2026.09.24-21.31.14:438][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs4
-[2026.09.24-21.31.14:438][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs45DAF87F542A2528CF98C6AA7EC410C3D.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs4.uasset'
-[2026.09.24-21.31.14:446][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs5
-[2026.09.24-21.31.14:447][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs57D7A5CF440C5E147F54760848F1882B7.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs5.uasset'
-[2026.09.24-21.31.14:458][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs6
-[2026.09.24-21.31.14:458][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs6E0436269402734DA2BCFC5B0F3AF51FA.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs6.uasset'
-[2026.09.24-21.31.14:466][640]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs7
-[2026.09.24-21.31.14:466][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs70D3D8E8D44A261DE6BC7F1B9886CD696.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs7.uasset'
-[2026.09.24-21.31.14:467][640]OBJ SavePackage: Generating thumbnails for [0] asset(s) in package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring] ([1] browsable assets)...
-[2026.09.24-21.31.14:467][640]OBJ SavePackage: Finished generating thumbnails for package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring]
-[2026.09.24-21.31.14:518][640]LogUObjectHash: Compacting FUObjectHashTables data took   0.49ms
-[2026.09.24-21.31.14:715][640]LogSavePackage: Moving output files for package: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring
-[2026.09.24-21.31.14:715][640]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/L_PC_L1_MetaRoadAuthoring736D65264DC1317715BEEFB110326381.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
-[2026.09.24-21.31.14:732][640]LogFileHelpers: Saving map 'L_PC_L1_MetaRoadAuthoring' took 0.265
-[2026.09.24-21.31.14:743][641]LogContentValidation: Enabled validators:
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.DirtyFilesChangelistValidator
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.EditorValidator_ActionUtility
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.EditorValidator_Localization
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.EditorValidator_Material
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.PackageFileValidator
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/DataValidation.WorldPartitionChangelistValidator
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/MutableValidation.AssetValidator_CustomizableObjects
-[2026.09.24-21.31.14:743][641]LogContentValidation: 	/Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects
-[2026.09.24-21.31.14:743][641]LogContentValidation: Display: Starting to validate 11 assets (0 associated objects such as actors)
-[2026.09.24-21.31.14:743][641]LogContentValidation: Добавлены дополнительные ресурсы для проверки с помощью валидаторов 0:
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadSurface Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadSidewalks Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs1 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs2 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs3 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs5 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs6 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/World/L1/Road/RoadCurbs7 Проверка ресурса
-[2026.09.24-21.31.14:743][641]AssetCheck: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring Проверка ресурса
-[2026.09.24-21.31.14:743][641]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 11
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
-[2026.09.24-21.31.14:743][641]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
-[2026.09.24-21.31.14:775][642]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadAssets} Path={PinkCab.Editor.GenerateL1EndlessRoadAssets}
-[2026.09.24-21.31.14:775][642]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
-[2026.09.24-21.31.14:775][642]LogAutomationController: Warning: LogEditorModes: ITF Gizmos and Controls have been disabled. The "Meta Road" Editor Mode requires the legacy systems. [log] 
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSurface collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadSurface rel_loc=(0.00,0.00,0.00) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(50000.00,0.00,0.00) local_extent=(50000.00,3240.00,0.00) world_origin=(50000.00,0.00,0.00) world_extent=(50000.00,3240.00,0.00)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSidewalks collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadSidewalks rel_loc=(0.00,0.00,0.00) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(50000.00,0.00,12.00) local_extent=(50000.00,3340.00,0.00) world_origin=(50000.00,0.00,12.00) world_extent=(50000.00,3340.00,0.00)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs rel_loc=(50000.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,-3240.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs1 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs1 rel_loc=(50000.00,-2400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,207.50,8.25) world_origin=(50000.00,-2400.00,4.25) world_extent=(50000.00,207.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs2 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs2 rel_loc=(50000.00,-2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,-2600.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs3 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs3 rel_loc=(50000.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,-400.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs4 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs4 rel_loc=(50000.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,400.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs5 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs5 rel_loc=(50000.00,2400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,207.50,8.25) world_origin=(50000.00,2400.00,4.25) world_extent=(50000.00,207.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs6 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs6 rel_loc=(50000.00,2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,2600.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs7 collision=3
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs7 rel_loc=(50000.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(50000.00,7.50,8.25) world_origin=(50000.00,3240.00,4.25) world_extent=(50000.00,7.50,8.25)
-[2026.09.24-21.31.14:775][642]LogAutomationController: MetaRoad generated bounds: X=100000.00 Y=6680.00 Z=16.50
-[2026.09.24-21.31.14:775][642]LogAutomationController: CD869_METAROAD_BAKE=PASS
-[2026.09.24-21.31.14:775][642]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
-[2026.09.24-21.31.14:787][642]LogAutomationController: Sending StopTestSession to 2F6B94D846BD5B06B2447B9A16BD58E5
-[2026.09.24-21.31.14:787][642]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
-[2026.09.24-21.31.14:787][643]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
-[2026.09.24-21.31.14:787][643]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
-[2026.09.24-21.31.14:787][643]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
-[2026.09.24-21.31.14:787][643]LogCore: Engine exit requested (reason: Win RequestExit)
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs5 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs6 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs7 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs8 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs9 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs10 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs11 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs12 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs13 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs14 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs15 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs16 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs17 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs18 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs19 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs20 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs21 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs22 Проверка ресурса
+[2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs23 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs24 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs25 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs26 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs27 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs28 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs29 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs30 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/World/L1/Road/RoadCurbs31 Проверка ресурса
+[2026.09.24-21.53.18:390][630]AssetCheck: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring Проверка ресурса
+[2026.09.24-21.53.18:390][630]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 35
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
+[2026.09.24-21.53.18:390][630]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
+[2026.09.24-21.53.18:431][631]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadAssets} Path={PinkCab.Editor.GenerateL1EndlessRoadAssets}
+[2026.09.24-21.53.18:431][631]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-21.53.18:431][631]LogAutomationController: Warning: LogEditorModes: ITF Gizmos and Controls have been disabled. The "Meta Road" Editor Mode requires the legacy systems. [log] 
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSurface collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadSurface rel_loc=(0.00,0.00,0.00) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(50000.00,0.00,0.00) local_extent=(50000.00,3240.00,0.00) world_origin=(50000.00,0.00,0.00) world_extent=(50000.00,3240.00,0.00)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSidewalks collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadSidewalks rel_loc=(0.00,0.00,0.00) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(50000.00,0.00,12.00) local_extent=(50000.00,3340.00,0.00) world_origin=(50000.00,0.00,12.00) world_extent=(50000.00,3340.00,0.00)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs rel_loc=(92500.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,-3240.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs1 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs1 rel_loc=(70000.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(70000.00,-3240.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs2 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs2 rel_loc=(50000.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,-3240.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs3 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs3 rel_loc=(30000.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(30000.00,-3240.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs4 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs4 rel_loc=(7500.00,-3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,-3240.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs5 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs5 rel_loc=(7500.00,-2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,-2200.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs6 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs6 rel_loc=(7500.00,-2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,-2600.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs7 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs7 rel_loc=(7500.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,-400.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs8 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs8 rel_loc=(30000.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(30000.00,-400.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs9 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs9 rel_loc=(50000.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,-400.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs10 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs10 rel_loc=(70000.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(70000.00,-400.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs11 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs11 rel_loc=(92500.00,-400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,-400.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs12 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs12 rel_loc=(92500.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,400.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs13 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs13 rel_loc=(70000.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(70000.00,400.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs14 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs14 rel_loc=(50000.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,400.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs15 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs15 rel_loc=(30000.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(30000.00,400.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs16 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs16 rel_loc=(7500.00,400.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,400.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs17 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs17 rel_loc=(7500.00,2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,2200.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs18 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs18 rel_loc=(7500.00,2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,2600.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs19 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs19 rel_loc=(7500.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(7500.00,3240.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs20 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs20 rel_loc=(30000.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(30000.00,3240.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs21 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs21 rel_loc=(50000.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,3240.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs22 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs22 rel_loc=(70000.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(15000.00,7.50,8.25) world_origin=(70000.00,3240.00,4.25) world_extent=(15000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs23 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs23 rel_loc=(92500.00,3240.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,3240.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs24 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs24 rel_loc=(50000.00,-2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,-2200.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:431][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs25 collision=3
+[2026.09.24-21.53.18:431][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs25 rel_loc=(50000.00,-2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,-2600.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:432][631]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs26 collision=3
+[2026.09.24-21.53.18:432][631]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs26 rel_loc=(50000.00,2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,2200.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs27 collision=3
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs27 rel_loc=(50000.00,2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(5000.00,7.50,8.25) world_origin=(50000.00,2600.00,4.25) world_extent=(5000.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs28 collision=3
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs28 rel_loc=(92500.00,-2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,-2200.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs29 collision=3
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs29 rel_loc=(92500.00,-2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,-2600.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs30 collision=3
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs30 rel_loc=(92500.00,2200.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,2200.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs31 collision=3
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_COMPONENT package=/Game/World/L1/Road/RoadCurbs31 rel_loc=(92500.00,2600.00,4.25) rel_rot=(0.00,0.00,-0.00) rel_scale=(1.0000,1.0000,1.0000) local_origin=(0.00,0.00,0.00) local_extent=(7500.00,7.50,8.25) world_origin=(92500.00,2600.00,4.25) world_extent=(7500.00,7.50,8.25)
+[2026.09.24-21.53.18:432][632]LogAutomationController: MetaRoad generated bounds: X=100000.00 Y=6680.00 Z=16.50
+[2026.09.24-21.53.18:432][632]LogAutomationController: CD869_METAROAD_BAKE=PASS
+[2026.09.24-21.53.18:432][632]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-21.53.18:432][632]LogAutomationController: Sending StopTestSession to 1392C70F49F9508A95957B8EE5981A0B
+[2026.09.24-21.53.18:432][632]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
+[2026.09.24-21.53.18:438][632]LogAutomationWorker: Received StopTestSession from 8E3699014063212A2B93AA9712AA475E
+[2026.09.24-21.53.18:439][633]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
+[2026.09.24-21.53.18:439][633]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-21.53.18:439][633]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-21.53.18:439][633]LogCore: Engine exit requested (reason: Win RequestExit)
 
 === Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log tail ===
 [2026.09.24-21.31.29:168][  0]LogPython: registering <class 'ControlRigWorkflows.workflow_deformation_rig_preset.provider'>
