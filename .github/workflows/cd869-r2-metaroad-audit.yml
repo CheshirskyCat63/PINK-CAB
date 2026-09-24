@@ -1,0 +1,122 @@
+name: CD-869 R2 MetaRoad capability audit
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r2-median-separators
+    paths:
+      - .github/workflows/cd869-r2-metaroad-audit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    name: Audit installed MetaRoad road construction capabilities
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          clean: false
+
+      - name: Inventory MetaRoad and commit evidence
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location $env:GITHUB_WORKSPACE
+
+          $report = Join-Path $env:GITHUB_WORKSPACE 'docs\audits\CD869_R2_METAROAD_CAPABILITY_AUDIT.txt'
+          New-Item -ItemType Directory -Force -Path (Split-Path $report) | Out-Null
+
+          $plugin = Get-ChildItem 'C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace' -Recurse -Filter 'MetaRoad.uplugin' -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if(-not $plugin){ throw 'METAROAD_PLUGIN_NOT_FOUND' }
+          $root = Split-Path $plugin.FullName
+          $meta = Get-Content -Raw $plugin.FullName | ConvertFrom-Json
+
+          @(
+            'CD869 R2 METAROAD CAPABILITY AUDIT'
+            ('timestamp_utc=' + [DateTime]::UtcNow.ToString('o'))
+            ('github_sha=' + $env:GITHUB_SHA)
+            ('workspace_head=' + ((git rev-parse HEAD).Trim()))
+            ('plugin=' + $plugin.FullName)
+            ('plugin_root=' + $root)
+            ('version=' + $meta.VersionName)
+            ('friendly_name=' + $meta.FriendlyName)
+            ('can_contain_content=' + $meta.CanContainContent)
+            ''
+            '=== MODULES ==='
+          ) | Set-Content -LiteralPath $report -Encoding UTF8
+
+          foreach($m in @($meta.Modules)){
+            ('module name={0} type={1} loading={2}' -f $m.Name,$m.Type,$m.LoadingPhase) | Add-Content $report
+          }
+
+          '' | Add-Content $report
+          '=== TOP-LEVEL TREE ===' | Add-Content $report
+          Get-ChildItem $root -Force | Sort-Object Name | ForEach-Object {
+            ('{0} {1}' -f $(if($_.PSIsContainer){'[DIR]'}else{'[FILE]'}),$_.FullName) | Add-Content $report
+          }
+
+          '' | Add-Content $report
+          '=== RELEVANT CONTENT ASSETS / FILES ===' | Add-Content $report
+          $content = Join-Path $root 'Content'
+          if(Test-Path $content){
+            $allContent = @(Get-ChildItem $content -Recurse -File -ErrorAction SilentlyContinue)
+            ('content_file_count=' + $allContent.Count) | Add-Content $report
+            $rx='(?i)(curb|kerb|sidewalk|pavement|median|divider|separator|shoulder|road|street|lane|mark|intersection|junction|edge|profile|spline|cross|guard|barrier)'
+            $matches=@($allContent | Where-Object { $_.FullName -match $rx } | Sort-Object FullName)
+            ('relevant_content_count=' + $matches.Count) | Add-Content $report
+            $matches | Select-Object -First 800 | ForEach-Object { $_.FullName | Add-Content $report }
+          } else {
+            'NO_CONTENT_DIRECTORY' | Add-Content $report
+          }
+
+          '' | Add-Content $report
+          '=== RELEVANT SOURCE MATCHES ===' | Add-Content $report
+          $source = Join-Path $root 'Source'
+          if(Test-Path $source){
+            $srcFiles=@(Get-ChildItem $source -Recurse -File -Include *.h,*.hpp,*.cpp,*.cs,*.ini,*.md,*.txt -ErrorAction SilentlyContinue)
+            ('source_file_count=' + $srcFiles.Count) | Add-Content $report
+            $patterns=@('curb','kerb','sidewalk','median','divider','separator','shoulder','profile','cross.?section','road.?edge','lane.?mark','intersection','junction','spline')
+            foreach($p in $patterns){
+              ('--- pattern: ' + $p + ' ---') | Add-Content $report
+              $hits=@(Select-String -Path $srcFiles.FullName -Pattern $p -CaseSensitive:$false -ErrorAction SilentlyContinue | Select-Object -First 120)
+              ('hits=' + $hits.Count) | Add-Content $report
+              foreach($h in $hits){
+                ('{0}:{1}: {2}' -f $h.Path,$h.LineNumber,$h.Line.Trim()) | Add-Content $report
+              }
+            }
+          } else {
+            'NO_SOURCE_DIRECTORY' | Add-Content $report
+          }
+
+          '' | Add-Content $report
+          '=== DOC / README MATCHES ===' | Add-Content $report
+          $docFiles=@(Get-ChildItem $root -Recurse -File -Include *.md,*.txt,*.pdf -ErrorAction SilentlyContinue)
+          ('doc_file_count=' + $docFiles.Count) | Add-Content $report
+          $docFiles | Sort-Object FullName | ForEach-Object { $_.FullName | Add-Content $report }
+
+          '' | Add-Content $report
+          '=== PROJECT R2 CURRENT IMPLEMENTATION ===' | Add-Content $report
+          @(
+            'RoadSurface=/Game/World/L1/Road/RoadSurface (MetaRoad-authored R1 baked mesh)'
+            'RoadConstruction=/Game/World/L1/Road/RoadConstruction (project-authored R2 overlay)'
+            'Current R2 model: MedianDeckHeightCm=6, ServiceDeckHeightCm=6, CurbHeightCm=12, CurbWidthCm=18'
+            'Current R2 collision: RoadConstruction static mesh enabled QueryAndPhysics; authored BodySetup uses ComplexAsSimple'
+          ) | Add-Content $report
+
+          Write-Host '===== AUDIT REPORT BEGIN ====='
+          Get-Content $report | Select-Object -First 1200 | ForEach-Object { Write-Host $_ }
+          Write-Host '===== AUDIT REPORT END ====='
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- 'docs/audits/CD869_R2_METAROAD_CAPABILITY_AUDIT.txt'
+          if(git diff --cached --quiet){ throw 'AUDIT_REPORT_NOT_CHANGED' }
+          git commit -m 'audit(CD-869): record installed MetaRoad R2 capabilities'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host ('AUDIT_REPORT_COMMIT=' + ((git rev-parse HEAD).Trim()))
