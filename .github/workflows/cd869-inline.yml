@@ -316,25 +316,50 @@ jobs:
           if (Test-Path $archive) { Remove-Item $archive -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $archive | Out-Null
 
-          $uatArgs = @(
-            '-WaitForUATMutex',
-            'BuildCookRun',
-            "-project=$project",
-            '-noP4',
-            '-platform=Win64',
-            '-clientconfig=Development',
-            '-build',
-            '-cook',
-            '-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
-            '-stage',
-            '-pak',
-            '-archive',
-            "-archivedirectory=$archive",
-            '-nodebuginfo',
-            '-utf8output'
-          )
-          & $uat @uatArgs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # MetaRoad is an editor authoring dependency only. MetaRoad 3.2 marks
+          # some profile content for cook even though its profile classes are not
+          # available to the Win64 Game target. Use a temporary runtime-only
+          # descriptor for UAT, then restore the exact tracked descriptor.
+          $backup = "$project.cd869-editor-backup"
+          Copy-Item -LiteralPath $project -Destination $backup -Force
+          $uatExit = 1
+          try {
+            $descriptor = Get-Content -Raw -LiteralPath $project | ConvertFrom-Json
+            $descriptor.Modules = @($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins = @($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $project -Encoding UTF8
+            Write-Host 'CD869_RUNTIME_DESCRIPTOR=PASS editor-test-module-and-authoring-plugins-excluded'
+
+            $uatArgs = @(
+              '-WaitForUATMutex',
+              'BuildCookRun',
+              "-project=$project",
+              '-noP4',
+              '-platform=Win64',
+              '-clientconfig=Development',
+              '-build',
+              '-cook',
+              '-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-stage',
+              '-pak',
+              '-archive',
+              "-archivedirectory=$archive",
+              '-nodebuginfo',
+              '-utf8output'
+            )
+            & $uat @uatArgs
+            $uatExit = $LASTEXITCODE
+          }
+          finally {
+            Move-Item -LiteralPath $backup -Destination $project -Force
+          }
+          if ($uatExit -ne 0) { exit $uatExit }
+
+          $dirty = @(git status --porcelain --untracked-files=no)
+          if ($dirty.Count -ne 0) {
+            $dirty | ForEach-Object { Write-Host $_ }
+            throw 'CD869_RUNTIME_DESCRIPTOR_RESTORE_DIRTY'
+          }
 
           $outer = Join-Path $archive 'Windows\PinkCab.exe'
           $inner = Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
