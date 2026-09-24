@@ -17,7 +17,7 @@ jobs:
   r2:
     # During R2 mesh repair, authoring runs on source/workflow pushes. The
     # generated asset commit itself is skipped to avoid a bake loop.
-    if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'asset(CD-869): bake R2') }}
+    if: "${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'asset(CD-869): bake R2') }}"
     name: R2 raised median and curb gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 60
