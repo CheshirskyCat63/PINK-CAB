@@ -8,25 +8,47 @@
 
 namespace
 {
-constexpr int32 NativeMetaRoadCurbMeshCount = 8;
+constexpr int32 NativeMetaRoadCurbMeshCount = 32;
 
-// Captured from the MetaRoad 3.2.0 generated actor for the accepted 1000 m
-// R1 topology. MetaRoad stores the curb sweep vertices around local origin and
-// places each generated curb component at its authored road offset. Runtime
-// must preserve these component transforms; attaching every curb at identity
-// collapses all eight curb meshes onto the chunk origin.
+// Captured from the MetaRoad 3.2.0 generated actor after splitting the
+// kilometre at the two R1 access windows. MetaRoad emits one curb mesh per
+// continuous curb span. Service-separator curb spans are deliberately absent
+// inside Access A/B; all remaining spans retain the human-authored DefaultCurb.
 const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
 {
+    FVector(92500.0, -3240.0, 4.25),
+    FVector(70000.0, -3240.0, 4.25),
     FVector(50000.0, -3240.0, 4.25),
-    FVector(50000.0, -2400.0, 4.25),
-    FVector(50000.0, -2600.0, 4.25),
+    FVector(30000.0, -3240.0, 4.25),
+    FVector(7500.0,  -3240.0, 4.25),
+    FVector(7500.0,  -2200.0, 4.25),
+    FVector(7500.0,  -2600.0, 4.25),
+    FVector(7500.0,   -400.0, 4.25),
+    FVector(30000.0,  -400.0, 4.25),
     FVector(50000.0,  -400.0, 4.25),
+    FVector(70000.0,  -400.0, 4.25),
+    FVector(92500.0,  -400.0, 4.25),
+    FVector(92500.0,   400.0, 4.25),
+    FVector(70000.0,   400.0, 4.25),
     FVector(50000.0,   400.0, 4.25),
-    FVector(50000.0,  2400.0, 4.25),
+    FVector(30000.0,   400.0, 4.25),
+    FVector(7500.0,    400.0, 4.25),
+    FVector(7500.0,   2200.0, 4.25),
+    FVector(7500.0,   2600.0, 4.25),
+    FVector(7500.0,   3240.0, 4.25),
+    FVector(30000.0,  3240.0, 4.25),
+    FVector(50000.0,  3240.0, 4.25),
+    FVector(70000.0,  3240.0, 4.25),
+    FVector(92500.0,  3240.0, 4.25),
+    FVector(50000.0, -2200.0, 4.25),
+    FVector(50000.0, -2600.0, 4.25),
+    FVector(50000.0,  2200.0, 4.25),
     FVector(50000.0,  2600.0, 4.25),
-    FVector(50000.0,  3240.0, 4.25)
+    FVector(92500.0, -2200.0, 4.25),
+    FVector(92500.0, -2600.0, 4.25),
+    FVector(92500.0,  2200.0, 4.25),
+    FVector(92500.0,  2600.0, 4.25)
 };
-}
 
 APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
 {
