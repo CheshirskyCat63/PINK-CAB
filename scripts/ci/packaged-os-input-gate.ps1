@@ -379,14 +379,32 @@ try {
     Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 2500 "Space enters gaze mode with ignition aim telemetry" | Out-Null
 
     function Calibrate-AimAxis([string]$Field,[int]$Dx,[int]$Dy) {
-        $before=Get-State
-        [PinkCabNativeInput]::Move($Dx,$Dy)
-        Start-Sleep -Milliseconds 260
-        $after=Get-State
-        $delta=[double]$after.$Field-[double]$before.$Field
-        $counts = if($Dx -ne 0) { [double]$Dx } else { [double]$Dy }
-        if([Math]::Abs($delta) -lt 0.05){ throw "Aim calibration produced no measurable $Field response" }
-        return $delta/$counts
+        # The packaged window can publish gaze telemetry a frame before the
+        # foreground raw-mouse path is ready. Keep this a real OS-input check,
+        # but refocus and retry the calibration sample instead of treating one
+        # dropped mouse packet as a product regression.
+        for($attempt=1; $attempt -le 4; ++$attempt) {
+            Focus-GameWindow $script:GameHwnd
+            Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 1500 "gaze remains active during aim calibration" | Out-Null
+            Start-Sleep -Milliseconds (120 * $attempt)
+
+            $scale=$attempt
+            $sampleDx=$Dx*$scale
+            $sampleDy=$Dy*$scale
+            $before=Get-State
+            [PinkCabNativeInput]::Move($sampleDx,$sampleDy)
+            Start-Sleep -Milliseconds 260
+            $after=Get-State
+            $delta=[double]$after.$Field-[double]$before.$Field
+            $counts = if($sampleDx -ne 0) { [double]$sampleDx } else { [double]$sampleDy }
+            Write-Host "PACKAGED_OS_INPUT_AIM_PROBE field=$Field attempt=$attempt delta=$delta counts=$counts"
+            if([Math]::Abs($delta) -ge 0.05){
+                return $delta/$counts
+            }
+        }
+
+        $last=Get-State
+        throw "Aim calibration produced no measurable $Field response after focused retries. Last=$($last.raw)"
     }
 
     $yawPerCount=Calibrate-AimAxis 'aimyaw' 24 0
