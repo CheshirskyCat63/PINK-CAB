@@ -119,8 +119,8 @@ jobs:
               Start-Sleep -Milliseconds 300
               $proc.Refresh()
               if($proc.HasExited){ throw "CD869_SMOKE_EXITED_EARLY code=$($proc.ExitCode)" }
-              $loaded=Test-Path $log -and (Select-String $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
-              $wheels=Test-Path $log -and (Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+              $loaded=(Test-Path $log) -and [bool](Select-String $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+              $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
             } while(( -not $loaded -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
 
             if(-not $loaded){ throw 'CD869_SMOKE_MAP_NOT_LOADED' }
