@@ -144,7 +144,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         TEXT("native MetaRoad sidewalk layer contains raised construction"),
         bRaisedSurfacePresent);
 
-    TestTrue(TEXT("combined native R2 bounds are valid"), CombinedBounds.IsValid);
+    TestTrue(
+        TEXT("combined native R2 bounds are valid"),
+        CombinedBounds.IsValid != 0);
     if (CombinedBounds.IsValid)
     {
         const FVector CombinedSize = CombinedBounds.GetSize();
