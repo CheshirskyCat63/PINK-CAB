@@ -10,18 +10,19 @@ permissions:
   contents: write
 
 concurrency:
-  group: cd869-inline-${{ github.ref }}
+  group: cd869-main-baseline
   cancel-in-progress: true
 
 jobs:
   verify:
     name: Exact-head endless-road TDD gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       METAROAD_PLUGIN: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4\MetaRoad.uplugin
       TEST_LOG: Saved\GitHubGate\CD869_ENDLESS_ROAD.log
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
 
     steps:
       - name: Checkout exact candidate without deleting warm Unreal caches
@@ -304,3 +305,180 @@ jobs:
           }
           if ($healthExit -ne 0) { exit $healthExit }
           Write-Host 'CD869_ZERO_DEBT=PASS'
+
+      - name: Build cook and package endless Level 1 human candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $uat = Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human'
+          if (Test-Path $archive) { Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $archive | Out-Null
+
+          $uatArgs = @(
+            '-WaitForUATMutex',
+            'BuildCookRun',
+            "-project=$project",
+            '-noP4',
+            '-platform=Win64',
+            '-clientconfig=Development',
+            '-build',
+            '-cook',
+            '-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-stage',
+            '-pak',
+            '-archive',
+            "-archivedirectory=$archive",
+            '-nodebuginfo',
+            '-utf8output'
+          )
+          & $uat @uatArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $outer = Join-Path $archive 'Windows\PinkCab.exe'
+          $inner = Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if (-not (Test-Path $outer) -or -not (Test-Path $inner)) {
+            throw 'CD869_PACKAGE_EXECUTABLES_MISSING'
+          }
+
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($outer,$inner)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-AuthenticodeSignature $outer).Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw 'CD869_OUTER_EXE_SIGNATURE_INVALID'
+          }
+          if ((Get-AuthenticodeSignature $inner).Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw 'CD869_INNER_EXE_SIGNATURE_INVALID'
+          }
+          Write-Host "CD869_PACKAGE_OUTER=$outer"
+          Write-Host 'CD869_CONTENT_AWARE_COOK=PASS'
+
+      - name: Packaged endless Level 1 smoke
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human'
+          $inner = Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_PACKAGED_ENDLESS.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+
+          $args = @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log',
+            '-windowed',
+            '-ResX=1280',
+            '-ResY=720',
+            '-PinkCabGateTelemetry',
+            "-abslog=$log"
+          )
+          $proc = Start-Process -FilePath $inner -ArgumentList $args -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline = [DateTime]::UtcNow.AddSeconds(45)
+            $loaded = $false
+            $telemetry = $false
+            do {
+              Start-Sleep -Milliseconds 300
+              $proc.Refresh()
+              if ($proc.HasExited) {
+                throw "CD869_PACKAGED_GAME_EXITED_EARLY code=$($proc.ExitCode)"
+              }
+              if (Test-Path $log) {
+                $loaded = [bool](Select-String -Path $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+                $telemetry = [bool](Select-String -Path $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+              }
+            } while ((-not $loaded -or -not $telemetry) -and [DateTime]::UtcNow -lt $deadline)
+
+            if (-not $loaded) { throw 'CD869_PACKAGED_ENDLESS_MAP_LOAD_MARKER_MISSING' }
+            if (-not $telemetry) { throw 'CD869_PACKAGED_TATRA_TELEMETRY_MISSING' }
+
+            $critical = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -ErrorAction SilentlyContinue)
+            if ($critical.Count -gt 0) {
+              $critical | Select-Object -Last 80 | ForEach-Object { Write-Host $_.Line }
+              throw "CD869_PACKAGED_CRITICAL_LOGS=$($critical.Count)"
+            }
+            Write-Host 'CD869_PACKAGED_ENDLESS_SMOKE=PASS'
+          }
+          finally {
+            if ($proc -and -not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Install immutable human candidate and desktop shortcut
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sha = (git rev-parse HEAD).Trim()
+          $short = $sha.Substring(0,8)
+          $source = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human\Windows'
+          $delivery = Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if (Test-Path $delivery) { Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          $rc = $LASTEXITCODE
+          if ($rc -ge 8) { throw "CD869_DELIVERY_COPY_FAILED code=$rc" }
+          $global:LASTEXITCODE = 0
+
+          $outer = Join-Path $delivery 'Windows\PinkCab.exe'
+          if (-not (Test-Path $outer)) { throw 'CD869_DELIVERED_OUTER_EXE_MISSING' }
+
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          if (-not $desktop) { throw 'CD869_DESKTOP_PATH_MISSING' }
+          $shortcut = Join-Path $desktop 'PINKCAB L1 ENDLESS HUMAN.lnk'
+          Remove-Item -LiteralPath $shortcut -Force -ErrorAction SilentlyContinue
+
+          $ws = New-Object -ComObject WScript.Shell
+          $shortcutObject = $ws.CreateShortcut($shortcut)
+          $shortcutObject.TargetPath = $outer
+          $shortcutObject.Arguments = '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          $shortcutObject.WorkingDirectory = Join-Path $delivery 'Windows'
+          $shortcutObject.Description = "PINK CAB CD-869 endless Level 1 HUMAN exact HEAD $sha"
+          $shortcutObject.Save()
+
+          Set-Content -LiteralPath (Join-Path $delivery 'CANDIDATE_SHA.txt') -Value $sha -NoNewline
+          Set-Content -LiteralPath (Join-Path $delivery 'RUN_ID.txt') -Value $env:GITHUB_RUN_ID -NoNewline
+          Write-Host "CD869_HUMAN_DELIVERY=$delivery"
+          Write-Host "CD869_HUMAN_SHORTCUT=$shortcut"
+          Write-Host 'HUMAN_PENDING'
+
+      - name: Upload CD-869 human package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-CD869-ENDLESS-${{ github.sha }}-${{ github.run_id }}
+          path: Artifacts/CD869Human/Windows
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Launch endless Level 1 HUMAN candidate detached
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sha = (git rev-parse HEAD).Trim()
+          $short = $sha.Substring(0,8)
+          $delivery = Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          $outer = Join-Path $delivery 'Windows\PinkCab.exe'
+          $work = Join-Path $delivery 'Windows'
+          if (-not (Test-Path $outer)) { throw 'CD869_LAUNCH_EXE_MISSING' }
+
+          $savedTracking = $env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID = ''
+          try {
+            $proc = Start-Process -FilePath $outer -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed',
+              '-ResX=1600',
+              '-ResY=900'
+            ) -WorkingDirectory $work -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if ($proc.HasExited) {
+              throw "CD869_HUMAN_LAUNCH_EXITED code=$($proc.ExitCode)"
+            }
+            Write-Host "CD869_HUMAN_LAUNCHED_PID=$($proc.Id)"
+            Write-Host 'HUMAN_PENDING'
+          }
+          finally {
+            $env:RUNNER_TRACKING_ID = $savedTracking
+          }
