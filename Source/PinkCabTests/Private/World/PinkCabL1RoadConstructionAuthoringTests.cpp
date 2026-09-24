@@ -133,13 +133,9 @@ void AddCube(
     FPolygonID MinusY;
     FPolygonID PlusZ;
     FPolygonID MinusZ;
-    // UE 5.8 UStaticMeshDescription::CreateCube expands the supplied
-    // vector by two again while constructing the cube. Keep this helper's
-    // contract in real half-extents and compensate here so authored bounds
-    // match the approved centimetre dimensions.
     Description.CreateCube(
         Center,
-        HalfExtents * 0.5,
+        HalfExtents,
         PolygonGroup,
         PlusX,
         MinusX,
@@ -199,8 +195,13 @@ UStaticMesh* BuildConstructionMesh(
         return nullptr;
     }
 
+    // Always build from a fresh transient description. Failed CI authoring
+    // passes can leave an unsaved/stale RoadConstruction asset in the warm
+    // runner worktree; using the mesh as the description outer can reuse its
+    // prior source description and accidentally accumulate geometry.
+    Mesh->ClearMeshDescriptions();
     UStaticMeshDescription* Description =
-        UStaticMesh::CreateStaticMeshDescription(Mesh);
+        UStaticMesh::CreateStaticMeshDescription(GetTransientPackage());
     Test.TestNotNull(TEXT("R2 static mesh description created"), Description);
     if (!Description)
     {
