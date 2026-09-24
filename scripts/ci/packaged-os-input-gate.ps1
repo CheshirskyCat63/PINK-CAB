@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Exe,
-    [Parameter(Mandatory=$true)][string]$EvidenceDir
+    [Parameter(Mandatory=$true)][string]$EvidenceDir,
+    [string]$Map = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -277,9 +278,13 @@ function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelt
 $proc=$null
 $VK_ESC=0x1B; $VK_SPACE=0x20; $VK_Q=0x51; $VK_W=0x57; $VK_E=0x45; $VK_3=0x33; $VK_4=0x34
 try {
-    $proc=Start-Process -FilePath $Exe -ArgumentList @(
+    $launchArgs=@(
         "-log","-windowed","-ResX=1280","-ResY=720","-PinkCabGateTelemetry","-abslog=$log"
-    ) -WorkingDirectory (Split-Path $Exe) -PassThru
+    )
+    if(-not [string]::IsNullOrWhiteSpace($Map)){
+        $launchArgs = @($Map) + $launchArgs
+    }
+    $proc=Start-Process -FilePath $Exe -ArgumentList $launchArgs -WorkingDirectory (Split-Path $Exe) -PassThru
 
     $deadline=[DateTime]::UtcNow.AddSeconds(45)
     do {
