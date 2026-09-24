@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/CD-869-r2-median-separators
   workflow_dispatch:
 
 permissions:
