@@ -4,18 +4,17 @@ on:
   push:
     branches:
       - feat/CD-869-r2-median-separators
-  pull_request:
-    branches:
-      - main
-      - feat/CD-869-r2-median-separators
-    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - Source/**
+      - scripts/**
+      - .github/workflows/cd869-r1-road-v2.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: cd869-r2-metaroad-native-${{ github.event.pull_request.head.sha || github.sha }}
+  group: cd869-r2-metaroad-native
   cancel-in-progress: true
 
 jobs:
@@ -28,8 +27,8 @@ jobs:
       ACCEPTED_R1_SHA: 7ac89d3fea32791fb683ef83ec0e76bdbb32dc92
       ACCEPTED_INPUT_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
-      R2_BRANCH: ${{ github.head_ref || github.ref_name }}
-      R2_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      R2_BRANCH: feat/CD-869-r2-median-separators
+      R2_SOURCE_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout exact R2 source candidate
