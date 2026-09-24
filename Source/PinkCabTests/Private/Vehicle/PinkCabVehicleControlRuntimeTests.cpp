@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
+#include "Vehicle/PinkCabHGateGeometry.h"
 #include "Vehicle/PinkCabSteeringController.h"
 
 namespace
@@ -282,6 +283,67 @@ bool FPinkCabManualSteeringWeightTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("high-speed response does not accelerate with speed"),
         Steering.GetResponseRate(120.0f, EPinkCabVehicleMotionMode::Moving)
             < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabHGateDeliberateCenterEntryTest,
+    "PinkCab.Vehicle.HGate.DeliberateCenterEntry",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabHGateDeliberateCenterEntryTest::RunTest(const FString& Parameters)
+{
+    FPinkCabHGateState ShortCenterThrow;
+    FPinkCabHGateGeometry::ApplyDriverDelta(
+        ShortCenterThrow, 0.0f, 100.0f);
+    TestEqual(
+        TEXT("short centre throw stays in neutral instead of catching third"),
+        ShortCenterThrow.RequestedGear,
+        0);
+
+    FPinkCabHGateState DriftedCenter;
+    FPinkCabHGateGeometry::ApplyDriverDelta(
+        DriftedCenter, 56.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(
+        DriftedCenter, 0.0f, 140.0f);
+    TestEqual(
+        TEXT("off-centre neutral travel cannot accidentally catch third"),
+        DriftedCenter.RequestedGear,
+        0);
+
+    FPinkCabHGateState Third;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Third, 0.0f, 140.0f);
+    TestEqual(
+        TEXT("deliberate centred full throw selects third"),
+        Third.RequestedGear,
+        3);
+
+    FPinkCabHGateState Fourth;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fourth, 0.0f, -140.0f);
+    TestEqual(
+        TEXT("deliberate centred full throw selects fourth"),
+        Fourth.RequestedGear,
+        4);
+
+    FPinkCabHGateState First;
+    FPinkCabHGateGeometry::ApplyDriverDelta(First, -160.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(First, 0.0f, 140.0f);
+    TestEqual(TEXT("first outer rail remains unchanged"), First.RequestedGear, 1);
+
+    FPinkCabHGateState Second;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Second, -160.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Second, 0.0f, -140.0f);
+    TestEqual(TEXT("second outer rail remains unchanged"), Second.RequestedGear, 2);
+
+    FPinkCabHGateState Fifth;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fifth, 160.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fifth, 0.0f, 140.0f);
+    TestEqual(TEXT("fifth outer rail remains unchanged"), Fifth.RequestedGear, 5);
+
+    FPinkCabHGateState Reverse;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Reverse, 160.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Reverse, 0.0f, -140.0f);
+    TestEqual(TEXT("reverse outer rail remains unchanged"), Reverse.RequestedGear, -1);
     return true;
 }
 
