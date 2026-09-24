@@ -3,7 +3,9 @@
 namespace
 {
 constexpr float HGateColumnEngage = 0.50f;
+constexpr float HGateCenterColumnCapture = 0.25f;
 constexpr float HGateRowEngage = 0.65f;
+constexpr float HGateCenterRowEngage = 0.78f;
 constexpr float HGateRowRelease = 0.35f;
 constexpr float HGateCountsX = 160.0f;
 constexpr float HGateCountsY = 140.0f;
@@ -14,7 +16,10 @@ int32 ResolveColumn(const float X)
     return X < -HGateColumnEngage ? 0 : (X > HGateColumnEngage ? 2 : 1);
 }
 
-int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
+int32 ResolveRow(
+    const FPinkCabHGateState& State,
+    const float Y,
+    const int32 Column)
 {
     if (State.LastGateRow > 0)
     {
@@ -26,7 +31,12 @@ int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
         if (Y > HGateRowEngage) return 1;
         return Y < -HGateRowRelease ? -1 : 0;
     }
-    return Y > HGateRowEngage ? 1 : (Y < -HGateRowEngage ? -1 : 0);
+
+    const float EngageThreshold =
+        Column == 1 ? HGateCenterRowEngage : HGateRowEngage;
+    return Y > EngageThreshold
+        ? 1
+        : (Y < -EngageThreshold ? -1 : 0);
 }
 }
 
@@ -39,10 +49,22 @@ int32 FPinkCabHGateGeometry::GearColumn(const int32 Gear)
 
 bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, const float Y)
 {
-    const int32 NewRow = ResolveRow(State, Y);
     const int32 Column = ResolveColumn(X);
+    const int32 NewRow = ResolveRow(State, Y, Column);
     if (State.LastGateRow != 0 && NewRow != 0
         && (NewRow != State.LastGateRow || Column != State.LastGateColumn))
+    {
+        return false;
+    }
+
+    // The centre 3/4 rail is intentionally narrower than the broad neutral
+    // cross-gate. This prevents small vertical mouse drift while traversing N
+    // from accidentally selecting 3rd/4th, without changing the already
+    // accepted 1/2 and 5/R outer rails.
+    if (State.LastGateRow == 0
+        && NewRow != 0
+        && Column == 1
+        && FMath::Abs(X) > HGateCenterColumnCapture)
     {
         return false;
     }
