@@ -49,6 +49,7 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(92500.0,  2200.0, 4.25),
     FVector(92500.0,  2600.0, 4.25)
 };
+}
 
 APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
 {
