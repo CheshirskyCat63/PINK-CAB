@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - feat/CD-869-r2-median-separators
-    paths:
-      - .github/workflows/cd869-r1-road-v2.yml
   workflow_dispatch:
 
 permissions:
@@ -17,6 +15,7 @@ concurrency:
 
 jobs:
   rebuild:
+    if: "${{ github.event_name == 'workflow_dispatch' || (!startsWith(github.event.head_commit.message, 'asset(CD-869): bake native MetaRoad R2') && !startsWith(github.event.head_commit.message, 'evidence(CD-869): R2 MetaRoad rebuild')) }}"
     name: Native MetaRoad R2 build bake verify package human
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
