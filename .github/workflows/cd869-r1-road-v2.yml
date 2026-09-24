@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - feat/CD-869-r2-median-separators
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
