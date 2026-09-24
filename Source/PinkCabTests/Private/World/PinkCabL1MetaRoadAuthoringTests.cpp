@@ -634,9 +634,7 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         TEXT("RoadCurbs4"),
         TEXT("RoadCurbs5"),
         TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7"),
-        TEXT("RoadCurbs8"),
-        TEXT("RoadCurbs9")
+        TEXT("RoadCurbs7")
     };
 
     int32 ReboundMeshCount = 0;
