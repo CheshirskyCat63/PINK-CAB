@@ -277,7 +277,14 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $base='ada243509a2d0d5f0c45efd88677df2c7ef94e98'
+          $acceptedInput='8168d72406af6934ab20eace583c2b895f0620b7'
           $changed=@(git diff --name-only "$base..HEAD")
+          $acceptedSourceDelta=@(git diff --name-only "$acceptedInput..HEAD" -- Source/PinkCab Source/PinkCabInteraction Source/PinkCabVehicle Config/DefaultInput.ini)
+          if($acceptedSourceDelta.Count -gt 0){
+            $acceptedSourceDelta | ForEach-Object { Write-Host "R1_FROZEN_INPUT_DELTA=$_" }
+            throw 'R1_FROZEN_INPUT_SOURCE_CHANGED'
+          }
+          Write-Host 'R1_FROZEN_INPUT_SOURCE_IDENTICAL=PASS'
           $forbidden=@($changed | Where-Object {
             $_ -match '^Source/PinkCabVehicle/' -or
             $_ -match '^Source/PinkCab/Private/Vehicle/' -or
@@ -370,6 +377,20 @@ jobs:
             throw 'R1_INNER_SIGNATURE_INVALID'
           }
           Write-Host 'R1_CONTENT_AWARE_PACKAGE=PASS'
+
+      - name: Frozen input contract on packaged R1 map
+        if: ${{ success() }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R1Human\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R1_INPUT'
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+          if(-not (Test-Path $summary)){ throw 'R1_FROZEN_INPUT_SUMMARY_MISSING' }
+          Get-Content $summary | ForEach-Object { Write-Host $_ }
+          Write-Host 'R1_FROZEN_INPUT_CONTRACT=PASS'
 
       - name: Packaged R1 smoke
         if: ${{ success() }}
