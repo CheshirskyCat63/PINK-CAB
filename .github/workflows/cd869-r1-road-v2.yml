@@ -49,7 +49,30 @@ jobs:
           Write-Host "R1_METAROAD_VERSION=$($meta.VersionName)"
           Write-Host 'R1_PREFLIGHT=PASS'
 
+      - name: Classify R1 runtime delta
+        id: runtime_delta
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $verified='42d0db806e47142d14e7c1c802b0ba9eb11fef91'
+          git cat-file -e "$verified^{commit}"
+          if($LASTEXITCODE -ne 0){ throw 'R1_VERIFIED_RUNTIME_HEAD_MISSING' }
+          $changed=@(git diff --name-only "$verified..HEAD")
+          $runtime=@($changed | Where-Object {
+            $_ -match '^Source/' -or
+            $_ -match '^Content/' -or
+            $_ -match '^Config/' -or
+            $_ -eq 'PinkCab.uproject'
+          })
+          if($runtime.Count -eq 0){
+            'reuse_verified=true' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host "R1_VERIFICATION_REUSED=$verified"
+          } else {
+            'reuse_verified=false' | Out-File $env:GITHUB_OUTPUT -Append
+            $runtime | ForEach-Object { Write-Host "R1_RUNTIME_DELTA=$_" }
+          }
+
       - name: Build PinkCabEditor
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -60,6 +83,7 @@ jobs:
           Write-Host 'R1_EDITOR_BUILD=PASS'
 
       - name: Run R1 access topology contract
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -148,7 +172,7 @@ jobs:
           Write-Host 'R1_RESTARTING_ON_EXACT_ASSET_HEAD=1'
 
       - name: Run full endless-road focused regression
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -164,7 +188,7 @@ jobs:
           Write-Host "R1_FOCUSED=PASS $($queue[-1].Line)"
 
       - name: Run materialization regression
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -179,7 +203,7 @@ jobs:
           Write-Host "R1_MATERIALIZATION=PASS $($queue[-1].Line)"
 
       - name: R1 scope guard and zero-debt
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -198,6 +222,24 @@ jobs:
           & .\scripts\code-health.ps1 -RequireZeroDebt
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'R1_SCOPE_AND_ZERO_DEBT=PASS'
+
+      - name: Close previous PINK-CAB runtime before cook
+        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $pink=@(Get-Process -Name PinkCab -ErrorAction SilentlyContinue)
+          foreach($proc in $pink){
+            $path=''
+            try { $path=$proc.Path } catch {}
+            Write-Host "R1_STOP_OLD_PINKCAB pid=$($proc.Id) path=$path"
+            Stop-Process -Id $proc.Id -Force -ErrorAction Stop
+          }
+          Start-Sleep -Milliseconds 500
+          if(@(Get-Process -Name PinkCab -ErrorAction SilentlyContinue).Count -gt 0){
+            throw 'R1_OLD_PINKCAB_PROCESS_SURVIVED'
+          }
+          Write-Host 'R1_OLD_RUNTIME_CLOSED=PASS'
 
       - name: Build cook package R1 human candidate
         if: ${{ steps.asset_commit.outputs.committed != 'true' }}
