@@ -79,8 +79,9 @@ jobs:
         id: asset_state
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
-          $subject=(git log -1 --pretty=%s).Trim()
-          if($subject -eq 'asset(CD-869): bake R1 topology v2'){
+          $recent=@(git log -n 8 --pretty=%s)
+          $hasR1Asset=[bool]($recent | Where-Object { $_ -eq 'asset(CD-869): bake R1 topology v2' })
+          if($hasR1Asset){
             'asset_head=true' | Out-File $env:GITHUB_OUTPUT -Append
             Write-Host 'R1_ASSET_HEAD=1'
           } else {
