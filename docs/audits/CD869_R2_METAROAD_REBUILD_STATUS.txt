@@ -1,8 +1,8 @@
-﻿run_id=36064151789
-source_sha=9863319b0f16a31383e1524f4f38fed8ed7f849d
-workspace_head=9863319b0f16a31383e1524f4f38fed8ed7f849d
+﻿run_id=36064793487
+source_sha=a43296211fd68916eb549db7d9f9341e0d004dfc
+workspace_head=a43296211fd68916eb549db7d9f9341e0d004dfc
 job_status=failure
-timestamp_utc=2026-09-24T21:53:21.6032442Z
+timestamp_utc=2026-09-24T22:27:40.3058570Z
 
 === Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log tail ===
 [2026.09.24-21.53.18:389][630]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
