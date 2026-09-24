@@ -33,12 +33,22 @@ public:
     void SetRoadMesh(UStaticMesh* Mesh);
     UStaticMeshComponent* GetRoadMeshComponent() const { return RoadMeshComponent; }
 
+    UStaticMesh* GetConstructionMesh() const;
+    void SetConstructionMesh(UStaticMesh* Mesh);
+    UStaticMeshComponent* GetConstructionMeshComponent() const
+    {
+        return RoadConstructionComponent;
+    }
+
 private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<USceneComponent> SceneRoot;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<UStaticMeshComponent> RoadMeshComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
+    TObjectPtr<UStaticMeshComponent> RoadConstructionComponent;
 
     bool bBound = false;
     int32 BoundChunkIndex = INDEX_NONE;
