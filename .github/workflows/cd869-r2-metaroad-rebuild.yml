@@ -1,12 +1,11 @@
-name: CD-869 R2 Native MetaRoad Rebuild Existing Lane
+name: CD-869 R2 Native MetaRoad Rebuild
 
 on:
   push:
     branches:
       - feat/CD-869-r2-median-separators
-  pull_request:
-    branches:
-      - main
+    paths:
+      - .github/workflows/cd869-r2-metaroad-rebuild.yml
   workflow_dispatch:
 
 permissions:
@@ -18,7 +17,6 @@ concurrency:
 
 jobs:
   rebuild:
-    if: "${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (!startsWith(github.event.head_commit.message, 'asset(CD-869): bake native MetaRoad R2') && !startsWith(github.event.head_commit.message, 'evidence(CD-869): R2 MetaRoad rebuild')) }}"
     name: Native MetaRoad R2 build bake verify package human
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
@@ -150,13 +148,11 @@ jobs:
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log'
           New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
 
-          foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset')){
-            Get-ChildItem $roadDir -Filter $pattern -File -ErrorAction SilentlyContinue |
-              ForEach-Object {
-                Write-Host "R2_REMOVE_PREBAKE=$($_.FullName)"
-                Remove-Item $_.FullName -Force
-              }
-          }
+          Get-ChildItem $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              Write-Host "R2_REMOVE_PREBAKE=$($_.FullName)"
+              Remove-Item $_.FullName -Force
+            }
 
           & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
@@ -168,42 +164,13 @@ jobs:
             throw 'R2_METAROAD_BAKE_MARKER_MISSING'
           }
 
-          $expected=@(
-            'RoadSurface.uasset',
-            'RoadSidewalks.uasset',
-            'RoadCurbs.uasset',
-            'RoadCurbs1.uasset',
-            'RoadCurbs2.uasset',
-            'RoadCurbs3.uasset',
-            'RoadCurbs4.uasset',
-            'RoadCurbs5.uasset',
-            'RoadCurbs6.uasset',
-            'RoadCurbs7.uasset',
-            'RoadCurbs8.uasset',
-            'RoadCurbs9.uasset'
-          )
-          $actual=@(
-            Get-ChildItem $roadDir -File -ErrorAction SilentlyContinue |
-              Where-Object {
-                $_.Name -eq 'RoadSurface.uasset' -or
-                $_.Name -eq 'RoadSidewalks.uasset' -or
-                $_.Name -match '^RoadCurbs(?:[1-9])?\.uasset$'
-              } |
-              Select-Object -ExpandProperty Name |
-              Sort-Object
-          )
-          $expectedSorted=@($expected | Sort-Object)
-          if($actual.Count -ne $expectedSorted.Count -or (Compare-Object $expectedSorted $actual)){
-            $actual | ForEach-Object { Write-Host "R2_NATIVE_ACTUAL=$_" }
-            $expectedSorted | ForEach-Object { Write-Host "R2_NATIVE_EXPECTED=$_" }
-            throw "R2_NATIVE_ASSET_SET_MISMATCH actual=$($actual.Count) expected=$($expectedSorted.Count)"
-          }
+          $canonical=Join-Path $roadDir 'RoadSurface.uasset'
+          if(-not (Test-Path $canonical)){ throw 'R2_CANONICAL_ROADSURFACE_MISSING' }
 
-          foreach($name in $actual){
-            $asset=Join-Path $roadDir $name
-            $bytes=(Get-Item $asset).Length
-            Write-Host "R2_METAROAD_OUTPUT=$name bytes=$bytes"
-            if($bytes -le 0){ throw "R2_NATIVE_EMPTY_ASSET=$name" }
+          $outputs=@(Get-ChildItem $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
+          foreach($o in $outputs){ Write-Host "R2_METAROAD_OUTPUT=$($o.Name) bytes=$($o.Length)" }
+          if($outputs.Count -ne 1 -or $outputs[0].Name -ne 'RoadSurface.uasset'){
+            throw "R2_METAROAD_OUTPUT_NOT_SINGLE_CANONICAL count=$($outputs.Count)"
           }
           Write-Host 'R2_METAROAD_NATIVE_BAKE=PASS'
 

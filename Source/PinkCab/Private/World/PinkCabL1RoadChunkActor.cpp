@@ -6,6 +6,11 @@
 #include "UObject/ConstructorHelpers.h"
 #include "World/PinkCabL1EndlessRoadModel.h"
 
+namespace
+{
+constexpr int32 NativeMetaRoadCurbMeshCount = 10;
+}
+
 APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
 {
     PrimaryActorTick.bCanEverTick = false;
@@ -24,6 +29,50 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
     if (RoadMeshFinder.Succeeded())
     {
         RoadMeshComponent->SetStaticMesh(RoadMeshFinder.Object);
+    }
+
+    RoadSidewalksComponent =
+        CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadSidewalks"));
+    RoadSidewalksComponent->SetupAttachment(SceneRoot);
+    RoadSidewalksComponent->SetMobility(EComponentMobility::Movable);
+    RoadSidewalksComponent->SetGenerateOverlapEvents(false);
+    RoadSidewalksComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> SidewalksFinder(
+        TEXT("/Game/World/L1/Road/RoadSidewalks.RoadSidewalks"));
+    if (SidewalksFinder.Succeeded())
+    {
+        RoadSidewalksComponent->SetStaticMesh(SidewalksFinder.Object);
+    }
+
+    RoadCurbComponents.Reserve(NativeMetaRoadCurbMeshCount);
+    for (int32 Index = 0; Index < NativeMetaRoadCurbMeshCount; ++Index)
+    {
+        const FString AssetName =
+            Index == 0
+                ? TEXT("RoadCurbs")
+                : FString::Printf(TEXT("RoadCurbs%d"), Index);
+        const FName ComponentName(
+            *FString::Printf(TEXT("Native%s"), *AssetName));
+
+        UStaticMeshComponent* CurbComponent =
+            CreateDefaultSubobject<UStaticMeshComponent>(ComponentName);
+        CurbComponent->SetupAttachment(SceneRoot);
+        CurbComponent->SetMobility(EComponentMobility::Movable);
+        CurbComponent->SetGenerateOverlapEvents(false);
+        CurbComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            *AssetName,
+            *AssetName);
+        ConstructorHelpers::FObjectFinder<UStaticMesh> CurbFinder(*ObjectPath);
+        if (CurbFinder.Succeeded())
+        {
+            CurbComponent->SetStaticMesh(CurbFinder.Object);
+        }
+
+        RoadCurbComponents.Add(CurbComponent);
     }
 
     SetActorHiddenInGame(true);
@@ -62,7 +111,10 @@ bool APinkCabL1RoadChunkActor::BindChunk(
 
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
-    RoadMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    RoadMeshComponent->SetCollisionEnabled(
+        ECollisionEnabled::QueryAndPhysics);
+    SetNativeMetaRoadConstructionCollision(
+        ECollisionEnabled::QueryAndPhysics);
     return true;
 }
 
@@ -75,15 +127,55 @@ void APinkCabL1RoadChunkActor::ClearBinding()
     SetActorEnableCollision(false);
     if (RoadMeshComponent)
     {
-        RoadMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        RoadMeshComponent->SetCollisionEnabled(
+            ECollisionEnabled::NoCollision);
     }
+    SetNativeMetaRoadConstructionCollision(
+        ECollisionEnabled::NoCollision);
     SetActorHiddenInGame(true);
 }
 
 bool APinkCabL1RoadChunkActor::IsVisualReady() const
 {
     return RoadMeshComponent != nullptr &&
-        RoadMeshComponent->GetStaticMesh() != nullptr;
+        RoadMeshComponent->GetStaticMesh() != nullptr &&
+        AreNativeMetaRoadConstructionMeshesReady();
+}
+
+bool APinkCabL1RoadChunkActor::AreNativeMetaRoadConstructionMeshesReady() const
+{
+    if (!RoadSidewalksComponent ||
+        !RoadSidewalksComponent->GetStaticMesh() ||
+        RoadCurbComponents.Num() != NativeMetaRoadCurbMeshCount)
+    {
+        return false;
+    }
+
+    for (const UStaticMeshComponent* Component : RoadCurbComponents)
+    {
+        if (!Component || !Component->GetStaticMesh())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void APinkCabL1RoadChunkActor::SetNativeMetaRoadConstructionCollision(
+    const ECollisionEnabled::Type Mode)
+{
+    if (RoadSidewalksComponent)
+    {
+        RoadSidewalksComponent->SetCollisionEnabled(Mode);
+    }
+
+    for (UStaticMeshComponent* Component : RoadCurbComponents)
+    {
+        if (Component)
+        {
+            Component->SetCollisionEnabled(Mode);
+        }
+    }
 }
 
 UStaticMesh* APinkCabL1RoadChunkActor::GetRoadMesh() const

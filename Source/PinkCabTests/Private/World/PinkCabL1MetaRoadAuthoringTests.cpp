@@ -19,6 +19,7 @@
 #include "MetaRoadActor.h"
 #include "RoadSplineComponent.h"
 #include "MetaRoadTypes.h"
+#include "Assets/RoadCurbProfile.h"
 #include "EditorMode/MetaRoadEditorMode.h"
 #include "EditorModeManager.h"
 #include "EditorMode/MetaRoadBakeSettings.h"
@@ -34,22 +35,56 @@ constexpr double HalfCentralMedianCm = 400.0;
 constexpr double ServiceSeparatorCm = 400.0;
 constexpr double OuterShoulderCm = 100.0;
 constexpr double ExpectedRoadWidthCm = 6680.0;
+constexpr double R2RaisedZoneHeightCm = 12.0;
 const TCHAR* AuthoringMapPackage = TEXT("/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring");
 
-FRoadLane MakeSurfaceLane(const double WidthCm, const FRoadZoneType& ZoneType)
+void ConfigureRaisedMetaRoadZone(
+    FRoadLane& Lane,
+    const FRoadZoneType& ZoneType,
+    const bool bInsideCurb,
+    const bool bOutsideCurb)
+{
+    Lane.RoadZone.InitializeAs<FRoadZoneSidewalk>();
+    FRoadZoneSidewalk& Raised =
+        Lane.RoadZone.GetMutable<FRoadZoneSidewalk>();
+    Raised.ZoneType = ZoneType;
+    Raised.DefaultHeight = R2RaisedZoneHeightCm;
+    Raised.bInsideCurb = bInsideCurb;
+    Raised.bOutsideCurb = bOutsideCurb;
+    Raised.bBeginCurb = false;
+    Raised.bEndCurb = false;
+    // Keep MetaRoad's authored DefaultCurb soft profile. Do not replace it
+    // with a project-generated mesh/profile.
+}
+
+FRoadLane MakeSurfaceLane(
+    const double WidthCm,
+    const FRoadZoneType& ZoneType,
+    const bool bRaised = false,
+    const bool bInsideCurb = true,
+    const bool bOutsideCurb = true)
 {
     FRoadLane Lane;
     Lane.Width.Reset();
     Lane.Width.AddKey(0.0, WidthCm);
     Lane.Width.AddKey(ChunkLengthCm, WidthCm);
-    Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
-    Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    if (bRaised)
+    {
+        ConfigureRaisedMetaRoadZone(
+            Lane, ZoneType, bInsideCurb, bOutsideCurb);
+    }
+    else
+    {
+        Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
+        Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    }
     return Lane;
 }
 
 FRoadLane MakeAccessBandLane(
     const bool bConnectorPavement,
-    const FRoadZoneType& ZoneType)
+    const FRoadZoneType& ZoneType,
+    const bool bRaised = false)
 {
     FRoadLane Lane;
     Lane.Width.Reset();
@@ -75,31 +110,58 @@ FRoadLane MakeAccessBandLane(
         Lane.Width.AddKey(X, Width);
     }
 
-    Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
-    Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    if (bRaised)
+    {
+        ConfigureRaisedMetaRoadZone(Lane, ZoneType, true, true);
+    }
+    else
+    {
+        Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
+        Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    }
     return Lane;
 }
 
 void AddSideProfile(TArray<FRoadLane>& Lanes)
 {
-    Lanes.Add(MakeSurfaceLane(HalfCentralMedianCm, ERoadZoneTypes::Median));
+    // R2 native MetaRoad construction. The two 4m half-medians form one
+    // 8m central raised island. Only the road-facing edge gets a curb so the
+    // two halves meet cleanly at the road centerline.
+    Lanes.Add(MakeSurfaceLane(
+        HalfCentralMedianCm,
+        ERoadZoneTypes::Median,
+        true,
+        false,
+        true));
+
     for (int32 LaneIndex = 0; LaneIndex < 5; ++LaneIndex)
     {
         Lanes.Add(MakeSurfaceLane(ExpressLaneWidthCm, ERoadZoneTypes::Driving));
     }
 
-    // R1 topology v2: the side service band keeps a constant total width.
-    // Pavement grows inside it at two deterministic access windows while the
-    // separator shrinks by the same amount. This preserves the 1000m seam and
-    // the 66.8m outer envelope while making express<->local access drivable.
+    // Preserve the accepted R1 access topology exactly: connector pavement
+    // grows while the complementary service separator shrinks. In R2 the
+    // separator itself is a native MetaRoad raised sidewalk-zone using the
+    // plugin's DefaultCurb profile, so openings remain part of the same
+    // authoring system rather than a second overlay mesh.
     Lanes.Add(MakeAccessBandLane(true, ERoadZoneTypes::Driving));
-    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median));
+    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median, true));
 
     for (int32 LaneIndex = 0; LaneIndex < 2; ++LaneIndex)
     {
         Lanes.Add(MakeSurfaceLane(LocalLaneWidthCm, ERoadZoneTypes::Driving));
     }
-    Lanes.Add(MakeSurfaceLane(OuterShoulderCm, ERoadZoneTypes::Shoulder));
+
+    // The accepted 1m outer shoulder becomes the native raised road-edge
+    // treatment. Only the road-facing edge gets a curb; suppressing the outer
+    // curb keeps the accepted 66.8m envelope exact instead of adding one curb
+    // profile width beyond it.
+    Lanes.Add(MakeSurfaceLane(
+        OuterShoulderCm,
+        ERoadZoneTypes::Shoulder,
+        true,
+        true,
+        false));
 }
 
 bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
@@ -155,6 +217,20 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     }
     Test.TestTrue(TEXT("straight spline is one kilometre"),
         FMath::IsNearlyEqual(Spline->GetSplineLength(), ChunkLengthCm, 1.0));
+
+    URoadCurbProfile* DefaultCurb = LoadObject<URoadCurbProfile>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Profiles/Curbs/DefaultCurb.DefaultCurb"));
+    Test.TestNotNull(TEXT("MetaRoad human-authored DefaultCurb profile loads"), DefaultCurb);
+    if (DefaultCurb)
+    {
+        Test.TestTrue(TEXT("MetaRoad DefaultCurb has physical width"),
+            DefaultCurb->Width > 0.0f);
+        Test.TestTrue(TEXT("MetaRoad DefaultCurb contains an authored curve"),
+            DefaultCurb->CurbCurve.GetRichCurveConst() != nullptr &&
+            DefaultCurb->CurbCurve.GetRichCurveConst()->GetNumKeys() >= 2);
+    }
+
     return true;
 }
 
@@ -304,6 +380,10 @@ UMaterial* ResolveProjectMaterialForSlot(
     {
         return Divider;
     }
+    if (SlotName.Contains(TEXT("Curb"), ESearchCase::IgnoreCase))
+    {
+        return Shoulder;
+    }
     if (SlotName.Contains(TEXT("Shoulder"), ESearchCase::IgnoreCase))
     {
         return Shoulder;
@@ -409,6 +489,8 @@ public:
                 FMath::IsNearlyEqual(Size.X, ChunkLengthCm, 250.0));
             Test->TestTrue(TEXT("baked road width matches approved 66.8m envelope"),
                 FMath::IsNearlyEqual(Size.Y, ExpectedRoadWidthCm, 250.0));
+            Test->TestTrue(TEXT("R2 native MetaRoad raised construction has real Z relief"),
+                Size.Z >= R2RaisedZoneHeightCm - 1.0);
         }
 
         const bool bSaved = UEditorLoadingAndSavingUtils::SaveMap(
@@ -515,15 +597,6 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 {
     using namespace PinkCabL1MetaRoadAuthoring;
 
-    UStaticMesh* Road = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
-    TestNotNull(TEXT("baked road surface loads for runtime material ownership"), Road);
-    if (!Road)
-    {
-        return false;
-    }
-
     UMaterial* Asphalt = CreateSimpleSurfaceMaterial(
         TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt"),
         TEXT("M_PC_L1_Asphalt"),
@@ -551,39 +624,95 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         return false;
     }
 
-    TArray<FStaticMaterial>& Slots = Road->GetStaticMaterials();
-    TestTrue(TEXT("baked road exposes material slots"), Slots.Num() > 0);
-    for (int32 Index = 0; Index < Slots.Num(); ++Index)
-    {
-        const FString SlotName = Slots[Index].MaterialSlotName.ToString();
-        AddInfo(FString::Printf(
-            TEXT("CD869_ROAD_SLOT_NAME[%d]=%s"),
-            Index,
-            *SlotName));
-        Road->SetMaterial(
-            Index,
-            ResolveProjectMaterialForSlot(
-                Slots[Index], Asphalt, Divider, Shoulder));
-    }
+    const TCHAR* GeneratedMeshNames[] = {
+        TEXT("RoadSurface"),
+        TEXT("RoadSidewalks"),
+        TEXT("RoadCurbs"),
+        TEXT("RoadCurbs1"),
+        TEXT("RoadCurbs2"),
+        TEXT("RoadCurbs3"),
+        TEXT("RoadCurbs4"),
+        TEXT("RoadCurbs5"),
+        TEXT("RoadCurbs6"),
+        TEXT("RoadCurbs7"),
+        TEXT("RoadCurbs8"),
+        TEXT("RoadCurbs9")
+    };
 
-    Road->PostEditChange();
-    const bool bSavedRoad = SaveGeneratedMeshPackage(*Road, *this);
-    TestTrue(TEXT("road surface saved after project material rebinding"), bSavedRoad);
-
-    for (int32 Index = 0; Index < Road->GetStaticMaterials().Num(); ++Index)
+    int32 ReboundMeshCount = 0;
+    for (const TCHAR* MeshName : GeneratedMeshNames)
     {
-        UMaterialInterface* Material =
-            Road->GetStaticMaterials()[Index].MaterialInterface;
-        TestNotNull(TEXT("runtime road material remains assigned"), Material);
-        if (Material)
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            MeshName,
+            MeshName);
+        UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+            nullptr,
+            *ObjectPath);
+        TestNotNull(
+            *FString::Printf(
+                TEXT("native MetaRoad mesh loads for runtime ownership: %s"),
+                MeshName),
+            Mesh);
+        if (!Mesh)
         {
-            const FString Path = Material->GetPathName();
-            TestTrue(TEXT("runtime material is owned by PINK-CAB content"),
-                Path.StartsWith(TEXT("/Game/World/L1/Road/Materials/")));
-            TestFalse(TEXT("runtime material no longer depends on MetaRoad content"),
-                Path.StartsWith(TEXT("/MetaRoad/")));
+            continue;
         }
+
+        TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+        TestTrue(
+            *FString::Printf(TEXT("%s exposes material slots"), MeshName),
+            Slots.Num() > 0);
+
+        const bool bCurbMesh =
+            FString(MeshName).StartsWith(TEXT("RoadCurbs"));
+        for (int32 Index = 0; Index < Slots.Num(); ++Index)
+        {
+            const FString SlotName = Slots[Index].MaterialSlotName.ToString();
+            AddInfo(FString::Printf(
+                TEXT("CD869_NATIVE_SLOT[%s][%d]=%s"),
+                MeshName,
+                Index,
+                *SlotName));
+            Mesh->SetMaterial(
+                Index,
+                bCurbMesh
+                    ? Shoulder
+                    : ResolveProjectMaterialForSlot(
+                        Slots[Index], Asphalt, Divider, Shoulder));
+        }
+
+        Mesh->PostEditChange();
+        TestTrue(
+            *FString::Printf(
+                TEXT("%s saved after project material rebinding"),
+                MeshName),
+            SaveGeneratedMeshPackage(*Mesh, *this));
+
+        for (int32 Index = 0; Index < Mesh->GetStaticMaterials().Num(); ++Index)
+        {
+            UMaterialInterface* Material =
+                Mesh->GetStaticMaterials()[Index].MaterialInterface;
+            TestNotNull(TEXT("runtime road material remains assigned"), Material);
+            if (Material)
+            {
+                const FString Path = Material->GetPathName();
+                TestTrue(
+                    TEXT("runtime material is owned by PINK-CAB content"),
+                    Path.StartsWith(
+                        TEXT("/Game/World/L1/Road/Materials/")));
+                TestFalse(
+                    TEXT("runtime material no longer depends on MetaRoad content"),
+                    Path.StartsWith(TEXT("/MetaRoad/")));
+            }
+        }
+        ++ReboundMeshCount;
     }
+
+    TestEqual(
+        TEXT("all native MetaRoad R2 meshes rebound for runtime"),
+        ReboundMeshCount,
+        static_cast<int32>(UE_ARRAY_COUNT(GeneratedMeshNames)));
 
     AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
     return true;
