@@ -3,12 +3,14 @@
 namespace
 {
 constexpr float HGateColumnEngage = 0.50f;
-constexpr float HGateCenterColumnCapture = 0.25f;
 constexpr float HGateRowEngage = 0.65f;
-constexpr float HGateCenterRowEngage = 0.78f;
 constexpr float HGateRowRelease = 0.35f;
-constexpr float HGateCountsX = 160.0f;
-constexpr float HGateCountsY = 140.0f;
+
+// Deliberately long physical mouse throws. The old 160/140-count mapping made
+// the H pattern too easy to cross accidentally. Horizontal and longitudinal
+// travel are now clearly separated and require a larger driver gesture.
+constexpr float HGateCountsX = 320.0f;
+constexpr float HGateCountsY = 240.0f;
 constexpr float HGateMaxSubstep = 0.20f;
 
 int32 ResolveColumn(const float X)
@@ -16,10 +18,7 @@ int32 ResolveColumn(const float X)
     return X < -HGateColumnEngage ? 0 : (X > HGateColumnEngage ? 2 : 1);
 }
 
-int32 ResolveRow(
-    const FPinkCabHGateState& State,
-    const float Y,
-    const int32 Column)
+int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
 {
     if (State.LastGateRow > 0)
     {
@@ -31,12 +30,7 @@ int32 ResolveRow(
         if (Y > HGateRowEngage) return 1;
         return Y < -HGateRowRelease ? -1 : 0;
     }
-
-    const float EngageThreshold =
-        Column == 1 ? HGateCenterRowEngage : HGateRowEngage;
-    return Y > EngageThreshold
-        ? 1
-        : (Y < -EngageThreshold ? -1 : 0);
+    return Y > HGateRowEngage ? 1 : (Y < -HGateRowEngage ? -1 : 0);
 }
 }
 
@@ -49,22 +43,10 @@ int32 FPinkCabHGateGeometry::GearColumn(const int32 Gear)
 
 bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, const float Y)
 {
+    const int32 NewRow = ResolveRow(State, Y);
     const int32 Column = ResolveColumn(X);
-    const int32 NewRow = ResolveRow(State, Y, Column);
     if (State.LastGateRow != 0 && NewRow != 0
         && (NewRow != State.LastGateRow || Column != State.LastGateColumn))
-    {
-        return false;
-    }
-
-    // The centre 3/4 rail is intentionally narrower than the broad neutral
-    // cross-gate. This prevents small vertical mouse drift while traversing N
-    // from accidentally selecting 3rd/4th, without changing the already
-    // accepted 1/2 and 5/R outer rails.
-    if (State.LastGateRow == 0
-        && NewRow != 0
-        && Column == 1
-        && FMath::Abs(X) > HGateCenterColumnCapture)
     {
         return false;
     }
@@ -92,41 +74,82 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
 {
     const float GateDx = DriverRightCounts / HGateCountsX;
     const float GateDy = DriverForwardCounts / HGateCountsY;
-    const int32 Steps = FMath::Max(
-        1,
-        FMath::CeilToInt(
-            FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / HGateMaxSubstep));
-    const float StepX = GateDx / static_cast<float>(Steps);
-    const float StepY = GateDy / static_cast<float>(Steps);
     const int32 Before = State.RequestedGear;
 
-    for (int32 Index = 0; Index < Steps; ++Index)
+    // When the lever is in a gear rail, only fore/aft travel is legal until
+    // the lever physically reaches neutral. Horizontal mouse movement in the
+    // same sample is ignored, preventing diagonal cuts through an H-gate wall.
+    if (State.LastGateRow != 0)
     {
-        if (State.LastGateRow != 0)
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
+        const float StepY = GateDy / static_cast<float>(Steps);
+
+        for (int32 Index = 0; Index < Steps; ++Index)
         {
-            const float CandidateY = FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
+            const float CandidateY =
+                FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
             if (MoveGate(State, State.LeverX, CandidateY))
             {
                 State.LeverY = CandidateY;
             }
-            if (State.LastGateRow != 0)
+
+            if (State.LastGateRow == 0)
             {
-                continue;
+                // Reaching N ends this physical phase. A later mouse sample
+                // must perform the left/right cross-gate movement.
+                break;
             }
         }
+        return State.RequestedGear != Before;
+    }
 
-        const float CandidateX = FMath::Clamp(State.LeverX + StepX, -1.0f, 1.0f);
-        if (MoveGate(State, CandidateX, State.LeverY))
-        {
-            State.LeverX = CandidateX;
-        }
+    // In neutral, one mouse sample moves exactly one H-gate axis. Horizontal
+    // wins ties so a diagonal cross-gate gesture cannot accidentally fall into
+    // 3rd/4th before the driver has deliberately centred the lever.
+    const bool bHorizontalPhase =
+        FMath::Abs(GateDx) >= FMath::Abs(GateDy);
 
-        const float CandidateY = FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
-        if (MoveGate(State, State.LeverX, CandidateY))
+    if (bHorizontalPhase)
+    {
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDx) / HGateMaxSubstep));
+        const float StepX = GateDx / static_cast<float>(Steps);
+        for (int32 Index = 0; Index < Steps; ++Index)
         {
-            State.LeverY = CandidateY;
+            const float CandidateX =
+                FMath::Clamp(State.LeverX + StepX, -1.0f, 1.0f);
+            if (MoveGate(State, CandidateX, State.LeverY))
+            {
+                State.LeverX = CandidateX;
+            }
         }
     }
+    else
+    {
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
+        const float StepY = GateDy / static_cast<float>(Steps);
+        for (int32 Index = 0; Index < Steps; ++Index)
+        {
+            const float CandidateY =
+                FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
+            if (MoveGate(State, State.LeverX, CandidateY))
+            {
+                State.LeverY = CandidateY;
+            }
+
+            if (State.LastGateRow != 0)
+            {
+                // Once a gear rail is entered, this phase is complete.
+                break;
+            }
+        }
+    }
+
     return State.RequestedGear != Before;
 }
 
