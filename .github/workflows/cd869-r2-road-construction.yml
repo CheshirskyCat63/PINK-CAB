@@ -15,6 +15,10 @@ concurrency:
 
 jobs:
   r2:
+    # R2 authoring is frozen after the canonical RoadConstruction asset bake.
+    # Push events remain only as a concurrency sentinel so any stale queued
+    # authoring run is cancelled; real rebakes require explicit dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: R2 raised median and curb gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 60
