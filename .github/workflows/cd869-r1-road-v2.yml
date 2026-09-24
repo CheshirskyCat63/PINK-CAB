@@ -504,10 +504,25 @@ jobs:
               '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
               '-windowed','-ResX=1600','-ResY=900'
             ) -WorkingDirectory (Split-Path $inner) -PassThru
-            Start-Sleep -Seconds 5
-            $proc.Refresh()
-            if($proc.HasExited){ throw "R1_HUMAN_EXITED_EARLY code=$($proc.ExitCode)" }
+
+            $windowDeadline=[DateTime]::UtcNow.AddSeconds(15)
+            do {
+              Start-Sleep -Milliseconds 250
+              $proc.Refresh()
+              if($proc.HasExited){ throw "R1_HUMAN_EXITED_EARLY code=$($proc.ExitCode)" }
+            } while($proc.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $windowDeadline)
+            if($proc.MainWindowHandle -eq 0){ throw 'R1_HUMAN_WINDOW_NOT_READY' }
+
+            $focused=$false
+            for($attempt=1; $attempt -le 12 -and -not $focused; ++$attempt){
+              $focused=[bool]$ws.AppActivate($proc.Id)
+              Start-Sleep -Milliseconds 180
+            }
+            if(-not $focused){ throw 'R1_HUMAN_FOREGROUND_FOCUS_FAILED' }
+
             Write-Host "R1_HUMAN_LAUNCHED_PID=$($proc.Id)"
+            Write-Host "R1_HUMAN_WINDOW=$($proc.MainWindowHandle)"
+            Write-Host 'R1_HUMAN_FOREGROUND=PASS'
             Write-Host 'R1_HUMAN_PENDING'
           }
           finally {
