@@ -23,6 +23,7 @@
 #include "EditorModeManager.h"
 #include "EditorMode/MetaRoadBakeSettings.h"
 #include "UObject/StrongObjectPtr.h"
+#include "World/PinkCabL1EndlessRoadModel.h"
 
 namespace PinkCabL1MetaRoadAuthoring
 {
@@ -46,6 +47,39 @@ FRoadLane MakeSurfaceLane(const double WidthCm, const FRoadZoneType& ZoneType)
     return Lane;
 }
 
+FRoadLane MakeAccessBandLane(
+    const bool bConnectorPavement,
+    const FRoadZoneType& ZoneType)
+{
+    FRoadLane Lane;
+    Lane.Width.Reset();
+
+    const double Keys[] = {
+        0.0,
+        FPinkCabL1EndlessRoadModel::AccessAStartCm,
+        FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm,
+        FPinkCabL1EndlessRoadModel::AccessAFullOpenEndCm,
+        FPinkCabL1EndlessRoadModel::AccessAEndCm,
+        FPinkCabL1EndlessRoadModel::AccessBStartCm,
+        FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm,
+        FPinkCabL1EndlessRoadModel::AccessBFullOpenEndCm,
+        FPinkCabL1EndlessRoadModel::AccessBEndCm,
+        ChunkLengthCm
+    };
+
+    for (const double X : Keys)
+    {
+        const double Width = bConnectorPavement
+            ? FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(X)
+            : FPinkCabL1EndlessRoadModel::ResolveAccessSeparatorWidthCm(X);
+        Lane.Width.AddKey(X, Width);
+    }
+
+    Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
+    Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    return Lane;
+}
+
 void AddSideProfile(TArray<FRoadLane>& Lanes)
 {
     Lanes.Add(MakeSurfaceLane(HalfCentralMedianCm, ERoadZoneTypes::Median));
@@ -53,7 +87,14 @@ void AddSideProfile(TArray<FRoadLane>& Lanes)
     {
         Lanes.Add(MakeSurfaceLane(ExpressLaneWidthCm, ERoadZoneTypes::Driving));
     }
-    Lanes.Add(MakeSurfaceLane(ServiceSeparatorCm, ERoadZoneTypes::Median));
+
+    // R1 topology v2: the side service band keeps a constant total width.
+    // Pavement grows inside it at two deterministic access windows while the
+    // separator shrinks by the same amount. This preserves the 1000m seam and
+    // the 66.8m outer envelope while making express<->local access drivable.
+    Lanes.Add(MakeAccessBandLane(true, ERoadZoneTypes::Driving));
+    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median));
+
     for (int32 LaneIndex = 0; LaneIndex < 2; ++LaneIndex)
     {
         Lanes.Add(MakeSurfaceLane(LocalLaneWidthCm, ERoadZoneTypes::Driving));
@@ -109,8 +150,8 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     Test.TestEqual(TEXT("one MetaRoad lane section"), Layout.Sections.Num(), 1);
     if (Layout.Sections.Num() == 1)
     {
-        Test.TestEqual(TEXT("ten authored surfaces on left side"), Layout.Sections[0].Left.Num(), 10);
-        Test.TestEqual(TEXT("ten authored surfaces on right side"), Layout.Sections[0].Right.Num(), 10);
+        Test.TestEqual(TEXT("R1 has eleven authored surfaces on left side"), Layout.Sections[0].Left.Num(), 11);
+        Test.TestEqual(TEXT("R1 has eleven authored surfaces on right side"), Layout.Sections[0].Right.Num(), 11);
     }
     Test.TestTrue(TEXT("straight spline is one kilometre"),
         FMath::IsNearlyEqual(Spline->GetSplineLength(), ChunkLengthCm, 1.0));
