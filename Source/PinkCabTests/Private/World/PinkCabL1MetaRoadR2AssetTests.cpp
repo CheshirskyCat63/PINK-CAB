@@ -179,9 +179,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
 
     FBox RuntimeAssemblyBounds(ForceInit);
     int32 RuntimeMeshComponentCount = 0;
+    TArray<UStaticMeshComponent*> RuntimeComponents;
     if (RuntimeChunk)
     {
-        TArray<UStaticMeshComponent*> RuntimeComponents;
         RuntimeChunk->GetComponents<UStaticMeshComponent>(
             RuntimeComponents);
 
@@ -254,11 +254,7 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
     };
     for (const double AccessX : AccessCenters)
     {
-        for (UStaticMeshComponent* Component :
-             RuntimeChunk
-                ? TInlineComponentArray<UStaticMeshComponent*>(
-                    const_cast<APinkCabL1RoadChunkActor*>(RuntimeChunk))
-                : TInlineComponentArray<UStaticMeshComponent*>())
+        for (UStaticMeshComponent* Component : RuntimeComponents)
         {
             if (!Component || !Component->GetStaticMesh() ||
                 !Component->GetName().StartsWith(TEXT("NativeRoadCurbs")))
