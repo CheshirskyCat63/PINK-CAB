@@ -48,7 +48,7 @@ bool FPinkCabL1RoadR2ConstructionAssetContractTest::RunTest(
     for (const FStaticMaterial& Slot : Materials)
     {
         TestNotNull(TEXT("R2 construction material assigned"),
-            Slot.MaterialInterface);
+            Slot.MaterialInterface.Get());
         if (Slot.MaterialInterface)
         {
             TestTrue(TEXT("R2 construction material is PINK-CAB owned"),
