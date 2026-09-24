@@ -1,6 +1,11 @@
 name: CD-869 R2 Temporary Validation Lane
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cd869-r2-temp-validation.yml
   pull_request:
     branches:
       - main
@@ -15,7 +20,7 @@ concurrency:
 
 jobs:
   rebuild:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'feat/CD-869-r2-median-separators' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.head_ref == 'feat/CD-869-r2-median-separators' }}
     name: Native MetaRoad R2 build bake verify package human
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
@@ -24,14 +29,14 @@ jobs:
       ACCEPTED_R1_SHA: 7ac89d3fea32791fb683ef83ec0e76bdbb32dc92
       ACCEPTED_INPUT_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
-      R2_BRANCH: ${{ github.head_ref || github.ref_name }}
-      R2_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      R2_BRANCH: feat/CD-869-r2-median-separators
+      R2_SOURCE_REF: feat/CD-869-r2-median-separators
 
     steps:
       - name: Checkout exact R2 source candidate
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.R2_SOURCE_SHA }}
+          ref: ${{ env.R2_SOURCE_REF }}
           fetch-depth: 0
           lfs: true
           clean: false
@@ -43,6 +48,7 @@ jobs:
           $subject=(git log -1 --pretty=%s).Trim()
           $localHead=(git rev-parse HEAD).Trim()
           $remoteHead=(git ls-remote origin "refs/heads/$env:R2_BRANCH" | ForEach-Object { ($_ -split "\s+")[0] }).Trim()
+          ("R2_SOURCE_SHA=" + $localHead) | Out-File $env:GITHUB_ENV -Append
           Write-Host "R2_SOURCE_SUBJECT=$subject"
           Write-Host "R2_LOCAL_HEAD=$localHead"
           Write-Host "R2_REMOTE_HEAD=$remoteHead"
