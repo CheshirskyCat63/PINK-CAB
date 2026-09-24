@@ -1,130 +1,130 @@
-﻿run_id=36054170783
-source_sha=fb8d53ecdf37a595bb9a849e84cac12a920ef902
-workspace_head=fb8d53ecdf37a595bb9a849e84cac12a920ef902
+﻿run_id=36054337910
+source_sha=3814b10b57d9e051d833009bd737d9de5f9d0b08
+workspace_head=3814b10b57d9e051d833009bd737d9de5f9d0b08
 job_status=failure
-timestamp_utc=2026-09-24T20:21:20.3006304Z
+timestamp_utc=2026-09-24T20:22:27.1717089Z
 
 === Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log tail ===
-[2026.09.24-20.21.15:972][630]LogMetaRoad: MetaRoad build: 10752 triangles, 10752 claims, 0 unmatched, 0 unclaimed triangles
-[2026.09.24-20.21.16:070][636]LogMetaRoad: ----------------- Generation Report: PC_L1_Straight_1000m ----------------
-[2026.09.24-20.21.16:070][636]LogMetaRoad: 		 Num triangles: 51712
-[2026.09.24-20.21.16:070][636]LogMetaRoad: 		 Num vertices: 33922
-[2026.09.24-20.21.16:070][636]LogActorFactory: Actor Factory attempting to spawn Class /Script/Engine.Actor
-[2026.09.24-20.21.16:072][636]LogActorFactory: Actor Factory spawned Class /Script/Engine.Actor as actor: Actor /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.L_PC_L1_MetaRoadAuthoring:PersistentLevel.PC_L1_Straight_1000m_Gen
-[2026.09.24-20.21.16:101][636]LogStaticMesh: Display: Создание статичной сетки RoadSurface (расчётный объём требуемой памяти: 19.620743 Мбайт)...
-[2026.09.24-20.21.16:117][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadSurface)...
-[2026.09.24-20.21.16:134][636]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadSurface.RoadSurface
-[2026.09.24-20.21.16:287][636]LogStaticMesh: Display: Создание статичной сетки RoadSidewalks (расчётный объём требуемой памяти: 7.822662 Мбайт)...
-[2026.09.24-20.21.16:303][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadSidewalks)...
-[2026.09.24-20.21.16:307][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadSidewalks.RoadSidewalks
-[2026.09.24-20.21.16:315][636]LogStaticMesh: Display: RoadSidewalks содержит касательные с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
-[2026.09.24-20.21.16:315][636]LogStaticMesh: Display: RoadSidewalks содержит бинормали с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
-[2026.09.24-20.21.16:398][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:415][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs)...
-[2026.09.24-20.21.16:418][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs.RoadCurbs
-[2026.09.24-20.21.16:463][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs1 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:477][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs1.RoadCurbs1
-[2026.09.24-20.21.16:480][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs1)...
-[2026.09.24-20.21.16:571][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs2 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:586][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs2)...
-[2026.09.24-20.21.16:596][636]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadCurbs2.RoadCurbs2
-[2026.09.24-20.21.16:637][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs3 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:651][636]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs3.RoadCurbs3
-[2026.09.24-20.21.16:654][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs3)...
-[2026.09.24-20.21.16:680][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs4 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:695][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs4)...
-[2026.09.24-20.21.16:697][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs4.RoadCurbs4
-[2026.09.24-20.21.16:726][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs5 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:741][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs5.RoadCurbs5
-[2026.09.24-20.21.16:742][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs5)...
-[2026.09.24-20.21.16:834][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs6 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:851][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs6)...
-[2026.09.24-20.21.16:858][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs6.RoadCurbs6
-[2026.09.24-20.21.16:914][636]LogStaticMesh: Display: Создание статичной сетки RoadCurbs7 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
-[2026.09.24-20.21.16:929][636]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs7.RoadCurbs7
-[2026.09.24-20.21.16:931][636]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs7)...
-[2026.09.24-20.21.16:999][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSurface
-[2026.09.24-20.21.16:999][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSurface317CF81C457E7DA07753649F23F3C566.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSurface.uasset'
-[2026.09.24-20.21.17:013][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSidewalks
-[2026.09.24-20.21.17:013][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSidewalks8C23AB854C6DD9494C6C79A30175BB63.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSidewalks.uasset'
-[2026.09.24-20.21.17:022][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs
-[2026.09.24-20.21.17:023][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbsE4F2FF8143FC9E66C8BBD1BE6D20B782.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs.uasset'
-[2026.09.24-20.21.17:031][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs1
-[2026.09.24-20.21.17:031][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs1024CCAC2405246AC80BDFB888AD4B50F.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs1.uasset'
-[2026.09.24-20.21.17:040][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs2
-[2026.09.24-20.21.17:040][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs2364112B149796A12CC21E19A48095837.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs2.uasset'
-[2026.09.24-20.21.17:047][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs3
-[2026.09.24-20.21.17:048][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs375D01F37407CB4820462B2839F295E15.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs3.uasset'
-[2026.09.24-20.21.17:056][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs4
-[2026.09.24-20.21.17:056][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs4619EFAF64541FFC5884CBAA875A42F4D.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs4.uasset'
-[2026.09.24-20.21.17:066][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs5
-[2026.09.24-20.21.17:066][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs528A06DE6498A11249503968CCAA50A52.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs5.uasset'
-[2026.09.24-20.21.17:075][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs6
-[2026.09.24-20.21.17:075][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs624AC78A0433CFEA5FA54468B82390692.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs6.uasset'
-[2026.09.24-20.21.17:083][636]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs7
-[2026.09.24-20.21.17:083][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs77ECEEB0A4ED681879A55F4B7BD2333E0.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs7.uasset'
-[2026.09.24-20.21.17:084][636]OBJ SavePackage: Generating thumbnails for [0] asset(s) in package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring] ([1] browsable assets)...
-[2026.09.24-20.21.17:084][636]OBJ SavePackage: Finished generating thumbnails for package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring]
-[2026.09.24-20.21.17:136][636]LogUObjectHash: Compacting FUObjectHashTables data took   0.45ms
-[2026.09.24-20.21.17:336][636]LogSavePackage: Moving output files for package: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring
-[2026.09.24-20.21.17:337][636]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/L_PC_L1_MetaRoadAuthoring435D4F01411C8B5B3EA7ECB7D2330A5E.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
-[2026.09.24-20.21.17:354][636]LogFileHelpers: Saving map 'L_PC_L1_MetaRoadAuthoring' took 0.270
-[2026.09.24-20.21.17:365][637]LogContentValidation: Enabled validators:
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.DirtyFilesChangelistValidator
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.EditorValidator_ActionUtility
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.EditorValidator_Localization
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.EditorValidator_Material
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.PackageFileValidator
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/DataValidation.WorldPartitionChangelistValidator
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/MutableValidation.AssetValidator_CustomizableObjects
-[2026.09.24-20.21.17:365][637]LogContentValidation: 	/Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects
-[2026.09.24-20.21.17:365][637]LogContentValidation: Display: Starting to validate 11 assets (0 associated objects such as actors)
-[2026.09.24-20.21.17:365][637]LogContentValidation: Добавлены дополнительные ресурсы для проверки с помощью валидаторов 0:
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadSurface Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadSidewalks Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs1 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs2 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs3 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs5 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs6 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/World/L1/Road/RoadCurbs7 Проверка ресурса
-[2026.09.24-20.21.17:366][637]AssetCheck: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring Проверка ресурса
-[2026.09.24-20.21.17:366][637]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 11
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
-[2026.09.24-20.21.17:366][637]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
-[2026.09.24-20.21.17:412][638]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadAssets} Path={PinkCab.Editor.GenerateL1EndlessRoadAssets}
-[2026.09.24-20.21.17:412][638]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
-[2026.09.24-20.21.17:412][638]LogAutomationController: Warning: LogEditorModes: ITF Gizmos and Controls have been disabled. The "Meta Road" Editor Mode requires the legacy systems. [log] 
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSurface collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSidewalks collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs1 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs2 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs3 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs4 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs5 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs6 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs7 collision=3
-[2026.09.24-20.21.17:412][638]LogAutomationController: MetaRoad generated bounds: X=100000.00 Y=6680.00 Z=16.50
-[2026.09.24-20.21.17:412][638]LogAutomationController: CD869_METAROAD_BAKE=PASS
-[2026.09.24-20.21.17:412][638]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
-[2026.09.24-20.21.17:413][638]LogAutomationController: Sending StopTestSession to 1A85CDC148098C35C1A315925586D752
-[2026.09.24-20.21.17:413][639]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
-[2026.09.24-20.21.17:417][639]LogAutomationWorker: Received StopTestSession from 1642F251402C84ED2051E08539299F06
-[2026.09.24-20.21.17:466][640]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
-[2026.09.24-20.21.17:466][640]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
-[2026.09.24-20.21.17:466][640]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
-[2026.09.24-20.21.17:466][640]LogCore: Engine exit requested (reason: Win RequestExit)
+[2026.09.24-20.22.22:644][631]LogMetaRoad: MetaRoad build: triangle shape -- worst min-angle 0.4 deg, 1288 below 15 deg, 88 below 5 deg (of 10752)
+[2026.09.24-20.22.22:655][632]LogMetaRoad: MetaRoad build: 10752 triangles, 10752 claims, 0 unmatched, 0 unclaimed triangles
+[2026.09.24-20.22.22:762][638]LogMetaRoad: ----------------- Generation Report: PC_L1_Straight_1000m ----------------
+[2026.09.24-20.22.22:762][638]LogMetaRoad: 		 Num triangles: 51712
+[2026.09.24-20.22.22:762][638]LogMetaRoad: 		 Num vertices: 33922
+[2026.09.24-20.22.22:762][638]LogActorFactory: Actor Factory attempting to spawn Class /Script/Engine.Actor
+[2026.09.24-20.22.22:763][638]LogActorFactory: Actor Factory spawned Class /Script/Engine.Actor as actor: Actor /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.L_PC_L1_MetaRoadAuthoring:PersistentLevel.PC_L1_Straight_1000m_Gen
+[2026.09.24-20.22.22:796][638]LogStaticMesh: Display: Создание статичной сетки RoadSurface (расчётный объём требуемой памяти: 19.620743 Мбайт)...
+[2026.09.24-20.22.22:813][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadSurface)...
+[2026.09.24-20.22.22:834][638]LogStaticMesh: Built static mesh [0.04s] /Game/World/L1/Road/RoadSurface.RoadSurface
+[2026.09.24-20.22.22:982][638]LogStaticMesh: Display: Создание статичной сетки RoadSidewalks (расчётный объём требуемой памяти: 7.822662 Мбайт)...
+[2026.09.24-20.22.22:997][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadSidewalks)...
+[2026.09.24-20.22.23:003][638]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadSidewalks.RoadSidewalks
+[2026.09.24-20.22.23:011][638]LogStaticMesh: Display: RoadSidewalks содержит касательные с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
+[2026.09.24-20.22.23:011][638]LogStaticMesh: Display: RoadSidewalks содержит бинормали с близкими к нулю значениями, что может вызывать проблемы. (Допуск 1E-4)
+[2026.09.24-20.22.23:105][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:119][638]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs.RoadCurbs
+[2026.09.24-20.22.23:121][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs)...
+[2026.09.24-20.22.23:153][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs1 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:169][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs1)...
+[2026.09.24-20.22.23:171][638]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs1.RoadCurbs1
+[2026.09.24-20.22.23:210][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs2 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:226][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs2)...
+[2026.09.24-20.22.23:237][638]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadCurbs2.RoadCurbs2
+[2026.09.24-20.22.23:274][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs3 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:288][638]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs3.RoadCurbs3
+[2026.09.24-20.22.23:291][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs3)...
+[2026.09.24-20.22.23:336][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs4 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:350][638]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs4.RoadCurbs4
+[2026.09.24-20.22.23:353][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs4)...
+[2026.09.24-20.22.23:383][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs5 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:396][638]LogStaticMesh: Built static mesh [0.01s] /Game/World/L1/Road/RoadCurbs5.RoadCurbs5
+[2026.09.24-20.22.23:399][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs5)...
+[2026.09.24-20.22.23:436][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs6 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:451][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs6)...
+[2026.09.24-20.22.23:461][638]LogStaticMesh: Built static mesh [0.03s] /Game/World/L1/Road/RoadCurbs6.RoadCurbs6
+[2026.09.24-20.22.23:502][638]LogStaticMesh: Display: Создание статичной сетки RoadCurbs7 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-20.22.23:518][638]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs7)...
+[2026.09.24-20.22.23:519][638]LogStaticMesh: Built static mesh [0.02s] /Game/World/L1/Road/RoadCurbs7.RoadCurbs7
+[2026.09.24-20.22.23:622][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSurface
+[2026.09.24-20.22.23:622][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSurfaceF55E8E5345C2FB59FB1AF384E78AF91C.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSurface.uasset'
+[2026.09.24-20.22.23:634][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSidewalks
+[2026.09.24-20.22.23:634][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSidewalks7B07F7644EB4742D551A6EA64DCF14D8.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSidewalks.uasset'
+[2026.09.24-20.22.23:642][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs
+[2026.09.24-20.22.23:643][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs39BA163840EF4577ACFD8CB041C1C845.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs.uasset'
+[2026.09.24-20.22.23:651][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs1
+[2026.09.24-20.22.23:651][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs120F85001471933523D05039072015086.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs1.uasset'
+[2026.09.24-20.22.23:660][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs2
+[2026.09.24-20.22.23:660][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs2949B888843F9D55D4545EFA63F5A35C2.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs2.uasset'
+[2026.09.24-20.22.23:669][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs3
+[2026.09.24-20.22.23:669][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs3DE8D2E424EA5AE183F10C3A0EE227787.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs3.uasset'
+[2026.09.24-20.22.23:677][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs4
+[2026.09.24-20.22.23:677][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs470C85BA8469F2181FA8EE2A67F4E681A.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs4.uasset'
+[2026.09.24-20.22.23:685][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs5
+[2026.09.24-20.22.23:685][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs5D1D472114347CD5D6EE3B19288C96D12.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs5.uasset'
+[2026.09.24-20.22.23:692][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs6
+[2026.09.24-20.22.23:692][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs673AA5C7646D3404D0463DCAB846D3D9A.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs6.uasset'
+[2026.09.24-20.22.23:701][638]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs7
+[2026.09.24-20.22.23:701][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs774D1752644FC140149FF128176D6ADA3.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs7.uasset'
+[2026.09.24-20.22.23:702][638]OBJ SavePackage: Generating thumbnails for [0] asset(s) in package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring] ([1] browsable assets)...
+[2026.09.24-20.22.23:702][638]OBJ SavePackage: Finished generating thumbnails for package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring]
+[2026.09.24-20.22.23:753][638]LogUObjectHash: Compacting FUObjectHashTables data took   0.41ms
+[2026.09.24-20.22.23:940][638]LogSavePackage: Moving output files for package: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring
+[2026.09.24-20.22.23:941][638]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/L_PC_L1_MetaRoadAuthoring19AE53914CACBFD05FAF9C872BE85A4A.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
+[2026.09.24-20.22.23:958][638]LogFileHelpers: Saving map 'L_PC_L1_MetaRoadAuthoring' took 0.256
+[2026.09.24-20.22.23:968][639]LogContentValidation: Enabled validators:
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.DirtyFilesChangelistValidator
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.EditorValidator_ActionUtility
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.EditorValidator_Localization
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.EditorValidator_Material
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.PackageFileValidator
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/DataValidation.WorldPartitionChangelistValidator
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/MutableValidation.AssetValidator_CustomizableObjects
+[2026.09.24-20.22.23:968][639]LogContentValidation: 	/Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects
+[2026.09.24-20.22.23:968][639]LogContentValidation: Display: Starting to validate 11 assets (0 associated objects such as actors)
+[2026.09.24-20.22.23:968][639]LogContentValidation: Добавлены дополнительные ресурсы для проверки с помощью валидаторов 0:
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadSurface Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadSidewalks Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs1 Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs2 Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs3 Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
+[2026.09.24-20.22.23:968][639]AssetCheck: /Game/World/L1/Road/RoadCurbs5 Проверка ресурса
+[2026.09.24-20.22.23:969][639]AssetCheck: /Game/World/L1/Road/RoadCurbs6 Проверка ресурса
+[2026.09.24-20.22.23:969][639]AssetCheck: /Game/World/L1/Road/RoadCurbs7 Проверка ресурса
+[2026.09.24-20.22.23:969][639]AssetCheck: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring Проверка ресурса
+[2026.09.24-20.22.23:969][639]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 11
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
+[2026.09.24-20.22.23:969][639]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
+[2026.09.24-20.22.24:008][640]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadAssets} Path={PinkCab.Editor.GenerateL1EndlessRoadAssets}
+[2026.09.24-20.22.24:008][640]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-20.22.24:008][640]LogAutomationController: Warning: LogEditorModes: ITF Gizmos and Controls have been disabled. The "Meta Road" Editor Mode requires the legacy systems. [log] 
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSurface collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSidewalks collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs1 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs2 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs3 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs4 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs5 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs6 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs7 collision=3
+[2026.09.24-20.22.24:008][640]LogAutomationController: MetaRoad generated bounds: X=100000.00 Y=6680.00 Z=16.50
+[2026.09.24-20.22.24:008][640]LogAutomationController: CD869_METAROAD_BAKE=PASS
+[2026.09.24-20.22.24:008][640]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-20.22.24:009][640]LogAutomationController: Sending StopTestSession to 88C3C7D24B860E0BB19EEA962D1512C7
+[2026.09.24-20.22.24:009][640]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
+[2026.09.24-20.22.24:009][641]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
+[2026.09.24-20.22.24:009][641]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-20.22.24:009][641]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-20.22.24:009][641]LogCore: Engine exit requested (reason: Win RequestExit)
 
 === Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log tail ===
 [2026.09.24-19.36.41:724][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplatePostCleanup.uproject",LastOpenTime=2026.09.23-09.35.43)" in recently opened files
