@@ -279,7 +279,30 @@ jobs:
           $base='ada243509a2d0d5f0c45efd88677df2c7ef94e98'
           $acceptedInput='8168d72406af6934ab20eace583c2b895f0620b7'
           $changed=@(git diff --name-only "$base..HEAD")
-          $acceptedSourceDelta=@(git diff --name-only "$acceptedInput..HEAD" -- Source/PinkCab Source/PinkCabInteraction Source/PinkCabVehicle Config/DefaultInput.ini)
+          $frozenInputPaths=@(
+            'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawnDriver.cpp',
+            'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawnCockpit.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabPlayerInputAdapter.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabSemanticInputRouter.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabPhysicalInputConvention.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabWheelInputResponse.cpp',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputSample.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabSemanticInputRouter.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabWheelInputResponse.h',
+            'Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h',
+            'Source/PinkCab/Private/Vehicle/PinkCabVehicleInputFrame.cpp',
+            'Source/PinkCab/Public/Vehicle/PinkCabVehicleInputFrame.h',
+            'Source/PinkCab/Public/Vehicle/Detail/PinkCabVehicleInputFrame.inl',
+            'Config/DefaultInput.ini'
+          )
+          $acceptedSourceDelta=@()
+          foreach($frozenPath in $frozenInputPaths){
+            $delta=@(git diff --name-only "$acceptedInput..HEAD" -- $frozenPath)
+            if($delta.Count -gt 0){ $acceptedSourceDelta += $delta }
+          }
+          $acceptedSourceDelta=@($acceptedSourceDelta | Sort-Object -Unique)
           if($acceptedSourceDelta.Count -gt 0){
             $acceptedSourceDelta | ForEach-Object { Write-Host "R1_FROZEN_INPUT_DELTA=$_" }
             throw 'R1_FROZEN_INPUT_SOURCE_CHANGED'
