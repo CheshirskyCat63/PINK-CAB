@@ -1,9 +1,6 @@
 name: CD-869 R2 Human Gate
 
 on:
-  push:
-    branches:
-      - feat/CD-869-r2-median-separators
   workflow_dispatch:
 
 permissions:
