@@ -43,6 +43,18 @@ jobs:
           lfs: true
           clean: false
 
+      - name: Announce R2 runner start
+        if: ${{ github.event_name == 'issues' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'R2_RUN_STARTED run=' + context.runId + ' feature=' + process.env.R2_BRANCH
+            })
+
       - name: Classify R2 source commit
         id: classify
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
@@ -726,3 +738,16 @@ jobs:
             git commit -m "evidence(CD-869): R2 MetaRoad rebuild $env:JOB_STATUS"
             git push origin "HEAD:refs/heads/$env:R2_BRANCH"
           }
+
+
+      - name: Announce R2 runner result
+        if: ${{ always() && github.event_name == 'issues' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'R2_RUN_FINISHED run=' + context.runId + ' status=${{ job.status }}'
+            })
