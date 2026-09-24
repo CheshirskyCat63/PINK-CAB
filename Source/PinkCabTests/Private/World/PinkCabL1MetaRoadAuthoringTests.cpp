@@ -143,10 +143,10 @@ bool IsAccessOpeningSection(const double SectionStartCm)
 {
     return FMath::IsNearlyEqual(
             SectionStartCm,
-            FPinkCabL1EndlessRoadModel::AccessAStartCm)
+            FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm)
         || FMath::IsNearlyEqual(
             SectionStartCm,
-            FPinkCabL1EndlessRoadModel::AccessBStartCm);
+            FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm);
 }
 
 void AddSideProfile(
@@ -263,16 +263,17 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     Layout.Sections.Reset();
     Layout.Direction = ERoadDirection::RightHand;
 
-    // Native MetaRoad lane sections are the free/core way to vary curb
-    // construction along S. Split only at access-window boundaries: geometry,
-    // lane widths and the accepted 1000m topology stay continuous, while the
-    // service-separator curb flags are OFF inside both access windows.
+    // Split only around the two 50m FULLY OPEN connector plateaus.
+    // MetaRoad keeps its DefaultCurb on the separator through each taper, then
+    // the zero-width separator lane disappears for the 50m crossing itself.
+    // This preserves the authored curb along the taper while guaranteeing a
+    // curb-free express<->local passage at 275-325m and 675-725m.
     const double SectionOffsets[] = {
         0.0,
-        FPinkCabL1EndlessRoadModel::AccessAStartCm,
-        FPinkCabL1EndlessRoadModel::AccessAEndCm,
-        FPinkCabL1EndlessRoadModel::AccessBStartCm,
-        FPinkCabL1EndlessRoadModel::AccessBEndCm,
+        FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm,
+        FPinkCabL1EndlessRoadModel::AccessAFullOpenEndCm,
+        FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm,
+        FPinkCabL1EndlessRoadModel::AccessBFullOpenEndCm,
         ChunkLengthCm
     };
     for (int32 Index = 0; Index < UE_ARRAY_COUNT(SectionOffsets) - 1; ++Index)
@@ -296,10 +297,10 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     {
         const double ExpectedOffsets[] = {
             0.0,
-            FPinkCabL1EndlessRoadModel::AccessAStartCm,
-            FPinkCabL1EndlessRoadModel::AccessAEndCm,
-            FPinkCabL1EndlessRoadModel::AccessBStartCm,
-            FPinkCabL1EndlessRoadModel::AccessBEndCm
+            FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm,
+            FPinkCabL1EndlessRoadModel::AccessAFullOpenEndCm,
+            FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm,
+            FPinkCabL1EndlessRoadModel::AccessBFullOpenEndCm
         };
         for (int32 Index = 0; Index < Layout.Sections.Num(); ++Index)
         {
@@ -313,8 +314,8 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
                     0.1));
             const int32 ExpectedSurfaceCount =
                 IsAccessOpeningSection(Layout.Sections[Index].SOffset)
-                    ? 11
-                    : 10;
+                    ? 10
+                    : 11;
             Test.TestEqual(
                 *FString::Printf(
                     TEXT("section %d keeps expected native surface count"),
@@ -335,7 +336,7 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
             TEXT("access B section disables service curbs"),
             IsAccessOpeningSection(Layout.Sections[3].SOffset));
         Test.TestFalse(
-            TEXT("straight separator section keeps service curbs"),
+            TEXT("taper/straight separator section keeps service curbs"),
             IsAccessOpeningSection(Layout.Sections[2].SOffset));
     }
     Test.TestTrue(TEXT("straight spline is one kilometre"),
