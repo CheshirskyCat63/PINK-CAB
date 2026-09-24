@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-          clean: false
+          clean: true
 
       - name: R1 exact-head preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
@@ -103,8 +103,8 @@ jobs:
         id: asset_state
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
-          $recent=@(git log -n 8 --pretty=%s)
-          $hasR1Asset=[bool]($recent | Where-Object { $_ -eq 'asset(CD-869): bake R1 topology v2' })
+          $recent=@(git log -n 10 --pretty=%s)
+          $hasR1Asset=[bool]($recent | Where-Object { $_ -eq 'asset(CD-869): canonicalize R1 topology v2' })
           if($hasR1Asset){
             'asset_head=true' | Out-File $env:GITHUB_OUTPUT -Append
             Write-Host 'R1_ASSET_HEAD=1'
@@ -121,6 +121,19 @@ jobs:
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
 
+          # MetaRoad chooses a suffixed asset name when stale generated files are
+          # present. Remove the tracked canonical mesh plus every stale generated
+          # sibling before authoring so the exported runtime asset is exactly
+          # /Game/World/L1/Road/RoadSurface.
+          $roadDir=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road'
+          $stale=@(Get-ChildItem -LiteralPath $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
+          foreach($asset in $stale){
+            Write-Host "R1_REMOVE_PREBAKE=$($asset.FullName)"
+            Remove-Item -LiteralPath $asset.FullName -Force
+          }
+          $remaining=@(Get-ChildItem -LiteralPath $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
+          if($remaining.Count -ne 0){ throw "R1_PREBAKE_ROADSURFACE_CLEAN_FAILED=$($remaining.Count)" }
+
           $authorLog=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R1_AUTHOR.log'
           & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$authorLog" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
@@ -130,6 +143,16 @@ jobs:
           if(-not (Select-String $authorLog -Pattern 'CD869_METAROAD_BAKE=PASS' -Quiet)){
             throw 'R1_METAROAD_BAKE_MARKER_MISSING'
           }
+
+          $roadOutputs=@(Get-ChildItem -LiteralPath $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
+          $canonical=Join-Path $roadDir 'RoadSurface.uasset'
+          if(-not (Test-Path $canonical)){ throw 'R1_CANONICAL_ROADSURFACE_NOT_GENERATED' }
+          $suffixed=@($roadOutputs | Where-Object { $_.Name -ne 'RoadSurface.uasset' })
+          if($suffixed.Count -gt 0){
+            $suffixed | ForEach-Object { Write-Host "R1_FORBIDDEN_ROADSURFACE=$($_.FullName)" }
+            throw "R1_SUFFIXED_ROADSURFACE_OUTPUTS=$($suffixed.Count)"
+          }
+          Write-Host 'R1_CANONICAL_ROADSURFACE_OUTPUT=PASS'
 
           $materialLog=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R1_REBIND_MATERIALS.log'
           & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$materialLog" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
@@ -154,25 +177,28 @@ jobs:
           $ErrorActionPreference='Stop'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Content/World/L1/Road/RoadSurface.uasset Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap
+          git add -A Content/World/L1/Road Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap
           if(git diff --cached --quiet){
             'committed=false' | Out-File $env:GITHUB_OUTPUT -Append
             Write-Host 'R1_ASSET_DIFF=0'
           } else {
-            git commit -m 'asset(CD-869): bake R1 topology v2'
+            git commit -m 'asset(CD-869): canonicalize R1 topology v2'
             git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
             'committed=true' | Out-File $env:GITHUB_OUTPUT -Append
             Write-Host "R1_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
           }
 
-      - name: Stop source-head run after asset push
-        if: ${{ steps.asset_commit.outputs.committed == 'true' }}
+      - name: Verify exact R1 asset head after optional push
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
-          Write-Host 'R1_RESTARTING_ON_EXACT_ASSET_HEAD=1'
+          $ErrorActionPreference='Stop'
+          $local=(git rev-parse HEAD).Trim()
+          $remote=(git ls-remote origin "refs/heads/$env:GITHUB_REF_NAME" | ForEach-Object { ($_ -split "\s+")[0] }).Trim()
+          if($local -ne $remote){ throw "R1_REMOTE_HEAD_MISMATCH $local != $remote" }
+          Write-Host "R1_EXACT_ASSET_HEAD=$local"
 
       - name: Run full endless-road focused regression
-        if: ${{ steps.asset_commit.outputs.committed != 'true' && steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -224,7 +250,7 @@ jobs:
           Write-Host 'R1_SCOPE_AND_ZERO_DEBT=PASS'
 
       - name: Close previous PINK-CAB runtime before cook
-        if: ${{ steps.asset_commit.outputs.committed != 'true' }}
+        if: ${{ always() && !cancelled() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
