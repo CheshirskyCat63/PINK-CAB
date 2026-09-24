@@ -461,6 +461,32 @@ public:
                 TEXT("MetaRoad generated mesh: %s collision=%d"),
                 *PackageName,
                 static_cast<int32>(Component->GetCollisionEnabled())));
+            const FTransform RelativeTransform = Component->GetRelativeTransform();
+            const FBoxSphereBounds LocalMeshBounds = Mesh->GetBounds();
+            Test->AddInfo(FString::Printf(
+                TEXT("CD869_METAROAD_COMPONENT package=%s rel_loc=(%.2f,%.2f,%.2f) rel_rot=(%.2f,%.2f,%.2f) rel_scale=(%.4f,%.4f,%.4f) local_origin=(%.2f,%.2f,%.2f) local_extent=(%.2f,%.2f,%.2f) world_origin=(%.2f,%.2f,%.2f) world_extent=(%.2f,%.2f,%.2f)"),
+                *PackageName,
+                RelativeTransform.GetLocation().X,
+                RelativeTransform.GetLocation().Y,
+                RelativeTransform.GetLocation().Z,
+                RelativeTransform.Rotator().Pitch,
+                RelativeTransform.Rotator().Yaw,
+                RelativeTransform.Rotator().Roll,
+                RelativeTransform.GetScale3D().X,
+                RelativeTransform.GetScale3D().Y,
+                RelativeTransform.GetScale3D().Z,
+                LocalMeshBounds.Origin.X,
+                LocalMeshBounds.Origin.Y,
+                LocalMeshBounds.Origin.Z,
+                LocalMeshBounds.BoxExtent.X,
+                LocalMeshBounds.BoxExtent.Y,
+                LocalMeshBounds.BoxExtent.Z,
+                Component->Bounds.Origin.X,
+                Component->Bounds.Origin.Y,
+                Component->Bounds.Origin.Z,
+                Component->Bounds.BoxExtent.X,
+                Component->Bounds.BoxExtent.Y,
+                Component->Bounds.BoxExtent.Z)));
             Test->TestTrue(TEXT("generated mesh stored in canonical Level 1 road folder"),
                 PackageName.StartsWith(TEXT("/Game/World/L1/Road/")));
             if (SaveGeneratedMeshPackage(*Mesh, *Test))
