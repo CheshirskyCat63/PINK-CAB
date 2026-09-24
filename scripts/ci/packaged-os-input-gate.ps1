@@ -252,27 +252,73 @@ function Assert-HeldKey([int]$Vk,[string]$Name) {
 
 function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120,[int]$HeldVk=0,[string]$HeldName='') {
     $before=Get-State
-    Assert-HeldKey $HeldVk $HeldName
-    Send-Wheel $PrimaryWheelDelta
-    Start-Sleep -Milliseconds 180
-    $after=Get-State
-    $beforeVal=[double]$before.$Field; $afterVal=[double]$after.$Field
     $wheel=$PrimaryWheelDelta
-    if($afterVal -le $beforeVal + 0.001) {
-        $wheel=-$PrimaryWheelDelta
+    $responded=$false
+
+    # Synthetic Windows input can report a key as physically down before the
+    # packaged viewport has consumed that transition. Probe both wheel
+    # directions, and if neither changes the semantic axis, re-prime the held
+    # key once through a real up/down edge. This does not relax the contract:
+    # the axis still has to respond to foreground OS input and reach the same
+    # target interval.
+    for($probe=1;$probe -le 3 -and -not $responded;$probe++) {
+        Focus-GameWindow $script:GameHwnd
         Assert-HeldKey $HeldVk $HeldName
-        Send-Wheel $wheel
-        Start-Sleep -Milliseconds 180
+
+        $beforeVal=[double]$before.$Field
+        Send-Wheel $PrimaryWheelDelta
+        Start-Sleep -Milliseconds 220
+        $after=Get-State
+        $afterVal=[double]$after.$Field
+        Write-Host "PACKAGED_OS_INPUT_DOSE_PROBE field=$Field probe=$probe dir=primary before=$beforeVal after=$afterVal"
+        if($afterVal -gt $beforeVal + 0.001) {
+            $wheel=$PrimaryWheelDelta
+            $responded=$true
+            break
+        }
+
+        Focus-GameWindow $script:GameHwnd
+        Assert-HeldKey $HeldVk $HeldName
+        Send-Wheel (-$PrimaryWheelDelta)
+        Start-Sleep -Milliseconds 220
+        $after=Get-State
+        $afterVal=[double]$after.$Field
+        Write-Host "PACKAGED_OS_INPUT_DOSE_PROBE field=$Field probe=$probe dir=opposite before=$beforeVal after=$afterVal"
+        if($afterVal -gt $beforeVal + 0.001) {
+            $wheel=-$PrimaryWheelDelta
+            $responded=$true
+            break
+        }
+
+        if($HeldVk -ne 0) {
+            Write-Host "PACKAGED_OS_INPUT_REPRIME_HELD field=$Field key=$HeldName probe=$probe"
+            [PinkCabNativeInput]::KeyUp($HeldVk)
+            Start-Sleep -Milliseconds 120
+            Focus-GameWindow $script:GameHwnd
+            [PinkCabNativeInput]::KeyDown($HeldVk)
+            Start-Sleep -Milliseconds 220
+            Assert-HeldKey $HeldVk $HeldName
+        }
+        $before=Get-State
     }
-    for($i=0;$i -lt 24;$i++) {
-        $v=[double](Get-State).$Field
+
+    if(-not $responded) {
+        $last=Get-State
+        throw "Could not start dosing $Field through foreground OS input. Last=$($last.raw)"
+    }
+
+    for($i=0;$i -lt 32;$i++) {
+        $state=Get-State
+        $v=[double]$state.$Field
         if($v -ge $Min -and $v -le $Max){ return }
-        if($v -gt $Max) { throw "$Field overshot target: $v" }
+        if($v -gt $Max) { throw "$Field overshot target: $v Last=$($state.raw)" }
+        Focus-GameWindow $script:GameHwnd
         Assert-HeldKey $HeldVk $HeldName
         Send-Wheel $wheel
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 160
     }
-    throw "Could not dose $Field"
+    $last=Get-State
+    throw "Could not dose $Field. Last=$($last.raw)"
 }
 
 $proc=$null
@@ -422,7 +468,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
-    Dose-To 'throttle' 0.25 0.35 120 $VK_E 'E' $VK_E 'E'
+    Dose-To 'throttle' 0.25 0.35 120 $VK_E 'E'
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq 1 -and $s.longcm -gt 500.0 -and $s.speed -gt 0.5 } 10000 "forward packaged movement beyond 5m" | Out-Null
 
