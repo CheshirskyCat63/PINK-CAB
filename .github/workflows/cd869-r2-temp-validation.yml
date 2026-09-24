@@ -10,6 +10,8 @@ on:
     branches:
       - main
     types: [opened, synchronize, reopened, ready_for_review]
+  issues:
+    types: [opened]
   workflow_dispatch:
 permissions:
   contents: write
@@ -20,7 +22,7 @@ concurrency:
 
 jobs:
   rebuild:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.head_ref == 'feat/CD-869-r2-median-separators' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.head_ref == 'feat/CD-869-r2-median-separators' || (github.event_name == 'issues' && github.event.issue.title == 'CD869_R2_TRIGGER') }}
     name: Native MetaRoad R2 build bake verify package human
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 120
