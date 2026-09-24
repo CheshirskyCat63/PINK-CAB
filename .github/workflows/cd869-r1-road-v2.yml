@@ -206,14 +206,348 @@ jobs:
             'RoadCurbs4.uasset',
             'RoadCurbs5.uasset',
             'RoadCurbs6.uasset',
-            'RoadCurbs7.uasset'
+            'RoadCurbs7.uasset',
+            'RoadCurbs8.uasset',
+            'RoadCurbs9.uasset',
+            'RoadCurbs10.uasset',
+            'RoadCurbs11.uasset',
+            'RoadCurbs12.uasset',
+            'RoadCurbs13.uasset',
+            'RoadCurbs14.uasset',
+            'RoadCurbs15.uasset',
+            'RoadCurbs16.uasset',
+            'RoadCurbs17.uasset',
+            'RoadCurbs18.uasset',
+            'RoadCurbs19.uasset',
+            'RoadCurbs20.uasset',
+            'RoadCurbs21.uasset',
+            'RoadCurbs22.uasset',
+            'RoadCurbs23.uasset',
+            'RoadCurbs24.uasset',
+            'RoadCurbs25.uasset',
+            'RoadCurbs26.uasset',
+            'RoadCurbs27.uasset',
+            'RoadCurbs28.uasset',
+            'RoadCurbs29.uasset',
+            'RoadCurbs30.uasset',
+            'RoadCurbs31.uasset'
           )
           $actual=@(
             Get-ChildItem $roadDir -File -ErrorAction SilentlyContinue |
               Where-Object {
                 $_.Name -eq 'RoadSurface.uasset' -or
                 $_.Name -eq 'RoadSidewalks.uasset' -or
-                $_.Name -match '^RoadCurbs(?:[1-9])?\.uasset$'
+                $_.Name -match '^RoadCurbs(?:\d+)?\.uasset
+              } |
+              Select-Object -ExpandProperty Name |
+              Sort-Object
+          )
+          $expectedSorted=@($expected | Sort-Object)
+          if($actual.Count -ne $expectedSorted.Count -or (Compare-Object $expectedSorted $actual)){
+            $actual | ForEach-Object { Write-Host "R2_NATIVE_ACTUAL=$_" }
+            $expectedSorted | ForEach-Object { Write-Host "R2_NATIVE_EXPECTED=$_" }
+            throw "R2_NATIVE_ASSET_SET_MISMATCH actual=$($actual.Count) expected=$($expectedSorted.Count)"
+          }
+
+          foreach($name in $actual){
+            $asset=Join-Path $roadDir $name
+            $bytes=(Get-Item $asset).Length
+            Write-Host "R2_METAROAD_OUTPUT=$name bytes=$bytes"
+            if($bytes -le 0){ throw "R2_NATIVE_EMPTY_ASSET=$name" }
+          }
+          Write-Host 'R2_METAROAD_NATIVE_BAKE=PASS'
+
+      - name: Rebind only runtime materials after MetaRoad bake
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            throw 'R2_RUNTIME_MATERIAL_REBIND_FAILED'
+          }
+          if(-not (Select-String $log -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)){
+            throw 'R2_RUNTIME_MATERIAL_MARKER_MISSING'
+          }
+          Write-Host 'R2_RUNTIME_MATERIAL_REBIND=PASS'
+
+      - name: Commit baked native MetaRoad content
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A Content/World/L1/Road Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap
+          if(git diff --cached --quiet){
+            Write-Host 'R2_METAROAD_CONTENT_DIFF=0'
+          } else {
+            git commit -m 'asset(CD-869): bake native MetaRoad R2 construction'
+            Write-Host "R2_NATIVE_ASSET_COMMIT_LOCAL=$((git rev-parse HEAD).Trim())"
+          }
+
+      - name: Native MetaRoad R2 asset contract
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_NATIVE_ASSET.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R2" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $queue=@(Select-String $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $fails=@(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          Get-Content $log |
+            Select-String -Pattern 'CD869_R2_NATIVE_|Test Completed. Result=|LogAutomationController: Error:' |
+            Select-Object -Last 120 |
+            ForEach-Object { Write-Host $_.Line }
+          if($queue.Count -eq 0){ throw 'R2_NATIVE_QUEUE_MISSING' }
+          if($fails.Count -gt 0){ throw "R2_NATIVE_ASSET_FAILURES=$($fails.Count)" }
+          Write-Host "R2_NATIVE_ASSET_CONTRACT=PASS $($queue[-1].Line)"
+
+      - name: Accepted R1 world regressions
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          foreach($suite in @('PinkCab.World.L1EndlessRoad','PinkCab.World.Materialization')){
+            $safe=$suite.Replace('.','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\CD869_R2_$safe.log")
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $suite" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            $queue=@(Select-String $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            $fails=@(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            if($queue.Count -eq 0 -or $fails.Count -gt 0){
+              throw "R2_REGRESSION_FAILED suite=$suite queue=$($queue.Count) fails=$($fails.Count)"
+            }
+            Write-Host "R2_REGRESSION_PASS suite=$suite $($queue[-1].Line)"
+          }
+
+      - name: Strict zero-debt and primitive-source scan
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $primitive=@(
+            git grep -n -E 'PinkCabL1RoadConstruction|AddTaperedStripSegment' -- Source Content 2>$null
+          )
+          $primitiveFiles=@(
+            git ls-files |
+              Where-Object {
+                $_ -match '(^|/)RoadConstruction\.uasset$' -or
+                $_ -match 'PinkCabL1RoadConstruction'
+              }
+          )
+          if($primitive.Count -gt 0 -or $primitiveFiles.Count -gt 0){
+            $primitive | ForEach-Object { Write-Host "R2_PRIMITIVE_REFERENCE=$_" }
+            $primitiveFiles | ForEach-Object { Write-Host "R2_PRIMITIVE_FILE=$_" }
+            throw 'R2_PRIMITIVE_SOURCE_REFERENCE_REMAINS'
+          }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R2_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 package
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+          $uat=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R2MetaRoadHuman'
+          if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $archive | Out-Null
+
+          $backup="$project.r2-metaroad-backup"
+          Copy-Item $project $backup -Force
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins=@($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output "-AdditionalBuildArgs=-MaxParallelActions=6"
+            $exit=$LASTEXITCODE
+          }
+          finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $inner)){ throw 'R2_NATIVE_INNER_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($inner)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $inner).Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw 'R2_NATIVE_SIGNATURE_INVALID'
+          }
+          Write-Host 'R2_NATIVE_PACKAGE=PASS'
+
+      - name: Frozen packaged input contract
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R2MetaRoadHuman\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_NATIVE_INPUT'
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R2_NATIVE_PACKAGED_INPUT=PASS'
+
+      - name: Packaged R2 smoke
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R2MetaRoadHuman\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_NATIVE_SMOKE.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $proc=Start-Process -FilePath $inner -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=1280','-ResY=720',
+            '-PinkCabGateTelemetry',"-abslog=$log"
+          ) -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(40)
+            do {
+              Start-Sleep -Milliseconds 300
+              $proc.Refresh()
+              if($proc.HasExited){ throw "R2_NATIVE_SMOKE_EXITED code=$($proc.ExitCode)" }
+              $loaded=(Test-Path $log) -and [bool](Select-String $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+              $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while(( -not $loaded -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
+            if(-not $loaded){ throw 'R2_NATIVE_SMOKE_MAP_MISSING' }
+            if(-not $wheels){ throw 'R2_NATIVE_SMOKE_TATRA_MISSING' }
+            $critical=@(Select-String $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -ErrorAction SilentlyContinue)
+            if($critical.Count -gt 0){ throw "R2_NATIVE_SMOKE_CRITICAL=$($critical.Count)" }
+            Write-Host 'R2_NATIVE_PACKAGED_SMOKE=PASS'
+          }
+          finally {
+            if($proc -and -not $proc.HasExited){ Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+      - name: Install shortcuts and launch HUMAN gate
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R2MetaRoadHuman\Windows'
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R2_METAROAD_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          $rc=$LASTEXITCODE
+          if($rc -ge 8){ throw "R2_NATIVE_DELIVERY_COPY_FAILED $rc" }
+          $global:LASTEXITCODE=0
+
+          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $inner)){ throw 'R2_NATIVE_DELIVERED_EXE_MISSING' }
+
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R2 METAROAD HUMAN.lnk','PINKCAB R2 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$inner
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $inner)
+            $s.Description="PINK CAB R2 native MetaRoad HUMAN $sha"
+            $s.Save()
+            Write-Host "R2_NATIVE_SHORTCUT=$lnk"
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $inner -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $inner) -PassThru
+
+            $deadline=[DateTime]::UtcNow.AddSeconds(15)
+            do {
+              Start-Sleep -Milliseconds 250
+              $proc.Refresh()
+              if($proc.HasExited){ throw "R2_NATIVE_HUMAN_EXITED code=$($proc.ExitCode)" }
+            } while($proc.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+            if($proc.MainWindowHandle -eq 0){ throw 'R2_NATIVE_HUMAN_WINDOW_MISSING' }
+
+            $focused=$false
+            for($i=0;$i -lt 12 -and -not $focused;$i++){
+              $focused=[bool]$ws.AppActivate($proc.Id)
+              Start-Sleep -Milliseconds 180
+            }
+            if(-not $focused){ throw 'R2_NATIVE_HUMAN_FOREGROUND_FAILED' }
+
+            Write-Host "R2_NATIVE_HUMAN_DELIVERY=$delivery"
+            Write-Host "R2_NATIVE_HUMAN_PID=$($proc.Id)"
+            Write-Host 'R2_NATIVE_HUMAN_FOREGROUND=PASS'
+            Write-Host 'R2_HUMAN_PENDING'
+          }
+          finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
+
+
+      - name: Publish R2 rebuild status
+        if: ${{ always() && steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location $env:GITHUB_WORKSPACE
+          $statusPath='docs\audits\CD869_R2_METAROAD_REBUILD_STATUS.txt'
+          New-Item -ItemType Directory -Force -Path (Split-Path $statusPath) | Out-Null
+          @(
+            ('run_id=' + $env:GITHUB_RUN_ID)
+            ('source_sha=' + $env:R2_SOURCE_SHA)
+            ('workspace_head=' + ((git rev-parse HEAD).Trim()))
+            ('job_status=' + $env:JOB_STATUS)
+            ('timestamp_utc=' + [DateTime]::UtcNow.ToString('o'))
+          ) | Set-Content $statusPath -Encoding UTF8
+
+          $logs=@(
+            'Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log',
+            'Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log',
+            'Saved\GitHubGate\CD869_R2_NATIVE_ASSET.log',
+            'Saved\GitHubGate\CD869_R2_NATIVE_SMOKE.log'
+          )
+          foreach($rel in $logs){
+            $full=Join-Path $env:GITHUB_WORKSPACE $rel
+            if(Test-Path $full){
+              Add-Content $statusPath ''
+              Add-Content $statusPath ('=== ' + $rel + ' tail ===')
+              Get-Content $full | Select-Object -Last 120 | Add-Content $statusPath
+            }
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- $statusPath
+          if(-not (git diff --cached --quiet)){
+            git commit -m "evidence(CD-869): R2 MetaRoad rebuild $env:JOB_STATUS"
+            git push origin "HEAD:refs/heads/$env:R2_BRANCH"
+          }
+
               } |
               Select-Object -ExpandProperty Name |
               Sort-Object
