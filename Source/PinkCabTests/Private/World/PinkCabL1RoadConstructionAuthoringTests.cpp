@@ -121,35 +121,87 @@ UMaterial* CreateOrLoadCurbMaterial(FAutomationTestBase& Test)
     return Material;
 }
 
+void AddFace(
+    UStaticMeshDescription& Description,
+    const TArray<FVertexID>& Vertices,
+    const std::initializer_list<int32> Indices,
+    const FVector& Normal,
+    const FPolygonGroupID PolygonGroup)
+{
+    TArray<FVertexInstanceID> Instances;
+    static const FVector2D UVs[4] = {
+        FVector2D(0.0, 0.0),
+        FVector2D(1.0, 0.0),
+        FVector2D(1.0, 1.0),
+        FVector2D(0.0, 1.0)
+    };
+
+    int32 UVIndex = 0;
+    for (const int32 VertexIndex : Indices)
+    {
+        const FVertexInstanceID Instance =
+            Description.CreateVertexInstance(Vertices[VertexIndex]);
+        Description.GetVertexInstanceNormals()[Instance] =
+            FVector3f(Normal);
+        const FVector Tangent =
+            FMath::Abs(Normal.X) > 0.9
+                ? FVector(0.0, 1.0, 0.0)
+                : FVector(1.0, 0.0, 0.0);
+        Description.GetVertexInstanceTangents()[Instance] =
+            FVector3f(Tangent);
+        Description.GetVertexInstanceBinormalSigns()[Instance] = 1.0f;
+        Description.SetVertexInstanceUV(
+            Instance,
+            UVs[FMath::Clamp(UVIndex, 0, 3)],
+            0);
+        Instances.Add(Instance);
+        ++UVIndex;
+    }
+
+    TArray<FEdgeID> NewEdges;
+    Description.CreatePolygon(
+        PolygonGroup,
+        Instances,
+        NewEdges);
+}
+
 void AddCube(
     UStaticMeshDescription& Description,
     const FVector& Center,
     const FVector& HalfExtents,
     const FPolygonGroupID PolygonGroup)
 {
-    FPolygonID PlusX;
-    FPolygonID MinusX;
-    FPolygonID PlusY;
-    FPolygonID MinusY;
-    FPolygonID PlusZ;
-    FPolygonID MinusZ;
-    // UE 5.8 StaticMeshDescription CreateCube on this headless authoring
-    // path expands X/Z twice while Y follows the documented half-extent.
-    // Compensate per-axis; verified against clean-package authored bounds.
-    const FVector AuthoringHalfExtents(
-        HalfExtents.X * 0.5,
-        HalfExtents.Y,
-        HalfExtents.Z * 0.5);
-    Description.CreateCube(
-        Center,
-        AuthoringHalfExtents,
-        PolygonGroup,
-        PlusX,
-        MinusX,
-        PlusY,
-        MinusY,
-        PlusZ,
-        MinusZ);
+    const FVector Min = Center - HalfExtents;
+    const FVector Max = Center + HalfExtents;
+
+    const FVector Positions[8] = {
+        FVector(Min.X, Min.Y, Min.Z),
+        FVector(Max.X, Min.Y, Min.Z),
+        FVector(Max.X, Max.Y, Min.Z),
+        FVector(Min.X, Max.Y, Min.Z),
+        FVector(Min.X, Min.Y, Max.Z),
+        FVector(Max.X, Min.Y, Max.Z),
+        FVector(Max.X, Max.Y, Max.Z),
+        FVector(Min.X, Max.Y, Max.Z)
+    };
+
+    TArray<FVertexID> Vertices;
+    Vertices.Reserve(8);
+    for (const FVector& Position : Positions)
+    {
+        const FVertexID Vertex = Description.CreateVertex();
+        Description.SetVertexPosition(Vertex, Position);
+        Vertices.Add(Vertex);
+    }
+
+    // Outward-facing quads. Visual materials are simple/two-sided-safe and
+    // collision is configured double-sided, but keep deterministic normals.
+    AddFace(Description, Vertices, {0, 3, 2, 1}, FVector(0, 0, -1), PolygonGroup);
+    AddFace(Description, Vertices, {4, 5, 6, 7}, FVector(0, 0, 1), PolygonGroup);
+    AddFace(Description, Vertices, {0, 4, 7, 3}, FVector(-1, 0, 0), PolygonGroup);
+    AddFace(Description, Vertices, {1, 2, 6, 5}, FVector(1, 0, 0), PolygonGroup);
+    AddFace(Description, Vertices, {0, 1, 5, 4}, FVector(0, -1, 0), PolygonGroup);
+    AddFace(Description, Vertices, {3, 7, 6, 2}, FVector(0, 1, 0), PolygonGroup);
 }
 
 void AddSymmetricCube(
@@ -367,6 +419,7 @@ UStaticMesh* BuildConstructionMesh(
     {
         Mesh->GetBodySetup()->CollisionTraceFlag =
             CTF_UseComplexAsSimple;
+        Mesh->GetBodySetup()->bDoubleSidedGeometry = true;
         Mesh->GetBodySetup()->InvalidatePhysicsData();
     }
 
