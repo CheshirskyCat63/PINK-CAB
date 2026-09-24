@@ -406,3 +406,45 @@ jobs:
           finally {
             $env:RUNNER_TRACKING_ID=$saved
           }
+
+
+      - name: Publish R2 rebuild status
+        if: ${{ always() }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location $env:GITHUB_WORKSPACE
+          $statusPath='docs\audits\CD869_R2_METAROAD_REBUILD_STATUS.txt'
+          New-Item -ItemType Directory -Force -Path (Split-Path $statusPath) | Out-Null
+          @(
+            ('run_id=' + $env:GITHUB_RUN_ID)
+            ('source_sha=' + $env:GITHUB_SHA)
+            ('workspace_head=' + ((git rev-parse HEAD).Trim()))
+            ('job_status=' + $env:JOB_STATUS)
+            ('timestamp_utc=' + [DateTime]::UtcNow.ToString('o'))
+          ) | Set-Content $statusPath -Encoding UTF8
+
+          $logs=@(
+            'Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log',
+            'Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log',
+            'Saved\GitHubGate\CD869_R2_NATIVE_ASSET.log',
+            'Saved\GitHubGate\CD869_R2_NATIVE_SMOKE.log'
+          )
+          foreach($rel in $logs){
+            $full=Join-Path $env:GITHUB_WORKSPACE $rel
+            if(Test-Path $full){
+              Add-Content $statusPath ''
+              Add-Content $statusPath ('=== ' + $rel + ' tail ===')
+              Get-Content $full | Select-Object -Last 120 | Add-Content $statusPath
+            }
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- $statusPath
+          if(-not (git diff --cached --quiet)){
+            git commit -m "evidence(CD-869): R2 MetaRoad rebuild $env:JOB_STATUS"
+            git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          }
