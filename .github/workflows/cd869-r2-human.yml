@@ -49,7 +49,8 @@ jobs:
           }
           if($ue.Count -gt 0){ Start-Sleep -Milliseconds 1000 }
 
-          git fetch --prune origin "+refs/heads/$env:GITHUB_REF_NAME:refs/remotes/origin/$env:GITHUB_REF_NAME"
+          $branchName=$env:GITHUB_REF_NAME
+          git fetch --prune origin "+refs/heads/${branchName}:refs/remotes/origin/${branchName}"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           $resetOk=$false
