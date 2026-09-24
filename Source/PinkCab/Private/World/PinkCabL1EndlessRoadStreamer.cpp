@@ -88,12 +88,56 @@ bool HasLogicalChunkBinding(
     return false;
 }
 
+bool CanApplyMaterialization(
+    const FPinkCabWorldMaterializationResult& Result,
+    const TMap<FString, int32>& ChunkIndexById,
+    const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool)
+{
+    TSet<FString> DematerializeKeys;
+    for (const FPinkCabChunkId& Id : Result.DematerializeChunkIds)
+    {
+        DematerializeKeys.Add(Id.Serialize());
+    }
+
+    int32 NeededBindings = 0;
+    for (const FPinkCabChunkId& Id : Result.MaterializeChunkIds)
+    {
+        if (HasLogicalChunkBinding(Pool, Id))
+        {
+            continue;
+        }
+        if (!ChunkIndexById.Contains(Id.Serialize()))
+        {
+            return false;
+        }
+        ++NeededBindings;
+    }
+
+    int32 ReadyReusableSlots = 0;
+    for (const APinkCabL1RoadChunkActor* Chunk : Pool)
+    {
+        if (!Chunk || !Chunk->IsVisualReady())
+        {
+            continue;
+        }
+
+        if (!Chunk->IsBound() ||
+            DematerializeKeys.Contains(
+                Chunk->GetBoundChunkId().Serialize()))
+        {
+            ++ReadyReusableSlots;
+        }
+    }
+
+    return ReadyReusableSlots >= NeededBindings;
+}
+
 APinkCabL1RoadChunkActor* FindFree(
     const TArray<TObjectPtr<APinkCabL1RoadChunkActor>>& Pool)
 {
     for (APinkCabL1RoadChunkActor* Chunk : Pool)
     {
-        if (Chunk && !Chunk->IsBound())
+        if (Chunk && !Chunk->IsBound() && Chunk->IsVisualReady())
         {
             return Chunk;
         }
@@ -252,6 +296,12 @@ bool APinkCabL1EndlessRoadStreamer::RefreshForState(
             Result) ||
         Result.MaterializeChunkIds.Num() !=
             FPinkCabL1EndlessRoadModel::PoolSize)
+    {
+        return false;
+    }
+
+    if (!PinkCabL1EndlessRoadStreamer::CanApplyMaterialization(
+            Result, ChunkIndexById, ChunkPool))
     {
         return false;
     }
