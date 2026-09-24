@@ -22,7 +22,7 @@ jobs:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       ACCEPTED_INPUT_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
-      R2_RUNTIME_SHA: f87cb4bdab93b73b3f4c8443f5f85e69d78f5747
+      R2_RUNTIME_SHA: f87cb4bdab93150af2fc33f7b92929caa44bcc48
 
     steps:
       - name: Prepare exact R2 worktree after releasing CI file locks
