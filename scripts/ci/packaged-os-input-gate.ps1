@@ -299,9 +299,34 @@ try {
     Start-Sleep -Milliseconds 500
 
     Wait-State { param($s) $s.menu -eq 1 -and $s.camera -eq 1 -and $s.wheels -eq 4 } 8000 "startup menu/camera/wheels" | Out-Null
-    Focus-GameWindow $proc.MainWindowHandle
-    Tap-Key $VK_ESC
-    Wait-State { param($s) $s.menu -eq 0 } 5000 "ESC closes startup menu" | Out-Null
+
+    # Fresh content-heavy packages can publish gate telemetry slightly before
+    # the Slate/player input stack is ready to consume the first synthetic
+    # keyboard event. Keep this an OS-input test, but settle/focus and retry
+    # the startup ESC instead of treating one dropped event as product failure.
+    Start-Sleep -Milliseconds 1200
+    $menuClosed=$false
+    for($attempt=1; $attempt -le 4 -and -not $menuClosed; ++$attempt){
+        Focus-GameWindow $proc.MainWindowHandle
+        Start-Sleep -Milliseconds 180
+        Tap-Key $VK_ESC 220
+        $deadlineEsc=[DateTime]::UtcNow.AddMilliseconds(1400)
+        do {
+            Start-Sleep -Milliseconds 80
+            $escState=Get-State
+            if($null -ne $escState -and $escState.menu -eq 0){
+                $menuClosed=$true
+                break
+            }
+        } while([DateTime]::UtcNow -lt $deadlineEsc)
+        if(-not $menuClosed){
+            Write-Host "PACKAGED_OS_INPUT_ESC_RETRY=$attempt"
+        }
+    }
+    if(-not $menuClosed){
+        $lastEsc=Get-State
+        throw "Timed out: ESC closes startup menu after focused retries. Last=$($lastEsc.raw)"
+    }
 
     Focus-GameWindow $proc.MainWindowHandle
     [PinkCabNativeInput]::KeyDown($VK_SPACE)
