@@ -57,18 +57,17 @@ jobs:
           git cat-file -e "$verified^{commit}"
           if($LASTEXITCODE -ne 0){ throw 'R1_VERIFIED_RUNTIME_HEAD_MISSING' }
           $changed=@(git diff --name-only "$verified..HEAD")
-          $runtime=@($changed | Where-Object {
+          $compileDelta=@($changed | Where-Object {
             $_ -match '^Source/' -or
-            $_ -match '^Content/' -or
             $_ -match '^Config/' -or
             $_ -eq 'PinkCab.uproject'
           })
-          if($runtime.Count -eq 0){
+          if($compileDelta.Count -eq 0){
             'reuse_verified=true' | Out-File $env:GITHUB_OUTPUT -Append
-            Write-Host "R1_VERIFICATION_REUSED=$verified"
+            Write-Host "R1_BUILD_REUSED=$verified"
           } else {
             'reuse_verified=false' | Out-File $env:GITHUB_OUTPUT -Append
-            $runtime | ForEach-Object { Write-Host "R1_RUNTIME_DELTA=$_" }
+            $compileDelta | ForEach-Object { Write-Host "R1_COMPILE_DELTA=$_" }
           }
 
       - name: Close previous PINK-CAB runtime before build
@@ -242,7 +241,7 @@ jobs:
           Write-Host "R1_EXACT_ASSET_HEAD=$local"
 
       - name: Run full endless-road focused regression
-        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -258,7 +257,7 @@ jobs:
           Write-Host "R1_FOCUSED=PASS $($queue[-1].Line)"
 
       - name: Run materialization regression
-        if: ${{ success() && steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -273,7 +272,7 @@ jobs:
           Write-Host "R1_MATERIALIZATION=PASS $($queue[-1].Line)"
 
       - name: R1 scope guard and zero-debt
-        if: ${{ success() && steps.runtime_delta.outputs.reuse_verified != 'true' }}
+        if: ${{ success() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -293,11 +292,12 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'R1_SCOPE_AND_ZERO_DEBT=PASS'
 
-      - name: Close previous PINK-CAB runtime before cook
+      - name: Close previous PINK-CAB and CI Unreal processes before cook
         if: ${{ always() && !cancelled() }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+
           $pink=@(Get-Process -Name PinkCab -ErrorAction SilentlyContinue)
           foreach($proc in $pink){
             $path=''
@@ -305,11 +305,34 @@ jobs:
             Write-Host "R1_STOP_OLD_PINKCAB pid=$($proc.Id) path=$path"
             Stop-Process -Id $proc.Id -Force -ErrorAction Stop
           }
-          Start-Sleep -Milliseconds 500
+
+          $workspacePattern=[Regex]::Escape($env:GITHUB_WORKSPACE)
+          $ue=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          foreach($proc in $ue){
+            Write-Host "R1_STOP_CI_UNREAL_PRECOOK pid=$($proc.ProcessId) name=$($proc.Name)"
+            Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+          }
+
+          Start-Sleep -Milliseconds 1000
           if(@(Get-Process -Name PinkCab -ErrorAction SilentlyContinue).Count -gt 0){
             throw 'R1_OLD_PINKCAB_PROCESS_SURVIVED'
           }
-          Write-Host 'R1_OLD_RUNTIME_CLOSED=PASS'
+          $ueLeft=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          if($ueLeft.Count -gt 0){
+            $ueLeft | ForEach-Object { Write-Host "R1_CI_UNREAL_SURVIVED pid=$($_.ProcessId) cmd=$($_.CommandLine)" }
+            throw "R1_CI_UNREAL_PROCESS_SURVIVED=$($ueLeft.Count)"
+          }
+          Write-Host 'R1_PRECOOK_PROCESS_CLEAN=PASS'
 
       - name: Build cook package R1 human candidate
         if: ${{ success() }}
