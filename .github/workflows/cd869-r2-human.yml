@@ -219,6 +219,41 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'R2_ZERO_DEBT=PASS'
 
+      - name: Clear CI Live Coding before R2 cook
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              Write-Host "R2_PRECOOK_STOP_PINKCAB pid=$($_.Id)"
+              Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+            }
+
+          $workspacePattern=[Regex]::Escape($env:GITHUB_WORKSPACE)
+          $ue=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          foreach($p in $ue){
+            Write-Host "R2_PRECOOK_STOP_CI_UNREAL pid=$($p.ProcessId) name=$($p.Name)"
+            Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+          }
+          if($ue.Count -gt 0){ Start-Sleep -Milliseconds 1000 }
+
+          $remaining=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          if($remaining.Count -gt 0){
+            $remaining | ForEach-Object { Write-Host "R2_PRECOOK_CI_UNREAL_SURVIVED pid=$($_.ProcessId)" }
+            throw "R2_PRECOOK_CI_UNREAL_SURVIVED=$($remaining.Count)"
+          }
+          Write-Host 'R2_PRECOOK_LIVE_CODING_CLEAR=PASS'
+
       - name: Build cook package R2 human candidate
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
