@@ -228,7 +228,32 @@ jobs:
           if ($fails.Count -gt 0) { throw "CD869_MATERIALIZATION_FAILURES=$($fails.Count)" }
           Write-Host "CD869_MATERIALIZATION=PASS $($queue[-1].Line)"
 
+      - name: Classify runtime delta since verified gameplay head
+        id: source_scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $verified = 'deecc09e4ce6eabf6c5cdf41f12011280e71db83'
+          git cat-file -e "$verified^{commit}"
+          if ($LASTEXITCODE -ne 0) { throw 'CD869_VERIFIED_GAMEPLAY_HEAD_MISSING' }
+          $changed = @(git diff --name-only "$verified..HEAD")
+          $runtimeChanged = @($changed | Where-Object {
+            ($_ -match '^Source/' -and $_ -notmatch '^Source/PinkCabTests/') -or
+            $_ -match '^Content/' -or
+            $_ -match '^Config/' -or
+            $_ -eq 'PinkCab.uproject'
+          })
+          if ($runtimeChanged.Count -gt 0) {
+            $runtimeChanged | ForEach-Object { Write-Host "CD869_FULL_REQUIRED_FILE=$_" }
+            'full_required=true' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host 'CD869_FULL_REQUIRED=1'
+          } else {
+            'full_required=false' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host "CD869_VERIFIED_GAMEPLAY_EVIDENCE_REUSED=$verified"
+          }
+
       - name: Run full PINK-CAB differential regression
+        if: ${{ steps.source_scope.outputs.full_required == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference = 'Stop'
@@ -284,6 +309,13 @@ jobs:
           Write-Host "CD869_FULL_REGRESSION=DIFFERENTIAL_PASS baselineFailingTests=$($actual.Count) baselineErrorLines=$($automationErrorLines.Count)"
           Write-Host "CD869_GLOBAL_SUITE_BASELINE=RED mainControlRun=35934267751"
           Write-Host "CD869_FULL_QUEUE=$($queue[-1].Line)"
+
+      - name: Record reused full-suite gameplay evidence
+        if: ${{ steps.source_scope.outputs.full_required == 'false' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          Write-Host 'CD869_FULL_REGRESSION=REUSED_VERIFIED_GAMEPLAY_HEAD deecc09e4ce6eabf6c5cdf41f12011280e71db83'
+          Write-Host 'CD869_VERIFIED_RUN=35955247393'
 
       - name: Repo hygiene and strict zero-debt
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
