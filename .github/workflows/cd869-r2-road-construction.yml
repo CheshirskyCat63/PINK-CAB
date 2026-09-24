@@ -1,9 +1,6 @@
 name: CD-869 R2 Road Construction
 
 on:
-  push:
-    branches:
-      - feat/CD-869-r2-median-separators
   workflow_dispatch:
 
 permissions:
@@ -15,9 +12,7 @@ concurrency:
 
 jobs:
   r2:
-    # During R2 mesh repair, authoring runs on source/workflow pushes. The
-    # generated asset commit itself is skipped to avoid a bake loop.
-    if: "${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'asset(CD-869): bake R2') }}"
+    # Structural GREEN is frozen. Further authoring requires explicit dispatch.
     name: R2 raised median and curb gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 60
