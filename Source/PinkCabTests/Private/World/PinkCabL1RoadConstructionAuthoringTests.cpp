@@ -133,9 +133,16 @@ void AddCube(
     FPolygonID MinusY;
     FPolygonID PlusZ;
     FPolygonID MinusZ;
+    // UE 5.8 StaticMeshDescription CreateCube on this headless authoring
+    // path expands X/Z twice while Y follows the documented half-extent.
+    // Compensate per-axis; verified against clean-package authored bounds.
+    const FVector AuthoringHalfExtents(
+        HalfExtents.X * 0.5,
+        HalfExtents.Y,
+        HalfExtents.Z * 0.5);
     Description.CreateCube(
         Center,
-        HalfExtents,
+        AuthoringHalfExtents,
         PolygonGroup,
         PlusX,
         MinusX,
