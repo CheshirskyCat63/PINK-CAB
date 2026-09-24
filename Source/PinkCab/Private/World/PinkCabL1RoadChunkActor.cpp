@@ -8,7 +8,7 @@
 
 namespace
 {
-constexpr int32 NativeMetaRoadCurbMeshCount = 8;
+constexpr int32 NativeMetaRoadCurbMeshCount = 10;
 }
 
 APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
