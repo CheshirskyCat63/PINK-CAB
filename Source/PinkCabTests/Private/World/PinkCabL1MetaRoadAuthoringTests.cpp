@@ -486,7 +486,7 @@ public:
                 Component->Bounds.Origin.Z,
                 Component->Bounds.BoxExtent.X,
                 Component->Bounds.BoxExtent.Y,
-                Component->Bounds.BoxExtent.Z)));
+                Component->Bounds.BoxExtent.Z));
             Test->TestTrue(TEXT("generated mesh stored in canonical Level 1 road folder"),
                 PackageName.StartsWith(TEXT("/Game/World/L1/Road/")));
             if (SaveGeneratedMeshPackage(*Mesh, *Test))
