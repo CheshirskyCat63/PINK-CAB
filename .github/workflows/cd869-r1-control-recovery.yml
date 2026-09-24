@@ -1,9 +1,6 @@
 name: CD-869 R1 Frozen Control Recovery
 
 on:
-  push:
-    branches:
-      - feat/CD-869-l1-endless-road
   workflow_dispatch:
 
 concurrency:
