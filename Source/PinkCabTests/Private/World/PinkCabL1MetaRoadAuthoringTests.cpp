@@ -19,6 +19,7 @@
 #include "MetaRoadActor.h"
 #include "RoadSplineComponent.h"
 #include "MetaRoadTypes.h"
+#include "Assets/RoadCurbProfile.h"
 #include "EditorMode/MetaRoadEditorMode.h"
 #include "EditorModeManager.h"
 #include "EditorMode/MetaRoadBakeSettings.h"
@@ -34,22 +35,56 @@ constexpr double HalfCentralMedianCm = 400.0;
 constexpr double ServiceSeparatorCm = 400.0;
 constexpr double OuterShoulderCm = 100.0;
 constexpr double ExpectedRoadWidthCm = 6680.0;
+constexpr double R2RaisedZoneHeightCm = 12.0;
 const TCHAR* AuthoringMapPackage = TEXT("/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring");
 
-FRoadLane MakeSurfaceLane(const double WidthCm, const FRoadZoneType& ZoneType)
+void ConfigureRaisedMetaRoadZone(
+    FRoadLane& Lane,
+    const FRoadZoneType& ZoneType,
+    const bool bInsideCurb,
+    const bool bOutsideCurb)
+{
+    Lane.RoadZone.InitializeAs<FRoadZoneSidewalk>();
+    FRoadZoneSidewalk& Raised =
+        Lane.RoadZone.GetMutable<FRoadZoneSidewalk>();
+    Raised.ZoneType = ZoneType;
+    Raised.DefaultHeight = R2RaisedZoneHeightCm;
+    Raised.bInsideCurb = bInsideCurb;
+    Raised.bOutsideCurb = bOutsideCurb;
+    Raised.bBeginCurb = false;
+    Raised.bEndCurb = false;
+    // Keep MetaRoad's authored DefaultCurb soft profile. Do not replace it
+    // with a project-generated mesh/profile.
+}
+
+FRoadLane MakeSurfaceLane(
+    const double WidthCm,
+    const FRoadZoneType& ZoneType,
+    const bool bRaised = false,
+    const bool bInsideCurb = true,
+    const bool bOutsideCurb = true)
 {
     FRoadLane Lane;
     Lane.Width.Reset();
     Lane.Width.AddKey(0.0, WidthCm);
     Lane.Width.AddKey(ChunkLengthCm, WidthCm);
-    Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
-    Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    if (bRaised)
+    {
+        ConfigureRaisedMetaRoadZone(
+            Lane, ZoneType, bInsideCurb, bOutsideCurb);
+    }
+    else
+    {
+        Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
+        Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    }
     return Lane;
 }
 
 FRoadLane MakeAccessBandLane(
     const bool bConnectorPavement,
-    const FRoadZoneType& ZoneType)
+    const FRoadZoneType& ZoneType,
+    const bool bRaised = false)
 {
     FRoadLane Lane;
     Lane.Width.Reset();
@@ -75,31 +110,57 @@ FRoadLane MakeAccessBandLane(
         Lane.Width.AddKey(X, Width);
     }
 
-    Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
-    Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    if (bRaised)
+    {
+        ConfigureRaisedMetaRoadZone(Lane, ZoneType, true, true);
+    }
+    else
+    {
+        Lane.RoadZone.InitializeAs<FRoadZoneDriving>();
+        Lane.RoadZone.GetMutable<FRoadZoneDriving>().ZoneType = ZoneType;
+    }
     return Lane;
 }
 
 void AddSideProfile(TArray<FRoadLane>& Lanes)
 {
-    Lanes.Add(MakeSurfaceLane(HalfCentralMedianCm, ERoadZoneTypes::Median));
+    // R2 native MetaRoad construction. The two 4m half-medians form one
+    // 8m central raised island. Only the road-facing edge gets a curb so the
+    // two halves meet cleanly at the road centerline.
+    Lanes.Add(MakeSurfaceLane(
+        HalfCentralMedianCm,
+        ERoadZoneTypes::Median,
+        true,
+        false,
+        true));
+
     for (int32 LaneIndex = 0; LaneIndex < 5; ++LaneIndex)
     {
         Lanes.Add(MakeSurfaceLane(ExpressLaneWidthCm, ERoadZoneTypes::Driving));
     }
 
-    // R1 topology v2: the side service band keeps a constant total width.
-    // Pavement grows inside it at two deterministic access windows while the
-    // separator shrinks by the same amount. This preserves the 1000m seam and
-    // the 66.8m outer envelope while making express<->local access drivable.
+    // Preserve the accepted R1 access topology exactly: connector pavement
+    // grows while the complementary service separator shrinks. In R2 the
+    // separator itself is a native MetaRoad raised sidewalk-zone using the
+    // plugin's DefaultCurb profile, so openings remain part of the same
+    // authoring system rather than a second overlay mesh.
     Lanes.Add(MakeAccessBandLane(true, ERoadZoneTypes::Driving));
-    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median));
+    Lanes.Add(MakeAccessBandLane(false, ERoadZoneTypes::Median, true));
 
     for (int32 LaneIndex = 0; LaneIndex < 2; ++LaneIndex)
     {
         Lanes.Add(MakeSurfaceLane(LocalLaneWidthCm, ERoadZoneTypes::Driving));
     }
-    Lanes.Add(MakeSurfaceLane(OuterShoulderCm, ERoadZoneTypes::Shoulder));
+
+    // The accepted 1m outer shoulder becomes the native raised road-edge
+    // treatment. Both edges use MetaRoad curb geometry; the inner one defines
+    // the local-road edge and the outer one gives the module a finished edge.
+    Lanes.Add(MakeSurfaceLane(
+        OuterShoulderCm,
+        ERoadZoneTypes::Shoulder,
+        true,
+        true,
+        true));
 }
 
 bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
@@ -155,6 +216,20 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     }
     Test.TestTrue(TEXT("straight spline is one kilometre"),
         FMath::IsNearlyEqual(Spline->GetSplineLength(), ChunkLengthCm, 1.0));
+
+    URoadCurbProfile* DefaultCurb = LoadObject<URoadCurbProfile>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Profiles/Curbs/DefaultCurb.DefaultCurb"));
+    Test.TestNotNull(TEXT("MetaRoad human-authored DefaultCurb profile loads"), DefaultCurb);
+    if (DefaultCurb)
+    {
+        Test.TestTrue(TEXT("MetaRoad DefaultCurb has physical width"),
+            DefaultCurb->Width > 0.0f);
+        Test.TestTrue(TEXT("MetaRoad DefaultCurb contains an authored curve"),
+            DefaultCurb->CurbCurve.GetRichCurveConst() != nullptr &&
+            DefaultCurb->CurbCurve.GetRichCurveConst()->GetNumKeys() >= 2);
+    }
+
     return true;
 }
 
@@ -304,6 +379,10 @@ UMaterial* ResolveProjectMaterialForSlot(
     {
         return Divider;
     }
+    if (SlotName.Contains(TEXT("Curb"), ESearchCase::IgnoreCase))
+    {
+        return Shoulder;
+    }
     if (SlotName.Contains(TEXT("Shoulder"), ESearchCase::IgnoreCase))
     {
         return Shoulder;
@@ -409,6 +488,8 @@ public:
                 FMath::IsNearlyEqual(Size.X, ChunkLengthCm, 250.0));
             Test->TestTrue(TEXT("baked road width matches approved 66.8m envelope"),
                 FMath::IsNearlyEqual(Size.Y, ExpectedRoadWidthCm, 250.0));
+            Test->TestTrue(TEXT("R2 native MetaRoad raised construction has real Z relief"),
+                Size.Z >= R2RaisedZoneHeightCm - 1.0);
         }
 
         const bool bSaved = UEditorLoadingAndSavingUtils::SaveMap(
