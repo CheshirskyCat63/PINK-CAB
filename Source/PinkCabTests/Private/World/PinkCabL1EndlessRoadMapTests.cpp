@@ -7,6 +7,9 @@
 #include "EngineUtils.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
+#include "Modules/ModuleManager.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 #include "World/PinkCabL1RoadChunkActor.h"
@@ -102,6 +105,53 @@ bool FPinkCabL1EndlessRoadMapCompositionTest::RunTest(const FString& Parameters)
 }
 
 
+namespace PinkCabL1EndlessRoadAssetContract
+{
+TArray<FName> FindMetaRoadDependencies(const FName RootPackage)
+{
+    IAssetRegistry& Registry =
+        FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
+            TEXT("AssetRegistry")).Get();
+
+    TSet<FName> Visited;
+    TArray<FName> Pending;
+    TArray<FName> MetaRoadDependencies;
+    Pending.Add(RootPackage);
+
+    while (Pending.Num() > 0)
+    {
+        const FName Current = Pending.Pop(EAllowShrinking::No);
+        if (Visited.Contains(Current))
+        {
+            continue;
+        }
+        Visited.Add(Current);
+
+        TArray<FName> Dependencies;
+        Registry.GetDependencies(
+            Current,
+            Dependencies,
+            UE::AssetRegistry::EDependencyCategory::Package);
+
+        for (const FName Dependency : Dependencies)
+        {
+            const FString Path = Dependency.ToString();
+            if (Path.StartsWith(TEXT("/MetaRoad/")))
+            {
+                MetaRoadDependencies.AddUnique(Dependency);
+            }
+            if (!Visited.Contains(Dependency))
+            {
+                Pending.Add(Dependency);
+            }
+        }
+    }
+
+    MetaRoadDependencies.Sort(FNameLexicalLess());
+    return MetaRoadDependencies;
+}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabL1EndlessRoadMaterialContractTest,
     "PinkCab.World.L1EndlessRoad.Asset.MaterialContract",
@@ -116,6 +166,27 @@ bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameter
     if (!Road)
     {
         return false;
+    }
+
+    for (const FName Root : {
+             FName(TEXT("/Game/World/L1/Road/RoadSurface")),
+             FName(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"))})
+    {
+        const TArray<FName> MetaRoadDependencies =
+            PinkCabL1EndlessRoadAssetContract::FindMetaRoadDependencies(Root);
+        for (const FName Dependency : MetaRoadDependencies)
+        {
+            AddError(FString::Printf(
+                TEXT("runtime root %s retains MetaRoad dependency %s"),
+                *Root.ToString(),
+                *Dependency.ToString()));
+        }
+        TestEqual(
+            *FString::Printf(
+                TEXT("%s has no transitive MetaRoad package dependency"),
+                *Root.ToString()),
+            MetaRoadDependencies.Num(),
+            0);
     }
 
     const TArray<FStaticMaterial>& Materials = Road->GetStaticMaterials();
