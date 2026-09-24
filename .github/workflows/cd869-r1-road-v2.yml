@@ -143,10 +143,37 @@ jobs:
           # sibling before authoring so the exported runtime asset is exactly
           # /Game/World/L1/Road/RoadSurface.
           $roadDir=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road'
+
+          # Close only stale Unreal command processes owned by this CI workspace.
+          # Never terminate an unrelated interactive user Editor.
+          $workspacePattern=[Regex]::Escape($env:GITHUB_WORKSPACE)
+          $ueProcesses=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor-Cmd.exe','UnrealEditor.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          foreach($ue in $ueProcesses){
+            Write-Host "R1_STOP_STALE_CI_UNREAL pid=$($ue.ProcessId) name=$($ue.Name)"
+            Stop-Process -Id $ue.ProcessId -Force -ErrorAction SilentlyContinue
+          }
+          if($ueProcesses.Count -gt 0){ Start-Sleep -Milliseconds 800 }
+
           $stale=@(Get-ChildItem -LiteralPath $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
           foreach($asset in $stale){
             Write-Host "R1_REMOVE_PREBAKE=$($asset.FullName)"
-            Remove-Item -LiteralPath $asset.FullName -Force
+            $deleted=$false
+            for($attempt=1; $attempt -le 12 -and -not $deleted; ++$attempt){
+              try {
+                Remove-Item -LiteralPath $asset.FullName -Force -ErrorAction Stop
+                $deleted=$true
+              }
+              catch {
+                Write-Host "R1_REMOVE_RETRY attempt=$attempt file=$($asset.Name) reason=$($_.Exception.Message)"
+                Start-Sleep -Milliseconds 500
+              }
+            }
+            if(-not $deleted){ throw "R1_PREBAKE_DELETE_LOCKED=$($asset.FullName)" }
           }
           $remaining=@(Get-ChildItem -LiteralPath $roadDir -Filter 'RoadSurface*.uasset' -File -ErrorAction SilentlyContinue)
           if($remaining.Count -ne 0){ throw "R1_PREBAKE_ROADSURFACE_CLEAN_FAILED=$($remaining.Count)" }
