@@ -9,6 +9,7 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "Components/StaticMeshComponent.h"
 #include "World/PinkCabL1RoadChunkActor.h"
+#include "World/PinkCabL1EndlessRoadModel.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabL1NativeMetaRoadR2AssetTest,
@@ -51,7 +52,31 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         TEXT("RoadCurbs4"),
         TEXT("RoadCurbs5"),
         TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7")
+        TEXT("RoadCurbs7"),
+        TEXT("RoadCurbs8"),
+        TEXT("RoadCurbs9"),
+        TEXT("RoadCurbs10"),
+        TEXT("RoadCurbs11"),
+        TEXT("RoadCurbs12"),
+        TEXT("RoadCurbs13"),
+        TEXT("RoadCurbs14"),
+        TEXT("RoadCurbs15"),
+        TEXT("RoadCurbs16"),
+        TEXT("RoadCurbs17"),
+        TEXT("RoadCurbs18"),
+        TEXT("RoadCurbs19"),
+        TEXT("RoadCurbs20"),
+        TEXT("RoadCurbs21"),
+        TEXT("RoadCurbs22"),
+        TEXT("RoadCurbs23"),
+        TEXT("RoadCurbs24"),
+        TEXT("RoadCurbs25"),
+        TEXT("RoadCurbs26"),
+        TEXT("RoadCurbs27"),
+        TEXT("RoadCurbs28"),
+        TEXT("RoadCurbs29"),
+        TEXT("RoadCurbs30"),
+        TEXT("RoadCurbs31")
     };
 
     int32 LoadedMeshCount = 0;
@@ -139,9 +164,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         LoadedMeshCount,
         static_cast<int32>(UE_ARRAY_COUNT(NativeMeshNames)));
     TestEqual(
-        TEXT("eight native MetaRoad curb meshes are present"),
+        TEXT("thirty-two access-aware native MetaRoad curb spans are present"),
         CurbMeshCount,
-        8);
+        32);
     TestTrue(
         TEXT("native MetaRoad sidewalk layer contains raised construction"),
         bRaisedSurfacePresent);
@@ -190,9 +215,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
     }
 
     TestEqual(
-        TEXT("runtime assembles surface + sidewalks + eight native curbs"),
+        TEXT("runtime assembles surface + sidewalks + thirty-two native curb spans"),
         RuntimeMeshComponentCount,
-        10);
+        34);
     TestTrue(
         TEXT("runtime native MetaRoad assembly bounds are valid"),
         RuntimeAssemblyBounds.IsValid != 0);
@@ -215,6 +240,50 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
             TEXT("runtime native R2 construction preserves MetaRoad vertical relief"),
             FMath::IsNearlyEqual(RuntimeSize.Z, 16.5, 0.5));
     }
+
+    // Regression for the owner-found R2 blocker: at the two fully-open
+    // connector centres (300m / 700m), no curb span may occupy the
+    // express/local service band around |Y| = 2200..2600cm.
+    const double AccessCenters[] = {
+        0.5 * (
+            FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm +
+            FPinkCabL1EndlessRoadModel::AccessAFullOpenEndCm),
+        0.5 * (
+            FPinkCabL1EndlessRoadModel::AccessBFullOpenStartCm +
+            FPinkCabL1EndlessRoadModel::AccessBFullOpenEndCm)
+    };
+    for (const double AccessX : AccessCenters)
+    {
+        for (UStaticMeshComponent* Component :
+             RuntimeChunk
+                ? TInlineComponentArray<UStaticMeshComponent*>(
+                    const_cast<APinkCabL1RoadChunkActor*>(RuntimeChunk))
+                : TInlineComponentArray<UStaticMeshComponent*>())
+        {
+            if (!Component || !Component->GetStaticMesh() ||
+                !Component->GetName().StartsWith(TEXT("NativeRoadCurbs")))
+            {
+                continue;
+            }
+
+            const FBox PlacedBox =
+                Component->GetStaticMesh()->GetBounds().GetBox().TransformBy(
+                    Component->GetRelativeTransform());
+            const bool bCrossesAccessX =
+                AccessX >= PlacedBox.Min.X - 1.0 &&
+                AccessX <= PlacedBox.Max.X + 1.0;
+            const double AbsCenterY = FMath::Abs(PlacedBox.GetCenter().Y);
+            const bool bServiceBand =
+                AbsCenterY >= 2150.0 && AbsCenterY <= 2650.0;
+            TestFalse(
+                *FString::Printf(
+                    TEXT("no service curb blocks access at X=%.0f: %s"),
+                    AccessX,
+                    *Component->GetName()),
+                bCrossesAccessX && bServiceBand);
+        }
+    }
+    AddInfo(TEXT("CD869_R2_ACCESS_OPENINGS=PASS"));
 
     AddInfo(TEXT("CD869_R2_NATIVE_METAROAD_ASSET=PASS"));
     return true;
