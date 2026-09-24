@@ -125,7 +125,8 @@ jobs:
             throw 'R2_FROZEN_INPUT_SOURCE_CHANGED'
           }
 
-          $r2Changes=@(git diff --name-only main..HEAD)
+          $r1Canonical='7ac89d3fea32791fb683ef83ec0e76bdbb32dc92'
+          $r2Changes=@(git diff --name-only "$r1Canonical..HEAD")
           $forbidden=@($r2Changes | Where-Object {
             $_ -match '^Source/PinkCabVehicle/' -or
             $_ -match '^Source/PinkCab/Private/Vehicle/' -or
