@@ -20,6 +20,10 @@ No R-stage may rewrite the streaming system unless an isolated regression proves
 
 ## R1 — 1000 m module topology v2
 
+**Status: HUMAN ACCEPTED · 2026-09-24**
+
+Owner acceptance note: the topology/streaming gate is accepted as-is. The current road still reads as a flat/simple visual representation rather than finished road construction. Raised curbs/separators, physical marking geometry/material treatment and the finished road visual are explicitly deferred to R2/R3/R4 and do not reopen R1.
+
 R1 changes topology only. It does **not** change road textures, road markings, raised curbs/medians, physical road friction, or tire calibration.
 
 The cross-section remains:
@@ -61,7 +65,9 @@ R1 HUMAN acceptance checks only:
 
 ## R2 — median/separators
 
-Frozen until R1 owner acceptance.
+**Status: NEXT HUMAN-GATED STAGE.**
+
+Add the actual raised separator/curb construction required for the road to read as built geometry rather than a flat drawing. Preserve accepted R1 topology and streaming unchanged.
 
 ## R3 — road markings
 
@@ -69,7 +75,7 @@ Frozen until R2 owner acceptance.
 
 ## R4 — Road Visual v2
 
-Frozen until R3 owner acceptance.
+Frozen until R3 owner acceptance. This stage owns the finished asphalt/road visual treatment after physical separators and markings are accepted.
 
 ## R5 — dry-asphalt physical surface
 
@@ -78,3 +84,11 @@ Frozen until R4 owner acceptance.
 ## R6 — tire calibration
 
 Frozen until R5 owner acceptance.
+
+## R1 acceptance evidence
+
+- owner human acceptance: 2026-09-24;
+- accepted runtime package SHA: `ba6c5e3221bb6d87f025e26b4956ae0eab5c24bd`;
+- packaged frozen-control recovery run: `35997397505` — PASS;
+- control-plane verification HEAD at acceptance: `719e0f0c7df16fd4542791356c60bb7abdf66a26`;
+- accepted limitation: no finished raised curbs/separators, road markings or final road visual yet; those remain ordered follow-up gates R2→R4.
