@@ -63,6 +63,20 @@
         {
             "Name": "ChaosVehiclesPlugin",
             "Enabled": true
+        },
+        {
+            "Name": "MetaRoad",
+            "Enabled": true,
+            "TargetAllowList": [
+                "Editor"
+            ]
+        },
+        {
+            "Name": "StructUtils",
+            "Enabled": true,
+            "TargetAllowList": [
+                "Editor"
+            ]
         }
     ]
 }

@@ -1,0 +1,538 @@
+name: CD-869 Inline Verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-main-baseline
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Exact-head endless-road TDD gate
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      METAROAD_PLUGIN: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4\MetaRoad.uplugin
+      TEST_LOG: Saved\GitHubGate\CD869_ENDLESS_ROAD.log
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+
+    steps:
+      - name: Checkout exact candidate without deleting warm Unreal caches
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact-head preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne $env:GITHUB_SHA) {
+            throw "CD869_EXACT_HEAD_MISMATCH: $head != $env:GITHUB_SHA"
+          }
+          $tracked = @(git status --porcelain --untracked-files=no)
+          if ($tracked.Count -ne 0) {
+            $tracked | ForEach-Object { Write-Host $_ }
+            throw 'CD869_TRACKED_CHECKOUT_DIRTY'
+          }
+          if (-not (Test-Path (Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'))) {
+            throw 'CD869_UE58_MISSING'
+          }
+          if (-not (Test-Path $env:METAROAD_PLUGIN)) {
+            throw "CD869_METAROAD_MISSING: $env:METAROAD_PLUGIN"
+          }
+          $meta = Get-Content -Raw -LiteralPath $env:METAROAD_PLUGIN | ConvertFrom-Json
+          Write-Host "CD869_HEAD=$head"
+          Write-Host "CD869_METAROAD_VERSION=$($meta.VersionName)"
+          Write-Host 'CD869_PREFLIGHT=PASS'
+
+      - name: Build PinkCabEditor incrementally
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host 'CD869_EDITOR_BUILD=PASS'
+
+      - name: Author and bake 1000m MetaRoad module once
+        if: ${{ hashFiles('Content/World/L1/Road/**/*.uasset') == '' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_METAROAD_AUTHOR.log'
+          New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if (Test-Path $log) {
+            Get-Content $log | Select-String -Pattern 'CD869_METAROAD_BAKE|MetaRoad generated|Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
+          }
+          if ($exit -ne 0) { exit $exit }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $fails = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($queue.Count -eq 0 -or $fails.Count -gt 0) {
+            throw "CD869_METAROAD_AUTHORING_FAILED queue=$($queue.Count) fails=$($fails.Count)"
+          }
+          $roadAssets = @(Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road') -Filter '*.uasset' -Recurse -ErrorAction SilentlyContinue)
+          if ($roadAssets.Count -eq 0) { throw 'CD869_METAROAD_BAKE_PRODUCED_NO_UASSETS' }
+          Write-Host "CD869_METAROAD_UASSETS=$($roadAssets.Count)"
+
+      - name: Commit baked MetaRoad assets once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $trackedRoadAssets = @(git ls-files 'Content/World/L1/Road/*.uasset' 'Content/World/L1/Road/**/*.uasset')
+          if ($trackedRoadAssets.Count -gt 0) {
+            Write-Host "CD869_METAROAD_COMMIT_SKIP_TRACKED=$($trackedRoadAssets.Count)"
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road Content/Dev/Authoring
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'asset(CD-869): bake MetaRoad L1 straight module [skip ci]'
+            git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+            Write-Host "CD869_METAROAD_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+          } else {
+            throw 'CD869_METAROAD_ASSETS_NOT_STAGED'
+          }
+
+      - name: Generate endless Level 1 candidate map once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $trackedMap = @(git ls-files 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap')
+          if ($trackedMap.Count -gt 0) {
+            Write-Host 'CD869_ENDLESS_MAP_TRACKED=1'
+            exit 0
+          }
+
+          $mapFile = Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps\L_PinkCab_L1_EndlessStraight.umap'
+          Remove-Item -LiteralPath $mapFile -Force -ErrorAction SilentlyContinue
+
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_MAP_GENERATOR.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path $mapFile)) { throw 'CD869_ENDLESS_MAP_NOT_GENERATED' }
+          if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
+            throw 'CD869_ENDLESS_MAP_GENERATOR_FAILED'
+          }
+          Write-Host 'CD869_ENDLESS_MAP_GENERATED=PASS'
+
+      - name: Commit endless Level 1 candidate map once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $trackedMap = @(git ls-files 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap')
+          if ($trackedMap.Count -gt 0) {
+            Write-Host 'CD869_ENDLESS_MAP_COMMIT_SKIP_TRACKED=1'
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap
+          if (git diff --cached --quiet) { throw 'CD869_ENDLESS_MAP_NOT_STAGED' }
+          git commit -m 'asset(CD-869): add endless Level 1 candidate map [skip ci]'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "CD869_ENDLESS_MAP_COMMIT=$((git rev-parse HEAD).Trim())"
+
+      - name: Generate project-owned L1 runtime materials once
+        if: ${{ hashFiles('Content/World/L1/Road/Materials/*.uasset') == '' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_RUNTIME_MATERIALS.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
+            throw 'CD869_RUNTIME_MATERIAL_GENERATOR_FAILED'
+          }
+          if (-not (Select-String -Path $log -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)) {
+            throw 'CD869_RUNTIME_MATERIAL_OWNERSHIP_MARKER_MISSING'
+          }
+          Write-Host 'CD869_RUNTIME_MATERIAL_GENERATED=PASS'
+
+      - name: Commit project-owned L1 runtime materials once
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tracked = @(git ls-files 'Content/World/L1/Road/Materials/*.uasset')
+          if ($tracked.Count -ge 3) {
+            Write-Host "CD869_RUNTIME_MATERIAL_COMMIT_SKIP_TRACKED=$($tracked.Count)"
+            exit 0
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road
+          if (git diff --cached --quiet) { throw 'CD869_RUNTIME_MATERIALS_NOT_STAGED' }
+          git commit -m 'asset(CD-869): own L1 runtime road materials [skip ci]'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "CD869_RUNTIME_MATERIAL_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+
+      - name: Run focused endless-road automation
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path (Split-Path $env:TEST_LOG) | Out-Null
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE $env:TEST_LOG
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1EndlessRoad" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if (Test-Path $log) {
+            Get-Content $log | Select-String -Pattern 'Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 120 | ForEach-Object { Write-Host $_.Line }
+          }
+          if ($exit -ne 0) { exit $exit }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          $fails = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($queue.Count -eq 0) { throw 'CD869_AUTOMATION_QUEUE_MARKER_MISSING' }
+          if ($fails.Count -gt 0) { throw "CD869_AUTOMATION_FAILURES=$($fails.Count)" }
+          Write-Host "CD869_FOCUSED_TESTS=PASS $($queue[-1].Line)"
+
+      - name: Run existing 2048-window materialization regression
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\\GitHubGate\\CD869_MATERIALIZATION.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.Materialization" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if (Test-Path $log) {
+            Get-Content $log |
+              Select-String -Pattern 'LongRunBoundedTraversal|Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' |
+              Select-Object -Last 100 |
+              ForEach-Object { Write-Host $_.Line }
+          }
+          if ($exit -ne 0) { exit $exit }
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          if ($queue.Count -eq 0) { throw 'CD869_MATERIALIZATION_QUEUE_MARKER_MISSING' }
+          $fails = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+          if ($fails.Count -gt 0) { throw "CD869_MATERIALIZATION_FAILURES=$($fails.Count)" }
+          Write-Host "CD869_MATERIALIZATION=PASS $($queue[-1].Line)"
+
+      - name: Classify runtime delta since verified gameplay head
+        id: source_scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $verified = 'deecc09e4ce6eabf6c5cdf41f12011280e71db83'
+          git cat-file -e "$verified^{commit}"
+          if ($LASTEXITCODE -ne 0) { throw 'CD869_VERIFIED_GAMEPLAY_HEAD_MISSING' }
+          $changed = @(git diff --name-only "$verified..HEAD")
+          $runtimeChanged = @($changed | Where-Object {
+            ($_ -match '^Source/' -and $_ -notmatch '^Source/PinkCabTests/') -or
+            $_ -match '^Content/' -or
+            $_ -match '^Config/' -or
+            $_ -eq 'PinkCab.uproject'
+          })
+          if ($runtimeChanged.Count -gt 0) {
+            $runtimeChanged | ForEach-Object { Write-Host "CD869_FULL_REQUIRED_FILE=$_" }
+            'full_required=true' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host 'CD869_FULL_REQUIRED=1'
+          } else {
+            'full_required=false' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host "CD869_VERIFIED_GAMEPLAY_EVIDENCE_REUSED=$verified"
+          }
+
+      - name: Run full PINK-CAB differential regression
+        if: ${{ steps.source_scope.outputs.full_required == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_FULL_PINKCAB.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab" "-TestExit=Automation Test Queue Empty"
+          $exit = $LASTEXITCODE
+          if ($exit -ne 0) { exit $exit }
+
+          $queue = @(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+          if ($queue.Count -eq 0) { throw 'CD869_FULL_AUTOMATION_QUEUE_MARKER_MISSING' }
+
+          $fatal = @(Select-String -Path $log -Pattern 'Fatal error:|Assertion failed:|Ensure condition failed')
+          if ($fatal.Count -gt 0) {
+            $fatal | Select-Object -Last 80 | ForEach-Object { Write-Host $_.Line }
+            throw "CD869_FULL_FATAL_OR_ASSERT=$($fatal.Count)"
+          }
+
+          # Exact-main control run 35934267751 on main@ed969ed... established
+          # these seven failing test paths and 25 LogAutomationController Error lines
+          # before CD-869. This gate permits only that exact baseline debt.
+          $expected = @(
+            'PinkCab.Interaction.ContextualGestures',
+            'PinkCab.Vehicle.ControlRuntime.Steering.ResponseLatency',
+            'PinkCab.Vehicle.ControlRuntime.Steering.SpeedResponse',
+            'PinkCab.Vehicle.ControlRuntime.Steering.StationaryTravel',
+            'PinkCab.Vehicle.ControlRuntime.Steering.Transfer',
+            'PinkCab.Vehicle.PlayerInput.ControllerPedalDriveWithFixtureDrivetrain',
+            'PinkCab.Vehicle.PlayerInput.PhysicalControlRouting'
+          ) | Sort-Object
+
+          $failEvents = @(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\} Name=\{[^}]+\} Path=\{([^}]+)\}')
+          $actual = @()
+          foreach ($event in $failEvents) {
+            if ($event.Line -match 'Path=\{([^}]+)\}') {
+              $actual += $Matches[1]
+            }
+          }
+          $actual = @($actual | Sort-Object -Unique)
+          $diff = @(Compare-Object -ReferenceObject $expected -DifferenceObject $actual)
+          $automationErrorLines = @(Select-String -Path $log -Pattern 'LogAutomationController: Error:')
+
+          if ($diff.Count -gt 0 -or $actual.Count -ne $expected.Count -or $automationErrorLines.Count -ne 25) {
+            Write-Host 'CD869_DIFFERENTIAL_REGRESSION_MISMATCH'
+            Write-Host "Expected: $($expected -join ', ')"
+            Write-Host "Actual:   $($actual -join ', ')"
+            Write-Host "AutomationErrorLines=$($automationErrorLines.Count)"
+            $automationErrorLines | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
+            throw 'CD869_FULL_REGRESSION_INTRODUCED_NEW_FAILURE_OR_CHANGED_BASELINE'
+          }
+
+          Write-Host "CD869_FULL_REGRESSION=DIFFERENTIAL_PASS baselineFailingTests=$($actual.Count) baselineErrorLines=$($automationErrorLines.Count)"
+          Write-Host "CD869_GLOBAL_SUITE_BASELINE=RED mainControlRun=35934267751"
+          Write-Host "CD869_FULL_QUEUE=$($queue[-1].Line)"
+
+      - name: Record reused full-suite gameplay evidence
+        if: ${{ steps.source_scope.outputs.full_required == 'false' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          Write-Host 'CD869_FULL_REGRESSION=REUSED_VERIFIED_GAMEPLAY_HEAD deecc09e4ce6eabf6c5cdf41f12011280e71db83'
+          Write-Host 'CD869_VERIFIED_RUN=35955247393'
+
+      - name: Repo hygiene and strict zero-debt
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          $healthExit = $LASTEXITCODE
+          $report = Join-Path $env:GITHUB_WORKSPACE 'Saved\Reports\code-health.json'
+          if ($healthExit -ne 0 -and (Test-Path $report)) {
+            $json = Get-Content -Raw -LiteralPath $report | ConvertFrom-Json
+            foreach ($item in @($json.violations)) {
+              Write-Host ("CD869_CODE_HEALTH_VIOLATION rule={0} path={1} symbol={2} value={3} limit={4}" -f $item.rule,$item.path,$item.symbol,$item.value,$item.limit)
+            }
+            foreach ($item in @($json.baseline_regressions)) {
+              Write-Host ("CD869_CODE_HEALTH_REGRESSION path={0} symbol={1} value={2}" -f $item.path,$item.symbol,$item.value)
+            }
+          }
+          if ($healthExit -ne 0) { exit $healthExit }
+          Write-Host 'CD869_ZERO_DEBT=PASS'
+
+      - name: Build cook and package endless Level 1 human candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $uat = Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human'
+          if (Test-Path $archive) { Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $archive | Out-Null
+
+          # MetaRoad is an editor authoring dependency only. MetaRoad 3.2 marks
+          # some profile content for cook even though its profile classes are not
+          # available to the Win64 Game target. Use a temporary runtime-only
+          # descriptor for UAT, then restore the exact tracked descriptor.
+          $backup = "$project.cd869-editor-backup"
+          Copy-Item -LiteralPath $project -Destination $backup -Force
+          $uatExit = 1
+          try {
+            $descriptor = Get-Content -Raw -LiteralPath $project | ConvertFrom-Json
+            $descriptor.Modules = @($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins = @($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $project -Encoding UTF8
+            Write-Host 'CD869_RUNTIME_DESCRIPTOR=PASS editor-test-module-and-authoring-plugins-excluded'
+
+            $uatArgs = @(
+              '-WaitForUATMutex',
+              'BuildCookRun',
+              "-project=$project",
+              '-noP4',
+              '-platform=Win64',
+              '-clientconfig=Development',
+              '-build',
+              '-cook',
+              '-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-stage',
+              '-pak',
+              '-archive',
+              "-archivedirectory=$archive",
+              '-nodebuginfo',
+              '-utf8output'
+            )
+            & $uat @uatArgs
+            $uatExit = $LASTEXITCODE
+          }
+          finally {
+            Move-Item -LiteralPath $backup -Destination $project -Force
+          }
+          if ($uatExit -ne 0) { exit $uatExit }
+
+          $dirty = @(git status --porcelain --untracked-files=no)
+          if ($dirty.Count -ne 0) {
+            $dirty | ForEach-Object { Write-Host $_ }
+            throw 'CD869_RUNTIME_DESCRIPTOR_RESTORE_DIRTY'
+          }
+
+          $outer = Join-Path $archive 'Windows\PinkCab.exe'
+          $inner = Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if (-not (Test-Path $outer) -or -not (Test-Path $inner)) {
+            throw 'CD869_PACKAGE_EXECUTABLES_MISSING'
+          }
+
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($outer,$inner)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-AuthenticodeSignature $outer).Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw 'CD869_OUTER_EXE_SIGNATURE_INVALID'
+          }
+          if ((Get-AuthenticodeSignature $inner).Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw 'CD869_INNER_EXE_SIGNATURE_INVALID'
+          }
+          Write-Host "CD869_PACKAGE_OUTER=$outer"
+          Write-Host 'CD869_CONTENT_AWARE_COOK=PASS'
+
+      - name: Packaged endless Level 1 smoke
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human'
+          $inner = Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_PACKAGED_ENDLESS.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+
+          $args = @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log',
+            '-windowed',
+            '-ResX=1280',
+            '-ResY=720',
+            '-PinkCabGateTelemetry',
+            "-abslog=$log"
+          )
+          $proc = Start-Process -FilePath $inner -ArgumentList $args -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline = [DateTime]::UtcNow.AddSeconds(45)
+            $loaded = $false
+            $telemetry = $false
+            do {
+              Start-Sleep -Milliseconds 300
+              $proc.Refresh()
+              if ($proc.HasExited) {
+                throw "CD869_PACKAGED_GAME_EXITED_EARLY code=$($proc.ExitCode)"
+              }
+              if (Test-Path $log) {
+                $loaded = [bool](Select-String -Path $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+                $telemetry = [bool](Select-String -Path $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+              }
+            } while ((-not $loaded -or -not $telemetry) -and [DateTime]::UtcNow -lt $deadline)
+
+            if (-not $loaded) { throw 'CD869_PACKAGED_ENDLESS_MAP_LOAD_MARKER_MISSING' }
+            if (-not $telemetry) { throw 'CD869_PACKAGED_TATRA_TELEMETRY_MISSING' }
+
+            $critical = @(Select-String -Path $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -ErrorAction SilentlyContinue)
+            if ($critical.Count -gt 0) {
+              $critical | Select-Object -Last 80 | ForEach-Object { Write-Host $_.Line }
+              throw "CD869_PACKAGED_CRITICAL_LOGS=$($critical.Count)"
+            }
+            Write-Host 'CD869_PACKAGED_ENDLESS_SMOKE=PASS'
+          }
+          finally {
+            if ($proc -and -not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Install immutable human candidate and desktop shortcut
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sha = (git rev-parse HEAD).Trim()
+          $short = $sha.Substring(0,8)
+          $source = Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human\Windows'
+          $delivery = Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if (Test-Path $delivery) { Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          $rc = $LASTEXITCODE
+          if ($rc -ge 8) { throw "CD869_DELIVERY_COPY_FAILED code=$rc" }
+          $global:LASTEXITCODE = 0
+
+          $outer = Join-Path $delivery 'Windows\PinkCab.exe'
+          if (-not (Test-Path $outer)) { throw 'CD869_DELIVERED_OUTER_EXE_MISSING' }
+
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          if (-not $desktop) { throw 'CD869_DESKTOP_PATH_MISSING' }
+          $shortcut = Join-Path $desktop 'PINKCAB L1 ENDLESS HUMAN.lnk'
+          Remove-Item -LiteralPath $shortcut -Force -ErrorAction SilentlyContinue
+
+          $ws = New-Object -ComObject WScript.Shell
+          $shortcutObject = $ws.CreateShortcut($shortcut)
+          $shortcutObject.TargetPath = $outer
+          $shortcutObject.Arguments = '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          $shortcutObject.WorkingDirectory = Join-Path $delivery 'Windows'
+          $shortcutObject.Description = "PINK CAB CD-869 endless Level 1 HUMAN exact HEAD $sha"
+          $shortcutObject.Save()
+
+          Set-Content -LiteralPath (Join-Path $delivery 'CANDIDATE_SHA.txt') -Value $sha -NoNewline
+          Set-Content -LiteralPath (Join-Path $delivery 'RUN_ID.txt') -Value $env:GITHUB_RUN_ID -NoNewline
+          Write-Host "CD869_HUMAN_DELIVERY=$delivery"
+          Write-Host "CD869_HUMAN_SHORTCUT=$shortcut"
+          Write-Host 'HUMAN_PENDING'
+
+      - name: Upload CD-869 human package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-CD869-ENDLESS-${{ github.sha }}-${{ github.run_id }}
+          path: Artifacts/CD869Human/Windows
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Launch endless Level 1 HUMAN candidate detached
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sha = (git rev-parse HEAD).Trim()
+          $short = $sha.Substring(0,8)
+          $delivery = Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          $outer = Join-Path $delivery 'Windows\PinkCab.exe'
+          $work = Join-Path $delivery 'Windows'
+          if (-not (Test-Path $outer)) { throw 'CD869_LAUNCH_EXE_MISSING' }
+
+          $savedTracking = $env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID = ''
+          try {
+            $proc = Start-Process -FilePath $outer -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed',
+              '-ResX=1600',
+              '-ResY=900'
+            ) -WorkingDirectory $work -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if ($proc.HasExited) {
+              throw "CD869_HUMAN_LAUNCH_EXITED code=$($proc.ExitCode)"
+            }
+            Write-Host "CD869_HUMAN_LAUNCHED_PID=$($proc.Id)"
+            Write-Host 'HUMAN_PENDING'
+          }
+          finally {
+            $env:RUNNER_TRACKING_ID = $savedTracking
+          }

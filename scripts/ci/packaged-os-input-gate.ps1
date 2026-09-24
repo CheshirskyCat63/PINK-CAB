@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Exe,
-    [Parameter(Mandatory=$true)][string]$EvidenceDir
+    [Parameter(Mandatory=$true)][string]$EvidenceDir,
+    [string]$Map = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -277,9 +278,13 @@ function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelt
 $proc=$null
 $VK_ESC=0x1B; $VK_SPACE=0x20; $VK_Q=0x51; $VK_W=0x57; $VK_E=0x45; $VK_3=0x33; $VK_4=0x34
 try {
-    $proc=Start-Process -FilePath $Exe -ArgumentList @(
+    $launchArgs=@(
         "-log","-windowed","-ResX=1280","-ResY=720","-PinkCabGateTelemetry","-abslog=$log"
-    ) -WorkingDirectory (Split-Path $Exe) -PassThru
+    )
+    if(-not [string]::IsNullOrWhiteSpace($Map)){
+        $launchArgs = @($Map) + $launchArgs
+    }
+    $proc=Start-Process -FilePath $Exe -ArgumentList $launchArgs -WorkingDirectory (Split-Path $Exe) -PassThru
 
     $deadline=[DateTime]::UtcNow.AddSeconds(45)
     do {
@@ -338,9 +343,11 @@ try {
     [PinkCabNativeInput]::KeyUp($VK_SPACE)
     Wait-State { param($s) $s.gaze -eq 0 } 1500 "Space exits gaze mode" | Out-Null
 
-    Tap-Key $VK_4
+    [PinkCabNativeInput]::KeyDown($VK_4)
+    Wait-State { param($s) $s.target -eq 'Handbrake' } 2500 "held 4 stages handbrake" | Out-Null
     [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 250
-    $hbGrip=Wait-State { param($s) $s.target -eq 'Handbrake' -and $s.grip -eq 1 } 4000 "RMB grips handbrake"
+    $hbGrip=Wait-State { param($s) $s.target -eq 'Handbrake' -and $s.grip -eq 1 } 4000 "RMB grips held-quick handbrake"
+    [PinkCabNativeInput]::KeyUp($VK_4)
     $hbBefore=$hbGrip.handbrake
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 150
     [PinkCabNativeInput]::Move(0,80); Start-Sleep -Milliseconds 250
@@ -366,10 +373,12 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_Q)
     Wait-State { param($s) $s.clutch -ge 0.90 } 4000 "Q depresses clutch" | Out-Null
-    Tap-Key $VK_3
+    [PinkCabNativeInput]::KeyDown($VK_3)
+    Wait-State { param($s) $s.target -eq 'Gearbox' } 2500 "held 3 stages gearbox" | Out-Null
     [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 180
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 180
-    Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation" | Out-Null
+    Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation from held quick target" | Out-Null
+    [PinkCabNativeInput]::KeyUp($VK_3)
 
     $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
     Move-GameAxis 'x' 0.0 $signX
@@ -405,9 +414,12 @@ try {
     Wait-State { param($s) [Math]::Abs($s.speed) -lt 1.0 } 8000 "service-brake stop" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_W)
 
-    Tap-Key $VK_3
+    [PinkCabNativeInput]::KeyDown($VK_3)
+    Wait-State { param($s) $s.target -eq 'Gearbox' } 2500 "held 3 restages gearbox for reverse" | Out-Null
     [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 160
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 160
+    Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "gearbox retained for reverse manipulation" | Out-Null
+    [PinkCabNativeInput]::KeyUp($VK_3)
     Move-GearCursor 1.0 -1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq -1 } 4000 "H-gate requests reverse" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
@@ -434,9 +446,10 @@ try {
     Wait-State { param($s) $s.menu -eq 0 } 4000 "resume after menu" | Out-Null
 
     for($i=1;$i -le 50;$i++){
-        Tap-Key $VK_3 25
+        [PinkCabNativeInput]::KeyDown($VK_3); Start-Sleep -Milliseconds 25
         [PinkCabNativeInput]::RightDown(); Start-Sleep -Milliseconds 25
         [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 25
+        [PinkCabNativeInput]::KeyUp($VK_3)
         [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
         Start-Sleep -Milliseconds 45
         if(($i % 10) -eq 0){
@@ -482,6 +495,8 @@ try {
     Write-Host "PACKAGED_OS_INPUT_PASS"
 }
 finally {
+    [PinkCabNativeInput]::KeyUp($VK_3)
+    [PinkCabNativeInput]::KeyUp($VK_4)
     [PinkCabNativeInput]::KeyUp($VK_Q)
     [PinkCabNativeInput]::KeyUp($VK_W)
     [PinkCabNativeInput]::KeyUp($VK_E)

@@ -1,0 +1,172 @@
+name: CD-869 R1 Frozen Control Recovery
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cd869-r1-control-recovery
+  cancel-in-progress: true
+
+jobs:
+  recover:
+    name: Verify frozen controls and launch R1
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 20
+    env:
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ACCEPTED_INPUT_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
+      R1_RUNTIME_SHA: ba6c5e3221bb6d87f025e26b4956ae0eab5c24bd
+      R1_SOURCE_DELIVERY: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R1_TOPOLOGY_ba6c5e32_RUN35964521090
+
+    steps:
+      - name: Checkout recovery head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          clean: false
+
+      - name: Exact head and frozen input source guard
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "CONTROL_RECOVERY_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+
+          $frozen=@(
+            'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawnDriver.cpp',
+            'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawnCockpit.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabPlayerInputAdapter.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabSemanticInputRouter.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabPhysicalInputConvention.cpp',
+            'Source/PinkCabInteraction/Private/Interaction/PinkCabWheelInputResponse.cpp',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputSample.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabSemanticInputRouter.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h',
+            'Source/PinkCabInteraction/Public/Interaction/PinkCabWheelInputResponse.h',
+            'Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h',
+            'Source/PinkCab/Private/Vehicle/PinkCabVehicleInputFrame.cpp',
+            'Source/PinkCab/Public/Vehicle/PinkCabVehicleInputFrame.h',
+            'Source/PinkCab/Public/Vehicle/Detail/PinkCabVehicleInputFrame.inl',
+            'Config/DefaultInput.ini'
+          )
+          $delta=@()
+          foreach($path in $frozen){
+            $d=@(git diff --name-only "$env:ACCEPTED_INPUT_SHA..HEAD" -- $path)
+            if($d.Count -gt 0){ $delta += $d }
+          }
+          $delta=@($delta | Sort-Object -Unique)
+          if($delta.Count -gt 0){
+            $delta | ForEach-Object { Write-Host "FROZEN_INPUT_DELTA=$_" }
+            throw 'FROZEN_INPUT_SOURCE_CHANGED'
+          }
+          Write-Host "CONTROL_RECOVERY_HEAD=$head"
+          Write-Host 'FROZEN_INPUT_SOURCE_IDENTICAL=PASS'
+
+      - name: Verify canonical R1 package provenance
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $shaFile=Join-Path $env:R1_SOURCE_DELIVERY 'CANDIDATE_SHA.txt'
+          $exe=Join-Path $env:R1_SOURCE_DELIVERY 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $shaFile)){ throw 'R1_PROVENANCE_SHA_MISSING' }
+          if(-not (Test-Path $exe)){ throw 'R1_PROVENANCE_EXE_MISSING' }
+          $recorded=(Get-Content -Raw $shaFile).Trim()
+          if($recorded -ne $env:R1_RUNTIME_SHA){ throw "R1_PROVENANCE_MISMATCH $recorded != $env:R1_RUNTIME_SHA" }
+          if((Get-AuthenticodeSignature $exe).Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw 'R1_PROVENANCE_SIGNATURE_INVALID'
+          }
+          Write-Host "R1_RUNTIME_SHA=$recorded"
+          Write-Host 'R1_PROVENANCE=PASS'
+
+      - name: Close previous PinkCab runtime
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              Write-Host "CONTROL_RECOVERY_STOP_PID=$($_.Id)"
+              Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+            }
+          Start-Sleep -Milliseconds 500
+          if(@(Get-Process -Name PinkCab -ErrorAction SilentlyContinue).Count -gt 0){
+            throw 'CONTROL_RECOVERY_OLD_RUNTIME_SURVIVED'
+          }
+
+      - name: Full Windows OS input contract on R1
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:R1_SOURCE_DELIVERY 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R1_CONTROL_RECOVERY'
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+          if(-not (Test-Path $summary)){ throw 'CONTROL_RECOVERY_SUMMARY_MISSING' }
+          Get-Content $summary | ForEach-Object { Write-Host $_ }
+          Write-Host 'R1_FROZEN_OS_INPUT=PASS'
+
+      - name: Create fresh verified delivery and foreground launch
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $short=$env:R1_RUNTIME_SHA.Substring(0,8)
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R1_CONTROLRESTORE_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+          & robocopy (Join-Path $env:R1_SOURCE_DELIVERY 'Windows') (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          $rc=$LASTEXITCODE
+          if($rc -ge 8){ throw "CONTROL_RECOVERY_COPY_FAILED $rc" }
+          $global:LASTEXITCODE=0
+
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $env:R1_RUNTIME_SHA -NoNewline
+          Set-Content (Join-Path $delivery 'VERIFICATION_HEAD.txt') $env:GITHUB_SHA -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R1 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB R1 frozen-control verified $($env:R1_RUNTIME_SHA)"
+            $s.Save()
+            Write-Host "CONTROL_RECOVERY_SHORTCUT=$lnk"
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $exe -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $exe) -PassThru
+
+            $deadline=[DateTime]::UtcNow.AddSeconds(15)
+            do {
+              Start-Sleep -Milliseconds 250
+              $proc.Refresh()
+              if($proc.HasExited){ throw "CONTROL_RECOVERY_HUMAN_EXITED code=$($proc.ExitCode)" }
+            } while($proc.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+            if($proc.MainWindowHandle -eq 0){ throw 'CONTROL_RECOVERY_WINDOW_MISSING' }
+
+            $focused=$false
+            for($i=0;$i -lt 12 -and -not $focused;$i++){
+              $focused=[bool]$ws.AppActivate($proc.Id)
+              Start-Sleep -Milliseconds 180
+            }
+            if(-not $focused){ throw 'CONTROL_RECOVERY_FOREGROUND_FAILED' }
+
+            Write-Host "R1_CONTROL_RECOVERY_DELIVERY=$delivery"
+            Write-Host "R1_CONTROL_RECOVERY_PID=$($proc.Id)"
+            Write-Host 'R1_CONTROL_RECOVERY_FOREGROUND=PASS'
+            Write-Host 'R1_HUMAN_PENDING'
+          }
+          finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
