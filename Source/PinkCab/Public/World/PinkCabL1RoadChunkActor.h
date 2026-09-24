@@ -34,11 +34,20 @@ public:
     UStaticMeshComponent* GetRoadMeshComponent() const { return RoadMeshComponent; }
 
 private:
+    bool AreNativeMetaRoadConstructionMeshesReady() const;
+    void SetNativeMetaRoadConstructionCollision(ECollisionEnabled::Type Mode);
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<USceneComponent> SceneRoot;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<UStaticMeshComponent> RoadMeshComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
+    TObjectPtr<UStaticMeshComponent> RoadSidewalksComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
+    TArray<TObjectPtr<UStaticMeshComponent>> RoadCurbComponents;
 
     bool bBound = false;
     int32 BoundChunkIndex = INDEX_NONE;
