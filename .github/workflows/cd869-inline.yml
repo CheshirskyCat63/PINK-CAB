@@ -1,9 +1,6 @@
 name: CD-869 Inline Verification
 
 on:
-  push:
-    branches:
-      - feat/CD-869-l1-endless-road
   workflow_dispatch:
 
 permissions:
