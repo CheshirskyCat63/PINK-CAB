@@ -1,8 +1,8 @@
-﻿run_id=36049138818
-source_sha=b342153d48ff5da218661421acfb17ef50afc7a0
-workspace_head=3ddab531dc2f40f27a4d15868a48c8d370ef8eb1
+﻿run_id=36053993217
+source_sha=b90d2a9861ae0bf25b80ad7ce23e10d6ca9ac142
+workspace_head=b90d2a9861ae0bf25b80ad7ce23e10d6ca9ac142
 job_status=failure
-timestamp_utc=2026-09-24T19:37:20.7779373Z
+timestamp_utc=2026-09-24T20:19:30.7342941Z
 
 === Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log tail ===
 [2026.09.24-19.36.24:179][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs1)...
