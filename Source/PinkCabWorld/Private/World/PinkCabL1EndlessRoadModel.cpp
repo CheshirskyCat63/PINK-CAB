@@ -52,6 +52,96 @@ FPinkCabL1EndlessRoadWindow FPinkCabL1EndlessRoadModel::BuildWindow(
 }
 
 
+namespace
+{
+double ResolveAccessWindowWidth(
+    const double X,
+    const double Start,
+    const double FullOpenStart,
+    const double FullOpenEnd,
+    const double End)
+{
+    if (X <= Start || X >= End)
+    {
+        return 0.0;
+    }
+    if (X < FullOpenStart)
+    {
+        const double Alpha = (X - Start) / (FullOpenStart - Start);
+        return FMath::Clamp(
+            Alpha * FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm,
+            0.0,
+            FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm);
+    }
+    if (X <= FullOpenEnd)
+    {
+        return FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm;
+    }
+
+    const double Alpha = (End - X) / (End - FullOpenEnd);
+    return FMath::Clamp(
+        Alpha * FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm,
+        0.0,
+        FPinkCabL1EndlessRoadModel::AccessConnectorMaxWidthCm);
+}
+}
+
+double FPinkCabL1EndlessRoadModel::ResolveAccessConnectorWidthCm(
+    const double LocalLongitudinalCm)
+{
+    if (!FMath::IsFinite(LocalLongitudinalCm)
+        || LocalLongitudinalCm < 0.0
+        || LocalLongitudinalCm > ChunkLengthCm)
+    {
+        return 0.0;
+    }
+
+    const double A = ResolveAccessWindowWidth(
+        LocalLongitudinalCm,
+        AccessAStartCm,
+        AccessAFullOpenStartCm,
+        AccessAFullOpenEndCm,
+        AccessAEndCm);
+    const double B = ResolveAccessWindowWidth(
+        LocalLongitudinalCm,
+        AccessBStartCm,
+        AccessBFullOpenStartCm,
+        AccessBFullOpenEndCm,
+        AccessBEndCm);
+    return FMath::Max(A, B);
+}
+
+double FPinkCabL1EndlessRoadModel::ResolveAccessSeparatorWidthCm(
+    const double LocalLongitudinalCm)
+{
+    return AccessConnectorMaxWidthCm
+        - ResolveAccessConnectorWidthCm(LocalLongitudinalCm);
+}
+
+EPinkCabL1AccessRole FPinkCabL1EndlessRoadModel::ResolveAccessRole(
+    const int32 PhysicalWindowIndex,
+    const EPinkCabLongitudinalTravelDirection Direction)
+{
+    if (PhysicalWindowIndex < 0 || PhysicalWindowIndex >= AccessWindowCount)
+    {
+        return EPinkCabL1AccessRole::None;
+    }
+
+    const bool bFirstPhysicalWindow = PhysicalWindowIndex == 0;
+    if (Direction == EPinkCabLongitudinalTravelDirection::Positive)
+    {
+        return bFirstPhysicalWindow
+            ? EPinkCabL1AccessRole::ExitToLocal
+            : EPinkCabL1AccessRole::MergeToExpress;
+    }
+
+    return bFirstPhysicalWindow
+        ? EPinkCabL1AccessRole::MergeToExpress
+        : EPinkCabL1AccessRole::ExitToLocal;
+}
+
+
+
 namespace PinkCabL1EndlessRoadTopology
 {
 struct FLaneSpec
