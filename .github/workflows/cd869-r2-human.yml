@@ -24,12 +24,54 @@ jobs:
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
 
     steps:
-      - name: Checkout exact R2 candidate
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
-          clean: false
+      - name: Prepare exact R2 worktree after releasing CI file locks
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location $env:GITHUB_WORKSPACE
+
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              Write-Host "R2_PRECHECKOUT_STOP_PINKCAB pid=$($_.Id)"
+              Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+            }
+
+          $workspacePattern=[Regex]::Escape($env:GITHUB_WORKSPACE)
+          $ue=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+              $_.CommandLine -and
+              $_.CommandLine -match $workspacePattern
+            })
+          foreach($p in $ue){
+            Write-Host "R2_PRECHECKOUT_STOP_CI_UNREAL pid=$($p.ProcessId) name=$($p.Name)"
+            Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+          }
+          if($ue.Count -gt 0){ Start-Sleep -Milliseconds 1000 }
+
+          git fetch --prune origin "+refs/heads/$env:GITHUB_REF_NAME:refs/remotes/origin/$env:GITHUB_REF_NAME"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $resetOk=$false
+          for($attempt=1; $attempt -le 12 -and -not $resetOk; ++$attempt){
+            git reset --hard $env:GITHUB_SHA
+            if($LASTEXITCODE -eq 0){
+              $resetOk=$true
+            } else {
+              Write-Host "R2_EXACT_RESET_RETRY=$attempt"
+              Start-Sleep -Milliseconds 500
+            }
+          }
+          if(-not $resetOk){ throw 'R2_EXACT_RESET_FAILED' }
+
+          git lfs install --local
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          git lfs pull
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R2_PREPARED_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          Write-Host "R2_EXACT_WORKTREE=PASS head=$head"
 
       - name: Exact-head preflight and frozen contracts
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
