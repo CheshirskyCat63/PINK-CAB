@@ -39,71 +39,130 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
             Curve != nullptr && Curve->GetNumKeys() >= 2);
     }
 
-    UStaticMesh* Road = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
-    TestNotNull(TEXT("canonical MetaRoad RoadSurface loads"), Road);
-    if (!Road)
+    const TCHAR* NativeMeshNames[] = {
+        TEXT("RoadSurface"),
+        TEXT("RoadSidewalks"),
+        TEXT("RoadCurbs"),
+        TEXT("RoadCurbs1"),
+        TEXT("RoadCurbs2"),
+        TEXT("RoadCurbs3"),
+        TEXT("RoadCurbs4"),
+        TEXT("RoadCurbs5"),
+        TEXT("RoadCurbs6"),
+        TEXT("RoadCurbs7"),
+        TEXT("RoadCurbs8"),
+        TEXT("RoadCurbs9")
+    };
+
+    FBox CombinedBounds(ForceInit);
+    int32 LoadedMeshCount = 0;
+    int32 CurbMeshCount = 0;
+    bool bRaisedSurfacePresent = false;
+
+    for (const TCHAR* MeshName : NativeMeshNames)
     {
-        return false;
-    }
-
-    const FVector Size = Road->GetBounds().GetBox().GetSize();
-    AddInfo(FString::Printf(
-        TEXT("CD869_R2_NATIVE_ROADSURFACE_BOUNDS=%.2f,%.2f,%.2f"),
-        Size.X,
-        Size.Y,
-        Size.Z));
-
-    TestTrue(
-        TEXT("canonical road remains 1000m long"),
-        FMath::IsNearlyEqual(Size.X, 100000.0, 250.0));
-    TestTrue(
-        TEXT("canonical road remains inside 66.8m accepted envelope"),
-        FMath::IsNearlyEqual(Size.Y, 6680.0, 250.0));
-    TestTrue(
-        TEXT("canonical RoadSurface itself contains raised R2 relief"),
-        Size.Z >= 11.0);
-
-    TestNotNull(
-        TEXT("native MetaRoad road has collision body setup"),
-        Road->GetBodySetup());
-
-    bool bHasCurbSlot = false;
-    bool bHasRaisedSurfaceSlot = false;
-    for (int32 Index = 0; Index < Road->GetStaticMaterials().Num(); ++Index)
-    {
-        const FStaticMaterial& Slot = Road->GetStaticMaterials()[Index];
-        const FString SlotName = Slot.MaterialSlotName.ToString();
-        AddInfo(FString::Printf(
-            TEXT("CD869_R2_NATIVE_SLOT[%d]=%s"),
-            Index,
-            *SlotName));
-
-        bHasCurbSlot |= SlotName.Contains(
-            TEXT("Curb"), ESearchCase::IgnoreCase);
-        bHasRaisedSurfaceSlot |=
-            SlotName.Contains(TEXT("Median"), ESearchCase::IgnoreCase)
-            || SlotName.Contains(TEXT("Sidewalk"), ESearchCase::IgnoreCase)
-            || SlotName.Contains(TEXT("Shoulder"), ESearchCase::IgnoreCase);
-
-        UMaterialInterface* Material = Slot.MaterialInterface;
-        TestNotNull(TEXT("runtime road material assigned"), Material);
-        if (Material)
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            MeshName,
+            MeshName);
+        UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+            nullptr,
+            *ObjectPath);
+        TestNotNull(
+            *FString::Printf(
+                TEXT("native MetaRoad R2 mesh loads: %s"),
+                MeshName),
+            Mesh);
+        if (!Mesh)
         {
+            continue;
+        }
+
+        ++LoadedMeshCount;
+        const FBox LocalBox = Mesh->GetBounds().GetBox();
+        CombinedBounds += LocalBox;
+        const FVector Size = LocalBox.GetSize();
+
+        AddInfo(FString::Printf(
+            TEXT("CD869_R2_NATIVE_MESH[%s]=%.2f,%.2f,%.2f"),
+            MeshName,
+            Size.X,
+            Size.Y,
+            Size.Z));
+
+        TestNotNull(
+            *FString::Printf(
+                TEXT("%s has collision body setup"),
+                MeshName),
+            Mesh->GetBodySetup());
+
+        const FString Name(MeshName);
+        if (Name == TEXT("RoadSidewalks"))
+        {
+            bRaisedSurfacePresent = Size.Z >= 11.0;
+        }
+        if (Name.StartsWith(TEXT("RoadCurbs")))
+        {
+            ++CurbMeshCount;
             TestTrue(
-                TEXT("runtime road material remains project-owned"),
-                Material->GetPathName().StartsWith(
-                    TEXT("/Game/World/L1/Road/Materials/")));
+                *FString::Printf(
+                    TEXT("%s has physical curb relief"),
+                    MeshName),
+                Size.Z > 0.0);
+        }
+
+        for (int32 Index = 0; Index < Mesh->GetStaticMaterials().Num(); ++Index)
+        {
+            UMaterialInterface* Material =
+                Mesh->GetStaticMaterials()[Index].MaterialInterface;
+            TestNotNull(
+                *FString::Printf(
+                    TEXT("%s runtime material assigned"),
+                    MeshName),
+                Material);
+            if (Material)
+            {
+                TestTrue(
+                    *FString::Printf(
+                        TEXT("%s runtime material is project-owned"),
+                        MeshName),
+                    Material->GetPathName().StartsWith(
+                        TEXT("/Game/World/L1/Road/Materials/")));
+            }
         }
     }
 
+    TestEqual(
+        TEXT("all native MetaRoad R2 mesh layers are present"),
+        LoadedMeshCount,
+        static_cast<int32>(UE_ARRAY_COUNT(NativeMeshNames)));
+    TestEqual(
+        TEXT("ten native MetaRoad curb meshes are present"),
+        CurbMeshCount,
+        10);
     TestTrue(
-        TEXT("canonical RoadSurface contains native MetaRoad curb layer"),
-        bHasCurbSlot);
-    TestTrue(
-        TEXT("canonical RoadSurface contains native raised surface layer"),
-        bHasRaisedSurfaceSlot);
+        TEXT("native MetaRoad sidewalk layer contains raised construction"),
+        bRaisedSurfacePresent);
+
+    TestTrue(TEXT("combined native R2 bounds are valid"), CombinedBounds.IsValid);
+    if (CombinedBounds.IsValid)
+    {
+        const FVector CombinedSize = CombinedBounds.GetSize();
+        AddInfo(FString::Printf(
+            TEXT("CD869_R2_NATIVE_COMBINED_BOUNDS=%.2f,%.2f,%.2f"),
+            CombinedSize.X,
+            CombinedSize.Y,
+            CombinedSize.Z));
+        TestTrue(
+            TEXT("combined native R2 road remains 1000m long"),
+            FMath::IsNearlyEqual(CombinedSize.X, 100000.0, 250.0));
+        TestTrue(
+            TEXT("combined native R2 road preserves 66.8m envelope"),
+            FMath::IsNearlyEqual(CombinedSize.Y, 6680.0, 10.0));
+        TestTrue(
+            TEXT("combined native R2 construction has real vertical relief"),
+            CombinedSize.Z >= 11.0);
+    }
 
     AddInfo(TEXT("CD869_R2_NATIVE_METAROAD_ASSET=PASS"));
     return true;
