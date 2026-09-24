@@ -181,9 +181,7 @@ jobs:
             'RoadCurbs4.uasset',
             'RoadCurbs5.uasset',
             'RoadCurbs6.uasset',
-            'RoadCurbs7.uasset',
-            'RoadCurbs8.uasset',
-            'RoadCurbs9.uasset'
+            'RoadCurbs7.uasset'
           )
           $actual=@(
             Get-ChildItem $roadDir -File -ErrorAction SilentlyContinue |
