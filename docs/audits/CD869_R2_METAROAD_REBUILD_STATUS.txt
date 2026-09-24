@@ -1,0 +1,371 @@
+﻿run_id=36049138818
+source_sha=b342153d48ff5da218661421acfb17ef50afc7a0
+workspace_head=3ddab531dc2f40f27a4d15868a48c8d370ef8eb1
+job_status=failure
+timestamp_utc=2026-09-24T19:37:20.7779373Z
+
+=== Saved\GitHubGate\CD869_R2_METAROAD_AUTHOR.log tail ===
+[2026.09.24-19.36.24:179][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs1)...
+[2026.09.24-19.36.24:214][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs1.RoadCurbs1
+[2026.09.24-19.36.24:294][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs2 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.24:311][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs2)...
+[2026.09.24-19.36.24:338][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs2.RoadCurbs2
+[2026.09.24-19.36.24:514][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs3 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.24:531][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs3)...
+[2026.09.24-19.36.24:559][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs3.RoadCurbs3
+[2026.09.24-19.36.24:599][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs3)...
+[2026.09.24-19.36.24:648][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs4 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.24:664][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs4)...
+[2026.09.24-19.36.24:693][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs4.RoadCurbs4
+[2026.09.24-19.36.24:733][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs4)...
+[2026.09.24-19.36.24:778][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs5 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.24:794][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs5)...
+[2026.09.24-19.36.24:825][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs5.RoadCurbs5
+[2026.09.24-19.36.24:907][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs6 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.24:924][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs6)...
+[2026.09.24-19.36.24:951][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs6.RoadCurbs6
+[2026.09.24-19.36.25:117][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs7 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.25:133][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs7)...
+[2026.09.24-19.36.25:163][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs7.RoadCurbs7
+[2026.09.24-19.36.25:244][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs7)...
+[2026.09.24-19.36.25:290][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs8 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.25:307][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs8)...
+[2026.09.24-19.36.25:334][702]LogStaticMesh: Built static mesh [0.05s] /Game/World/L1/Road/RoadCurbs8.RoadCurbs8
+[2026.09.24-19.36.25:464][702]LogStaticMesh: Display: Создание статичной сетки RoadCurbs9 (расчётный объём требуемой памяти: 8.684805 Мбайт)...
+[2026.09.24-19.36.25:482][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs9)...
+[2026.09.24-19.36.25:506][702]LogStaticMesh: Built static mesh [0.04s] /Game/World/L1/Road/RoadCurbs9.RoadCurbs9
+[2026.09.24-19.36.25:548][702]LogStaticMesh: Display: Подготовка: статичные сетки 0/1 (/Game/World/L1/Road/RoadCurbs9)...
+[2026.09.24-19.36.25:676][702]LogAutomationController: Ignoring very large delta of 2.59 seconds in calls to FAutomationControllerManager::Tick() and not penalizing unresponsive tests
+[2026.09.24-19.36.25:997][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSurface
+[2026.09.24-19.36.25:997][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSurfaceF419621841CB081558B1A5AC111C2B56.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSurface.uasset'
+[2026.09.24-19.36.26:027][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSidewalks
+[2026.09.24-19.36.26:027][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSidewalks1C70E9BE48EB2A8DAB8CF19F67954164.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSidewalks.uasset'
+[2026.09.24-19.36.26:052][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs
+[2026.09.24-19.36.26:052][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs5FE2A1BD4E29FB02B8879ABD19A7BF93.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs.uasset'
+[2026.09.24-19.36.26:074][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs1
+[2026.09.24-19.36.26:074][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs15424F26747736DB85E64879A6663D2EB.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs1.uasset'
+[2026.09.24-19.36.26:098][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs2
+[2026.09.24-19.36.26:098][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs249D7D0F04FA5E58BE5D81A8A907E846E.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs2.uasset'
+[2026.09.24-19.36.26:120][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs3
+[2026.09.24-19.36.26:122][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs30EA5239D47024EC5D32FC78A1E379BEF.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs3.uasset'
+[2026.09.24-19.36.26:142][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs4
+[2026.09.24-19.36.26:142][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs410BAE6FC4EEDE207D7B007BF964EDC8A.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs4.uasset'
+[2026.09.24-19.36.26:166][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs5
+[2026.09.24-19.36.26:167][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs591E89BA94ABF5E94FBFA068FF362D4F4.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs5.uasset'
+[2026.09.24-19.36.26:189][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs6
+[2026.09.24-19.36.26:190][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs601868ED2475FEC22ED7CE4B783A40A92.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs6.uasset'
+[2026.09.24-19.36.26:210][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs7
+[2026.09.24-19.36.26:212][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs72CEA2DF142C15A9FB0FB269AF4998A13.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs7.uasset'
+[2026.09.24-19.36.26:233][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs8
+[2026.09.24-19.36.26:233][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs867B07B0E46877F423274F99A5002E6C1.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs8.uasset'
+[2026.09.24-19.36.26:254][702]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadCurbs9
+[2026.09.24-19.36.26:254][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadCurbs902C2C587494C5918543734AC506D664C.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadCurbs9.uasset'
+[2026.09.24-19.36.26:256][702]OBJ SavePackage: Generating thumbnails for [0] asset(s) in package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring] ([1] browsable assets)...
+[2026.09.24-19.36.26:256][702]OBJ SavePackage: Finished generating thumbnails for package [/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring]
+[2026.09.24-19.36.26:407][702]LogUObjectHash: Compacting FUObjectHashTables data took   1.40ms
+[2026.09.24-19.36.27:197][702]LogSavePackage: Moving output files for package: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring
+[2026.09.24-19.36.27:198][702]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/L_PC_L1_MetaRoadAuthoring566772C24EC43D349099BAA694E92CA9.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
+[2026.09.24-19.36.27:233][702]LogFileHelpers: Saving map 'L_PC_L1_MetaRoadAuthoring' took 0.977
+[2026.09.24-19.36.27:252][703]LogContentValidation: Enabled validators:
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.DirtyFilesChangelistValidator
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.EditorValidator_ActionUtility
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.EditorValidator_Localization
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.EditorValidator_Material
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.PackageFileValidator
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/DataValidation.WorldPartitionChangelistValidator
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/MutableValidation.AssetValidator_CustomizableObjects
+[2026.09.24-19.36.27:253][703]LogContentValidation: 	/Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects
+[2026.09.24-19.36.27:253][703]LogContentValidation: Display: Starting to validate 13 assets (0 associated objects such as actors)
+[2026.09.24-19.36.27:253][703]LogContentValidation: Добавлены дополнительные ресурсы для проверки с помощью валидаторов 0:
+[2026.09.24-19.36.27:254][703]AssetCheck: /Game/World/L1/Road/RoadSurface Проверка ресурса
+[2026.09.24-19.36.27:254][703]AssetCheck: /Game/World/L1/Road/RoadSidewalks Проверка ресурса
+[2026.09.24-19.36.27:254][703]AssetCheck: /Game/World/L1/Road/RoadCurbs Проверка ресурса
+[2026.09.24-19.36.27:254][703]AssetCheck: /Game/World/L1/Road/RoadCurbs1 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs2 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs3 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs4 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs5 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs6 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs7 Проверка ресурса
+[2026.09.24-19.36.27:255][703]AssetCheck: /Game/World/L1/Road/RoadCurbs8 Проверка ресурса
+[2026.09.24-19.36.27:256][703]AssetCheck: /Game/World/L1/Road/RoadCurbs9 Проверка ресурса
+[2026.09.24-19.36.27:256][703]AssetCheck: /Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring Проверка ресурса
+[2026.09.24-19.36.27:256][703]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 13
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
+[2026.09.24-19.36.27:256][703]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
+[2026.09.24-19.36.27:257][703]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
+[2026.09.24-19.36.27:257][703]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
+[2026.09.24-19.36.27:257][703]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
+[2026.09.24-19.36.27:375][704]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadAssets} Path={PinkCab.Editor.GenerateL1EndlessRoadAssets}
+[2026.09.24-19.36.27:375][704]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-19.36.27:375][704]LogAutomationController: Warning: LogEditorModes: ITF Gizmos and Controls have been disabled. The "Meta Road" Editor Mode requires the legacy systems. [log] 
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSurface collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadSidewalks collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs1 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs2 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs3 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs4 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs5 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs6 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs7 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs8 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated mesh: /Game/World/L1/Road/RoadCurbs9 collision=3
+[2026.09.24-19.36.27:375][704]LogAutomationController: MetaRoad generated bounds: X=100000.00 Y=6695.00 Z=16.50
+[2026.09.24-19.36.27:375][704]LogAutomationController: CD869_METAROAD_BAKE=PASS
+[2026.09.24-19.36.27:375][704]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadAssets
+[2026.09.24-19.36.27:377][704]LogAutomationController: Sending StopTestSession to B5B7606A4A202DAA55407D99217DB28B
+[2026.09.24-19.36.27:377][705]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
+[2026.09.24-19.36.27:377][705]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
+[2026.09.24-19.36.27:377][705]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.36.27:377][705]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.36.27:377][705]LogCore: Engine exit requested (reason: Win RequestExit)
+
+=== Saved\GitHubGate\CD869_R2_RUNTIME_MATERIALS.log tail ===
+[2026.09.24-19.36.41:724][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplatePostCleanup.uproject",LastOpenTime=2026.09.23-09.35.43)" in recently opened files
+[2026.09.24-19.36.41:724][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/PinkCab.uproject",LastOpenTime=2026.09.24-19.36.40)" in recently opened files
+[2026.09.24-19.36.41:724][  0]LogDesktopPlatform: Searching for projects in .uprojectdirs
+[2026.09.24-19.36.41:724][  0]LogProjectBrowser: Enumerating Launcher Sample Projects...
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Enumerating Projects From Engine Ver: 5.8
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Looking for directories to scan from : C:/Users/CheCat/AppData/Local/UnrealEngine/5.8/Saved/Config/WindowsEditor
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Searching for previously created project directories...
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_9155cbe2/DEADCORN.uproject",LastOpenTime=2026.09.22-00.21.48)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_2c7ab1f4/DEADCORN.uproject",LastOpenTime=2026.09.22-00.32.15)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_90cfebe8/DEADCORN.uproject",LastOpenTime=2026.09.22-00.46.00)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_7c4274b7/DEADCORN.uproject",LastOpenTime=2026.09.22-00.56.47)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/DEADCORN/DEADCORN/DEADCORN.uproject",LastOpenTime=2026.09.22-15.27.27)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_72a863a5/DEADCORN.uproject",LastOpenTime=2026.09.23-01.44.44)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TatraAssetScan.uproject",LastOpenTime=2026.09.23-08.51.48)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplateContentScan.uproject",LastOpenTime=2026.09.23-09.20.21)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplatePostCleanup.uproject",LastOpenTime=2026.09.23-09.35.43)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/PinkCab.uproject",LastOpenTime=2026.09.24-19.36.40)" in recently opened files
+[2026.09.24-19.36.41:727][  0]LogDesktopPlatform: Searching for projects in .uprojectdirs
+[2026.09.24-19.36.41:733][  0]LogPlacementMode: Display: The Asset Registry is not yet fully loaded so some placeable classes might be missing.
+[2026.09.24-19.36.41:745][  0]LogModuleManager: InternalLoadLibrary: 'UnsavedAssetsTracker' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-UnsavedAssetsTracker.dll')
+[2026.09.24-19.36.41:752][  0]LogModuleManager: InternalLoadLibrary: 'StatusBar' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-StatusBar.dll')
+[2026.09.24-19.36.42:198][  0]LogModuleManager: InternalLoadLibrary: 'SubobjectEditor' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-SubobjectEditor.dll')
+[2026.09.24-19.36.42:244][  0]LogSlate: Display: Synchronously lazy loading font file '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' with subface index 0 in Game thread.
+[2026.09.24-19.36.42:244][  0]LogSlate: Display: Took 0.000249 seconds to synchronously load lazily loaded font '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' (155K) on Game thread.
+[2026.09.24-19.36.42:244][  0]LogSlate: Display: Freetype font face in memory successfully created with synchronously loaded raw font file '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' subface 0 in Game thread.
+[2026.09.24-19.36.42:244][  0]LogSlate: Display: Font face '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' subface index 0 successfully added to font face map in Game thread.
+[2026.09.24-19.36.42:244][  0]LogContentBrowser: Migrated 0 editor favorites to project favorites
+[2026.09.24-19.36.42:245][  0]LogModuleManager: InternalLoadLibrary: 'AddContentDialog' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-AddContentDialog.dll')
+[2026.09.24-19.36.42:245][  0]LogModuleManager: InternalLoadLibrary: 'WidgetCarousel' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-WidgetCarousel.dll')
+[2026.09.24-19.36.42:259][  0]LogStall: Startup...
+[2026.09.24-19.36.42:263][  0]LogStall: Startup complete.
+[2026.09.24-19.36.42:263][  0]LogModuleManager: InternalLoadLibrary: 'HierarchicalLODOutliner' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-HierarchicalLODOutliner.dll')
+[2026.09.24-19.36.42:265][  0]LogLoad: (Engine Initialization) Total time: 11.29 seconds
+[2026.09.24-19.36.43:095][  0]LogSlate: InvalidateAllWidgets triggered.  All widgets were invalidated
+[2026.09.24-19.36.43:097][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/IKRig/Content/Python/init_unreal.py… started...
+[2026.09.24-19.36.43:110][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/IKRig/Content/Python/init_unreal.py… took 14.062 ms
+[2026.09.24-19.36.43:110][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/ControlRig/Content/Python/init_unreal.py… started...
+[2026.09.24-19.36.43:129][  0]LogPython: registering <class 'ControlRigWorkflows.workflow_deformation_rig_preset.provider'>
+
+[2026.09.24-19.36.43:137][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/ControlRig/Content/Python/init_unreal.py… took 25.733 ms (total: 39.795 ms)
+[2026.09.24-19.36.43:137][  0]Cmd: Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials
+[2026.09.24-19.36.43:137][  0]Automation: RunTests='PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials' Queued.
+[2026.09.24-19.36.43:784][  1]LogAssetRegistry: AssetRegistryGather time 0.1818s: AssetDataDiscovery 0.0198s, AssetDataGather 0.0572s, StoreResults 0.1048s. Wall time 7.1060s.
+	NumCachedDirectories 1835. NumUncachedDirectories 31. NumCachedFiles 9288. NumUncachedFiles 13.
+	BackgroundTickInterruptions 4.
+[2026.09.24-19.36.43:825][  1]LogAssetRegistry: Display: Starting OnFilesLoaded.Broadcast
+[2026.09.24-19.36.43:851][  1]LogPlacementMode: Display: The Asset Registry is done with its initial scan, the list of placeable classes has been updated.
+[2026.09.24-19.36.43:870][  1]LogCollectionManager: Fixed up redirectors for 0 collections in 0.000001 seconds (updated 0 objects)
+[2026.09.24-19.36.43:898][  1]LogAssetRegistry: Display: Completed OnFilesLoaded.Broadcast: 0.072s
+[2026.09.24-19.36.43:899][  1]LogSourceControl: Uncontrolled asset discovery started...
+[2026.09.24-19.36.43:935][  2]LogEngineAutomationLatentCommand: FWaitForInteractiveFrameRate: FApp::CanEverRender() == false. Passing wait immediately.
+[2026.09.24-19.36.43:935][  2]LogAutomationCommandLine: Display: Ready to start automation
+[2026.09.24-19.36.44:356][ 16]LogEOSSDK: LogEOS: SDK Config Platform Update Request Successful, Time: 4.338629
+[2026.09.24-19.36.44:357][ 16]LogEOSSDK: LogEOSAnalytics: EOS SDK Analytics disabled for route [1].
+[2026.09.24-19.36.44:359][ 16]LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 4.354590
+[2026.09.24-19.36.44:608][ 28]LogEOSSDK: LogEOSAnalytics: Start Session (User: ...)
+[2026.09.24-19.36.44:795][ 37]LogEOSSDK: LogEOS: SDK Config Product Update Request Successful, Time: 4.775939
+[2026.09.24-19.36.44:798][ 37]LogEOSSDK: LogEOS: SDK Config Data - Watermark: -814656329
+[2026.09.24-19.36.44:798][ 37]LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 4.775939, Update Interval: 330.489807
+[2026.09.24-19.36.44:866][ 40]LogSourceControl: Uncontrolled asset discovery finished in 0.967166 seconds (Found 9277 uncontrolled assets)
+[2026.09.24-19.36.45:896][ 88]LogAssetRegistry: Display: Asset registry cache written as 120.8 MiB to E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Intermediate/CachedAssetRegistry/CachedAssetRegistry_*.ref
+[2026.09.24-19.36.45:903][ 89]LogAssetRegistry: Display: CleanupOrphanedCacheFiles (PostWrite): 1 .ref files found, 1 referenced binaries
+[2026.09.24-19.36.45:903][ 89]LogAssetRegistry: Display:   CachedAssetRegistry_0_2ED39C2B4E597F7CC94508993723D0A3.bin: deleted (orphaned, unreferenced by any .ref)
+[2026.09.24-19.36.45:903][ 89]LogAssetRegistry: Display: CleanupOrphanedCacheFiles: 2 total binaries, 1 referenced (kept), 0 old-style pre-migration (kept), 1 orphans deleted, 0 orphans locked (kept)
+[2026.09.24-19.36.48:939][231]LogModuleManager: InternalLoadLibrary: 'ScreenShotComparisonTools' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-ScreenShotComparisonTools.dll')
+[2026.09.24-19.36.48:967][232]LogAutomationWorker: Received FindWorkersMessage from 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.48:983][233]LogAutomationController: Received FindWorkersResponseMessage from 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.48:983][233]LogAutomationController: Requesting test list from 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.48:984][233]LogAutomationWorker: Received RequestTestsMessage from 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.49:042][233]LogAutomationWorker: Set 6760 tests to 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.49:043][234]LogAutomationController: Received RequestTestsReplyCompleteMessage from 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:048][234]LogAutomationController: 6760 tests available on 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:100][234]LogAutomationCommandLine: Display: Found 1 automation tests based on 'PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials'
+[2026.09.24-19.36.49:100][234]LogAutomationCommandLine: Display: 	PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials
+[2026.09.24-19.36.49:102][234]LogAutomationController: Sending StopTests to 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:107][234]LogAutomationController: Sending StartTestSession to 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:107][234]LogAutomationController: Display: Clearing E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/Automation/Logs/ and E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/Automation/Tmp/
+[2026.09.24-19.36.49:107][234]AutomationTestingLog: -----Test Run 3----
+[2026.09.24-19.36.49:110][234]LogAutomationController: Sending RunTest GenerateL1EndlessRoadRuntimeMaterials to 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:110][234]LogAutomationController: Display: Test Started. Name={GenerateL1EndlessRoadRuntimeMaterials} Path={PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials}
+[2026.09.24-19.36.49:110][234]LogAutomationWorker: Received StopTests from 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.49:110][234]LogAutomationWorker: Received StartTestSession from 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.49:112][235]LogAutomationWorker: Received RunTests GenerateL1EndlessRoadRuntimeMaterials from 7C953F264C58D37A8A229BBF8EB5F06F
+[2026.09.24-19.36.49:112][235]LogStreaming: Display: FlushAsyncLoading(381): 1 QueuedPackages, 0 AsyncPackages
+[2026.09.24-19.36.49:203][235]LogSavePackage: Moving output files for package: /Game/World/L1/Road/RoadSurface
+[2026.09.24-19.36.49:203][235]LogSavePackage: Moving 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/RoadSurfaceB79CEE5140411272973CCB9067D60C67.tmp' to 'E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Content/World/L1/Road/RoadSurface.uasset'
+[2026.09.24-19.36.49:209][236]LogContentValidation: Enabled validators:
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.DirtyFilesChangelistValidator
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.EditorValidator_ActionUtility
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.EditorValidator_Localization
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.EditorValidator_Material
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.PackageFileValidator
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/DataValidation.WorldPartitionChangelistValidator
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/MutableValidation.AssetValidator_CustomizableObjects
+[2026.09.24-19.36.49:209][236]LogContentValidation: 	/Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects
+[2026.09.24-19.36.49:209][236]LogContentValidation: Display: Starting to validate 1 assets (0 associated objects such as actors)
+[2026.09.24-19.36.49:209][236]LogContentValidation: Добавлены дополнительные ресурсы для проверки с помощью валидаторов 0:
+[2026.09.24-19.36.49:209][236]AssetCheck: /Game/World/L1/Road/RoadSurface Проверка ресурса
+[2026.09.24-19.36.49:210][236]LogContentValidation: Количество прошедших проверку ресурсов для 9 валидаторов:
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.DirtyFilesChangelistValidator : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.EditorValidator_ActionUtility : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.EditorValidator_Localization : 1
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.EditorValidator_Material : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.PackageFileValidator : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/DataValidation.WorldPartitionChangelistValidator : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/InputBlueprintNodes.EnhancedInputUserWidgetValidator : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/MutableValidation.AssetValidator_CustomizableObjects : 0
+[2026.09.24-19.36.49:210][236]LogContentValidation:   /Script/MutableValidation.AssetValidator_ReferencedCustomizableObjects : 0
+[2026.09.24-19.36.49:229][237]LogAutomationController: Display: Test Completed. Result={Success} Name={GenerateL1EndlessRoadRuntimeMaterials} Path={PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials}
+[2026.09.24-19.36.49:229][237]LogAutomationController: BeginEvents: PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials
+[2026.09.24-19.36.49:229][237]LogAutomationController: CD869_ROAD_SLOT_NAME[0]=Driving
+[2026.09.24-19.36.49:229][237]LogAutomationController: CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS
+[2026.09.24-19.36.49:229][237]LogAutomationController: EndEvents: PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials
+[2026.09.24-19.36.49:230][237]LogAutomationController: Sending StopTestSession to 82AA3EEC40A5BD47380DCD96DBB4B9C7
+[2026.09.24-19.36.49:232][237]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
+[2026.09.24-19.36.49:232][238]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
+[2026.09.24-19.36.49:232][238]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.36.49:232][238]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.36.49:232][238]LogCore: Engine exit requested (reason: Win RequestExit)
+
+=== Saved\GitHubGate\CD869_R2_NATIVE_ASSET.log tail ===
+[2026.09.24-19.37.10:549][  0]LogEditorServer: Finished looking for orphan Actors (0.000 secs)
+[2026.09.24-19.37.10:582][  0]LogUObjectHash: Compacting FUObjectHashTables data took   0.64ms
+[2026.09.24-19.37.10:582][  0]Cmd: MAP CHECKDEP NOCLEARLOG
+[2026.09.24-19.37.10:582][  0]MapCheck: Проверка карты завершена: 0 ошибок, 0 предупреждений, выполнена за 0,058 мс.
+[2026.09.24-19.37.10:583][  0]LogModuleManager: InternalLoadLibrary: 'GameProjectGeneration' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-GameProjectGeneration.dll')
+[2026.09.24-19.37.10:605][  0]LogUnrealEdMisc: Total Editor Startup Time, took 10.038
+[2026.09.24-19.37.10:615][  0]LogModuleManager: InternalLoadLibrary: 'UndoHistoryEditor' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-UndoHistoryEditor.dll')
+[2026.09.24-19.37.10:619][  0]LogProjectBrowser: Looking for projects...
+[2026.09.24-19.37.10:619][  0]LogProjectBrowser: Found Engine Installation "5.8"(C:/Program Files/Epic Games/UE_5.8)
+[2026.09.24-19.37.10:619][  0]LogDesktopPlatform: Enumerating Projects From Engine Ver: 5.8
+[2026.09.24-19.37.10:619][  0]LogDesktopPlatform: Looking for directories to scan from : C:/Users/CheCat/AppData/Local/UnrealEngine/5.8/Saved/Config/WindowsEditor
+[2026.09.24-19.37.10:619][  0]LogDesktopPlatform: Searching for previously created project directories...
+[2026.09.24-19.37.10:619][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_9155cbe2/DEADCORN.uproject",LastOpenTime=2026.09.22-00.21.48)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_2c7ab1f4/DEADCORN.uproject",LastOpenTime=2026.09.22-00.32.15)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_90cfebe8/DEADCORN.uproject",LastOpenTime=2026.09.22-00.46.00)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_7c4274b7/DEADCORN.uproject",LastOpenTime=2026.09.22-00.56.47)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/DEADCORN/DEADCORN/DEADCORN.uproject",LastOpenTime=2026.09.22-15.27.27)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_72a863a5/DEADCORN.uproject",LastOpenTime=2026.09.23-01.44.44)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TatraAssetScan.uproject",LastOpenTime=2026.09.23-08.51.48)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplateContentScan.uproject",LastOpenTime=2026.09.23-09.20.21)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplatePostCleanup.uproject",LastOpenTime=2026.09.23-09.35.43)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/PinkCab.uproject",LastOpenTime=2026.09.24-19.37.09)" in recently opened files
+[2026.09.24-19.37.10:620][  0]LogDesktopPlatform: Searching for projects in .uprojectdirs
+[2026.09.24-19.37.10:620][  0]LogProjectBrowser: Enumerating Launcher Sample Projects...
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Enumerating Projects From Engine Ver: 5.8
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Looking for directories to scan from : C:/Users/CheCat/AppData/Local/UnrealEngine/5.8/Saved/Config/WindowsEditor
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Searching for previously created project directories...
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_9155cbe2/DEADCORN.uproject",LastOpenTime=2026.09.22-00.21.48)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_2c7ab1f4/DEADCORN.uproject",LastOpenTime=2026.09.22-00.32.15)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_90cfebe8/DEADCORN.uproject",LastOpenTime=2026.09.22-00.46.00)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_7c4274b7/DEADCORN.uproject",LastOpenTime=2026.09.22-00.56.47)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/DEADCORN/DEADCORN/DEADCORN.uproject",LastOpenTime=2026.09.22-15.27.27)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/DEADCORN/actions-runner/_work/_temp/deadcorn_m0_moonoff_72a863a5/DEADCORN.uproject",LastOpenTime=2026.09.23-01.44.44)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TatraAssetScan.uproject",LastOpenTime=2026.09.23-08.51.48)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplateContentScan.uproject",LastOpenTime=2026.09.23-09.20.21)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/_TemplatePostCleanup.uproject",LastOpenTime=2026.09.23-09.35.43)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Found project "(ProjectName="E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/PinkCab.uproject",LastOpenTime=2026.09.24-19.37.09)" in recently opened files
+[2026.09.24-19.37.10:622][  0]LogDesktopPlatform: Searching for projects in .uprojectdirs
+[2026.09.24-19.37.10:625][  0]LogPlacementMode: Display: The Asset Registry is not yet fully loaded so some placeable classes might be missing.
+[2026.09.24-19.37.10:637][  0]LogModuleManager: InternalLoadLibrary: 'UnsavedAssetsTracker' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-UnsavedAssetsTracker.dll')
+[2026.09.24-19.37.10:643][  0]LogModuleManager: InternalLoadLibrary: 'StatusBar' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-StatusBar.dll')
+[2026.09.24-19.37.11:063][  0]LogModuleManager: InternalLoadLibrary: 'SubobjectEditor' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-SubobjectEditor.dll')
+[2026.09.24-19.37.11:100][  0]LogSlate: Display: Synchronously lazy loading font file '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' with subface index 0 in Game thread.
+[2026.09.24-19.37.11:100][  0]LogSlate: Display: Took 0.000198 seconds to synchronously load lazily loaded font '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' (155K) on Game thread.
+[2026.09.24-19.37.11:100][  0]LogSlate: Display: Freetype font face in memory successfully created with synchronously loaded raw font file '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' subface 0 in Game thread.
+[2026.09.24-19.37.11:100][  0]LogSlate: Display: Font face '../../../Engine/Content/Slate/Fonts/Roboto-Regular.ttf' subface index 0 successfully added to font face map in Game thread.
+[2026.09.24-19.37.11:100][  0]LogContentBrowser: Migrated 0 editor favorites to project favorites
+[2026.09.24-19.37.11:101][  0]LogModuleManager: InternalLoadLibrary: 'AddContentDialog' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-AddContentDialog.dll')
+[2026.09.24-19.37.11:101][  0]LogModuleManager: InternalLoadLibrary: 'WidgetCarousel' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-WidgetCarousel.dll')
+[2026.09.24-19.37.11:115][  0]LogStall: Startup...
+[2026.09.24-19.37.11:119][  0]LogStall: Startup complete.
+[2026.09.24-19.37.11:119][  0]LogModuleManager: InternalLoadLibrary: 'HierarchicalLODOutliner' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-HierarchicalLODOutliner.dll')
+[2026.09.24-19.37.11:121][  0]LogLoad: (Engine Initialization) Total time: 10.55 seconds
+[2026.09.24-19.37.11:877][  0]LogSlate: InvalidateAllWidgets triggered.  All widgets were invalidated
+[2026.09.24-19.37.11:878][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/IKRig/Content/Python/init_unreal.py… started...
+[2026.09.24-19.37.11:891][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/IKRig/Content/Python/init_unreal.py… took 12.709 ms
+[2026.09.24-19.37.11:891][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/ControlRig/Content/Python/init_unreal.py… started...
+[2026.09.24-19.37.11:908][  0]LogPython: registering <class 'ControlRigWorkflows.workflow_deformation_rig_preset.provider'>
+
+[2026.09.24-19.37.11:919][  0]LogPython: Display: Выполняется сценарий запуска C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Animation/ControlRig/Content/Python/init_unreal.py… took 27.473 ms (total: 40.183 ms)
+[2026.09.24-19.37.11:919][  0]Cmd: Automation RunTests PinkCab.World.L1Road.R2
+[2026.09.24-19.37.11:920][  0]Automation: RunTests='PinkCab.World.L1Road.R2' Queued.
+[2026.09.24-19.37.12:438][  1]LogAssetRegistry: AssetRegistryGather time 0.1642s: AssetDataDiscovery 0.0157s, AssetDataGather 0.0533s, StoreResults 0.0951s. Wall time 6.4760s.
+	NumCachedDirectories 1836. NumUncachedDirectories 30. NumCachedFiles 9300. NumUncachedFiles 1.
+	BackgroundTickInterruptions 0.
+[2026.09.24-19.37.12:470][  1]LogAssetRegistry: Display: Starting OnFilesLoaded.Broadcast
+[2026.09.24-19.37.12:490][  1]LogPlacementMode: Display: The Asset Registry is done with its initial scan, the list of placeable classes has been updated.
+[2026.09.24-19.37.12:503][  1]LogCollectionManager: Fixed up redirectors for 0 collections in 0.000000 seconds (updated 0 objects)
+[2026.09.24-19.37.12:525][  1]LogAssetRegistry: Display: Completed OnFilesLoaded.Broadcast: 0.055s
+[2026.09.24-19.37.12:525][  1]LogSourceControl: Uncontrolled asset discovery started...
+[2026.09.24-19.37.12:553][  2]LogEngineAutomationLatentCommand: FWaitForInteractiveFrameRate: FApp::CanEverRender() == false. Passing wait immediately.
+[2026.09.24-19.37.12:553][  2]LogAutomationCommandLine: Display: Ready to start automation
+[2026.09.24-19.37.12:960][ 17]LogSourceControl: Uncontrolled asset discovery finished in 0.434875 seconds (Found 9277 uncontrolled assets)
+[2026.09.24-19.37.13:062][ 21]LogEOSSDK: LogEOS: SDK Config Platform Update Request Successful, Time: 4.342199
+[2026.09.24-19.37.13:062][ 21]LogEOSSDK: LogEOSAnalytics: EOS SDK Analytics disabled for route [1].
+[2026.09.24-19.37.13:064][ 21]LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 4.371771
+[2026.09.24-19.37.13:338][ 34]LogEOSSDK: LogEOSAnalytics: Start Session (User: ...)
+[2026.09.24-19.37.13:554][ 44]LogEOSSDK: LogEOS: SDK Config Product Update Request Successful, Time: 4.848584
+[2026.09.24-19.37.13:556][ 44]LogEOSSDK: LogEOS: SDK Config Data - Watermark: -814656329
+[2026.09.24-19.37.13:556][ 44]LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 4.848584, Update Interval: 354.847260
+[2026.09.24-19.37.14:199][ 74]LogAssetRegistry: Display: Asset registry cache written as 120.8 MiB to E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Intermediate/CachedAssetRegistry/CachedAssetRegistry_*.ref
+[2026.09.24-19.37.14:209][ 74]LogAssetRegistry: Display: CleanupOrphanedCacheFiles (PostWrite): 1 .ref files found, 1 referenced binaries
+[2026.09.24-19.37.14:210][ 75]LogAssetRegistry: Display:   CachedAssetRegistry_0_18F9508E4CDBBAF059352C91D81FDB7B.bin: deleted (orphaned, unreferenced by any .ref)
+[2026.09.24-19.37.14:210][ 75]LogAssetRegistry: Display: CleanupOrphanedCacheFiles: 2 total binaries, 1 referenced (kept), 0 old-style pre-migration (kept), 1 orphans deleted, 0 orphans locked (kept)
+[2026.09.24-19.37.17:581][232]LogModuleManager: InternalLoadLibrary: 'ScreenShotComparisonTools' ('C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-ScreenShotComparisonTools.dll')
+[2026.09.24-19.37.17:598][233]LogAutomationWorker: Received FindWorkersMessage from 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:614][234]LogAutomationController: Received FindWorkersResponseMessage from 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:614][234]LogAutomationController: Requesting test list from 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:615][234]LogAutomationWorker: Received RequestTestsMessage from 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:663][234]LogAutomationWorker: Set 6760 tests to 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:663][234]LogAutomationController: Received RequestTestsReplyCompleteMessage from 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:667][234]LogAutomationController: 6760 tests available on 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:710][234]LogAutomationCommandLine: Display: Found 1 automation tests based on 'PinkCab.World.L1Road.R2'
+[2026.09.24-19.37.17:710][234]LogAutomationCommandLine: Display: 	PinkCab.World.L1Road.R2.NativeMetaRoadAsset
+[2026.09.24-19.37.17:712][234]LogAutomationController: Sending StopTests to 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:712][234]LogAutomationController: Sending StartTestSession to 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:712][234]LogAutomationController: Display: Clearing E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/Automation/Logs/ and E:/CHESHIRE_DIVISION/GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB/Saved/Automation/Tmp/
+[2026.09.24-19.37.17:712][234]AutomationTestingLog: -----Test Run 3----
+[2026.09.24-19.37.17:717][235]LogAutomationController: Sending RunTest NativeMetaRoadAsset to 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:717][235]LogAutomationController: Display: Test Started. Name={NativeMetaRoadAsset} Path={PinkCab.World.L1Road.R2.NativeMetaRoadAsset}
+[2026.09.24-19.37.17:717][235]LogAutomationWorker: Received StopTests from 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:717][235]LogAutomationWorker: Received StartTestSession from 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:717][235]LogAutomationWorker: Received RunTests NativeMetaRoadAsset from 188A411F4EFC10F0760AA788C692986E
+[2026.09.24-19.37.17:720][235]LogStreaming: Display: FlushAsyncLoading(382): 1 QueuedPackages, 0 AsyncPackages
+[2026.09.24-19.37.17:892][237]LogAutomationController: Error: Test Completed. Result={Fail} Name={NativeMetaRoadAsset} Path={PinkCab.World.L1Road.R2.NativeMetaRoadAsset}
+[2026.09.24-19.37.17:893][237]LogAutomationController: BeginEvents: PinkCab.World.L1Road.R2.NativeMetaRoadAsset
+[2026.09.24-19.37.17:893][237]LogAutomationController: LogStreaming: FlushAsyncLoading(382): 1 QueuedPackages, 0 AsyncPackages [log] 
+[2026.09.24-19.37.17:893][237]LogAutomationController: CD869_R2_NATIVE_ROADSURFACE_BOUNDS=100000.00,6480.00,0.00
+[2026.09.24-19.37.17:893][237]LogAutomationController: Error: Expected 'canonical RoadSurface itself contains raised R2 relief' to be true. [E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB\Source\PinkCabTests\Private\World\PinkCabL1MetaRoadR2AssetTests.cpp(68)]
+[2026.09.24-19.37.17:893][237]LogAutomationController: CD869_R2_NATIVE_SLOT[0]=Driving
+[2026.09.24-19.37.17:893][237]LogAutomationController: Error: Expected 'canonical RoadSurface contains native MetaRoad curb layer' to be true. [E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB\Source\PinkCabTests\Private\World\PinkCabL1MetaRoadR2AssetTests.cpp(104)]
+[2026.09.24-19.37.17:893][237]LogAutomationController: Error: Expected 'canonical RoadSurface contains native raised surface layer' to be true. [E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB\Source\PinkCabTests\Private\World\PinkCabL1MetaRoadR2AssetTests.cpp(108)]
+[2026.09.24-19.37.17:893][237]LogAutomationController: CD869_R2_NATIVE_METAROAD_ASSET=PASS
+[2026.09.24-19.37.17:893][237]LogAutomationController: EndEvents: PinkCab.World.L1Road.R2.NativeMetaRoadAsset
+[2026.09.24-19.37.17:894][237]LogAutomationController: Sending StopTestSession to 5B1EDEDD42F5FCF94EDAE89400439DF9
+[2026.09.24-19.37.17:895][237]LogAutomationCommandLine: Display: ...Automation Test Queue Empty 1 tests performed.
+[2026.09.24-19.37.17:895][238]LogExit: Display: **** TestExit: Automation Test Queue Empty ****
+[2026.09.24-19.37.17:895][238]LogWindows: FPlatformMisc::RequestExit(1, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.37.17:895][238]LogWindows: FPlatformMisc::RequestExitWithStatus(1, 0, FEngineLoop::Tick.GScopedTestExit)
+[2026.09.24-19.37.17:895][238]LogCore: Engine exit requested (reason: Win RequestExit)
