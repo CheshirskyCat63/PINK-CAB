@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Algo/Reverse.h"
 #include "Misc/PackageName.h"
 #include "UObject/SavePackage.h"
 
@@ -128,6 +129,29 @@ void AddFace(
     const FVector& Normal,
     const FPolygonGroupID PolygonGroup)
 {
+    TArray<int32> OrderedIndices;
+    for (const int32 VertexIndex : Indices)
+    {
+        OrderedIndices.Add(VertexIndex);
+    }
+
+    if (OrderedIndices.Num() >= 3)
+    {
+        const FVector P0(Description.GetVertexPosition(
+            Vertices[OrderedIndices[0]]));
+        const FVector P1(Description.GetVertexPosition(
+            Vertices[OrderedIndices[1]]));
+        const FVector P2(Description.GetVertexPosition(
+            Vertices[OrderedIndices[2]]));
+        const FVector GeometricNormal =
+            FVector::CrossProduct(P1 - P0, P2 - P0).GetSafeNormal();
+        if (!GeometricNormal.IsNearlyZero()
+            && FVector::DotProduct(GeometricNormal, Normal) < 0.0)
+        {
+            Algo::Reverse(OrderedIndices);
+        }
+    }
+
     TArray<FVertexInstanceID> Instances;
     static const FVector2D UVs[4] = {
         FVector2D(0.0, 0.0),
@@ -137,7 +161,7 @@ void AddFace(
     };
 
     int32 UVIndex = 0;
-    for (const int32 VertexIndex : Indices)
+    for (const int32 VertexIndex : OrderedIndices)
     {
         const FVertexInstanceID Instance =
             Description.CreateVertexInstance(Vertices[VertexIndex]);
@@ -202,6 +226,223 @@ void AddCube(
     AddFace(Description, Vertices, {1, 2, 6, 5}, FVector(1, 0, 0), PolygonGroup);
     AddFace(Description, Vertices, {0, 1, 5, 4}, FVector(0, -1, 0), PolygonGroup);
     AddFace(Description, Vertices, {3, 7, 6, 2}, FVector(0, 1, 0), PolygonGroup);
+}
+
+void AddPositionFace(
+    UStaticMeshDescription& Description,
+    TArray<FVector> Positions,
+    const FVector& Normal,
+    const FPolygonGroupID PolygonGroup)
+{
+    if (Positions.Num() < 3)
+    {
+        return;
+    }
+
+    FVector GeometricNormal =
+        FVector::CrossProduct(
+            Positions[1] - Positions[0],
+            Positions[2] - Positions[0]).GetSafeNormal();
+    if (!GeometricNormal.IsNearlyZero()
+        && FVector::DotProduct(GeometricNormal, Normal) < 0.0)
+    {
+        Algo::Reverse(Positions);
+    }
+
+    TArray<FVertexID> Vertices;
+    Vertices.Reserve(Positions.Num());
+    for (const FVector& Position : Positions)
+    {
+        const FVertexID Vertex = Description.CreateVertex();
+        Description.SetVertexPosition(Vertex, Position);
+        Vertices.Add(Vertex);
+    }
+
+    TArray<FVertexInstanceID> Instances;
+    Instances.Reserve(Vertices.Num());
+    for (int32 Index = 0; Index < Vertices.Num(); ++Index)
+    {
+        const FVertexInstanceID Instance =
+            Description.CreateVertexInstance(Vertices[Index]);
+        Description.GetVertexInstanceNormals()[Instance] =
+            FVector3f(Normal);
+        const FVector Tangent =
+            FMath::Abs(Normal.X) > 0.9
+                ? FVector(0.0, 1.0, 0.0)
+                : FVector(1.0, 0.0, 0.0);
+        Description.GetVertexInstanceTangents()[Instance] =
+            FVector3f(Tangent);
+        Description.GetVertexInstanceBinormalSigns()[Instance] = 1.0f;
+        Description.SetVertexInstanceUV(
+            Instance,
+            FVector2D(
+                Index == 1 || Index == 2 ? 1.0 : 0.0,
+                Index >= 2 ? 1.0 : 0.0),
+            0);
+        Instances.Add(Instance);
+    }
+
+    TArray<FEdgeID> NewEdges;
+    Description.CreatePolygon(PolygonGroup, Instances, NewEdges);
+}
+
+void AddTaperedStripSegment(
+    UStaticMeshDescription& Description,
+    const double X0,
+    const double X1,
+    const double InnerAbsY0,
+    const double OuterAbsY0,
+    const double InnerAbsY1,
+    const double OuterAbsY1,
+    const double BottomZ,
+    const double TopZ,
+    const double SideSign,
+    const FPolygonGroupID PolygonGroup)
+{
+    const double I0 = SideSign * InnerAbsY0;
+    const double O0 = SideSign * OuterAbsY0;
+    const double I1 = SideSign * InnerAbsY1;
+    const double O1 = SideSign * OuterAbsY1;
+
+    const double Width0 = FMath::Abs(OuterAbsY0 - InnerAbsY0);
+    const double Width1 = FMath::Abs(OuterAbsY1 - InnerAbsY1);
+    const bool bStartOpen = Width0 > KINDA_SMALL_NUMBER;
+    const bool bEndOpen = Width1 > KINDA_SMALL_NUMBER;
+    if (!bStartOpen && !bEndOpen)
+    {
+        return;
+    }
+
+    if (bStartOpen && bEndOpen)
+    {
+        AddPositionFace(
+            Description,
+            {
+                FVector(X0, I0, TopZ),
+                FVector(X0, O0, TopZ),
+                FVector(X1, O1, TopZ),
+                FVector(X1, I1, TopZ)
+            },
+            FVector(0, 0, 1),
+            PolygonGroup);
+        AddPositionFace(
+            Description,
+            {
+                FVector(X0, I0, BottomZ),
+                FVector(X1, I1, BottomZ),
+                FVector(X1, O1, BottomZ),
+                FVector(X0, O0, BottomZ)
+            },
+            FVector(0, 0, -1),
+            PolygonGroup);
+    }
+    else if (bStartOpen)
+    {
+        const FVector TipTop(X1, O1, TopZ);
+        const FVector TipBottom(X1, O1, BottomZ);
+        AddPositionFace(
+            Description,
+            {
+                FVector(X0, I0, TopZ),
+                FVector(X0, O0, TopZ),
+                TipTop
+            },
+            FVector(0, 0, 1),
+            PolygonGroup);
+        AddPositionFace(
+            Description,
+            {
+                FVector(X0, O0, BottomZ),
+                FVector(X0, I0, BottomZ),
+                TipBottom
+            },
+            FVector(0, 0, -1),
+            PolygonGroup);
+    }
+    else
+    {
+        const FVector TipTop(X0, O0, TopZ);
+        const FVector TipBottom(X0, O0, BottomZ);
+        AddPositionFace(
+            Description,
+            {
+                TipTop,
+                FVector(X1, O1, TopZ),
+                FVector(X1, I1, TopZ)
+            },
+            FVector(0, 0, 1),
+            PolygonGroup);
+        AddPositionFace(
+            Description,
+            {
+                TipBottom,
+                FVector(X1, I1, BottomZ),
+                FVector(X1, O1, BottomZ)
+            },
+            FVector(0, 0, -1),
+            PolygonGroup);
+    }
+
+    const FVector OuterNormal(0, SideSign, 0);
+    const FVector InnerNormal(0, -SideSign, 0);
+    AddPositionFace(
+        Description,
+        {
+            FVector(X0, O0, BottomZ),
+            FVector(X1, O1, BottomZ),
+            FVector(X1, O1, TopZ),
+            FVector(X0, O0, TopZ)
+        },
+        OuterNormal,
+        PolygonGroup);
+    AddPositionFace(
+        Description,
+        {
+            FVector(X0, I0, BottomZ),
+            FVector(X0, I0, TopZ),
+            FVector(X1, I1, TopZ),
+            FVector(X1, I1, BottomZ)
+        },
+        InnerNormal,
+        PolygonGroup);
+}
+
+void AddSymmetricTaperedStripSegment(
+    UStaticMeshDescription& Description,
+    const double X0,
+    const double X1,
+    const double InnerAbsY0,
+    const double OuterAbsY0,
+    const double InnerAbsY1,
+    const double OuterAbsY1,
+    const double BottomZ,
+    const double TopZ,
+    const FPolygonGroupID PolygonGroup)
+{
+    AddTaperedStripSegment(
+        Description,
+        X0,
+        X1,
+        InnerAbsY0,
+        OuterAbsY0,
+        InnerAbsY1,
+        OuterAbsY1,
+        BottomZ,
+        TopZ,
+        1.0,
+        PolygonGroup);
+    AddTaperedStripSegment(
+        Description,
+        X0,
+        X1,
+        InnerAbsY0,
+        OuterAbsY0,
+        InnerAbsY1,
+        OuterAbsY1,
+        BottomZ,
+        TopZ,
+        -1.0,
+        PolygonGroup);
 }
 
 void AddSymmetricCube(
@@ -303,9 +544,11 @@ UStaticMesh* BuildConstructionMesh(
         FVector(
             ChunkHalf,
             FPinkCabL1RoadConstructionModel::CurbWidthCm * 0.5,
-            FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5),
+            (FPinkCabL1RoadConstructionModel::CurbHeightCm -
+             FPinkCabL1RoadConstructionModel::MedianDeckHeightCm) * 0.5),
         ChunkHalf,
-        FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5,
+        (FPinkCabL1RoadConstructionModel::CurbHeightCm +
+         FPinkCabL1RoadConstructionModel::MedianDeckHeightCm) * 0.5,
         CurbGroup);
     OutBoxCount += 2;
 
@@ -322,76 +565,88 @@ UStaticMesh* BuildConstructionMesh(
         CurbGroup);
     OutBoxCount += 2;
 
-    // Side service separators are sampled every 5m. The R1 connector model is
-    // authoritative: when it opens, this raised construction shrinks from the
-    // express side while remaining pinned to the local-road edge.
+    // R2 service construction follows the R1 connector continuously.
+    // Generate tapered strips between exact 5m boundary samples: no closed
+    // per-slice cubes, no +0.5cm overlap, and therefore no internal coplanar
+    // end faces or repeating z-fighting artifacts.
     const int32 SliceCount = FMath::RoundToInt(
         FPinkCabL1RoadConstructionModel::ChunkLengthCm /
         FPinkCabL1RoadConstructionModel::ConstructionSliceLengthCm);
-    const double SliceHalf =
-        FPinkCabL1RoadConstructionModel::ConstructionSliceLengthCm * 0.5;
+    const double SliceLength =
+        FPinkCabL1RoadConstructionModel::ConstructionSliceLengthCm;
+    const double ServiceOuter =
+        FPinkCabL1RoadConstructionModel::ServiceOuterEdgeAbsYCm;
 
     for (int32 Slice = 0; Slice < SliceCount; ++Slice)
     {
-        const double CenterX =
-            Slice * FPinkCabL1RoadConstructionModel::ConstructionSliceLengthCm +
-            SliceHalf;
-        const FPinkCabL1RoadConstructionBand Band =
-            FPinkCabL1RoadConstructionModel::ResolveServiceSeparator(CenterX);
-        if (!Band.bPresent || Band.WidthCm < 1.0)
+        const double X0 = Slice * SliceLength;
+        const double X1 = (Slice + 1) * SliceLength;
+        const FPinkCabL1RoadConstructionBand Band0 =
+            FPinkCabL1RoadConstructionModel::ResolveServiceSeparator(X0);
+        const FPinkCabL1RoadConstructionBand Band1 =
+            FPinkCabL1RoadConstructionModel::ResolveServiceSeparator(X1);
+
+        const double Width0 = Band0.WidthCm;
+        const double Width1 = Band1.WidthCm;
+        if (Width0 <= KINDA_SMALL_NUMBER
+            && Width1 <= KINDA_SMALL_NUMBER)
         {
             continue;
         }
 
-        AddSymmetricCube(
+        const double Inner0 = ServiceOuter - Width0;
+        const double Inner1 = ServiceOuter - Width1;
+
+        AddSymmetricTaperedStripSegment(
             *Description,
-            Band.CenterAbsYCm,
-            FVector(
-                SliceHalf + 0.5,
-                Band.WidthCm * 0.5,
-                FPinkCabL1RoadConstructionModel::ServiceDeckHeightCm * 0.5),
-            CenterX,
-            FPinkCabL1RoadConstructionModel::ServiceDeckHeightCm * 0.5,
+            X0,
+            X1,
+            Inner0,
+            ServiceOuter,
+            Inner1,
+            ServiceOuter,
+            0.0,
+            FPinkCabL1RoadConstructionModel::ServiceDeckHeightCm,
             DividerGroup);
         OutBoxCount += 2;
 
-        if (Band.WidthCm <
-            FPinkCabL1RoadConstructionModel::CurbWidthCm * 2.0)
+        // Both curbs taper to zero with the separator instead of terminating
+        // as block endcaps. Limit each curb to half the remaining band so the
+        // two curb strips never overlap near the connector throat.
+        const double CurbWidth0 = FMath::Min(
+            FPinkCabL1RoadConstructionModel::CurbWidthCm,
+            Width0 * 0.5);
+        const double CurbWidth1 = FMath::Min(
+            FPinkCabL1RoadConstructionModel::CurbWidthCm,
+            Width1 * 0.5);
+
+        if (CurbWidth0 > KINDA_SMALL_NUMBER
+            || CurbWidth1 > KINDA_SMALL_NUMBER)
         {
-            continue;
+            AddSymmetricTaperedStripSegment(
+                *Description,
+                X0,
+                X1,
+                Inner0,
+                Inner0 + CurbWidth0,
+                Inner1,
+                Inner1 + CurbWidth1,
+                FPinkCabL1RoadConstructionModel::ServiceDeckHeightCm,
+                FPinkCabL1RoadConstructionModel::CurbHeightCm,
+                CurbGroup);
+            AddSymmetricTaperedStripSegment(
+                *Description,
+                X0,
+                X1,
+                ServiceOuter - CurbWidth0,
+                ServiceOuter,
+                ServiceOuter - CurbWidth1,
+                ServiceOuter,
+                FPinkCabL1RoadConstructionModel::ServiceDeckHeightCm,
+                FPinkCabL1RoadConstructionModel::CurbHeightCm,
+                CurbGroup);
+            OutBoxCount += 4;
         }
-
-        const double InnerEdgeAbsY =
-            FPinkCabL1RoadConstructionModel::ServiceOuterEdgeAbsYCm -
-            Band.WidthCm;
-        const double InnerCurbCenterAbsY =
-            InnerEdgeAbsY +
-            FPinkCabL1RoadConstructionModel::CurbWidthCm * 0.5;
-        const double OuterCurbCenterAbsY =
-            FPinkCabL1RoadConstructionModel::ServiceOuterEdgeAbsYCm -
-            FPinkCabL1RoadConstructionModel::CurbWidthCm * 0.5;
-
-        AddSymmetricCube(
-            *Description,
-            InnerCurbCenterAbsY,
-            FVector(
-                SliceHalf + 0.5,
-                FPinkCabL1RoadConstructionModel::CurbWidthCm * 0.5,
-                FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5),
-            CenterX,
-            FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5,
-            CurbGroup);
-        AddSymmetricCube(
-            *Description,
-            OuterCurbCenterAbsY,
-            FVector(
-                SliceHalf + 0.5,
-                FPinkCabL1RoadConstructionModel::CurbWidthCm * 0.5,
-                FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5),
-            CenterX,
-            FPinkCabL1RoadConstructionModel::CurbHeightCm * 0.5,
-            CurbGroup);
-        OutBoxCount += 4;
     }
 
     TArray<FStaticMaterial> Materials;
