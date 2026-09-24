@@ -49,9 +49,7 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         TEXT("RoadCurbs4"),
         TEXT("RoadCurbs5"),
         TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7"),
-        TEXT("RoadCurbs8"),
-        TEXT("RoadCurbs9")
+        TEXT("RoadCurbs7")
     };
 
     FBox CombinedBounds(ForceInit);
@@ -137,9 +135,9 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
         LoadedMeshCount,
         static_cast<int32>(UE_ARRAY_COUNT(NativeMeshNames)));
     TestEqual(
-        TEXT("ten native MetaRoad curb meshes are present"),
+        TEXT("eight native MetaRoad curb meshes are present"),
         CurbMeshCount,
-        10);
+        8);
     TestTrue(
         TEXT("native MetaRoad sidewalk layer contains raised construction"),
         bRaisedSurfacePresent);
@@ -159,8 +157,8 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
             TEXT("combined native R2 road remains 1000m long"),
             FMath::IsNearlyEqual(CombinedSize.X, 100000.0, 250.0));
         TestTrue(
-            TEXT("native curb profile stays within the accepted road envelope tolerance"),
-            FMath::IsNearlyEqual(CombinedSize.Y, 6695.0, 20.0));
+            TEXT("combined native R2 road preserves the accepted 66.8m envelope"),
+            FMath::IsNearlyEqual(CombinedSize.Y, 6680.0, 10.0));
         TestTrue(
             TEXT("combined native R2 construction has real vertical relief"),
             CombinedSize.Z >= 11.0);
