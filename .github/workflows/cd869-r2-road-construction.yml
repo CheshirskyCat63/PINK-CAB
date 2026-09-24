@@ -84,6 +84,42 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'R2_EDITOR_BUILD=PASS'
 
+      - name: Generate R2 road construction asset
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R2_AUTHORING.log'
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadConstructionR2" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            throw 'R2_CONSTRUCTION_AUTHORING_FAILED'
+          }
+          if(-not (Select-String $log -Pattern 'CD869_R2_CONSTRUCTION_BAKE=PASS' -Quiet)){
+            throw 'R2_CONSTRUCTION_BAKE_MARKER_MISSING'
+          }
+          $asset=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\RoadConstruction.uasset'
+          $material=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Materials\M_PC_L1_CurbConcrete.uasset'
+          if(-not (Test-Path $asset)){ throw 'R2_CONSTRUCTION_ASSET_MISSING_AFTER_AUTHORING' }
+          if(-not (Test-Path $material)){ throw 'R2_CURB_MATERIAL_MISSING_AFTER_AUTHORING' }
+          Write-Host 'R2_CONSTRUCTION_AUTHORING=PASS'
+
+      - name: Commit R2 construction content
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road/RoadConstruction.uasset Content/World/L1/Road/Materials/M_PC_L1_CurbConcrete.uasset
+          if(git diff --cached --quiet){
+            Write-Host 'R2_CONTENT_DIFF=0'
+          } else {
+            git commit -m 'asset(CD-869): bake R2 median separators and curbs'
+            git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+            Write-Host "R2_CONTENT_COMMIT=$((git rev-parse HEAD).Trim())"
+          }
+
       - name: Run R2 construction model tests
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
