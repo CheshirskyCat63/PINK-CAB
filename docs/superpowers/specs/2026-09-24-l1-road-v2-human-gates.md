@@ -65,9 +65,28 @@ R1 HUMAN acceptance checks only:
 
 ## R2 — median/separators
 
-**Status: NEXT HUMAN-GATED STAGE.**
+**Status: IN PROGRESS · 2026-09-24.**
 
 Add the actual raised separator/curb construction required for the road to read as built geometry rather than a flat drawing. Preserve accepted R1 topology and streaming unchanged.
+
+R2 implementation contract:
+- keep the accepted 66.8 m outer road envelope and 1000 m seam unchanged;
+- central median is physically raised across the kilometre;
+- service separators between express and local roads are physically raised and open only where the accepted R1 access connector opens;
+- curb geometry visibly defines median/separator road edges;
+- local-road outside edge receives a continuous curb/road-edge treatment inside the accepted envelope;
+- curb/separator collision is present but low enough to remain believable road-edge geometry rather than a wall;
+- R1 access windows remain physically traversable;
+- no lane-marking pass, asphalt visual rework, road-friction change or tire calibration is permitted in R2.
+
+R2 HUMAN acceptance:
+1. road no longer reads as a flat painted sheet;
+2. central median has clear height/edge construction;
+3. express/local separator has clear raised geometry and visible curbs;
+4. R1 exit/merge openings remain unobstructed and drivable;
+5. outer local-road edge has a readable curb;
+6. chunk seams remain visually/collision clean;
+7. accepted R1 streaming and controls remain unchanged.
 
 ## R3 — road markings
 
