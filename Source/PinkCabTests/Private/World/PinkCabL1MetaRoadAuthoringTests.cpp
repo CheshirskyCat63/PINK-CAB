@@ -153,14 +153,15 @@ void AddSideProfile(TArray<FRoadLane>& Lanes)
     }
 
     // The accepted 1m outer shoulder becomes the native raised road-edge
-    // treatment. Both edges use MetaRoad curb geometry; the inner one defines
-    // the local-road edge and the outer one gives the module a finished edge.
+    // treatment. Only the road-facing edge gets a curb; suppressing the outer
+    // curb keeps the accepted 66.8m envelope exact instead of adding one curb
+    // profile width beyond it.
     Lanes.Add(MakeSurfaceLane(
         OuterShoulderCm,
         ERoadZoneTypes::Shoulder,
         true,
         true,
-        true));
+        false));
 }
 
 bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
@@ -596,15 +597,6 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 {
     using namespace PinkCabL1MetaRoadAuthoring;
 
-    UStaticMesh* Road = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
-    TestNotNull(TEXT("baked road surface loads for runtime material ownership"), Road);
-    if (!Road)
-    {
-        return false;
-    }
-
     UMaterial* Asphalt = CreateSimpleSurfaceMaterial(
         TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt"),
         TEXT("M_PC_L1_Asphalt"),
@@ -632,39 +624,95 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         return false;
     }
 
-    TArray<FStaticMaterial>& Slots = Road->GetStaticMaterials();
-    TestTrue(TEXT("baked road exposes material slots"), Slots.Num() > 0);
-    for (int32 Index = 0; Index < Slots.Num(); ++Index)
-    {
-        const FString SlotName = Slots[Index].MaterialSlotName.ToString();
-        AddInfo(FString::Printf(
-            TEXT("CD869_ROAD_SLOT_NAME[%d]=%s"),
-            Index,
-            *SlotName));
-        Road->SetMaterial(
-            Index,
-            ResolveProjectMaterialForSlot(
-                Slots[Index], Asphalt, Divider, Shoulder));
-    }
+    const TCHAR* GeneratedMeshNames[] = {
+        TEXT("RoadSurface"),
+        TEXT("RoadSidewalks"),
+        TEXT("RoadCurbs"),
+        TEXT("RoadCurbs1"),
+        TEXT("RoadCurbs2"),
+        TEXT("RoadCurbs3"),
+        TEXT("RoadCurbs4"),
+        TEXT("RoadCurbs5"),
+        TEXT("RoadCurbs6"),
+        TEXT("RoadCurbs7"),
+        TEXT("RoadCurbs8"),
+        TEXT("RoadCurbs9")
+    };
 
-    Road->PostEditChange();
-    const bool bSavedRoad = SaveGeneratedMeshPackage(*Road, *this);
-    TestTrue(TEXT("road surface saved after project material rebinding"), bSavedRoad);
-
-    for (int32 Index = 0; Index < Road->GetStaticMaterials().Num(); ++Index)
+    int32 ReboundMeshCount = 0;
+    for (const TCHAR* MeshName : GeneratedMeshNames)
     {
-        UMaterialInterface* Material =
-            Road->GetStaticMaterials()[Index].MaterialInterface;
-        TestNotNull(TEXT("runtime road material remains assigned"), Material);
-        if (Material)
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            MeshName,
+            MeshName);
+        UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+            nullptr,
+            *ObjectPath);
+        TestNotNull(
+            *FString::Printf(
+                TEXT("native MetaRoad mesh loads for runtime ownership: %s"),
+                MeshName),
+            Mesh);
+        if (!Mesh)
         {
-            const FString Path = Material->GetPathName();
-            TestTrue(TEXT("runtime material is owned by PINK-CAB content"),
-                Path.StartsWith(TEXT("/Game/World/L1/Road/Materials/")));
-            TestFalse(TEXT("runtime material no longer depends on MetaRoad content"),
-                Path.StartsWith(TEXT("/MetaRoad/")));
+            continue;
         }
+
+        TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+        TestTrue(
+            *FString::Printf(TEXT("%s exposes material slots"), MeshName),
+            Slots.Num() > 0);
+
+        const bool bCurbMesh =
+            FString(MeshName).StartsWith(TEXT("RoadCurbs"));
+        for (int32 Index = 0; Index < Slots.Num(); ++Index)
+        {
+            const FString SlotName = Slots[Index].MaterialSlotName.ToString();
+            AddInfo(FString::Printf(
+                TEXT("CD869_NATIVE_SLOT[%s][%d]=%s"),
+                MeshName,
+                Index,
+                *SlotName));
+            Mesh->SetMaterial(
+                Index,
+                bCurbMesh
+                    ? Shoulder
+                    : ResolveProjectMaterialForSlot(
+                        Slots[Index], Asphalt, Divider, Shoulder));
+        }
+
+        Mesh->PostEditChange();
+        TestTrue(
+            *FString::Printf(
+                TEXT("%s saved after project material rebinding"),
+                MeshName),
+            SaveGeneratedMeshPackage(*Mesh, *this));
+
+        for (int32 Index = 0; Index < Mesh->GetStaticMaterials().Num(); ++Index)
+        {
+            UMaterialInterface* Material =
+                Mesh->GetStaticMaterials()[Index].MaterialInterface;
+            TestNotNull(TEXT("runtime road material remains assigned"), Material);
+            if (Material)
+            {
+                const FString Path = Material->GetPathName();
+                TestTrue(
+                    TEXT("runtime material is owned by PINK-CAB content"),
+                    Path.StartsWith(
+                        TEXT("/Game/World/L1/Road/Materials/")));
+                TestFalse(
+                    TEXT("runtime material no longer depends on MetaRoad content"),
+                    Path.StartsWith(TEXT("/MetaRoad/")));
+            }
+        }
+        ++ReboundMeshCount;
     }
+
+    TestEqual(
+        TEXT("all native MetaRoad R2 meshes rebound for runtime"),
+        ReboundMeshCount,
+        static_cast<int32>(UE_ARRAY_COUNT(GeneratedMeshNames)));
 
     AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
     return true;
