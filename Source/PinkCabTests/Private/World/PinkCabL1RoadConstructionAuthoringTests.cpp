@@ -133,9 +133,13 @@ void AddCube(
     FPolygonID MinusY;
     FPolygonID PlusZ;
     FPolygonID MinusZ;
+    // UE 5.8 UStaticMeshDescription::CreateCube expands the supplied
+    // vector by two again while constructing the cube. Keep this helper's
+    // contract in real half-extents and compensate here so authored bounds
+    // match the approved centimetre dimensions.
     Description.CreateCube(
         Center,
-        HalfExtents,
+        HalfExtents * 0.5,
         PolygonGroup,
         PlusX,
         MinusX,
