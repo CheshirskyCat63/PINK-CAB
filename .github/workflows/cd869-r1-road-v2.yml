@@ -330,6 +330,25 @@ jobs:
             Write-Host "R2_REGRESSION_PASS suite=$suite $($queue[-1].Line)"
           }
 
+      - name: Gearbox 3-4 deliberate-entry regression
+        if: ${{ steps.classify.outputs.skip != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD643_HGATE_CENTER.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Vehicle.HGate.DeliberateCenterEntry" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            Get-Content $log | Select-Object -Last 160 | ForEach-Object { Write-Host $_ }
+            throw 'CD643_HGATE_CENTER_REGRESSION_FAILED'
+          }
+          if(-not (Select-String $log -Pattern 'Test Completed\. Result=\{Success\}.*DeliberateCenterEntry' -Quiet)){
+            throw 'CD643_HGATE_CENTER_PASS_MARKER_MISSING'
+          }
+          Write-Host 'CD643_HGATE_CENTER=PASS'
+
       - name: Strict zero-debt and primitive-source scan
         if: ${{ steps.classify.outputs.skip != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
