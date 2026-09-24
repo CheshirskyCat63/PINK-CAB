@@ -22,6 +22,7 @@ jobs:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       ACCEPTED_INPUT_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      R2_RUNTIME_SHA: f87cb4bdab93b73b3f4c8443f5f85e69d78f5747
 
     steps:
       - name: Prepare exact R2 worktree after releasing CI file locks
@@ -143,6 +144,29 @@ jobs:
           Write-Host 'R2_SCOPE_GUARD=PASS'
           Write-Host "R2_HUMAN_HEAD=$head"
 
+      - name: Classify runtime delta after verified R2 asset
+        id: runtime_delta
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git cat-file -e "$env:R2_RUNTIME_SHA^{commit}"
+          if($LASTEXITCODE -ne 0){ throw 'R2_VERIFIED_RUNTIME_SHA_MISSING' }
+
+          $runtime=@(git diff --name-only "$env:R2_RUNTIME_SHA..HEAD" |
+            Where-Object {
+              $_ -match '^Source/' -or
+              $_ -match '^Content/' -or
+              $_ -match '^Config/' -or
+              $_ -eq 'PinkCab.uproject'
+            })
+          if($runtime.Count -eq 0){
+            'reuse_verified=true' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host "R2_VERIFIED_RUNTIME_REUSED=$env:R2_RUNTIME_SHA"
+          } else {
+            'reuse_verified=false' | Out-File $env:GITHUB_OUTPUT -Append
+            $runtime | ForEach-Object { Write-Host "R2_RUNTIME_DELTA=$_" }
+          }
+
       - name: Close previous PINK-CAB and CI Unreal processes
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -168,6 +192,7 @@ jobs:
           Write-Host 'R2_PROCESS_CLEAN=PASS'
 
       - name: Build PinkCabEditor exact head
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -178,6 +203,7 @@ jobs:
           Write-Host 'R2_EXACT_EDITOR_BUILD=PASS'
 
       - name: Run R2 exact-head automation
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -193,6 +219,7 @@ jobs:
           Write-Host "R2_EXACT_AUTOMATION=PASS $($queue[-1].Line)"
 
       - name: Re-run accepted R1 world regressions
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -212,6 +239,7 @@ jobs:
           }
 
       - name: Strict zero debt
+        if: ${{ steps.runtime_delta.outputs.reuse_verified != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -230,27 +258,54 @@ jobs:
             }
 
           $workspacePattern=[Regex]::Escape($env:GITHUB_WORKSPACE)
-          $ue=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-            Where-Object {
-              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
-              $_.CommandLine -and
-              $_.CommandLine -match $workspacePattern
-            })
-          foreach($p in $ue){
+          $all=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+          $ciUE=@($all | Where-Object {
+            $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+            $_.CommandLine -and
+            $_.CommandLine -match $workspacePattern
+          })
+          $ciUEIds=@($ciUE | ForEach-Object { [int]$_.ProcessId })
+
+          $liveCoding=@($all | Where-Object {
+            $_.Name -in @('LiveCodingConsole.exe','LiveCodingConsole-Win64-Shipping.exe')
+          })
+          foreach($lc in $liveCoding){
+            $parent=@($all | Where-Object { $_.ProcessId -eq $lc.ParentProcessId })
+            $isCiChild=$ciUEIds -contains [int]$lc.ParentProcessId
+            $isOrphan=$parent.Count -eq 0
+            if($isCiChild -or $isOrphan){
+              Write-Host "R2_PRECOOK_STOP_LIVECODING pid=$($lc.ProcessId) parent=$($lc.ParentProcessId) ciChild=$isCiChild orphan=$isOrphan"
+              Stop-Process -Id $lc.ProcessId -Force -ErrorAction SilentlyContinue
+            } else {
+              Write-Host "R2_PRECOOK_PRESERVE_LIVECODING pid=$($lc.ProcessId) parent=$($lc.ParentProcessId) parentName=$($parent[0].Name)"
+            }
+          }
+
+          foreach($p in $ciUE){
             Write-Host "R2_PRECOOK_STOP_CI_UNREAL pid=$($p.ProcessId) name=$($p.Name)"
             Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
           }
-          if($ue.Count -gt 0){ Start-Sleep -Milliseconds 1000 }
+          if($ciUE.Count -gt 0 -or $liveCoding.Count -gt 0){
+            Start-Sleep -Milliseconds 1200
+          }
 
-          $remaining=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-            Where-Object {
-              $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
-              $_.CommandLine -and
-              $_.CommandLine -match $workspacePattern
-            })
-          if($remaining.Count -gt 0){
-            $remaining | ForEach-Object { Write-Host "R2_PRECOOK_CI_UNREAL_SURVIVED pid=$($_.ProcessId)" }
-            throw "R2_PRECOOK_CI_UNREAL_SURVIVED=$($remaining.Count)"
+          $after=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+          $remainingCiUE=@($after | Where-Object {
+            $_.Name -in @('UnrealEditor.exe','UnrealEditor-Cmd.exe') -and
+            $_.CommandLine -and
+            $_.CommandLine -match $workspacePattern
+          })
+          if($remainingCiUE.Count -gt 0){
+            $remainingCiUE | ForEach-Object { Write-Host "R2_PRECOOK_CI_UNREAL_SURVIVED pid=$($_.ProcessId)" }
+            throw "R2_PRECOOK_CI_UNREAL_SURVIVED=$($remainingCiUE.Count)"
+          }
+
+          $remainingLive=@($after | Where-Object {
+            $_.Name -in @('LiveCodingConsole.exe','LiveCodingConsole-Win64-Shipping.exe')
+          })
+          foreach($lc in $remainingLive){
+            $parent=@($after | Where-Object { $_.ProcessId -eq $lc.ParentProcessId })
+            Write-Host "R2_PRECOOK_REMAINING_LIVECODING pid=$($lc.ProcessId) parent=$($lc.ParentProcessId) parentName=$($parent[0].Name)"
           }
           Write-Host 'R2_PRECOOK_LIVE_CODING_CLEAR=PASS'
 
@@ -341,7 +396,8 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $sha=(git rev-parse HEAD).Trim()
+          $verificationHead=(git rev-parse HEAD).Trim()
+          $sha=$env:R2_RUNTIME_SHA
           $short=$sha.Substring(0,8)
           $source=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869R2Human\Windows'
           $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R2_CURBS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
@@ -355,6 +411,7 @@ jobs:
           $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $inner)){ throw 'R2_DELIVERED_EXE_MISSING' }
           Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'VERIFICATION_HEAD.txt') $verificationHead -NoNewline
           Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
 
           $desktop=[Environment]::GetFolderPath('Desktop')
