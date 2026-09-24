@@ -399,6 +399,55 @@ bool FPinkCabL1EndlessRoadStreamerPolicyTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1EndlessRoadStreamerTransactionalFailureTest,
+    "PinkCab.World.L1EndlessRoad.Streamer.TransactionalFailure",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1EndlessRoadStreamerTransactionalFailureTest::RunTest(
+    const FString& Parameters)
+{
+    UWorld* World = PinkCabL1EndlessRoadRuntimeTests::NewTestWorld(*this);
+    if (!World) return false;
+
+    APinkCabL1EndlessRoadStreamer* Streamer =
+        PinkCabL1EndlessRoadStreamerTests::SpawnStreamer(*World, *this);
+    if (!Streamer) return false;
+
+    TestTrue(TEXT("initial window materializes"),
+        Streamer->RefreshForState(
+            FVector(10.0, 0.0, 0.0),
+            FVector(100.0, 0.0, 0.0)));
+
+    APinkCabL1RoadChunkActor* CorruptSlot =
+        Streamer->FindActiveChunkActor(0);
+    TestNotNull(TEXT("non-leaving chunk zero exists"), CorruptSlot);
+    if (!CorruptSlot) return false;
+
+    CorruptSlot->SetRoadMesh(nullptr);
+    TestFalse(TEXT("corrupt slot is unbound before refresh"),
+        CorruptSlot->IsBound());
+
+    const TArray<int32> Before = Streamer->GetActiveChunkIndices();
+    TestEqual(TEXT("one already-corrupt slot leaves six valid bindings"),
+        Before.Num(), 6);
+    TestTrue(TEXT("leaving chunk minus two is still valid before failed refresh"),
+        Streamer->FindActiveChunkActor(-2) != nullptr);
+
+    TestFalse(TEXT("refresh fails when free slot cannot bind"),
+        Streamer->RefreshForState(
+            FVector(150000.0, 0.0, 0.0),
+            FVector(100.0, 0.0, 0.0)));
+
+    TestTrue(TEXT("failed refresh preserves otherwise-valid leaving chunk"),
+        Streamer->FindActiveChunkActor(-2) != nullptr);
+    TestEqual(TEXT("failed refresh does not dematerialize extra valid chunks"),
+        Streamer->GetActiveChunkCount(), 6);
+    TestEqual(TEXT("failed refresh keeps previous logical current chunk"),
+        Streamer->GetCurrentChunkIndex(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabL1EndlessRoadStreamerMissingVisualTest,
     "PinkCab.World.L1EndlessRoad.Streamer.MissingVisualFailsBounded",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
