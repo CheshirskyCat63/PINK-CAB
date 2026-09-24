@@ -613,12 +613,16 @@ UStaticMesh* BuildConstructionMesh(
         // Both curbs taper to zero with the separator instead of terminating
         // as block endcaps. Limit each curb to half the remaining band so the
         // two curb strips never overlap near the connector throat.
-        const double CurbWidth0 = FMath::Min(
-            FPinkCabL1RoadConstructionModel::CurbWidthCm,
-            Width0 * 0.5);
-        const double CurbWidth1 = FMath::Min(
-            FPinkCabL1RoadConstructionModel::CurbWidthCm,
-            Width1 * 0.5);
+        const double MinimumTwoCurbBand =
+            FPinkCabL1RoadConstructionModel::CurbWidthCm * 2.0;
+        const double CurbWidth0 =
+            Width0 >= MinimumTwoCurbBand
+                ? FPinkCabL1RoadConstructionModel::CurbWidthCm
+                : 0.0;
+        const double CurbWidth1 =
+            Width1 >= MinimumTwoCurbBand
+                ? FPinkCabL1RoadConstructionModel::CurbWidthCm
+                : 0.0;
 
         if (CurbWidth0 > KINDA_SMALL_NUMBER
             || CurbWidth1 > KINDA_SMALL_NUMBER)
