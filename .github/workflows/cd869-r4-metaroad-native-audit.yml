@@ -1,0 +1,79 @@
+name: CD-869 R4 MetaRoad Native Audit
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-metaroad-native
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 20
+    env:
+      METAROAD_ROOT: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4
+
+    steps:
+      - name: Checkout exact clean R3-derived branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Verify branch is clean R3 runtime baseline
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          $runtime=@(git diff --name-only 55e9fd8481a114265fd43f1c6433d86df53ba991 HEAD -- Source/PinkCab Source/PinkCabVehicle Source/PinkCabInteraction Config Content)
+          if($runtime.Count -ne 0){
+            $runtime | ForEach-Object { Write-Host "R4_NATIVE_UNEXPECTED_BASELINE_DELTA=$_" }
+            throw 'R4_NATIVE_BASELINE_NOT_CLEAN_R3'
+          }
+          Write-Host "R4_NATIVE_HEAD=$head"
+          Write-Host 'R4_NATIVE_R3_BASELINE=PASS'
+
+      - name: Inventory installed MetaRoad 3.2 road visual assets
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $uplugin=Join-Path $env:METAROAD_ROOT 'MetaRoad.uplugin'
+          if(-not (Test-Path $uplugin)){ throw 'METAROAD_UPLUGIN_MISSING' }
+          $meta=Get-Content -Raw $uplugin | ConvertFrom-Json
+          Write-Host "METAROAD_VERSION=$($meta.VersionName)"
+          $content=Join-Path $env:METAROAD_ROOT 'Content'
+          if(-not (Test-Path $content)){ throw 'METAROAD_CONTENT_MISSING' }
+
+          Get-ChildItem $content -Recurse -File -Filter '*.uasset' |
+            Where-Object {
+              $_.FullName -match '(?i)Material|Texture|Road|Curb|Sidewalk|Mark|Asphalt'
+            } |
+            Sort-Object FullName |
+            ForEach-Object {
+              $rel=$_.FullName.Substring($content.Length).TrimStart('\')
+              Write-Host ("METAROAD_ASSET={0} bytes={1}" -f $rel,$_.Length)
+            }
+
+      - name: Inspect native asphalt material references
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $content=Join-Path $env:METAROAD_ROOT 'Content'
+          $asset=Get-ChildItem $content -Recurse -File -Filter 'M_Asphalt.uasset' | Select-Object -First 1
+          if(-not $asset){ throw 'METAROAD_NATIVE_M_ASPHALT_MISSING' }
+          Write-Host "METAROAD_NATIVE_ASPHALT_FILE=$($asset.FullName)"
+          $bytes=[IO.File]::ReadAllBytes($asset.FullName)
+          foreach($enc in @([Text.Encoding]::ASCII,[Text.Encoding]::Unicode)){
+            $txt=$enc.GetString($bytes)
+            [regex]::Matches($txt,'[A-Za-z0-9_\/\.\-]{4,}') |
+              ForEach-Object { $_.Value } |
+              Where-Object { $_ -match '(?i)asphalt|road|rough|normal|albedo|basecolor|texture|wet|noise|curb|sidewalk|mark|MetaRoad' } |
+              Sort-Object -Unique |
+              Select-Object -First 220 |
+              ForEach-Object { Write-Host "METAROAD_ASPHALT_TOKEN=$_" }
+          }
+          Write-Host 'METAROAD_NATIVE_ASPHALT_AUDIT=PASS'
