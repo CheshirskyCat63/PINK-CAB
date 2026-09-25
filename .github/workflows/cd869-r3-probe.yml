@@ -1,0 +1,65 @@
+name: CD-869 R3 MetaRoad API Probe
+
+on:
+  push:
+    branches: [feat/CD-869-r3-metaroad-markings]
+    paths: [.github/workflows/cd869-r3-probe.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 10
+    env:
+      META_ROOT: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: false
+          clean: false
+
+      - name: Exact preflight and MetaRoad R3 API
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $tracked=@(git status --porcelain --untracked-files=no)
+          if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
+          Write-Host "R3_PREFLIGHT_HEAD=$head"
+          git remote -v | % { Write-Host "R3_REMOTE $_" }
+          git log -5 --oneline | % { Write-Host "R3_LOG $_" }
+
+          $files=@(
+            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\RoadLaneAttribute.h'),
+            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\Assets\RoadLaneAttributeMark.h'),
+            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\MetaRoadTypes.h'),
+            (Join-Path $env:META_ROOT 'Source\MetaRoad\Private\Assets\RoadLaneAttributeDescriptor.cpp'),
+            (Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadDragDropHandler.cpp')
+          )
+          foreach($f in $files){
+            if(-not (Test-Path $f)){ throw "R3_PLUGIN_FILE_MISSING=$f" }
+            Write-Host "===== R3_FILE $f ====="
+            $content=Get-Content $f
+            $patterns=@('struct METAROAD_API FRoadLaneAttribute','struct METAROAD_API FRoadLane','FRoadLaneAttribute','Attributes','AddKey','AttributeValueTemplate','URoadLaneAttributeMarkDescriptor','FRoadLaneMark','Descriptor','TObjectPtr')
+            $idx=@()
+            for($i=0;$i -lt $content.Count;$i++){
+              foreach($p in $patterns){ if($content[$i] -match [regex]::Escape($p)){ $idx += $i; break } }
+            }
+            $shown=@{}
+            foreach($i in $idx){
+              $a=[Math]::Max(0,$i-8); $b=[Math]::Min($content.Count-1,$i+16)
+              for($j=$a;$j -le $b;$j++){
+                if(-not $shown.ContainsKey($j)){ Write-Host ("{0}: {1}" -f ($j+1),$content[$j]); $shown[$j]=$true }
+              }
+              Write-Host '---'
+            }
+          }
+
+          $profiles=Join-Path $env:META_ROOT 'Content\MetaRoad\Profiles\Marks'
+          Get-ChildItem $profiles -Filter '*.uasset' | Sort-Object Name | % { Write-Host "R3_MARK_PROFILE=$($_.BaseName)" }
+          Write-Host 'R3_API_PROBE=PASS'
