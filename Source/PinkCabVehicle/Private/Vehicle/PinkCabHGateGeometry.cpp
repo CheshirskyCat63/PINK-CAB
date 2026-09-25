@@ -8,21 +8,22 @@ constexpr float HGateCountsX = 320.0f;
 constexpr float HGateCountsY = 240.0f;
 constexpr float HGateMaxSubstep = 0.20f;
 
-// Owner-approved extended H-pattern:
-//   1/2 stays at the old left rail (-1)
-//   3/4 moves to the old 5/R rail (+1)
-//   5/R moves one equal step farther right (+2)
+// Forgiving owner-approved H-pattern:
+//   1/2 owns only the extreme-left region.
+//   5/R owns only the extreme-right region.
+//   3/4 owns the broad middle region between them, so the driver does not
+//   have to pixel-hunt a narrow center rail with the mouse.
 constexpr float HGateLeftRailX = -1.0f;
 constexpr float HGateMiddleRailX = 1.0f;
 constexpr float HGateRightRailX = 2.0f;
-constexpr float HGateColumnCapture = 0.25f;
+constexpr float HGateLeftZoneMaxX = -0.50f;
+constexpr float HGateRightZoneMinX = 1.50f;
 
 int32 ResolveColumn(const float X)
 {
-    if (FMath::Abs(X - HGateLeftRailX) <= HGateColumnCapture) return 0;
-    if (FMath::Abs(X - HGateMiddleRailX) <= HGateColumnCapture) return 1;
-    if (FMath::Abs(X - HGateRightRailX) <= HGateColumnCapture) return 2;
-    return INDEX_NONE;
+    if (X <= HGateLeftZoneMaxX) return 0;
+    if (X >= HGateRightZoneMinX) return 2;
+    return 1;
 }
 
 int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
@@ -73,13 +74,8 @@ bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, c
         return true;
     }
 
-    // A gear may only be entered while the lever is physically inside one of
-    // the three narrow rail capture bands. Vertical motion between rails stays N.
-    if (Column == INDEX_NONE)
-    {
-        return false;
-    }
-
+    // The entire comfortable middle region resolves to the 3/4 column.
+    // Only the two outer edge regions resolve to 1/2 and 5/R.
     State.RequestedGear = NewRow > 0
         ? (Column == 0 ? 1 : (Column == 1 ? 3 : 5))
         : (Column == 0 ? 2 : (Column == 1 ? 4 : -1));
@@ -146,14 +142,8 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
     }
     else
     {
-        // Between rail capture bands the cross-gate is a hard wall in Y.
-        // Do not let the driver preload most of a fore/aft throw in the gap
-        // and then "fall" into a gear with a tiny final motion.
-        if (ResolveColumn(State.LeverX) == INDEX_NONE)
-        {
-            return false;
-        }
-
+        // At neutral every horizontal position belongs to a deliberate column
+        // region, so fore/aft motion is always available without precision aiming.
         const int32 Steps = FMath::Max(
             1,
             FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
