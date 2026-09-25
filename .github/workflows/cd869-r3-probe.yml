@@ -1,4 +1,4 @@
-name: CD-869 R3 MetaRoad Profile Probe
+name: CD-869 R3 MetaRoad Profile Source Probe
 
 on:
   push:
@@ -23,28 +23,17 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-
-      - name: Read native profile references
+      - name: Find road profile type
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
-          $tracked=@(git status --porcelain --untracked-files=no)
-          if($tracked.Count -ne 0){ $tracked | ForEach-Object { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
-          $dir=Join-Path $env:META_ROOT 'Content\MetaRoad\Profiles\RoadProfiles'
-          foreach($name in @('4_Lanes+Borders','2_Lanes+Borders','2_Lanes+Borders_Coodirect')){
-            $p=Join-Path $dir ($name + '.uasset')
-            if(-not(Test-Path $p)){ throw "R3_PROFILE_MISSING=$p" }
-            $bytes=[System.IO.File]::ReadAllBytes($p)
-            $ascii=([System.Text.Encoding]::ASCII.GetString($bytes)) -replace [char]0,''
-            $utf16=([System.Text.Encoding]::Unicode.GetString($bytes)) -replace [char]0,''
-            $refs=@()
-            foreach($txt in @($ascii,$utf16)){
-              $refs += [regex]::Matches($txt,'(?:broked|solid|double)_[A-Za-z0-9_]+') | ForEach-Object { $_.Value }
+          $files=Get-ChildItem (Join-Path $env:META_ROOT 'Source') -Recurse -File -Include '*.h','*.cpp'
+          $hits=$files | Select-String -Pattern 'class .*RoadProfile|struct .*RoadProfile|RoadProfiles|RoadLayout' -CaseSensitive:$false
+          foreach($h in $hits){
+            if($h.Path -match 'Profile|Preset|Types'){
+              Write-Host ("R3_SRC={0}:{1}:{2}" -f $h.Path,$h.LineNumber,$h.Line.Trim())
             }
-            $refs=$refs | Sort-Object -Unique
-            Write-Host "R3_ROAD_PROFILE=$name"
-            $refs | ForEach-Object { Write-Host "R3_PROFILE_MARK_REF=$name::$_" }
           }
-          Write-Host 'R3_PROFILE_PROBE=PASS'
+          Write-Host 'R3_SOURCE_PROBE=PASS'
