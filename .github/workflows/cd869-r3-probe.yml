@@ -1,4 +1,4 @@
-name: CD-869 R3 MetaRoad RoadProfile Header Probe
+name: CD-869 R3 MetaRoad LaneProfile API Probe
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-      - name: Read RoadProfile API
+      - name: Read LaneProfile API
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -31,5 +31,5 @@ jobs:
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
           $p=Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Public\Assets\RoadProfile.h'
           $c=Get-Content $p
-          for($i=80;$i -le 135;$i++){ Write-Host ("R3_ROADPROFILE_API {0}: {1}" -f $i,$c[$i-1]) }
-          Write-Host 'R3_PROFILE_HEADER_PROBE=PASS'
+          for($i=1;$i -le 82;$i++){ Write-Host ("R3_LANEPROFILE_API {0}: {1}" -f $i,$c[$i-1]) }
+          Write-Host 'R3_LANEPROFILE_HEADER_PROBE=PASS'
