@@ -162,7 +162,7 @@ bool FPinkCabVehicleControlRuntimeGearboxTest::RunTest(const FString& Parameters
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleHealthState Health;
 
-    Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, -320.0f, 0.0f, 0.05f, Cockpit);
+    Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, -640.0f, 0.0f, 0.05f, Cockpit);
     Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, 0.0f, 240.0f, 0.05f, Cockpit);
     TestEqual(TEXT("top-left H slot requests first"), Runtime.GetRequestedGear(), 1);
     TestEqual(TEXT("physical request does not magically engage gear"), Runtime.GetEngagedGear(), 0);
@@ -293,103 +293,69 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabHGateDeliberateCenterEntryTest::RunTest(const FString& Parameters)
 {
-    FPinkCabHGateState ShortForwardThrow;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        ShortForwardThrow, 0.0f, 140.0f);
-    TestEqual(
-        TEXT("old short fore/aft throw stays in neutral"),
-        ShortForwardThrow.RequestedGear,
-        0);
+    FPinkCabHGateState Neutral;
+    TestTrue(TEXT("neutral starts under the relocated 3/4 rail"),
+        FMath::IsNearlyEqual(Neutral.LeverX, 1.0f, KINDA_SMALL_NUMBER));
 
-    FPinkCabHGateState DeliberateThird;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        DeliberateThird, 0.0f, 240.0f);
-    TestEqual(
-        TEXT("long deliberate forward throw selects third"),
-        DeliberateThird.RequestedGear,
-        3);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Neutral, 0.0f, 140.0f);
+    TestEqual(TEXT("short fore/aft throw stays neutral"), Neutral.RequestedGear, 0);
 
-    FPinkCabHGateState DeliberateFourth;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        DeliberateFourth, 0.0f, -240.0f);
-    TestEqual(
-        TEXT("long deliberate rearward throw selects fourth"),
-        DeliberateFourth.RequestedGear,
-        4);
+    FPinkCabHGateState Third;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Third, 0.0f, 240.0f);
+    TestEqual(TEXT("old 5/R lateral position now selects third forward"), Third.RequestedGear, 3);
 
-    FPinkCabHGateState OldHorizontalThrow;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        OldHorizontalThrow, -160.0f, 0.0f);
-    TestEqual(
-        TEXT("old horizontal throw no longer reaches left rail"),
-        OldHorizontalThrow.LastGateColumn,
-        1);
+    FPinkCabHGateState Fourth;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fourth, 0.0f, -240.0f);
+    TestEqual(TEXT("old 5/R lateral position now selects fourth rearward"), Fourth.RequestedGear, 4);
 
-    FPinkCabHGateState LeftRail;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        LeftRail, -200.0f, 0.0f);
-    TestEqual(
-        TEXT("larger deliberate left throw reaches left rail"),
-        LeftRail.LastGateColumn,
-        0);
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        LeftRail, 0.0f, 240.0f);
-    TestEqual(TEXT("left rail plus forward selects first"), LeftRail.RequestedGear, 1);
+    FPinkCabHGateState BetweenRails;
+    FPinkCabHGateGeometry::ApplyDriverDelta(BetweenRails, -320.0f, 0.0f);
+    TestEqual(TEXT("halfway left travel remains in the neutral cross-gate"),
+        BetweenRails.RequestedGear, 0);
+    FPinkCabHGateGeometry::ApplyDriverDelta(BetweenRails, 0.0f, 240.0f);
+    TestEqual(TEXT("vertical motion between rails cannot enter a gear"),
+        BetweenRails.RequestedGear, 0);
 
-    FPinkCabHGateState RightRail;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        RightRail, 200.0f, 0.0f);
-    TestEqual(
-        TEXT("larger deliberate right throw reaches right rail"),
-        RightRail.LastGateColumn,
-        2);
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        RightRail, 0.0f, -240.0f);
-    TestEqual(TEXT("right rail plus rearward selects reverse"), RightRail.RequestedGear, -1);
+    FPinkCabHGateState First;
+    FPinkCabHGateGeometry::ApplyDriverDelta(First, -640.0f, 0.0f);
+    TestEqual(TEXT("full long left throw reaches 1/2 rail"), First.LastGateColumn, 0);
+    FPinkCabHGateGeometry::ApplyDriverDelta(First, 0.0f, 240.0f);
+    TestEqual(TEXT("left rail plus forward selects first"), First.RequestedGear, 1);
+
+    FPinkCabHGateState Fifth;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fifth, 320.0f, 0.0f);
+    TestEqual(TEXT("one equal step right of relocated 3/4 reaches 5/R rail"),
+        Fifth.LastGateColumn, 2);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Fifth, 0.0f, 240.0f);
+    TestEqual(TEXT("new far-right rail plus forward selects fifth"), Fifth.RequestedGear, 5);
+
+    FPinkCabHGateState Reverse;
+    FPinkCabHGateGeometry::ApplyDriverDelta(Reverse, 320.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(Reverse, 0.0f, -240.0f);
+    TestEqual(TEXT("new far-right rail plus rearward selects reverse"), Reverse.RequestedGear, -1);
 
     FPinkCabHGateState DiagonalFromNeutral;
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        DiagonalFromNeutral, 320.0f, 240.0f);
-    TestEqual(
-        TEXT("single diagonal sample stays neutral instead of cutting into fifth"),
-        DiagonalFromNeutral.RequestedGear,
-        0);
-    TestEqual(
-        TEXT("diagonal neutral sample resolves as horizontal cross-gate phase"),
-        DiagonalFromNeutral.LastGateColumn,
-        2);
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        DiagonalFromNeutral, 0.0f, 240.0f);
-    TestEqual(
-        TEXT("separate forward phase enters fifth after right cross-gate"),
-        DiagonalFromNeutral.RequestedGear,
-        5);
+    FPinkCabHGateGeometry::ApplyDriverDelta(DiagonalFromNeutral, 320.0f, 240.0f);
+    TestEqual(TEXT("single diagonal sample cannot cut into fifth"),
+        DiagonalFromNeutral.RequestedGear, 0);
+    FPinkCabHGateGeometry::ApplyDriverDelta(DiagonalFromNeutral, 0.0f, 240.0f);
+    TestEqual(TEXT("separate fore/aft phase enters fifth"),
+        DiagonalFromNeutral.RequestedGear, 5);
 
     FPinkCabHGateState FirstToThird;
     FPinkCabHGateGeometry::ResetToGear(FirstToThird, 1);
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        FirstToThird, 320.0f, -240.0f);
-    TestEqual(
-        TEXT("diagonal motion out of first exits only to neutral"),
-        FirstToThird.RequestedGear,
-        0);
-    TestEqual(
-        TEXT("same sample cannot cut horizontally after leaving first"),
-        FirstToThird.LastGateColumn,
-        0);
+    FPinkCabHGateGeometry::ApplyDriverDelta(FirstToThird, 640.0f, -240.0f);
+    TestEqual(TEXT("diagonal motion out of first exits only to neutral"),
+        FirstToThird.RequestedGear, 0);
+    TestEqual(TEXT("same sample cannot also cross the gate"),
+        FirstToThird.LastGateColumn, 0);
 
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        FirstToThird, 320.0f, 0.0f);
-    TestEqual(
-        TEXT("second phase crosses neutral to centre"),
-        FirstToThird.LastGateColumn,
-        1);
-    FPinkCabHGateGeometry::ApplyDriverDelta(
-        FirstToThird, 0.0f, 240.0f);
-    TestEqual(
-        TEXT("third phase deliberately enters third"),
-        FirstToThird.RequestedGear,
-        3);
+    FPinkCabHGateGeometry::ApplyDriverDelta(FirstToThird, 640.0f, 0.0f);
+    TestEqual(TEXT("separate long cross-gate phase reaches relocated 3/4 rail"),
+        FirstToThird.LastGateColumn, 1);
+    FPinkCabHGateGeometry::ApplyDriverDelta(FirstToThird, 0.0f, 240.0f);
+    TestEqual(TEXT("third phase deliberately enters third"),
+        FirstToThird.RequestedGear, 3);
 
     return true;
 }
