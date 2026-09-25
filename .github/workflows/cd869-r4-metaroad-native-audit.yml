@@ -110,3 +110,15 @@ jobs:
           }
           Write-Host 'METAROAD_EXACT_BINDINGS_AUDIT=PASS'
 
+      - name: Inspect MetaRoad plugin runtime support
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $uplugin=Get-Content -Raw (Join-Path $env:METAROAD_ROOT 'MetaRoad.uplugin') | ConvertFrom-Json
+          Write-Host "METAROAD_CAN_CONTAIN_CONTENT=$($uplugin.CanContainContent)"
+          Write-Host "METAROAD_INSTALLED=$($uplugin.Installed)"
+          foreach($m in @($uplugin.Modules)){
+            Write-Host ("METAROAD_MODULE name={0} type={1} phase={2} allow={3} deny={4}" -f $m.Name,$m.Type,$m.LoadingPhase,(@($m.PlatformAllowList)-join ','),(@($m.PlatformDenyList)-join ','))
+          }
+          Write-Host 'METAROAD_PLUGIN_RUNTIME_AUDIT=PASS'
+
