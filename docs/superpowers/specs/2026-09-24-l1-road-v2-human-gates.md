@@ -65,7 +65,7 @@ R1 HUMAN acceptance checks only:
 
 ## R2 — median/separators
 
-**Status: IN PROGRESS · 2026-09-24.**
+**Status: HUMAN ACCEPTED / INTEGRATED · 2026-09-25.**
 
 Add the actual raised separator/curb construction required for the road to read as built geometry rather than a flat drawing. Preserve accepted R1 topology and streaming unchanged.
 
@@ -90,7 +90,9 @@ R2 HUMAN acceptance:
 
 ## R3 — road markings
 
-Frozen until R2 owner acceptance.
+**Status: NEXT HUMAN-GATED STAGE · 2026-09-25.**
+
+R2 is frozen. R3 owns road markings only; it may not reopen accepted R1 topology/streaming, accepted R2 native MetaRoad construction, H-gate calibration, road friction, tire calibration, or final asphalt visual treatment.
 
 ## R4 — Road Visual v2
 
@@ -111,3 +113,17 @@ Frozen until R5 owner acceptance.
 - packaged frozen-control recovery run: `35997397505` — PASS;
 - control-plane verification HEAD at acceptance: `719e0f0c7df16fd4542791356c60bb7abdf66a26`;
 - accepted limitation: no finished raised curbs/separators, road markings or final road visual yet; those remain ordered follow-up gates R2→R4.
+
+
+## R2 acceptance evidence
+
+- owner HUMAN acceptance: 2026-09-25;
+- accepted HUMAN source SHA: `13f145bd0ad0427ec62b80479624219bc9cf4dec`;
+- packaged HUMAN run: `36082568631` — SUCCESS;
+- accepted construction: native MetaRoad 3.2 curb/sidewalk/profile geometry; primitive `RoadConstruction` overlay absent;
+- accepted access behavior: R1 express↔local openings remain physically traversable;
+- accepted H-gate calibration: 1/2 extreme-left, 5/R extreme-right, broad 3/4 middle zone, doubled fore/aft travel;
+- final focused verification run: `36083861324` — SUCCESS;
+- verified SHA: `072400cf3d865e9197af49e27c56b473b0ad0206`;
+- PR #17 squash integration SHA: `ba96296bd90bd5975637c13a5192ebe4cc7366fb`;
+- R2 is frozen; R3 is the next human-gated stage.
