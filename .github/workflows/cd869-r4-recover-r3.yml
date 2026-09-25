@@ -1,0 +1,95 @@
+name: CD-869 R4 Recover Accepted R3
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-r4-r3-recovery
+  cancel-in-progress: true
+
+jobs:
+  recover:
+    name: Kill stray PinkCab and relaunch accepted R3
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 15
+    env:
+      R3_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R3_METAROAD_aa5d7c99_RUN36095423828\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Stop every running PinkCab process
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $before=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+          foreach($p in $before){
+            Write-Host "R4_RECOVERY_KILL pid=$($p.Id) path=$($p.Path)"
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+          Start-Sleep -Seconds 2
+          $after=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+          if($after.Count -ne 0){ throw "R4_RECOVERY_STRAY_PROCESS_COUNT=$($after.Count)" }
+          Write-Host "R4_RECOVERY_KILLED_COUNT=$($before.Count)"
+
+      - name: Verify accepted R3 executable
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          if(-not (Test-Path $env:R3_EXE)){ throw "R4_ACCEPTED_R3_EXE_MISSING $env:R3_EXE" }
+          $sig=Get-AuthenticodeSignature $env:R3_EXE
+          Write-Host "R4_R3_SIGNATURE=$($sig.Status)"
+          if($sig.Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw 'R4_ACCEPTED_R3_SIGNATURE_INVALID' }
+          Write-Host 'R4_ACCEPTED_R3_EXE=PASS'
+
+      - name: Restore PINKCAB Latest shortcut to accepted R3
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R3 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$env:R3_EXE
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $env:R3_EXE)
+            $s.Description='PINK CAB accepted R3 aa5d7c99 / run 36095423828'
+            $s.Save()
+            Write-Host "R4_RECOVERY_SHORTCUT=$lnk"
+          }
+
+      - name: Relaunch accepted R3 as the only PinkCab process
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $env:R3_EXE -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $env:R3_EXE) -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if($proc.HasExited){ throw "R4_R3_EXITED_EARLY code=$($proc.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "R4_RECOVERY_EXPECTED_ONE_PROCESS count=$($all.Count)" }
+            Write-Host "R4_RECOVERY_R3_PID=$($proc.Id)"
+            Write-Host "R4_RECOVERY_ONLY_PROCESS_PATH=$($all[0].Path)"
+            Write-Host 'R4_RECOVERY_ACCEPTED_R3_RUNNING=PASS'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
