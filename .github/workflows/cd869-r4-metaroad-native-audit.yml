@@ -77,3 +77,36 @@ jobs:
               ForEach-Object { Write-Host "METAROAD_ASPHALT_TOKEN=$_" }
           }
           Write-Host 'METAROAD_NATIVE_ASPHALT_AUDIT=PASS'
+
+      - name: Inspect exact MetaRoad road material/profile bindings
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $content=Join-Path $env:METAROAD_ROOT 'Content'
+          $targets=@(
+            'MetaRoad\Materials\MI_DriveSurface.uasset',
+            'MetaRoad\Materials\M_Curb.uasset',
+            'MetaRoad\Materials\M_Sidewolk.uasset',
+            'MetaRoad\Materials\M_Mark.uasset',
+            'MetaRoad\Materials\M_SurfaceMark.uasset',
+            'MetaRoad\Profiles\Marks\solid_150.uasset',
+            'MetaRoad\Profiles\Marks\broked_150_3000_4500.uasset',
+            'MetaRoad\Profiles\Curbs\DefaultCurb.uasset'
+          )
+          foreach($rel in $targets){
+            $file=Join-Path $content $rel
+            if(-not (Test-Path $file)){ throw "METAROAD_BINDING_TARGET_MISSING=$rel" }
+            Write-Host "=== METAROAD_BINDING_FILE=$rel ==="
+            $bytes=[IO.File]::ReadAllBytes($file)
+            foreach($enc in @([Text.Encoding]::ASCII,[Text.Encoding]::Unicode)){
+              $txt=$enc.GetString($bytes)
+              [regex]::Matches($txt,'/[A-Za-z0-9_\/\.\-]{5,}') |
+                ForEach-Object { $_.Value } |
+                Where-Object { $_ -match '^/MetaRoad/' } |
+                Sort-Object -Unique |
+                Select-Object -First 120 |
+                ForEach-Object { Write-Host "METAROAD_BINDING_REF=$_" }
+            }
+          }
+          Write-Host 'METAROAD_EXACT_BINDINGS_AUDIT=PASS'
+
