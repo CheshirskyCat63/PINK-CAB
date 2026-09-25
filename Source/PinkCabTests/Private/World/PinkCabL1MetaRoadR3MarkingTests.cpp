@@ -156,11 +156,11 @@ TSet<UStaticMesh*> LoadNativeMarkMeshes(FAutomationTestBase& Test)
             {
                 Test.TestEqual(
                     *FString::Printf(
-                        TEXT("%s uses the exact R3 road-mark paint material"),
+                        TEXT("%s uses native MetaRoad road-mark material"),
                         *AssetName),
                     Material->GetPathName(),
                     FString(
-                        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark.M_PC_L1_Mark")));
+                        TEXT("/MetaRoad/MetaRoad/Materials/M_Mark.M_Mark")));
             }
         }
     }
