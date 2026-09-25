@@ -246,8 +246,8 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
             TEXT("runtime native R2 road remains exactly one 1000m module"),
             FMath::IsNearlyEqual(RuntimeSize.X, 100000.0, 5.0));
         TestTrue(
-            TEXT("runtime native R2 road preserves the accepted 66.8m envelope"),
-            FMath::IsNearlyEqual(RuntimeSize.Y, 6680.0, 5.0));
+            TEXT("runtime native R2 road preserves the owner-requested 79.0m widened envelope"),
+            FMath::IsNearlyEqual(RuntimeSize.Y, 7900.0, 5.0));
         TestTrue(
             TEXT("runtime native R2 construction preserves MetaRoad vertical relief"),
             FMath::IsNearlyEqual(RuntimeSize.Z, 16.5, 0.5));
@@ -255,7 +255,8 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
 
     // Regression for the owner-found R2 blocker: at the two fully-open
     // connector centres (300m / 700m), no curb span may occupy the
-    // express/local service band around |Y| = 2200..2600cm.
+    // express/local service band around |Y| = 2650..3050cm after the
+    // owner-requested +25% lane-width calibration.
     const double AccessCenters[] = {
         0.5 * (
             FPinkCabL1EndlessRoadModel::AccessAFullOpenStartCm +
@@ -282,7 +283,7 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
                 AccessX <= PlacedBox.Max.X + 1.0;
             const double AbsCenterY = FMath::Abs(PlacedBox.GetCenter().Y);
             const bool bServiceBand =
-                AbsCenterY >= 2150.0 && AbsCenterY <= 2650.0;
+                AbsCenterY >= 2600.0 && AbsCenterY <= 3100.0;
             TestFalse(
                 *FString::Printf(
                     TEXT("no service curb blocks access at X=%.0f: %s"),
