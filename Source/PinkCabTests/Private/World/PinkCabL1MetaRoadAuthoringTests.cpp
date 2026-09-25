@@ -853,96 +853,6 @@ bool FPinkCabGenerateL1EndlessMetaRoadAssets::RunTest(const FString& Parameters)
 
 #if WITH_EDITOR
     Road->SetActorLabel(TEXT("PC_L1_Straight_1000m"));
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabL1RoadR4RoadVisualV2,
-    "PinkCab.World.L1Road.R4.RoadVisualV2",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabL1RoadR4RoadVisualV2::RunTest(const FString& Parameters)
-{
-    UMaterial* Asphalt = LoadObject<UMaterial>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt.M_PC_L1_Asphalt"));
-    TestNotNull(TEXT("R4 project-owned asphalt material loads"), Asphalt);
-    if (!Asphalt)
-    {
-        return false;
-    }
-
-    UMaterialExpression* BaseColorInput =
-        UMaterialEditingLibrary::GetMaterialPropertyInputNode(
-            Asphalt, MP_BaseColor);
-    UMaterialExpression* RoughnessInput =
-        UMaterialEditingLibrary::GetMaterialPropertyInputNode(
-            Asphalt, MP_Roughness);
-
-    TestNotNull(TEXT("R4 asphalt has BaseColor graph input"), BaseColorInput);
-    TestNotNull(TEXT("R4 asphalt has Roughness graph input"), RoughnessInput);
-    if (!BaseColorInput || !RoughnessInput)
-    {
-        return false;
-    }
-
-    TestFalse(
-        TEXT("R4 BaseColor is no longer a flat constant"),
-        BaseColorInput->IsA(UMaterialExpressionConstant3Vector::StaticClass()));
-    TestFalse(
-        TEXT("R4 Roughness is no longer a flat constant"),
-        RoughnessInput->IsA(UMaterialExpressionConstant::StaticClass()));
-
-    UStaticMesh* RoadSurface = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
-    TestNotNull(TEXT("accepted R3 RoadSurface still loads"), RoadSurface);
-    if (RoadSurface && RoadSurface->GetStaticMaterials().Num() > 0)
-    {
-        UMaterialInterface* RoadMaterial =
-            RoadSurface->GetStaticMaterials()[0].MaterialInterface;
-        TestNotNull(TEXT("RoadSurface keeps assigned runtime material"), RoadMaterial);
-        if (RoadMaterial)
-        {
-            TestEqual(
-                TEXT("RoadSurface uses project-owned R4 asphalt"),
-                RoadMaterial->GetPathName(),
-                FString(TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt.M_PC_L1_Asphalt")));
-        }
-    }
-
-    int32 VerifiedMarks = 0;
-    for (int32 Index = 0; Index < 50; ++Index)
-    {
-        const FString Name =
-            Index == 0 ? TEXT("RoadMarks") : FString::Printf(TEXT("RoadMarks%d"), Index);
-        UStaticMesh* Mark = LoadObject<UStaticMesh>(
-            nullptr,
-            *FString::Printf(TEXT("/Game/World/L1/Road/%s.%s"), *Name, *Name));
-        TestNotNull(*FString::Printf(TEXT("frozen R3 mark %s loads"), *Name), Mark);
-        if (!Mark)
-        {
-            continue;
-        }
-
-        for (const FStaticMaterial& Slot : Mark->GetStaticMaterials())
-        {
-            UMaterialInterface* Material = Slot.MaterialInterface;
-            TestNotNull(TEXT("frozen R3 mark retains material"), Material);
-            if (Material)
-            {
-                TestEqual(
-                    TEXT("R3 mark material identity remains frozen"),
-                    Material->GetPathName(),
-                    FString(TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark.M_PC_L1_Mark")));
-            }
-        }
-        ++VerifiedMarks;
-    }
-
-    TestEqual(TEXT("all 50 frozen R3 mark meshes verified"), VerifiedMarks, 50);
-    AddInfo(TEXT("CD869_R4_VISUAL_CONTRACT_CHECKED=1"));
-    return true;
-}
-
 #endif
     Road->bReplaceOnRegenerate = true;
     if (!ConfigureStraightRoad(*Road, *this))
@@ -1142,6 +1052,94 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         GeneratedMeshNames.Num());
 
     AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1RoadR4RoadVisualV2,
+    "PinkCab.World.L1Road.R4.RoadVisualV2",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1RoadR4RoadVisualV2::RunTest(const FString& Parameters)
+{
+    UMaterial* Asphalt = LoadObject<UMaterial>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt.M_PC_L1_Asphalt"));
+    TestNotNull(TEXT("R4 project-owned asphalt material loads"), Asphalt);
+    if (!Asphalt)
+    {
+        return false;
+    }
+
+    UMaterialExpression* BaseColorInput =
+        UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_BaseColor);
+    UMaterialExpression* RoughnessInput =
+        UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_Roughness);
+
+    TestNotNull(TEXT("R4 asphalt has BaseColor graph input"), BaseColorInput);
+    TestNotNull(TEXT("R4 asphalt has Roughness graph input"), RoughnessInput);
+    if (!BaseColorInput || !RoughnessInput)
+    {
+        return false;
+    }
+
+    TestFalse(
+        TEXT("R4 BaseColor is no longer a flat constant"),
+        BaseColorInput->IsA(UMaterialExpressionConstant3Vector::StaticClass()));
+    TestFalse(
+        TEXT("R4 Roughness is no longer a flat constant"),
+        RoughnessInput->IsA(UMaterialExpressionConstant::StaticClass()));
+
+    UStaticMesh* RoadSurface = LoadObject<UStaticMesh>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/RoadSurface.RoadSurface"));
+    TestNotNull(TEXT("accepted R3 RoadSurface still loads"), RoadSurface);
+    if (RoadSurface && RoadSurface->GetStaticMaterials().Num() > 0)
+    {
+        UMaterialInterface* RoadMaterial =
+            RoadSurface->GetStaticMaterials()[0].MaterialInterface;
+        TestNotNull(TEXT("RoadSurface keeps assigned runtime material"), RoadMaterial);
+        if (RoadMaterial)
+        {
+            TestEqual(
+                TEXT("RoadSurface uses project-owned R4 asphalt"),
+                RoadMaterial->GetPathName(),
+                FString(TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt.M_PC_L1_Asphalt")));
+        }
+    }
+
+    int32 VerifiedMarks = 0;
+    for (int32 Index = 0; Index < 50; ++Index)
+    {
+        const FString Name =
+            Index == 0 ? TEXT("RoadMarks") : FString::Printf(TEXT("RoadMarks%d"), Index);
+        UStaticMesh* Mark = LoadObject<UStaticMesh>(
+            nullptr,
+            *FString::Printf(TEXT("/Game/World/L1/Road/%s.%s"), *Name, *Name));
+        TestNotNull(*FString::Printf(TEXT("frozen R3 mark %s loads"), *Name), Mark);
+        if (!Mark)
+        {
+            continue;
+        }
+
+        for (const FStaticMaterial& Slot : Mark->GetStaticMaterials())
+        {
+            UMaterialInterface* Material = Slot.MaterialInterface;
+            TestNotNull(TEXT("frozen R3 mark retains material"), Material);
+            if (Material)
+            {
+                TestEqual(
+                    TEXT("R3 mark material identity remains frozen"),
+                    Material->GetPathName(),
+                    FString(TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark.M_PC_L1_Mark")));
+            }
+        }
+        ++VerifiedMarks;
+    }
+
+    TestEqual(TEXT("all 50 frozen R3 mark meshes verified"), VerifiedMarks, 50);
+    AddInfo(TEXT("CD869_R4_VISUAL_CONTRACT_CHECKED=1"));
     return true;
 }
 
