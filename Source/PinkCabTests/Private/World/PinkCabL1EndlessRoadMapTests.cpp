@@ -168,35 +168,61 @@ bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameter
         return false;
     }
 
-    for (const FName Root : {
-             FName(TEXT("/Game/World/L1/Road/RoadSurface")),
-             FName(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"))})
+    // The baked road mesh owns the material dependency. The map owns the
+    // streamer/chunk actors that load RoadSurface at runtime, so requiring the
+    // .umap package itself to duplicate /MetaRoad/ package references is an
+    // incorrect dependency-grain contract.
+    const FName RoadSurfacePackage(TEXT("/Game/World/L1/Road/RoadSurface"));
+    const TArray<FName> MetaRoadDependencies =
+        PinkCabL1EndlessRoadAssetContract::FindMetaRoadDependencies(
+            RoadSurfacePackage);
+    bool bHasDriveSurface = false;
+    bool bHasNativeAsphaltMaster = false;
+    bool bHasNativeAlbedo = false;
+    bool bHasNativeNormal = false;
+    bool bHasNativeRoughness = false;
+    for (const FName Dependency : MetaRoadDependencies)
     {
-        const TArray<FName> MetaRoadDependencies =
-            PinkCabL1EndlessRoadAssetContract::FindMetaRoadDependencies(Root);
-        bool bHasNativeAsphaltStack = false;
-        for (const FName Dependency : MetaRoadDependencies)
-        {
-            const FString DependencyPath = Dependency.ToString();
-            AddInfo(FString::Printf(
-                TEXT("CD869_R4_NATIVE_METAROAD_DEP[%s]=%s"),
-                *Root.ToString(),
-                *DependencyPath));
-            bHasNativeAsphaltStack |=
-                DependencyPath.Contains(TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface")) ||
-                DependencyPath.Contains(TEXT("/MetaRoad/MetaRoad/Materials/Master/M_Asphalt"));
-        }
-        TestTrue(
-            *FString::Printf(
-                TEXT("%s retains native MetaRoad runtime dependencies"),
-                *Root.ToString()),
-            MetaRoadDependencies.Num() > 0);
-        TestTrue(
-            *FString::Printf(
-                TEXT("%s reaches the native MetaRoad asphalt stack"),
-                *Root.ToString()),
-            bHasNativeAsphaltStack);
+        const FString DependencyPath = Dependency.ToString();
+        AddInfo(FString::Printf(
+            TEXT("CD869_R4_NATIVE_METAROAD_DEP[%s]=%s"),
+            *RoadSurfacePackage.ToString(),
+            *DependencyPath));
+        bHasDriveSurface |=
+            DependencyPath.Contains(
+                TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface"));
+        bHasNativeAsphaltMaster |=
+            DependencyPath.Contains(
+                TEXT("/MetaRoad/MetaRoad/Materials/Master/M_Asphalt"));
+        bHasNativeAlbedo |=
+            DependencyPath.Contains(
+                TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Albedo"));
+        bHasNativeNormal |=
+            DependencyPath.Contains(
+                TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Normal"));
+        bHasNativeRoughness |=
+            DependencyPath.Contains(
+                TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Roughness"));
     }
+
+    TestTrue(
+        TEXT("RoadSurface retains native MetaRoad runtime dependencies"),
+        MetaRoadDependencies.Num() > 0);
+    TestTrue(
+        TEXT("RoadSurface reaches MetaRoad MI_DriveSurface"),
+        bHasDriveSurface);
+    TestTrue(
+        TEXT("RoadSurface reaches native MetaRoad asphalt master"),
+        bHasNativeAsphaltMaster);
+    TestTrue(
+        TEXT("RoadSurface reaches native MetaRoad 8K asphalt albedo"),
+        bHasNativeAlbedo);
+    TestTrue(
+        TEXT("RoadSurface reaches native MetaRoad 8K asphalt normal"),
+        bHasNativeNormal);
+    TestTrue(
+        TEXT("RoadSurface reaches native MetaRoad 8K asphalt roughness"),
+        bHasNativeRoughness);
 
     const TArray<FStaticMaterial>& Materials = Road->GetStaticMaterials();
     TestTrue(TEXT("baked road has at least one authored material slot"),
