@@ -199,21 +199,59 @@ function Probe-AxisResponse(
 }
 
 function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
-    for($i=0;$i -lt 16;$i++) {
+    $bestError=[double]::PositiveInfinity
+    $stagnant=0
+    for($i=0;$i -lt 32;$i++) {
         $s=Get-State
+        if($null -eq $s){ throw "Gear axis telemetry missing axis=$Axis target=$Target" }
+        if($s.target -ne 'Gearbox' -or $s.grip -ne 1 -or $s.manip -ne 1){
+            throw "Gear axis lost gearbox manipulation axis=$Axis target=$Target Last=$($s.raw)"
+        }
+
         $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
         $err=$Target-$current
-        if([Math]::Abs($err) -le 0.10){ return }
-        # Keep the synthetic closed-loop controller gain proportional to the
-        # runtime gate counts (X=320, Y=480 after the doubled fore/aft throw).
-        $scale = if($Axis -eq 'x'){155.0}else{230.0}
+        $absErr=[Math]::Abs($err)
+        Write-Host "PACKAGED_OS_INPUT_GEAR_AXIS axis=$Axis iter=$i target=$Target current=$current err=$err foreground=$([PinkCabNativeInput]::GetForegroundWindow() -eq $script:GameHwnd)"
+        if($absErr -le 0.10){ return }
+
+        if($absErr -lt ($bestError - 0.015)){
+            $bestError=$absErr
+            $stagnant=0
+        } else {
+            $stagnant++
+        }
+
+        # Never use the focus helper's gameplay-click fallback while a control
+        # is grabbed. A focus click can change ownership/interaction state.
+        if([PinkCabNativeInput]::GetForegroundWindow() -ne $script:GameHwnd){
+            Focus-GameWindow $script:GameHwnd $false
+        }
+
+        # Keep the closed-loop gain proportional to the accepted H-gate throw,
+        # but allow enough iterations for the second manipulation pass after
+        # braking. Larger error receives a larger bounded OS delta.
+        $scale = if($Axis -eq 'x'){175.0}else{250.0}
         $delta=[int][Math]::Round(($err*$scale)/$OsSign)
-        if($delta -gt 65){$delta=65}; if($delta -lt -65){$delta=-65}
-        if($Axis -eq 'x'){[PinkCabNativeInput]::Move($delta,0)}else{[PinkCabNativeInput]::Move(0,$delta)}
-        Start-Sleep -Milliseconds 160
+        $limit = if($stagnant -ge 3){95}else{70}
+        if($delta -gt $limit){$delta=$limit}
+        if($delta -lt -$limit){$delta=-$limit}
+        if($delta -eq 0){$delta=[int]([Math]::Sign($err)*[Math]::Sign($OsSign)*2)}
+
+        if($Axis -eq 'x'){
+            [PinkCabNativeInput]::Move($delta,0)
+        } else {
+            [PinkCabNativeInput]::Move(0,$delta)
+        }
+        Start-Sleep -Milliseconds 180
+
+        if($stagnant -ge 7){
+            $last=Get-State
+            throw "Gear axis stopped making progress axis=$Axis target=$Target bestError=$bestError Last=$($last.raw)"
+        }
     }
     $s=Get-State
-    throw "Gear axis failed"
+    $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
+    throw "Gear axis failed axis=$Axis target=$Target current=$current Last=$($s.raw)"
 }
 function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
     Move-GameAxis 'y' 0.0 $SignY
