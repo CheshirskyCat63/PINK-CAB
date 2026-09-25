@@ -9,8 +9,15 @@ on:
     paths:
       - .github/workflows/cd869-r3-probe.yml
       - Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap
+      - Content/World/L1/Road/RoadSurface*.uasset
+      - Content/World/L1/Road/RoadSidewalks*.uasset
+      - Content/World/L1/Road/RoadCurbs*.uasset
       - Content/World/L1/Road/RoadMarks*.uasset
       - Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset
+      - Source/PinkCab/Private/World/PinkCabL1RoadChunkActor.cpp
+      - Source/PinkCabTests/Private/World/PinkCabL1MetaRoadAuthoringTests.cpp
+      - Source/PinkCabTests/Private/World/PinkCabL1MetaRoadR2AssetTests.cpp
+      - Source/PinkCabTests/Private/World/PinkCabL1MetaRoadR3MarkingTests.cpp
 
 permissions:
   contents: write
@@ -178,18 +185,29 @@ jobs:
           foreach($file in $changed){
             if($file -match '^Source/PinkCabVehicle/' -or
                $file -match '^Source/PinkCab/Private/Vehicle/' -or
-               $file -match '^Source/PinkCab/Private/Cockpit/' -or
-               $file -match '^Content/World/L1/Road/(RoadSurface|RoadSidewalks|RoadCurbs)'){
-              throw "CD869_R3_FROZEN_SCOPE_CHANGED=$file"
+               $file -match '^Source/PinkCab/Private/Cockpit/'){
+              throw "CD869_R3_FROZEN_GAMEPLAY_SCOPE_CHANGED=$file"
             }
           }
+
+          # Owner-requested R3 HUMAN calibration: widen every express and local
+          # lane by exactly 25% while keeping controls and R4 visual work frozen.
+          $author='Source/PinkCabTests/Private/World/PinkCabL1MetaRoadAuthoringTests.cpp'
+          if(-not(Select-String $author -Pattern 'ExpressLaneWidthCm = 450\.0' -Quiet)){ throw 'CD869_R3_EXPRESS_WIDTH_NOT_450' }
+          if(-not(Select-String $author -Pattern 'LocalLaneWidthCm = 400\.0' -Quiet)){ throw 'CD869_R3_LOCAL_WIDTH_NOT_400' }
+          if(-not(Select-String $author -Pattern 'ExpectedRoadWidthCm = 7900\.0' -Quiet)){ throw 'CD869_R3_DESIGN_ENVELOPE_NOT_7900' }
+
           $marks=@(git ls-files 'Content/World/L1/Road/RoadMarks*.uasset')
+          $curbs=@(git ls-files 'Content/World/L1/Road/RoadCurbs*.uasset')
           if($marks.Count -ne 50){ throw "CD869_R3_TRACKED_MARK_COUNT=$($marks.Count)" }
+          if($curbs.Count -ne 32){ throw "CD869_R3_TRACKED_CURB_COUNT=$($curbs.Count)" }
+          if(-not(git ls-files --error-unmatch 'Content/World/L1/Road/RoadSurface.uasset' 2>$null)){ throw 'CD869_R3_ROAD_SURFACE_MISSING' }
 
           & .\scripts\code-health.ps1 -RequireZeroDebt
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'CD869_R3_ZERO_DEBT=PASS'
-          Write-Host 'CD869_R3_FROZEN_SCOPE=PASS'
+          Write-Host 'CD869_R3_OWNER_WIDTH_CALIBRATION_SCOPE=PASS express=450 local=400 design=7900'
+          Write-Host 'CD869_R3_FROZEN_GAMEPLAY_SCOPE=PASS'
 
       - name: Focused exact-head R3 regressions
         if: ${{ steps.preflight.outputs.has_assets == 'true' }}
