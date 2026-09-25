@@ -236,8 +236,8 @@ void ValidateRuntimeAssembly(
         TEXT("native broken-mark assembly covers the full kilometre pattern"),
         Size.X >= 99000.0 && Size.X <= 100005.0);
     Test.TestTrue(
-        TEXT("native mark assembly stays inside accepted road envelope"),
-        Size.Y <= 6685.0);
+        TEXT("native mark assembly stays inside widened 79.0m road envelope"),
+        Size.Y <= 7905.0);
     Test.TestTrue(
         TEXT("native marks remain a visual surface layer"),
         Size.Z <= 1.0);
