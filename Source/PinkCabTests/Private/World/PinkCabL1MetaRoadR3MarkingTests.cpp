@@ -8,11 +8,12 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
-#include "PhysicsEngine/BodySetup.h"
 #include "World/PinkCabL1RoadChunkActor.h"
 
 namespace PinkCabL1MetaRoadR3
 {
+constexpr int32 NativeMarkMeshCount = 50;
+
 const FRoadLaneMark* FindPresetMark(
     const URoadProfile& Profile,
     const bool bRequireBroken)
@@ -24,8 +25,10 @@ const FRoadLaneMark* FindPresetMark(
         {
             for (const FRoadLaneAttributeProfile& Attribute : Lane.Attributes)
             {
-                UClass* Descriptor = Attribute.AttributeDesctiptor.LoadSynchronous();
-                if (Descriptor != URoadLaneAttributeMarkDescriptor::StaticClass())
+                UClass* Descriptor =
+                    Attribute.AttributeDesctiptor.LoadSynchronous();
+                if (Descriptor !=
+                    URoadLaneAttributeMarkDescriptor::StaticClass())
                 {
                     continue;
                 }
@@ -41,7 +44,8 @@ const FRoadLaneMark* FindPresetMark(
 
                 Mark->Profile.LoadSynchronous();
                 if (!bRequireBroken ||
-                    Mark->GetProfile().GetPtr<FRoadLaneMarkProfileBroken>() != nullptr)
+                    Mark->GetProfile()
+                        .GetPtr<FRoadLaneMarkProfileBroken>() != nullptr)
                 {
                     return Mark;
                 }
@@ -56,17 +60,9 @@ const FRoadLaneMark* FindPresetMark(
     }
     return FindInLanes(Profile.Right);
 }
-}
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabL1NativeMetaRoadR3MarkingTest,
-    "PinkCab.World.L1Road.R3.NativeMetaRoadMarkings",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
+bool ValidateReferenceProfiles(FAutomationTestBase& Test)
 {
-    using namespace PinkCabL1MetaRoadR3;
-
     URoadProfile* ExpressProfile = LoadObject<URoadProfile>(
         nullptr,
         TEXT("/MetaRoad/MetaRoad/Profiles/RoadProfiles/4_Lanes+Borders.4_Lanes+Borders"));
@@ -74,40 +70,57 @@ bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
         nullptr,
         TEXT("/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders_Coodirect.2_Lanes+Borders_Coodirect"));
 
-    TestNotNull(TEXT("native MetaRoad 4_Lanes+Borders profile loads"), ExpressProfile);
-    TestNotNull(TEXT("native MetaRoad 2_Lanes+Borders_Coodirect profile loads"), LocalProfile);
+    Test.TestNotNull(
+        TEXT("native MetaRoad 4_Lanes+Borders profile loads"),
+        ExpressProfile);
+    Test.TestNotNull(
+        TEXT("native MetaRoad 2_Lanes+Borders_Coodirect profile loads"),
+        LocalProfile);
 
     const FRoadLaneMark* ExpressBroken =
         ExpressProfile ? FindPresetMark(*ExpressProfile, true) : nullptr;
     const FRoadLaneMark* LocalBroken =
         LocalProfile ? FindPresetMark(*LocalProfile, true) : nullptr;
+    Test.TestNotNull(
+        TEXT("express reference exposes a native broken mark preset"),
+        ExpressBroken);
+    Test.TestNotNull(
+        TEXT("local reference exposes a native broken mark preset"),
+        LocalBroken);
 
-    TestNotNull(TEXT("express reference exposes a native broken mark preset"), ExpressBroken);
-    TestNotNull(TEXT("local reference exposes a native broken mark preset"), LocalBroken);
-
+    bool bValid = ExpressBroken != nullptr && LocalBroken != nullptr;
     for (const FRoadLaneMark* Mark : { ExpressBroken, LocalBroken })
     {
         if (!Mark)
         {
             continue;
         }
-        TestEqual(
+        const FString ProfilePath =
+            Mark->Profile.ToSoftObjectPath().ToString();
+        Test.TestEqual(
             TEXT("R3 uses MetaRoad mark preset rather than custom profile"),
             Mark->ProfileSource,
             ERoadLaneMarkProfile::UsePreset);
-        TestTrue(
+        Test.TestTrue(
             TEXT("native marking preset comes from MetaRoad Profiles/Marks"),
-            Mark->Profile.ToSoftObjectPath().ToString().StartsWith(
+            ProfilePath.StartsWith(
                 TEXT("/MetaRoad/MetaRoad/Profiles/Marks/")));
         Mark->Profile.LoadSynchronous();
-        TestNotNull(
+        const bool bBroken =
+            Mark->GetProfile()
+                .GetPtr<FRoadLaneMarkProfileBroken>() != nullptr;
+        Test.TestTrue(
             TEXT("native marking preset resolves to broken geometry"),
-            Mark->GetProfile().GetPtr<FRoadLaneMarkProfileBroken>());
+            bBroken);
+        bValid &= bBroken;
     }
+    return bValid;
+}
 
-    constexpr int32 ExpectedNativeMarkMeshCount = 50;
-    TSet<UStaticMesh*> NativeMarkMeshes;
-    for (int32 Index = 0; Index < ExpectedNativeMarkMeshCount; ++Index)
+TSet<UStaticMesh*> LoadNativeMarkMeshes(FAutomationTestBase& Test)
+{
+    TSet<UStaticMesh*> Result;
+    for (int32 Index = 0; Index < NativeMarkMeshCount; ++Index)
     {
         const FString AssetName =
             Index == 0
@@ -117,10 +130,9 @@ bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
             TEXT("/Game/World/L1/Road/%s.%s"),
             *AssetName,
             *AssetName);
-        UStaticMesh* MarkMesh = LoadObject<UStaticMesh>(
-            nullptr,
-            *ObjectPath);
-        TestNotNull(
+        UStaticMesh* MarkMesh =
+            LoadObject<UStaticMesh>(nullptr, *ObjectPath);
+        Test.TestNotNull(
             *FString::Printf(
                 TEXT("MetaRoad MarksOp baked native mark span %s"),
                 *AssetName),
@@ -130,16 +142,19 @@ bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
             continue;
         }
 
-        NativeMarkMeshes.Add(MarkMesh);
-        for (const FStaticMaterial& Slot : MarkMesh->GetStaticMaterials())
+        Result.Add(MarkMesh);
+        for (const FStaticMaterial& Slot :
+            MarkMesh->GetStaticMaterials())
         {
             UMaterialInterface* Material = Slot.MaterialInterface;
-            TestNotNull(
-                *FString::Printf(TEXT("%s material assigned"), *AssetName),
+            Test.TestNotNull(
+                *FString::Printf(
+                    TEXT("%s material assigned"),
+                    *AssetName),
                 Material);
             if (Material)
             {
-                TestTrue(
+                Test.TestTrue(
                     *FString::Printf(
                         TEXT("%s runtime material is project-owned"),
                         *AssetName),
@@ -148,77 +163,104 @@ bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
             }
         }
     }
-    TestEqual(
-        TEXT("MetaRoad emits all fifty native R3 mark spans"),
-        NativeMarkMeshes.Num(),
-        ExpectedNativeMarkMeshCount);
 
+    Test.TestEqual(
+        TEXT("MetaRoad emits all fifty native R3 mark spans"),
+        Result.Num(),
+        NativeMarkMeshCount);
+    return Result;
+}
+
+void ValidateRuntimeAssembly(
+    FAutomationTestBase& Test,
+    const TSet<UStaticMesh*>& NativeMarkMeshes)
+{
     const APinkCabL1RoadChunkActor* RuntimeChunk =
         GetDefault<APinkCabL1RoadChunkActor>();
-    TestNotNull(TEXT("runtime L1 chunk CDO exists"), RuntimeChunk);
+    Test.TestNotNull(TEXT("runtime L1 chunk CDO exists"), RuntimeChunk);
+    if (!RuntimeChunk)
+    {
+        return;
+    }
 
     FBox RuntimeMarkBounds(ForceInit);
     int32 RuntimeMarkComponentCount = 0;
-    if (RuntimeChunk)
+    TArray<UStaticMeshComponent*> Components;
+    RuntimeChunk->GetComponents<UStaticMeshComponent>(Components);
+    for (UStaticMeshComponent* Component : Components)
     {
-        TArray<UStaticMeshComponent*> Components;
-        RuntimeChunk->GetComponents<UStaticMeshComponent>(Components);
-        for (UStaticMeshComponent* Component : Components)
+        if (!Component ||
+            !Component->GetStaticMesh() ||
+            !NativeMarkMeshes.Contains(Component->GetStaticMesh()))
         {
-            if (!Component ||
-                !Component->GetStaticMesh() ||
-                !NativeMarkMeshes.Contains(Component->GetStaticMesh()))
-            {
-                continue;
-            }
-
-            ++RuntimeMarkComponentCount;
-            TestEqual(
-                *FString::Printf(
-                    TEXT("%s remains collision-free"),
-                    *Component->GetName()),
-                Component->GetCollisionEnabled(),
-                ECollisionEnabled::NoCollision);
-            TestFalse(
-                *FString::Printf(
-                    TEXT("%s does not generate overlaps"),
-                    *Component->GetName()),
-                Component->GetGenerateOverlapEvents());
-
-            const FBox PlacedBox =
-                Component->GetStaticMesh()->GetBounds().GetBox().TransformBy(
-                    Component->GetRelativeTransform());
-            RuntimeMarkBounds += PlacedBox;
+            continue;
         }
+
+        ++RuntimeMarkComponentCount;
+        Test.TestEqual(
+            *FString::Printf(
+                TEXT("%s remains collision-free"),
+                *Component->GetName()),
+            Component->GetCollisionEnabled(),
+            ECollisionEnabled::NoCollision);
+        Test.TestFalse(
+            *FString::Printf(
+                TEXT("%s does not generate overlaps"),
+                *Component->GetName()),
+            Component->GetGenerateOverlapEvents());
+        RuntimeMarkBounds +=
+            Component->GetStaticMesh()->GetBounds().GetBox().TransformBy(
+                Component->GetRelativeTransform());
     }
 
-    TestEqual(
+    Test.TestEqual(
         TEXT("runtime chunk mounts all native MetaRoad mark spans"),
         RuntimeMarkComponentCount,
-        ExpectedNativeMarkMeshCount);
-    TestTrue(
+        NativeMarkMeshCount);
+    Test.TestTrue(
         TEXT("runtime native mark assembly bounds are valid"),
         RuntimeMarkBounds.IsValid != 0);
-
-    if (RuntimeMarkBounds.IsValid)
+    if (!RuntimeMarkBounds.IsValid)
     {
-        const FVector Size = RuntimeMarkBounds.GetSize();
-        AddInfo(FString::Printf(
-            TEXT("CD869_R3_RUNTIME_MARK_BOUNDS=%.2f,%.2f,%.2f"),
-            Size.X,
-            Size.Y,
-            Size.Z));
-        TestTrue(
-            TEXT("native broken-mark assembly covers the full kilometre pattern"),
-            Size.X >= 99000.0 && Size.X <= 100005.0);
-        TestTrue(
-            TEXT("native mark assembly stays inside accepted road envelope"),
-            Size.Y <= 6680.0 + 5.0);
-        TestTrue(
-            TEXT("native marks remain a visual surface layer"),
-            Size.Z <= 1.0);
+        return;
     }
 
+    const FVector Size = RuntimeMarkBounds.GetSize();
+    Test.AddInfo(FString::Printf(
+        TEXT("CD869_R3_RUNTIME_MARK_BOUNDS=%.2f,%.2f,%.2f"),
+        Size.X,
+        Size.Y,
+        Size.Z));
+    Test.TestTrue(
+        TEXT("native broken-mark assembly covers the full kilometre pattern"),
+        Size.X >= 99000.0 && Size.X <= 100005.0);
+    Test.TestTrue(
+        TEXT("native mark assembly stays inside accepted road envelope"),
+        Size.Y <= 6685.0);
+    Test.TestTrue(
+        TEXT("native marks remain a visual surface layer"),
+        Size.Z <= 1.0);
+}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1NativeMetaRoadR3MarkingTest,
+    "PinkCab.World.L1Road.R3.NativeMetaRoadMarkings",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(
+    const FString& Parameters)
+{
+    using namespace PinkCabL1MetaRoadR3;
+
+    const bool bProfilesValid = ValidateReferenceProfiles(*this);
+    const TSet<UStaticMesh*> NativeMarkMeshes =
+        LoadNativeMarkMeshes(*this);
+    ValidateRuntimeAssembly(*this, NativeMarkMeshes);
+
+    TestTrue(
+        TEXT("native reference profiles remain valid"),
+        bProfilesValid);
     AddInfo(TEXT("CD869_R3_NATIVE_METAROAD_MARKINGS=PASS"));
     return true;
 }
