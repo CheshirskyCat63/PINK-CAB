@@ -7,7 +7,7 @@ struct FPinkCabHGateState
     int32 RequestedGear = 0;
     int32 LastGateRow = 0;
     int32 LastGateColumn = 1;
-    float LeverX = 0.0f;
+    float LeverX = 1.0f;
     float LeverY = 0.0f;
 };
 
