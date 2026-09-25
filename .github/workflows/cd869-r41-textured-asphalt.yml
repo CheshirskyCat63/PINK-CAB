@@ -1,6 +1,9 @@
 name: CD-869 R4.1 Textured Asphalt Human
 
 on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
   workflow_dispatch:
 
 permissions:
