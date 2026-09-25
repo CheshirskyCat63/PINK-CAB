@@ -1,4 +1,5 @@
 name: CD-869 R3 GREEN Source Gate
+# rerun complete native MarksOp span assembly
 
 on:
   push:
