@@ -146,6 +146,14 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
     }
     else
     {
+        // Between rail capture bands the cross-gate is a hard wall in Y.
+        // Do not let the driver preload most of a fore/aft throw in the gap
+        // and then "fall" into a gear with a tiny final motion.
+        if (ResolveColumn(State.LeverX) == INDEX_NONE)
+        {
+            return false;
+        }
+
         const int32 Steps = FMath::Max(
             1,
             FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
