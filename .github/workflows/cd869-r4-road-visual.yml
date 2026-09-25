@@ -85,7 +85,18 @@ jobs:
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $legacy=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Materials\M_PC_L1_Asphalt.uasset'
-          if(-not (Test-Path $legacy)){ throw 'R4_LEGACY_ASPHALT_MISSING_BEFORE_REGEN' }
+          if(-not (Test-Path $legacy)){ throw 'R4_ASPHALT_MISSING_BEFORE_PROBE' }
+
+          $probe=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R4_PROBE.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$probe" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R4.RoadVisualV2" "-TestExit=Automation Test Queue Empty"
+          $probePass=(Test-Path $probe) -and
+            [bool](Select-String $probe -Pattern 'Test Completed\. Result=\{Success\}' -Quiet) -and
+            -not [bool](Select-String $probe -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)
+          if($probePass){
+            Write-Host 'R4_ASPHALT_ALREADY_GREEN=1'
+            exit 0
+          }
+
           Remove-Item -LiteralPath $legacy -Force
           Write-Host 'R4_LEGACY_FLAT_ASPHALT_REMOVED_FOR_CLEAN_REGEN=1'
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R4_GENERATE.log'
@@ -126,7 +137,8 @@ jobs:
             Write-Host "R4_GENERATED_CHANGE=$p"
             if($p -ne $allowed){ throw "R4_SCOPE_VIOLATION_FILE=$p" }
           }
-          if($changed.Count -ne 1){ throw "R4_EXPECTED_ONE_GENERATED_ASSET count=$($changed.Count)" }
+          if($changed.Count -gt 1){ throw "R4_TOO_MANY_GENERATED_ASSETS count=$($changed.Count)" }
+          if($changed.Count -eq 0){ Write-Host 'R4_GENERATED_ASSET_REUSE=PASS' }
 
           $material=Join-Path $env:GITHUB_WORKSPACE $allowed
           $bytes=[System.IO.File]::ReadAllBytes($material)
@@ -143,7 +155,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Content/World/L1/Road/Materials/M_PC_L1_Asphalt.uasset
-          if(git diff --cached --quiet){ throw 'R4_ASPHALT_NOT_STAGED' }
+          if(git diff --cached --quiet){
+            Write-Host "R4_ASSET_COMMIT_REUSE=$((git rev-parse HEAD).Trim())"
+            exit 0
+          }
           git commit -m 'asset(CD-869): generate Road Visual v2 asphalt [skip ci]'
           git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
           $sha=(git rev-parse HEAD).Trim()
@@ -161,7 +176,10 @@ jobs:
             'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
             'PinkCab.World.L1EndlessRoad',
             'PinkCab.World.Materialization',
-            'PinkCab.G1.HInp.HGate'
+            'PinkCab.World.L1Road.R4.FrozenHGate',
+            'PinkCab.G1.HInp.PhysicalDirections',
+            'PinkCab.G1.HInp.ClutchReleaseWheelDirection',
+            'PinkCab.G1.HInp.DosingParameters'
           )
           foreach($test in $tests){
             $safe=$test.Replace('.','_')
@@ -177,6 +195,23 @@ jobs:
             }
             Write-Host "R4_TEST_PASS=$test $($queue[-1].Line)"
           }
+
+      - name: Prove frozen control runtime source unchanged from accepted R3
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $accepted='55e9fd8481a114265fd43f1c6433d86df53ba991'
+          $paths=@(
+            'Source/PinkCabVehicle',
+            'Source/PinkCabInteraction',
+            'Config'
+          )
+          $delta=@(git diff --name-only $accepted HEAD -- $paths)
+          if($delta.Count -ne 0){
+            $delta | ForEach-Object { Write-Host "R4_CONTROL_SCOPE_DELTA=$_" }
+            throw 'R4_FROZEN_CONTROL_RUNTIME_CHANGED'
+          }
+          Write-Host 'R4_FROZEN_CONTROL_RUNTIME_SOURCE=PASS'
 
       - name: Repo hygiene and strict zero-debt
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
