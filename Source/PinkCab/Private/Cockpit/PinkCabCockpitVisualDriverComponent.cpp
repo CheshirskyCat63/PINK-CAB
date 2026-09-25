@@ -61,25 +61,27 @@ FVector UPinkCabCockpitVisualDriverComponent::PivotCompensatedLocation(
 }
 FVector2D UPinkCabCockpitVisualDriverComponent::GearCursorForGear(const int32 Gear)
 {
+    // Use the same extended cross-gate coordinate system as the runtime H-gate:
+    // 1/2=-1, 3/4=+1 (the old 5/R location), 5/R=+2.
     switch (FMath::Clamp(Gear, -1, 5))
     {
-    case -1: return FVector2D(0.75f, -1.0f);
-    case 1: return FVector2D(-0.75f, 1.0f);
-    case 2: return FVector2D(-0.75f, -1.0f);
-    case 3: return FVector2D(0.0f, 1.0f);
-    case 4: return FVector2D(0.0f, -1.0f);
-    case 5: return FVector2D(0.75f, 1.0f);
-    default: return FVector2D::ZeroVector;
+    case -1: return FVector2D(2.0f, -1.0f);
+    case 1: return FVector2D(-1.0f, 1.0f);
+    case 2: return FVector2D(-1.0f, -1.0f);
+    case 3: return FVector2D(1.0f, 1.0f);
+    case 4: return FVector2D(1.0f, -1.0f);
+    case 5: return FVector2D(2.0f, 1.0f);
+    default: return FVector2D(1.0f, 0.0f);
     }
 }
 
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(FVector2D Cursor)
 {
-    Cursor.X = FMath::Clamp(Cursor.X, -1.30f, 1.0f);
+    Cursor.X = FMath::Clamp(Cursor.X, -1.0f, 2.0f);
     Cursor.Y = FMath::Clamp(Cursor.Y, -1.0f, 1.0f);
-    // Tatra cockpit local axes: X crosses the H gate left/right, while negative Y
-    // points forward. Preserve the canonical 1/3/5 forward and 2/4/R rearward layout.
-    return FVector(Cursor.X * 7.0f, -Cursor.Y * 6.0f, 0.0f);
+    // The old 5/R visual position was +5.25 cm. That exact position is now
+    // the 3/4 rail, and 5/R sits one equal 5.25 cm step farther right.
+    return FVector(Cursor.X * 5.25f, -Cursor.Y * 6.0f, 0.0f);
 }
 
 FVector UPinkCabCockpitVisualDriverComponent::GearLeverOffset(const int32 Gear)
