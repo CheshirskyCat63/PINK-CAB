@@ -1,5 +1,7 @@
 # PINK-CAB CD-869 · L1 Endless Straight Road Streaming Implementation Plan
 
+> **STATUS · HISTORICAL EXECUTION PLAN:** streaming foundation is implemented. R1/R2/R3 are HUMAN ACCEPTED / INTEGRATED / FROZEN. Any original 3.60 m / 3.20 m / 66.8 m transverse values are superseded by accepted R3: 4.50 m express, 4.00 m local, 79.0 m design / 79.15 m physical. R4 is next and not started.
+
 > **Spec:** `docs/superpowers/specs/2026-09-24-l1-endless-road-streaming-design.md`
 >
 > **Execution base:** `main@ed969edac845248464f8442a78899d26e6dfecde`
@@ -86,12 +88,14 @@ This plan deliberately does **not** add buildings, signs, trash, traffic, parkin
 
 Canonical target paths, subject to actual MetaRoad bake output discovered on the Windows runner:
 
-- `/Game/World/L1/Road/SM_PC_L1_Straight_1000m`
+- `/Game/World/L1/Road/RoadSurface`
 - `/Game/World/L1/Road/Materials/M_PC_L1_Asphalt`
-- `/Game/World/L1/Road/Materials/MI_PC_L1_Asphalt_Wet`
-- `/Game/World/L1/Road/Materials/M_PC_L1_Marking`
+- `/Game/World/L1/Road/Materials/M_PC_L1_Mark`
 - `/Game/World/L1/Road/Materials/M_PC_L1_GreenDivider`
+- `/Game/World/L1/Road/Materials/M_PC_L1_Shoulder`
 - `/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight`
+
+`MI_PC_L1_Asphalt_Wet` was a planned visual target, not an R3 delivered asset; finished asphalt/wet visual treatment belongs to R4.
 
 If MetaRoad bake necessarily emits multiple meshes, retain them under the same folder and bind them through one `APinkCabL1RoadChunkActor`; do not widen runtime ownership.
 
@@ -308,8 +312,8 @@ Run:
 
 Build exactly one straight 1000 m module matching the approved spec:
 
-- express width 360 cm × 10;
-- local width 320 cm × 4;
+- express width 450 cm × 10 (accepted R3);
+- local width 400 cm × 4 (accepted R3);
 - center green median 800 cm;
 - two green/service separators 400 cm each;
 - 100 cm outer safety shoulders;
