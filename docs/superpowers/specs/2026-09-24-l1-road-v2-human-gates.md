@@ -90,13 +90,25 @@ R2 HUMAN acceptance:
 
 ## R3 — road markings
 
-**Status: NEXT HUMAN-GATED STAGE · 2026-09-25.**
+**Status: HUMAN ACCEPTED / INTEGRATION CANDIDATE · 2026-09-25.**
 
-R2 is frozen. R3 owns road markings only; it may not reopen accepted R1 topology/streaming, accepted R2 native MetaRoad construction, H-gate calibration, road friction, tire calibration, or final asphalt visual treatment.
+R3 is owner-accepted. Native MetaRoad road markings are visible and use the project-owned `M_PC_L1_Mark` material. R1 streaming/topology, R2 native raised construction/access openings and the accepted vehicle/H-gate behavior remain frozen.
+
+Owner-approved R3 transverse calibration:
+- express lane width: **4.50 m** (3.60 m × 1.25);
+- local lane width: **4.00 m** (3.20 m × 1.25);
+- lane count remains 5 express + 2 local per direction;
+- design road envelope is **79.0 m**;
+- physical runtime assembly is **79.15 m** including the native MetaRoad outer-curb profile;
+- the R2 separator/curb construction system and access-opening semantics are preserved; this calibration supersedes only the earlier R2-width snapshot.
+
+R3 does not own final asphalt visual treatment, road friction or tire calibration.
 
 ## R4 — Road Visual v2
 
-Frozen until R3 owner acceptance. This stage owns the finished asphalt/road visual treatment after physical separators and markings are accepted.
+**Status: NEXT HUMAN-GATED STAGE.**
+
+R3 is frozen. R4 owns the finished asphalt/road visual treatment after accepted physical separators, markings and transverse calibration.
 
 ## R5 — dry-asphalt physical surface
 
@@ -127,3 +139,27 @@ Frozen until R5 owner acceptance.
 - verified SHA: `072400cf3d865e9197af49e27c56b473b0ad0206`;
 - PR #17 squash integration SHA: `ba96296bd90bd5975637c13a5192ebe4cc7366fb`;
 - R2 is frozen; R3 is the next human-gated stage.
+
+
+## R3 acceptance evidence
+
+- owner HUMAN acceptance: 2026-09-25;
+- corrected visible-mark asset commit: `5ce13018f048674bf333d7e985bab4d5322afca0`;
+- widened native MetaRoad asset commit: `af8002a04b32fd4d12446248d15e8a1872f06bd0`;
+- exact accepted HUMAN package source: `aa5d7c99c72b805e5eee8c7d45bc6d2390ebb752`;
+- lane-width calibration/bake run: `36094789710` — SUCCESS;
+- final exact-package delivery/recovery run: `36095423828` — SUCCESS;
+- native bake inventory: 1 road surface / 1 sidewalk layer / 32 curbs / 50 marking meshes;
+- design bake bounds: 100000 cm × 7900 cm × 16.5 cm;
+- physical runtime transverse assembly: 7915 cm including native outer-curb protrusion;
+- strict zero-debt: PASS;
+- `PinkCab.World.L1Road.R3.NativeMetaRoadMarkings`: PASS;
+- `PinkCab.World.L1Road.R2.NativeMetaRoadAsset`: PASS;
+- access-opening regression: PASS;
+- `PinkCab.World.L1EndlessRoad`: PASS;
+- `PinkCab.World.Materialization`: PASS;
+- vehicle H-gate regression: PASS;
+- fresh signed Win64 package: PASS;
+- packaged OS-input: PASS;
+- packaged smoke: PASS;
+- R3 is frozen after owner acceptance; R4 is next and remains unstarted until its own execution begins.
