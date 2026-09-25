@@ -34,6 +34,7 @@ public:
     UStaticMeshComponent* GetRoadMeshComponent() const { return RoadMeshComponent; }
 
 private:
+    void InitializeNativeMetaRoadMarkComponents();
     bool AreNativeMetaRoadConstructionMeshesReady() const;
     bool AreNativeMetaRoadMarkingMeshesReady() const;
     void SetNativeMetaRoadConstructionCollision(ECollisionEnabled::Type Mode);
