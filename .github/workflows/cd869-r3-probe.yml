@@ -1,5 +1,4 @@
-name: CD-869 R3 RED Contract
-# rerun after native RoadMarkProfile include
+name: CD-869 R3 GREEN Source Gate
 
 on:
   push:
@@ -12,9 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  red:
+  green:
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
     steps:
@@ -24,6 +23,7 @@ jobs:
           fetch-depth: 0
           lfs: true
           clean: false
+
       - name: Exact preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -32,7 +32,8 @@ jobs:
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
           $tracked=@(git status --porcelain --untracked-files=no)
           if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
-          Write-Host "CD869_R3_RED_HEAD=$head"
+          Write-Host "CD869_R3_GREEN_HEAD=$head"
+
       - name: Build PinkCabEditor
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -41,18 +42,70 @@ jobs:
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -MaxParallelActions=6
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          Write-Host 'CD869_R3_RED_BUILD=PASS'
-      - name: Run R3 contract expecting RED
+          Write-Host 'CD869_R3_EDITOR_BUILD=PASS'
+
+      - name: Bake native MetaRoad R3 assets
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
-          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_RED.log'
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R3.NativeMetaRoadMarkings" "-TestExit=Automation Test Queue Empty"
-          $exit=$LASTEXITCODE
-          Get-Content $log | Select-String -Pattern 'RoadMarks|R3|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | % { Write-Host $_.Line }
-          if($exit -eq 0 -and -not (Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
-            throw 'CD869_R3_RED_UNEXPECTED_GREEN'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_AUTHOR.log'
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ Get-Content $log | Select-Object -Last 220 | % { Write-Host $_ }; exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            Get-Content $log | Select-Object -Last 240 | % { Write-Host $_ }
+            throw 'CD869_R3_AUTHOR_FAIL'
           }
-          throw 'CD869_R3_RED_CONFIRMED'
+          Get-Content $log | Select-String -Pattern 'CD869_R3_NATIVE_MARK_PROFILE|CD869_METAROAD_BAKE|MetaRoad generated mesh' | Select-Object -Last 180 | % { Write-Host $_.Line }
+          $marks=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\RoadMarks.uasset'
+          if(-not(Test-Path $marks)){ throw 'CD869_R3_ROADMARKS_NOT_BAKED' }
+          Write-Host 'CD869_R3_NATIVE_BAKE=PASS'
+
+      - name: Rebind project-owned runtime materials
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_MATERIALS.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ Get-Content $log | Select-Object -Last 220 | % { Write-Host $_ }; exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            Get-Content $log | Select-Object -Last 240 | % { Write-Host $_ }
+            throw 'CD869_R3_MATERIAL_FAIL'
+          }
+          if(-not(Select-String $log -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)){ throw 'CD869_R3_MATERIAL_MARKER_MISSING' }
+          Write-Host 'CD869_R3_RUNTIME_MATERIALS=PASS'
+
+      - name: Focused R3 and frozen regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $suites=@(
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad',
+            'PinkCab.World.Materialization',
+            'PinkCab.Vehicle.HGate.DeliberateCenterEntry'
+          )
+          foreach($suite in $suites){
+            $safe=($suite -replace '[^A-Za-z0-9_.-]','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\R3_$safe.log")
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $suite" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0 -or (Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
+              Get-Content $log | Select-Object -Last 220 | % { Write-Host $_ }
+              throw "CD869_R3_TEST_FAIL=$suite"
+            }
+            Write-Host "CD869_R3_TEST_PASS=$suite"
+          }
+
+      - name: Strict zero-debt
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R3_ZERO_DEBT=PASS'
