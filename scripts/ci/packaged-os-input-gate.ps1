@@ -469,9 +469,12 @@ try {
     Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation from held quick target" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_3)
 
-    $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
-    Move-GameAxis 'x' 0.0 $signX
+    # Calibrate Y while the lever is still on the valid neutral 3/4 rail (X=1).
+    # The extended H-gate intentionally blocks fore/aft motion between rails.
     $signY=Probe-AxisResponse 'geary' 0 25 0.03 1500
+    Move-GameAxis 'y' 0.0 $signY
+    $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
+    Move-GameAxis 'x' 1.0 $signX
     Move-GearCursor -1.0 1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
