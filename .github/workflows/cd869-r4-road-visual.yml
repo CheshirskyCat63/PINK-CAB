@@ -250,9 +250,16 @@ jobs:
           $outer=Join-Path $archive 'Windows\PinkCab.exe'
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $outer) -or -not (Test-Path $inner)){ throw 'R4_PACKAGE_EXE_MISSING' }
-          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($outer,$inner)
+
+          # Match the accepted PINK-CAB delivery lane: the outer launcher is
+          # only a bootstrap stub. Sign and validate the real game executable.
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($inner)
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          if((Get-AuthenticodeSignature $inner).Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw 'R4_SIGNATURE_INVALID' }
+          $sig=Get-AuthenticodeSignature $inner
+          if($sig.Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw "R4_INNER_SIGNATURE_INVALID $($sig.Status)"
+          }
+          Write-Host 'R4_INNER_SIGNING=PASS'
           Write-Host 'R4_FRESH_PACKAGE=PASS'
 
       - name: Packaged R4 smoke
@@ -297,31 +304,31 @@ jobs:
           $rc=$LASTEXITCODE
           if($rc -ge 8){ throw "R4_DELIVERY_COPY_FAILED $rc" }
           $global:LASTEXITCODE=0
-          $outer=Join-Path $delivery 'Windows\PinkCab.exe'
-          if(-not (Test-Path $outer)){ throw 'R4_DELIVERED_EXE_MISSING' }
+          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $inner)){ throw 'R4_DELIVERED_INNER_EXE_MISSING' }
           $desktop=[Environment]::GetFolderPath('Desktop')
           $ws=New-Object -ComObject WScript.Shell
           foreach($name in @('PINKCAB R4 HUMAN.lnk','PINKCAB Latest.lnk')){
             $lnk=Join-Path $desktop $name
             Remove-Item $lnk -Force -ErrorAction SilentlyContinue
             $s=$ws.CreateShortcut($lnk)
-            $s.TargetPath=$outer
+            $s.TargetPath=$inner
             $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
-            $s.WorkingDirectory=(Split-Path $outer)
+            $s.WorkingDirectory=(Split-Path $inner)
             $s.Description="PINK CAB CD-869 R4 HUMAN $sha"
             $s.Save()
             Write-Host "R4_SHORTCUT=$lnk"
           }
           Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
           Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
-          "outer=$outer" | Out-File $env:GITHUB_OUTPUT -Append
+          "inner=$inner" | Out-File $env:GITHUB_OUTPUT -Append
           "delivery=$delivery" | Out-File $env:GITHUB_OUTPUT -Append
           Write-Host "R4_HUMAN_DELIVERY=$delivery"
 
       - name: Launch R4 HUMAN build
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         env:
-          R4_EXE: ${{ steps.install.outputs.outer }}
+          R4_EXE: ${{ steps.install.outputs.inner }}
         run: |
           $ErrorActionPreference='Stop'
           $saved=$env:RUNNER_TRACKING_ID
