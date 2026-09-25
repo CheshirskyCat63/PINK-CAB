@@ -1,5 +1,5 @@
 name: CD-869 Final R2 Acceptance Verification
-# rerun after accepted H-gate seam fixture alignment
+# rerun after accepted H-gate seam + cockpit fixture alignment
 
 on:
   push:
