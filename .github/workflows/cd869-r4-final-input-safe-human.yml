@@ -115,7 +115,7 @@ jobs:
                 'critical=0'
               )
               foreach($marker in $required){
-                if(-not (Select-String $summary -SimpleMatch $marker -Quiet)){
+                if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){
                   throw "R4_INPUT_MARKER_MISSING attempt=$attempt marker=$marker"
                 }
               }
