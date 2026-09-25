@@ -1,9 +1,7 @@
 name: CD-869 R4 Visual RED
 
 on:
-  push:
-    branches:
-      - feat/CD-869-r4-road-visual-v2
+  workflow_dispatch:
 
 permissions:
   contents: read
