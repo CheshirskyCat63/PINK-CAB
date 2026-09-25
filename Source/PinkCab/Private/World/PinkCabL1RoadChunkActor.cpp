@@ -95,6 +95,46 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
         RoadSidewalksComponent->SetStaticMesh(SidewalksFinder.Object);
     }
 
+    InitializeNativeMetaRoadMarkComponents();
+
+    RoadCurbComponents.Reserve(NativeMetaRoadCurbMeshCount);
+    for (int32 Index = 0; Index < NativeMetaRoadCurbMeshCount; ++Index)
+    {
+        const FString AssetName =
+            Index == 0
+                ? TEXT("RoadCurbs")
+                : FString::Printf(TEXT("RoadCurbs%d"), Index);
+        const FName ComponentName(
+            *FString::Printf(TEXT("Native%s"), *AssetName));
+
+        UStaticMeshComponent* CurbComponent =
+            CreateDefaultSubobject<UStaticMeshComponent>(ComponentName);
+        CurbComponent->SetupAttachment(SceneRoot);
+        CurbComponent->SetMobility(EComponentMobility::Movable);
+        CurbComponent->SetGenerateOverlapEvents(false);
+        CurbComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        CurbComponent->SetRelativeLocation(
+            NativeMetaRoadCurbRelativeLocations[Index]);
+
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            *AssetName,
+            *AssetName);
+        ConstructorHelpers::FObjectFinder<UStaticMesh> CurbFinder(*ObjectPath);
+        if (CurbFinder.Succeeded())
+        {
+            CurbComponent->SetStaticMesh(CurbFinder.Object);
+        }
+
+        RoadCurbComponents.Add(CurbComponent);
+    }
+
+    SetActorHiddenInGame(true);
+    SetActorEnableCollision(false);
+}
+
+void APinkCabL1RoadChunkActor::InitializeNativeMetaRoadMarkComponents()
+{
     // MetaRoad 3.2 MarksOp emits one mark mesh per stitched
     // lane-boundary/section span for this five-section 1000 m module:
     // 10 marked lane boundaries x 5 section spans = 50 native meshes.
@@ -137,40 +177,6 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
         }
     }
 
-    RoadCurbComponents.Reserve(NativeMetaRoadCurbMeshCount);
-    for (int32 Index = 0; Index < NativeMetaRoadCurbMeshCount; ++Index)
-    {
-        const FString AssetName =
-            Index == 0
-                ? TEXT("RoadCurbs")
-                : FString::Printf(TEXT("RoadCurbs%d"), Index);
-        const FName ComponentName(
-            *FString::Printf(TEXT("Native%s"), *AssetName));
-
-        UStaticMeshComponent* CurbComponent =
-            CreateDefaultSubobject<UStaticMeshComponent>(ComponentName);
-        CurbComponent->SetupAttachment(SceneRoot);
-        CurbComponent->SetMobility(EComponentMobility::Movable);
-        CurbComponent->SetGenerateOverlapEvents(false);
-        CurbComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        CurbComponent->SetRelativeLocation(
-            NativeMetaRoadCurbRelativeLocations[Index]);
-
-        const FString ObjectPath = FString::Printf(
-            TEXT("/Game/World/L1/Road/%s.%s"),
-            *AssetName,
-            *AssetName);
-        ConstructorHelpers::FObjectFinder<UStaticMesh> CurbFinder(*ObjectPath);
-        if (CurbFinder.Succeeded())
-        {
-            CurbComponent->SetStaticMesh(CurbFinder.Object);
-        }
-
-        RoadCurbComponents.Add(CurbComponent);
-    }
-
-    SetActorHiddenInGame(true);
-    SetActorEnableCollision(false);
 }
 
 bool APinkCabL1RoadChunkActor::BindChunk(
