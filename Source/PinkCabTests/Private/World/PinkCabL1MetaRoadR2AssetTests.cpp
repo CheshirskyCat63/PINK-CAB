@@ -246,8 +246,8 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
             TEXT("runtime native R2 road remains exactly one 1000m module"),
             FMath::IsNearlyEqual(RuntimeSize.X, 100000.0, 5.0));
         TestTrue(
-            TEXT("runtime native R2 road preserves the owner-requested 79.0m widened envelope"),
-            FMath::IsNearlyEqual(RuntimeSize.Y, 7900.0, 5.0));
+            TEXT("runtime native R2 assembly includes the 7.5cm outer curb profile beyond the 79.0m design envelope"),
+            FMath::IsNearlyEqual(RuntimeSize.Y, 7915.0, 5.0));
         TestTrue(
             TEXT("runtime native R2 construction preserves MetaRoad vertical relief"),
             FMath::IsNearlyEqual(RuntimeSize.Z, 16.5, 0.5));
