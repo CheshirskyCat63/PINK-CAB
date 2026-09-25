@@ -1,0 +1,79 @@
+name: CD-869 Final R2 Acceptance Verification
+
+on:
+  push:
+    branches: [feat/CD-869-r2-median-separators]
+    paths: [.github/workflows/cd869-final-r2-verify.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-final-r2-verify
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact-head and zero-debt
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "FINAL_R2_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $dirty=@(git status --porcelain --untracked-files=no)
+          if($dirty.Count -ne 0){ $dirty | % { Write-Host $_ }; throw 'FINAL_R2_TRACKED_DIRTY' }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $primitive=@(git grep -n -E 'RoadConstruction|PinkCabL1RoadConstruction' -- 'Source/**' 'Content/**' 2>$null)
+          if($primitive.Count -gt 0){ $primitive | % { Write-Host $_ }; throw 'FINAL_R2_PRIMITIVE_SOURCE_REMAINS' }
+          Write-Host 'FINAL_R2_ZERO_DEBT=PASS'
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -MaxParallelActions=6
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'FINAL_R2_EDITOR_BUILD=PASS'
+
+      - name: Focused accepted R2 and H-gate regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $suites=@(
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad',
+            'PinkCab.World.Materialization',
+            'PinkCab.Cockpit.VisualDriver',
+            'PinkCab.Cockpit.Playable.Runtime',
+            'PinkCab.Vehicle.ControlRuntime.Runtime.GearboxRequestedEngaged',
+            'PinkCab.Vehicle.HGate.DeliberateCenterEntry'
+          )
+          foreach($suite in $suites){
+            $safe=($suite -replace '[^A-Za-z0-9_.-]','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\FINAL_R2_$safe.log")
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $suite" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ Get-Content $log | Select-Object -Last 160 | % { Write-Host $_ }; exit $LASTEXITCODE }
+            if(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              Get-Content $log | Select-Object -Last 180 | % { Write-Host $_ }
+              throw "FINAL_R2_TEST_FAIL=$suite"
+            }
+            Write-Host "FINAL_R2_TEST_PASS=$suite"
+          }
+          Write-Host 'FINAL_R2_FOCUSED_REGRESSION=PASS'
