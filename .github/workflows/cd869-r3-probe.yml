@@ -1,5 +1,4 @@
-name: CD-869 R3 Source Hygiene
-# rerun after constructor hygiene split
+name: CD-869 R3 Native MetaRoad Human Gate
 
 on:
   push:
@@ -7,48 +6,347 @@ on:
       - feat/CD-869-r3-metaroad-markings
     paths:
       - .github/workflows/cd869-r3-probe.yml
+      - Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap
+      - Content/World/L1/Road/RoadMarks*.uasset
+      - Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: cd869-r3-metaroad-human
+  cancel-in-progress: true
 
 jobs:
-  verify:
+  r3:
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 25
+    timeout-minutes: 55
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869R3Human
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact R3 candidate
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           lfs: true
           clean: false
-      - name: Exact tracked preflight
+
+      - name: Exact-head preflight and phase
+        id: preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
-          if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
-          $dirty=@(git status --porcelain --untracked-files=no)
-          if($dirty.Count -ne 0){ $dirty | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
-          Write-Host "CD869_R3_HYGIENE_HEAD=$head"
-      - name: Build PinkCabEditor
+          if($head -ne $env:GITHUB_SHA){ throw "CD869_R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $tracked=@(git status --porcelain --untracked-files=no)
+          if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'CD869_R3_TRACKED_DIRTY' }
+
+          git fetch origin main --quiet
+          $base=(git rev-parse origin/main).Trim()
+          Write-Host "CD869_R3_SOURCE_SHA=$head"
+          Write-Host "CD869_R3_BASE_SHA=$base"
+          git log -5 --oneline | % { Write-Host "CD869_R3_LOG $_" }
+
+          $marks=@(git ls-files 'Content/World/L1/Road/RoadMarks*.uasset')
+          $hasAssets=($marks.Count -eq 50 -and $marks -contains 'Content/World/L1/Road/RoadMarks.uasset')
+          if($hasAssets){
+            'has_assets=true' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host 'CD869_R3_PHASE=VERIFY_DELIVER'
+          } else {
+            if($marks.Count -ne 0){ throw "CD869_R3_PARTIAL_TRACKED_MARK_SET count=$($marks.Count)" }
+            'has_assets=false' | Out-File $env:GITHUB_OUTPUT -Append
+            Write-Host 'CD869_R3_PHASE=BAKE_COMMIT'
+          }
+
+      - name: Build editor for native MetaRoad bake
+        if: ${{ steps.preflight.outputs.has_assets != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
+          $ErrorActionPreference='Stop'
           $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -MaxParallelActions=6
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          Write-Host 'CD869_R3_HYGIENE_BUILD=PASS'
-      - name: Strict zero-debt
+          Write-Host 'CD869_R3_BAKE_EDITOR_BUILD=PASS'
+
+      - name: Fresh native MetaRoad R3 bake
+        if: ${{ steps.preflight.outputs.has_assets != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
-          & .\scripts\code-health.ps1 -RequireZeroDebt
-          if($LASTEXITCODE -ne 0){
-            if(Test-Path '.\Saved\Reports\code-health.json'){
-              Get-Content '.\Saved\Reports\code-health.json' | Write-Host
-            }
-            exit $LASTEXITCODE
+          $ErrorActionPreference='Stop'
+          Get-Process -Name UnrealEditor,UnrealEditor-Cmd -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+          Remove-Item (Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\RoadMarks*.uasset') -Force -ErrorAction SilentlyContinue
+          Remove-Item (Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Materials\M_PC_L1_Mark.uasset') -Force -ErrorAction SilentlyContinue
+
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $authorLog=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_AUTHOR.log'
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$authorLog" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0 -or (Select-String $authorLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
+            Get-Content $authorLog | Select-Object -Last 260 | % { Write-Host $_ }
+            throw 'CD869_R3_NATIVE_BAKE_FAIL'
           }
+          $nativeProfiles=@(Select-String $authorLog -Pattern 'CD869_R3_NATIVE_MARK_PROFILE=' -ErrorAction SilentlyContinue)
+          if($nativeProfiles.Count -lt 2){ throw 'CD869_R3_NATIVE_PROFILE_EVIDENCE_MISSING' }
+          $nativeProfiles | % { Write-Host $_.Line }
+
+          $materialLog=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_MATERIALS.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$materialLog" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0 -or (Select-String $materialLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
+            Get-Content $materialLog | Select-Object -Last 260 | % { Write-Host $_ }
+            throw 'CD869_R3_RUNTIME_MATERIAL_FAIL'
+          }
+          if(-not(Select-String $materialLog -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)){
+            throw 'CD869_R3_RUNTIME_MATERIAL_MARKER_MISSING'
+          }
+
+          $generated=@(Get-ChildItem (Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road') -Filter 'RoadMarks*.uasset' -File)
+          if($generated.Count -ne 50){ throw "CD869_R3_NATIVE_MARK_COUNT=$($generated.Count)" }
+          Write-Host 'CD869_R3_NATIVE_BAKE=PASS count=50'
+
+      - name: Freeze R2 bytes and commit only R3 assets
+        if: ${{ steps.preflight.outputs.has_assets != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+
+          # MetaRoad rebakes the complete road. R3 is not allowed to rewrite
+          # accepted R2 runtime construction, so restore every already-tracked
+          # road asset from the exact source HEAD; new untracked mark assets stay.
+          git restore --worktree --source=HEAD -- Content/World/L1/Road
+
+          $expected=@(
+            'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap',
+            'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
+          )
+          $marks=@(Get-ChildItem 'Content/World/L1/Road' -Filter 'RoadMarks*.uasset' -File | Sort-Object Name)
+          if($marks.Count -ne 50){ throw "CD869_R3_MARK_COUNT_AFTER_R2_RESTORE=$($marks.Count)" }
+
+          git add -- 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
+          git add -- 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
+          git add -- 'Content/World/L1/Road/RoadMarks*.uasset'
+
+          $staged=@(git diff --cached --name-only)
+          if($staged.Count -ne 52){ $staged | % { Write-Host "CD869_R3_STAGED $_" }; throw "CD869_R3_STAGED_COUNT=$($staged.Count)" }
+          foreach($file in $staged){
+            $ok=($file -eq 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap') -or
+                ($file -eq 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset') -or
+                ($file -match '^Content/World/L1/Road/RoadMarks(?:[1-9]|[1-4][0-9])?\.uasset$')
+            if(-not $ok){ throw "CD869_R3_SCOPE_VIOLATION=$file" }
+          }
+
+          $unexpected=@(git status --porcelain --untracked-files=all | Where-Object {
+            $_ -notmatch 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring\.umap$' -and
+            $_ -notmatch 'Content/World/L1/Road/Materials/M_PC_L1_Mark\.uasset$' -and
+            $_ -notmatch 'Content/World/L1/Road/RoadMarks(?:[1-9]|[1-4][0-9])?\.uasset$'
+          })
+          if($unexpected.Count -gt 0){ $unexpected | % { Write-Host "CD869_R3_UNEXPECTED $_" }; throw 'CD869_R3_UNEXPECTED_WORKTREE_CHANGE' }
+
+          git config user.name 'CHESHIRE DIVISION R3 Runner'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m 'asset(CD-869): bake native MetaRoad R3 markings'
+          $assetSha=(git rev-parse HEAD).Trim()
+          Write-Host "CD869_R3_ASSET_SHA=$assetSha"
+          git push origin HEAD:feat/CD-869-r3-metaroad-markings
+          Write-Host 'CD869_R3_ASSET_COMMIT_PUSH=PASS'
+
+      - name: Exact source build
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -MaxParallelActions=6
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R3_EXACT_EDITOR_BUILD=PASS'
+
+      - name: R3 scope and strict zero-debt
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $changed=@(git diff --name-only origin/main...HEAD)
+          $changed | % { Write-Host "CD869_R3_DIFF $_" }
+          foreach($file in $changed){
+            if($file -match '^Source/PinkCabVehicle/' -or
+               $file -match '^Source/PinkCab/Private/Vehicle/' -or
+               $file -match '^Source/PinkCab/Private/Cockpit/' -or
+               $file -match '^Content/World/L1/Road/(RoadSurface|RoadSidewalks|RoadCurbs)'){
+              throw "CD869_R3_FROZEN_SCOPE_CHANGED=$file"
+            }
+          }
+          $marks=@(git ls-files 'Content/World/L1/Road/RoadMarks*.uasset')
+          if($marks.Count -ne 50){ throw "CD869_R3_TRACKED_MARK_COUNT=$($marks.Count)" }
+
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'CD869_R3_ZERO_DEBT=PASS'
+          Write-Host 'CD869_R3_FROZEN_SCOPE=PASS'
+
+      - name: Focused exact-head R3 regressions
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $suites=@(
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad',
+            'PinkCab.World.Materialization',
+            'PinkCab.Vehicle.HGate.DeliberateCenterEntry'
+          )
+          foreach($suite in $suites){
+            $safe=($suite -replace '[^A-Za-z0-9_.-]','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\FINAL_R3_$safe.log")
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $suite" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0 -or (Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
+              Get-Content $log | Select-Object -Last 220 | % { Write-Host $_ }
+              throw "CD869_R3_EXACT_TEST_FAIL=$suite"
+            }
+            Write-Host "CD869_R3_EXACT_TEST_PASS=$suite"
+          }
+
+      - name: Fresh exact Win64 package
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab,UnrealEditor,UnrealEditor-Cmd -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+          $uat=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $archive | Out-Null
+
+          $backup="$project.cd869-r3-backup"
+          Copy-Item $project $backup -Force
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins=@($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output "-AdditionalBuildArgs=-MaxParallelActions=6"
+            $exit=$LASTEXITCODE
+          }
+          finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not(Test-Path $inner)){ throw 'CD869_R3_EXACT_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($inner)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $sig=Get-AuthenticodeSignature $inner
+          if($sig.Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw "CD869_R3_SIGNATURE=$($sig.Status)" }
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $env:GITHUB_SHA -NoNewline
+          Write-Host 'CD869_R3_EXACT_PACKAGE=PASS'
+
+      - name: Packaged frozen-input proof
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_PACKAGED_INPUT'
+          & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(-not(Test-Path (Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'))){ throw 'CD869_R3_INPUT_SUMMARY_MISSING' }
+          Write-Host 'CD869_R3_PACKAGED_INPUT=PASS'
+
+      - name: Packaged smoke, install and launch HUMAN
+        if: ${{ steps.preflight.outputs.has_assets == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $inner=Join-Path $source 'PinkCab\Binaries\Win64\PinkCab.exe'
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+          $smokeLog=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R3_SMOKE.log'
+          Remove-Item $smokeLog -Force -ErrorAction SilentlyContinue
+          $smoke=Start-Process -FilePath $inner -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=960','-ResY=540',
+            '-PinkCabGateTelemetry',
+            "-abslog=$smokeLog"
+          ) -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(25)
+            do {
+              Start-Sleep -Milliseconds 250
+              $smoke.Refresh()
+              if($smoke.HasExited){ throw "CD869_R3_SMOKE_EXITED code=$($smoke.ExitCode)" }
+              $mapReady=(Test-Path $smokeLog) -and (Select-String $smokeLog -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+              $carReady=(Test-Path $smokeLog) -and (Select-String $smokeLog -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while((-not $mapReady -or -not $carReady) -and [DateTime]::UtcNow -lt $deadline)
+            if(-not $mapReady){ throw 'CD869_R3_SMOKE_MAP_TIMEOUT' }
+            if(-not $carReady){ throw 'CD869_R3_SMOKE_TELEMETRY_TIMEOUT' }
+            if(Select-String $smokeLog -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -Quiet){
+              throw 'CD869_R3_SMOKE_CRITICAL'
+            }
+            Write-Host 'CD869_R3_PACKAGED_SMOKE=PASS'
+          }
+          finally {
+            if($smoke -and -not $smoke.HasExited){ Stop-Process -Id $smoke.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+          $short=$env:GITHUB_SHA.Substring(0,8)
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R3_METAROAD_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "CD869_R3_COPY_FAILED $LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+
+          $delivered=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not(Test-Path $delivered)){ throw 'CD869_R3_DELIVERED_EXE_MISSING' }
+          Set-Content (Join-Path $delivery 'SOURCE_SHA.txt') $env:GITHUB_SHA -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R3 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$delivered
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $delivered)
+            $s.Description="PINK CAB R3 native MetaRoad $env:GITHUB_SHA"
+            $s.Save()
+            Write-Host "CD869_R3_SHORTCUT=$lnk"
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $delivered -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $delivered) -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if($proc.HasExited){ throw "CD869_R3_HUMAN_EXITED code=$($proc.ExitCode)" }
+            Write-Host "CD869_R3_HUMAN_DELIVERY=$delivery"
+            Write-Host "CD869_R3_HUMAN_PID=$($proc.Id)"
+            Write-Host "CD869_R3_HUMAN_SOURCE_SHA=$env:GITHUB_SHA"
+            Write-Host 'CD869_R3_HUMAN_FOREGROUND=PASS'
+            Write-Host 'R3_HUMAN_PENDING'
+          }
+          finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
