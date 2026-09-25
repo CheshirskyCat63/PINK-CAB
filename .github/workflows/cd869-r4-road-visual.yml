@@ -280,7 +280,9 @@ jobs:
           $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R4_PACKAGED_INPUT'
           & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          if(-not (Select-String (Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt') -Pattern 'PASS' -Quiet)){ throw 'R4_PACKAGED_INPUT_SUMMARY_MISSING_PASS' }
+          $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+          if(-not (Test-Path $summary)){ throw 'R4_PACKAGED_INPUT_SUMMARY_MISSING' }
+          if(-not (Select-String $summary -Pattern 'PASS' -Quiet)){ throw 'R4_PACKAGED_INPUT_SUMMARY_NO_PASS' }
           Write-Host 'R4_PACKAGED_OS_INPUT=PASS'
 
       - name: Packaged R4 smoke
@@ -1264,7 +1266,9 @@ jobs:
           )
           foreach($p in $changed){
             $ok=$false
-            foreach($pattern in $allowedPatterns){ if($p -match $pattern){ $ok=$true; break } }
+            foreach($pattern in $allowedPatterns){
+              if($p -match $pattern){ $ok=$true; break }
+            }
             Write-Host "R4_SCOPE_FILE=$p allowed=$ok"
             if(-not $ok){ throw "R4_SCOPE_VIOLATION=$p" }
           }
