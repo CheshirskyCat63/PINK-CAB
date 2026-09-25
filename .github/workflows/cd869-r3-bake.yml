@@ -79,6 +79,18 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+          # MetaRoad allocates a numbered asset name when an old generated package
+          # already exists. Remove the previous generated layer from this isolated CI
+          # worktree so the widened rebake replaces canonical RoadSurface/Curbs/Marks
+          # instead of creating RoadSurface1 / RoadCurbs32.. / RoadMarks50...
+          foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset','RoadMarks*.uasset')){
+            Get-ChildItem 'Content\World\L1\Road' -Filter $pattern -File -ErrorAction SilentlyContinue |
+              ForEach-Object {
+                Write-Host "CD869_WIDTH_REMOVE_PREVIOUS=$($_.Name)"
+                Remove-Item -LiteralPath $_.FullName -Force
+              }
+          }
+
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_WIDTH_BAKE.log'
@@ -91,9 +103,15 @@ jobs:
           if(-not(Select-String $log -Pattern 'CD869_METAROAD_BAKE=PASS' -Quiet)){ throw 'CD869_WIDTH_BAKE_MARKER_MISSING' }
           $bounds=@(Select-String $log -Pattern 'MetaRoad generated bounds:' -ErrorAction SilentlyContinue)
           $bounds | % { Write-Host $_.Line }
+          $surfaces=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadSurface*.uasset' -File)
+          $sidewalks=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadSidewalks*.uasset' -File)
+          $curbs=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadCurbs*.uasset' -File)
           $marks=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadMarks*.uasset' -File)
+          if($surfaces.Count -ne 1){ throw "CD869_WIDTH_BAKED_SURFACE_COUNT=$($surfaces.Count)" }
+          if($sidewalks.Count -ne 1){ throw "CD869_WIDTH_BAKED_SIDEWALK_COUNT=$($sidewalks.Count)" }
+          if($curbs.Count -ne 32){ throw "CD869_WIDTH_BAKED_CURB_COUNT=$($curbs.Count)" }
           if($marks.Count -ne 50){ throw "CD869_WIDTH_BAKED_MARK_COUNT=$($marks.Count)" }
-          Write-Host 'CD869_WIDTH_NATIVE_BAKE=PASS'
+          Write-Host 'CD869_WIDTH_NATIVE_BAKE=PASS surface=1 sidewalks=1 curbs=32 marks=50'
 
       - name: Rebind project runtime materials
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
