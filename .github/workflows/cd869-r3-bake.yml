@@ -1,0 +1,216 @@
+name: CD-869 R3 Bake Native MetaRoad Marks
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r3-metaroad-markings
+    paths:
+      - .github/workflows/cd869-r3-bake.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-r3-bake
+  cancel-in-progress: true
+
+jobs:
+  bake:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 90
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      META_PLUGIN: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4\MetaRoad.uplugin
+      BASE_SHA: 5b35d5b9f387256f7536e452a22de4d91c9259dc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact preflight and sanitize only stale generated R3 outputs
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          if(-not(Test-Path $env:META_PLUGIN)){ throw "R3_METAROAD_MISSING=$env:META_PLUGIN" }
+          $meta=Get-Content -Raw $env:META_PLUGIN | ConvertFrom-Json
+          if($meta.VersionName -ne '3.2.0'){ throw "R3_METAROAD_VERSION_UNEXPECTED=$($meta.VersionName)" }
+
+          $trackedDirty=@(git status --porcelain --untracked-files=no)
+          if($trackedDirty.Count -ne 0){
+            $trackedDirty | ForEach-Object { Write-Host $_ }
+            throw 'R3_TRACKED_WORKSPACE_DIRTY'
+          }
+
+          if(-not (git merge-base --is-ancestor $env:BASE_SHA HEAD)){
+            throw 'R3_BASE_NOT_ANCESTOR'
+          }
+
+          $trackedMarks=@(git ls-files 'Content/World/L1/Road/RoadMarks*.uasset')
+          if($trackedMarks.Count -ne 0){ throw "R3_RED_INVALID_TRACKED_MARKS=$($trackedMarks.Count)" }
+
+          Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadMarks*.uasset' -File -ErrorAction SilentlyContinue |
+            ForEach-Object {
+              Write-Host "R3_REMOVE_STALE_UNTRACKED=$($_.FullName)"
+              Remove-Item -LiteralPath $_.FullName -Force
+            }
+          $staleMarkMat='Content\World\L1\Road\Materials\M_PC_L1_Mark.uasset'
+          if((Test-Path $staleMarkMat) -and -not (git ls-files --error-unmatch $staleMarkMat 2>$null)){
+            Write-Host "R3_REMOVE_STALE_UNTRACKED=$staleMarkMat"
+            Remove-Item -LiteralPath $staleMarkMat -Force
+          }
+
+          Write-Host "R3_PREFLIGHT_HEAD=$head"
+          Write-Host "R3_METAROAD_VERSION=$($meta.VersionName)"
+          git remote -v | ForEach-Object { Write-Host "R3_REMOTE $_" }
+          git log -5 --oneline | ForEach-Object { Write-Host "R3_LOG $_" }
+          Write-Host 'R3_PREFLIGHT=PASS'
+
+      - name: Build PinkCabEditor exact head
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R3_EDITOR_BUILD=PASS'
+
+      - name: RED - R3 asset contract must fail before bake
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R3_RED.log'
+          New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R3.NativeMetaRoadMarkings" "-TestExit=Automation Test Queue Empty"
+          $exit=$LASTEXITCODE
+          $failed=(Test-Path $log) -and [bool](Select-String $log -Pattern 'Result=\{Fail\}|LogAutomationController: Error:' -Quiet)
+          $missing=(Test-Path $log) -and [bool](Select-String $log -Pattern 'RoadMarks|MetaRoad MarksOp baked native mark span' -Quiet)
+          Get-Content $log | Select-String -Pattern 'RoadMarks|NativeMetaRoadMarkings|Result=\{Fail\}|LogAutomationController: Error:' | Select-Object -Last 100 | ForEach-Object { Write-Host $_.Line }
+          if(-not $failed){ throw "R3_RED_DID_NOT_FAIL exit=$exit" }
+          if(-not $missing){ throw 'R3_RED_MISSING_EXPECTED_MARKING_FAILURE' }
+          Write-Host 'R3_RED_MISSING_NATIVE_MARKS=PASS'
+
+      - name: Bake current accepted road through native MetaRoad MarksOp
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R3_BAKE.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ Get-Content $log -Tail 200; exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            Get-Content $log -Tail 250
+            throw 'R3_METAROAD_BAKE_AUTOMATION_FAIL'
+          }
+          if(-not(Select-String $log -Pattern 'CD869_METAROAD_BAKE=PASS' -Quiet)){
+            throw 'R3_METAROAD_BAKE_MARKER_MISSING'
+          }
+          $marks=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadMarks*.uasset' -File)
+          if($marks.Count -ne 50){ throw "R3_BAKED_MARK_COUNT=$($marks.Count)" }
+          Write-Host "R3_BAKED_NATIVE_MARKS=$($marks.Count)"
+          Write-Host 'R3_METAROAD_BAKE=PASS'
+
+      - name: Rebind generated runtime materials including R3 mark paint
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R3_MATERIALS.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ Get-Content $log -Tail 200; exit $LASTEXITCODE }
+          if(Select-String $log -Pattern 'Result=\{Fail\}|LogAutomationController: Error:' -Quiet){ throw 'R3_RUNTIME_MATERIAL_AUTOMATION_FAIL' }
+          if(-not(Select-String $log -Pattern 'CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS' -Quiet)){ throw 'R3_RUNTIME_MATERIAL_MARKER_MISSING' }
+          if(-not(Test-Path 'Content\World\L1\Road\Materials\M_PC_L1_Mark.uasset')){ throw 'R3_PROJECT_MARK_MATERIAL_MISSING' }
+          Write-Host 'R3_RUNTIME_MATERIAL_OWNERSHIP=PASS'
+
+      - name: Restore every accepted R2 tracked binary to exact trigger HEAD
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $modifiedTracked=@(git diff --name-only)
+          foreach($path in $modifiedTracked){
+            if($path -like 'Content/World/L1/Road/RoadMarks*.uasset' -or
+               $path -eq 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'){
+              continue
+            }
+            Write-Host "R3_RESTORE_FROZEN=$path"
+            git restore --source=$env:GITHUB_SHA --worktree -- $path
+          }
+          $remainingTracked=@(git diff --name-only)
+          if($remainingTracked.Count -ne 0){
+            $remainingTracked | ForEach-Object { Write-Host "R3_UNEXPECTED_TRACKED_DIFF=$_" }
+            throw 'R3_FROZEN_TRACKED_DIFF_REMAINS'
+          }
+          Write-Host 'R3_R2_BINARIES_EXACT=PASS'
+
+      - name: GREEN - native R3 markings and frozen world regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          function Run-PinkCabTest([string]$Name,[string]$Tag){
+            $safe=$Tag -replace '[^A-Za-z0-9_-]','_'
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\R3_GREEN_{0}.log" -f $safe)
+            Remove-Item $log -Force -ErrorAction SilentlyContinue
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $Name" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ Get-Content $log -Tail 180; throw "R3_TEST_EXIT_FAIL=$Name" }
+            if(Select-String $log -Pattern 'Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              Get-Content $log -Tail 220
+              throw "R3_TEST_FAIL=$Name"
+            }
+            $queue=@(Select-String $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            if($queue.Count -eq 0){ throw "R3_TEST_QUEUE_MISSING=$Name" }
+            Write-Host "R3_TEST_PASS=$Name"
+          }
+
+          Run-PinkCabTest 'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings' 'r3'
+          Run-PinkCabTest 'PinkCab.World.L1Road.R2.NativeMetaRoadAsset' 'r2'
+          Run-PinkCabTest 'PinkCab.World.L1EndlessRoad' 'endless'
+          Run-PinkCabTest 'PinkCab.World.Materialization' 'materialization'
+          Write-Host 'R3_FOCUSED_GREEN=PASS'
+
+      - name: Commit only native MetaRoad R3 marking assets
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $marks=@(Get-ChildItem 'Content\World\L1\Road' -Filter 'RoadMarks*.uasset' -File)
+          if($marks.Count -ne 50){ throw "R3_COMMIT_MARK_COUNT=$($marks.Count)" }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add -- 'Content/World/L1/Road/RoadMarks*.uasset'
+          git add -- 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
+
+          $staged=@(git diff --cached --name-only)
+          $bad=@($staged | Where-Object {
+            $_ -notlike 'Content/World/L1/Road/RoadMarks*.uasset' -and
+            $_ -ne 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
+          })
+          if($bad.Count -ne 0){
+            $bad | ForEach-Object { Write-Host "R3_BAD_STAGED=$_" }
+            throw 'R3_SCOPE_VIOLATION'
+          }
+          if($staged.Count -ne 51){
+            $staged | ForEach-Object { Write-Host "R3_STAGED=$_" }
+            throw "R3_STAGED_COUNT=$($staged.Count)"
+          }
+
+          git commit -m 'asset(CD-869): bake native MetaRoad R3 markings'
+          $assetHead=(git rev-parse HEAD).Trim()
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "R3_ASSET_HEAD=$assetHead"
+          Write-Host 'R3_ASSET_COMMIT=PASS'
