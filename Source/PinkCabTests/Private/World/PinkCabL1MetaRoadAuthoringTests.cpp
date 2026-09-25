@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Vehicle/PinkCabHGateGeometry.h"
 #include "Misc/PackageName.h"
 #include "UObject/SavePackage.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -1392,6 +1393,72 @@ bool FPinkCabL1RoadR4RoadVisualV2::RunTest(const FString& Parameters)
 
     TestEqual(TEXT("all 50 frozen R3 mark meshes verified"), VerifiedMarks, 50);
     AddInfo(TEXT("CD869_R4_VISUAL_CONTRACT_CHECKED=1"));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1RoadR4FrozenHGate,
+    "PinkCab.World.L1Road.R4.FrozenHGate",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1RoadR4FrozenHGate::RunTest(const FString& Parameters)
+{
+    auto SelectFromNeutral = [this](
+        const float HorizontalCounts,
+        const float VerticalCounts,
+        const int32 ExpectedGear,
+        const TCHAR* Label)
+    {
+        FPinkCabHGateState State;
+        FPinkCabHGateGeometry::ResetToGear(State, 0);
+
+        if (!FMath::IsNearlyZero(HorizontalCounts))
+        {
+            FPinkCabHGateGeometry::ApplyDriverDelta(
+                State, HorizontalCounts, 0.0f);
+            TestEqual(
+                *FString::Printf(TEXT("%s stays neutral across cross-gate"), Label),
+                State.RequestedGear,
+                0);
+        }
+
+        FPinkCabHGateGeometry::ApplyDriverDelta(
+            State, 0.0f, VerticalCounts);
+        TestEqual(
+            *FString::Printf(TEXT("%s resolves accepted gear"), Label),
+            State.RequestedGear,
+            ExpectedGear);
+    };
+
+    SelectFromNeutral(-640.0f, 480.0f, 1, TEXT("extreme-left forward"));
+    SelectFromNeutral(-640.0f, -480.0f, 2, TEXT("extreme-left back"));
+    SelectFromNeutral(0.0f, 480.0f, 3, TEXT("broad-middle forward"));
+    SelectFromNeutral(0.0f, -480.0f, 4, TEXT("broad-middle back"));
+    SelectFromNeutral(320.0f, 480.0f, 5, TEXT("extreme-right forward"));
+    SelectFromNeutral(320.0f, -480.0f, -1, TEXT("extreme-right back"));
+
+    FPinkCabHGateState State;
+    FPinkCabHGateGeometry::ResetToGear(State, 5);
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -480.0f);
+    TestEqual(
+        TEXT("accepted fore-aft travel leaves fifth through neutral"),
+        State.RequestedGear,
+        0);
+
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, -960.0f, 0.0f);
+    TestEqual(
+        TEXT("accepted neutral cross-gate stays neutral"),
+        State.RequestedGear,
+        0);
+
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -480.0f);
+    TestEqual(
+        TEXT("accepted left/back after neutral selects second"),
+        State.RequestedGear,
+        2);
+
+    AddInfo(TEXT("CD869_R4_FROZEN_HGATE=PASS"));
     return true;
 }
 
