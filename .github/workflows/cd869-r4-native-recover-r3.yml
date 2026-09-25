@@ -1,0 +1,60 @@
+name: CD-869 R4 Native Recover Accepted R3
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-metaroad-native
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 15
+    env:
+      R3_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R3_METAROAD_aa5d7c99_RUN36095423828\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: true
+
+      - name: Restore accepted R3 only
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+          if(@(Get-Process PinkCab -ErrorAction SilentlyContinue).Count -ne 0){ throw 'R4_NATIVE_RECOVERY_STRAY_PROCESS' }
+          if(-not (Test-Path $env:R3_EXE)){ throw 'R4_NATIVE_RECOVERY_R3_EXE_MISSING' }
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          $lnk=Join-Path $desktop 'PINKCAB Latest.lnk'
+          Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+          $s=$ws.CreateShortcut($lnk)
+          $s.TargetPath=$env:R3_EXE
+          $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+          $s.WorkingDirectory=(Split-Path $env:R3_EXE)
+          $s.Description='PINK CAB accepted R3 aa5d7c99 / run 36095423828'
+          $s.Save()
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $env:R3_EXE -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $env:R3_EXE) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "R4_NATIVE_RECOVERY_R3_EXIT=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "R4_NATIVE_RECOVERY_PROCESS_COUNT=$($all.Count)" }
+            Write-Host "R4_NATIVE_RECOVERY_R3_PID=$($p.Id)"
+            Write-Host "R4_NATIVE_RECOVERY_R3_PATH=$($all[0].Path)"
+            Write-Host 'R4_NATIVE_RECOVERY_R3_RUNNING=PASS'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
