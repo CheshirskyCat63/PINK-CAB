@@ -476,27 +476,27 @@ try {
     $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
     Move-GameAxis 'x' 1.0 $signX
 
-    # Exact packaged proof for the relocated middle rail. This is the bug the
-    # previous warm-package shortcut failed to verify: 3/4 must be present and
-    # reachable at the old 5/R lateral position before we continue to 1/R.
-    Move-GearCursor 1.0 1.0 $signX $signY
+    # Wide middle-zone proof. 3/4 must not require pixel-perfect aiming at
+    # a single rail: any comfortable central position between the two extreme
+    # outer gates should accept a deliberate fore/aft throw.
+    Move-GearCursor 0.0 1.0 $signX $signY
     Wait-State {
         param($s)
-        $s.requested -eq 3 -and [Math]::Abs($s.gearx-1.0) -le 0.12 -and $s.geary -ge 0.65
-    } 4000 "relocated middle rail requests third" | Out-Null
-    Write-Host 'CD643_PACKAGED_GEAR3=PASS'
+        $s.requested -eq 3 -and [Math]::Abs($s.gearx-0.0) -le 0.12 -and $s.geary -ge 0.65
+    } 4000 "wide middle zone requests third from center-left" | Out-Null
+    Write-Host 'CD643_PACKAGED_GEAR3_WIDE=PASS'
 
-    Move-GearCursor 1.0 0.0 $signX $signY
+    Move-GearCursor 0.0 0.0 $signX $signY
     Wait-State { param($s) $s.requested -eq 0 } 3000 "third exits to neutral" | Out-Null
 
-    Move-GearCursor 1.0 -1.0 $signX $signY
+    Move-GearCursor 1.35 -1.0 $signX $signY
     Wait-State {
         param($s)
-        $s.requested -eq 4 -and [Math]::Abs($s.gearx-1.0) -le 0.12 -and $s.geary -le -0.65
-    } 4000 "relocated middle rail requests fourth" | Out-Null
-    Write-Host 'CD643_PACKAGED_GEAR4=PASS'
+        $s.requested -eq 4 -and [Math]::Abs($s.gearx-1.35) -le 0.12 -and $s.geary -le -0.65
+    } 4000 "wide middle zone requests fourth from center-right" | Out-Null
+    Write-Host 'CD643_PACKAGED_GEAR4_WIDE=PASS'
 
-    Move-GearCursor 1.0 0.0 $signX $signY
+    Move-GearCursor 1.35 0.0 $signX $signY
     Wait-State { param($s) $s.requested -eq 0 } 3000 "fourth exits to neutral" | Out-Null
 
     Move-GearCursor -1.0 1.0 $signX $signY
