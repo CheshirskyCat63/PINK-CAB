@@ -19,7 +19,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 25
     env:
-      CANDIDATE_SHA: a392ba945f56137b9c6fe8707db8207f15b60ad4
+      CANDIDATE_SHA: aa5d7c99c72b805e5eee8c7d45bc6d2390ebb752
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       ARCHIVE: Artifacts\CD869R3Human
     steps:
