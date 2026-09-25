@@ -11,18 +11,19 @@ permissions:
 jobs:
   probe:
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       META_ROOT: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-          lfs: false
+          lfs: true
           clean: false
 
-      - name: Exact preflight and MetaRoad R3 API
+      - name: Probe native MetaRoad +Borders presets
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -30,22 +31,41 @@ jobs:
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
           $tracked=@(git status --porcelain --untracked-files=no)
           if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
-          Write-Host "R3_PREFLIGHT_HEAD=$head"
 
-          function Show-Range([string]$Path,[int]$Start,[int]$End,[string]$Tag){
-            if(-not(Test-Path $Path)){ throw "R3_PLUGIN_FILE_MISSING=$Path" }
-            Write-Host "===== R3_RANGE $Tag ====="
-            $c=Get-Content $Path
-            for($i=$Start;$i -le $End;$i++){
-              if($i -le $c.Count){ Write-Host ("{0}: {1}" -f $i,$c[$i-1]) }
-            }
-          }
+          Get-ChildItem (Join-Path $env:META_ROOT 'Source') -Recurse -File |
+            Where-Object { $_.Name -match 'RoadProfile|Preset' } |
+            ForEach-Object { Write-Host "R3_PROFILE_SOURCE=$($_.FullName)" }
 
-          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\RoadLaneAttribute.h') 160 285 'RoadLaneAttribute'
-          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\Assets\RoadLaneAttributeMark.h') 160 235 'RoadLaneAttributeMark'
-          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\MetaRoadTypes.h') 490 530 'FRoadLane'
-          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadDragDropHandler.cpp') 286 307 'MarkDrop'
+          $py=Join-Path $env:RUNNER_TEMP 'r3_meta_profiles.py'
+          @'
+import unreal
+for path in [
+    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/4_Lanes+Borders.4_Lanes+Borders",
+    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders.2_Lanes+Borders",
+    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders_Coodirect.2_Lanes+Borders_Coodirect",
+]:
+    obj=unreal.load_object(None,path)
+    print("R3_PROFILE_OBJECT", path, obj)
+    if not obj:
+        continue
+    cls=obj.get_class()
+    print("R3_PROFILE_CLASS", cls.get_name())
+    for name in ["road_layout","layout","RoadLayout","lanes","profile"]:
+        try:
+            val=obj.get_editor_property(name)
+            print("R3_PROFILE_PROP", path, name, val)
+        except Exception:
+            pass
+    try:
+        print("R3_PROFILE_EXPORT", unreal.EditorAssetLibrary.get_metadata_tag_values(obj))
+    except Exception as e:
+        print("R3_PROFILE_META_ERR", e)
+'@ | Set-Content $py -Encoding UTF8
 
-          $profiles=Join-Path $env:META_ROOT 'Content\MetaRoad\Profiles\Marks'
-          Get-ChildItem $profiles -Filter '*.uasset' | Sort-Object Name | % { Write-Host "R3_MARK_PROFILE=$($_.BaseName)" }
-          Write-Host 'R3_API_PROBE=PASS'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R3_PROFILE_PROBE.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecutePythonScript=$py"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Get-Content $log | Select-String -Pattern 'R3_PROFILE_' | % { Write-Host $_.Line }
+          Write-Host 'R3_PROFILE_PROBE=PASS'
