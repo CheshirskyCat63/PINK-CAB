@@ -1,9 +1,6 @@
 name: CD-869 R4 Native MetaRoad Human
 
 on:
-  push:
-    branches:
-      - feat/CD-869-r4-metaroad-native
   workflow_dispatch:
 
 permissions:
