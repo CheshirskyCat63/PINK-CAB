@@ -90,7 +90,7 @@ R2 HUMAN acceptance:
 
 ## R3 — road markings
 
-**Status: HUMAN ACCEPTED / INTEGRATION CANDIDATE · 2026-09-25.**
+**Status: HUMAN ACCEPTED / INTEGRATED / FROZEN · 2026-09-25.**
 
 R3 is owner-accepted. Native MetaRoad road markings are visible and use the project-owned `M_PC_L1_Mark` material. R1 streaming/topology, R2 native raised construction/access openings and the accepted vehicle/H-gate behavior remain frozen.
 
@@ -162,4 +162,5 @@ Frozen until R5 owner acceptance.
 - fresh signed Win64 package: PASS;
 - packaged OS-input: PASS;
 - packaged smoke: PASS;
-- R3 is frozen after owner acceptance; R4 is next and remains unstarted until its own execution begins.
+- PR #22 squash integration SHA: `55e9fd8481a114265fd43f1c6433d86df53ba991`;
+- R3 is HUMAN ACCEPTED / INTEGRATED / FROZEN; R4 is next and remains unstarted until its own execution begins.
