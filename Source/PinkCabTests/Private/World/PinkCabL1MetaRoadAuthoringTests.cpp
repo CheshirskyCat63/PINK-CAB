@@ -689,7 +689,7 @@ UMaterial* CreateRoadVisualV2Material(
     DetailFrequency->ParameterName = TEXT("DetailFrequency");
     DetailFrequency->DefaultValue = 0.015f;
 
-    MacroNoise->NoiseFunction = NOISEFUNCTION_GRADIENT_TEX;
+    MacroNoise->NoiseFunction = static_cast<ENoiseFunction>(1);
     MacroNoise->Quality = 1;
     MacroNoise->Levels = 1;
     MacroNoise->Scale = 1.0f;
@@ -697,7 +697,7 @@ UMaterial* CreateRoadVisualV2Material(
     MacroNoise->OutputMax = 1.0f;
     MacroNoise->bTurbulence = false;
 
-    DetailNoise->NoiseFunction = NOISEFUNCTION_GRADIENT_TEX3D;
+    DetailNoise->NoiseFunction = static_cast<ENoiseFunction>(2);
     DetailNoise->Quality = 1;
     DetailNoise->Levels = 1;
     DetailNoise->Scale = 1.0f;
