@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 
 #include "Assets/RoadLaneAttributeMark.h"
+#include "Assets/RoadMarkProfile.h"
 #include "Assets/RoadProfile.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
