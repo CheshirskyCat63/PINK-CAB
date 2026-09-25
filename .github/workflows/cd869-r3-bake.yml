@@ -159,7 +159,7 @@ jobs:
             Get-ChildItem 'Content\\World\\L1\\Road' -Filter $pattern -File -ErrorAction SilentlyContinue |
               ForEach-Object {
                 $relative=$_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1)
-                $relative=$relative -replace '\\\\','/'
+                $relative=$relative -replace '\\','/'
                 if(-not $trackedRoadSet.ContainsKey($relative)){
                   Write-Host "R3_REMOVE_DUPLICATE_GENERATED=$($_.Name)"
                   Remove-Item -LiteralPath $_.FullName -Force
