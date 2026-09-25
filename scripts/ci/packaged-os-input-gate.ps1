@@ -200,7 +200,9 @@ function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
         $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
         $err=$Target-$current
         if([Math]::Abs($err) -le 0.10){ return }
-        $scale = if($Axis -eq 'x'){155.0}else{115.0}
+        # Keep the synthetic closed-loop controller gain proportional to the
+        # runtime gate counts (X=320, Y=480 after the doubled fore/aft throw).
+        $scale = if($Axis -eq 'x'){155.0}else{230.0}
         $delta=[int][Math]::Round(($err*$scale)/$OsSign)
         if($delta -gt 65){$delta=65}; if($delta -lt -65){$delta=-65}
         if($Axis -eq 'x'){[PinkCabNativeInput]::Move($delta,0)}else{[PinkCabNativeInput]::Move(0,$delta)}
