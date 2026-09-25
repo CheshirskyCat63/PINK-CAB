@@ -1,9 +1,10 @@
 # PINK-CAB CD-869 · Level 1 Endless Straight Road Streaming Design
 
-**Status:** APPROVED DESIGN → WRITTEN SPEC FOR REVIEW  
+**Status:** FOUNDATION IMPLEMENTED · STREAMING AUTHORITY RETAINED · R3 ROAD GEOMETRY SUPERSEDES ORIGINAL CALIBRATION  
 **Date:** 2026-09-24  
 **Jira:** CD-869  
-**Canonical base:** `main@ed969edac845248464f8442a78899d26e6dfecde`  
+**Historical execution base:** `main@ed969edac845248464f8442a78899d26e6dfecde`  
+**Current road integration:** PR #22 squash `55e9fd8481a114265fd43f1c6433d86df53ba991`  
 **Implementation branch:** `feat/CD-869-l1-endless-road`
 
 ## 1. Player result
@@ -14,7 +15,7 @@ The first implementation intentionally excludes houses, trash, traffic signs, pa
 
 The road must already look like a believable road rather than greybox cubes: dark worn asphalt, readable lane markings, green separation strips and clean repeatable geometry.
 
-## 2. Canonical Level 1 cross-section used by this pass
+## 2. Canonical Level 1 cross-section · R3 accepted supersession
 
 The source world canon remains Confluence pages 8388630, 6455318 and 8323081.
 
@@ -39,15 +40,15 @@ This produces 14 logical ground lanes in the v1 straight chunk:
 - 2 local lanes direction A;
 - 2 local lanes direction B.
 
-For this first implementation the authoring dimensions are fixed as calibration values, not world-canon promises:
+The streaming architecture remains authoritative. The transverse road calibration below is the owner-accepted R3 geometry:
 
-- express lane width: `360 cm`;
-- local lane width: `320 cm`;
+- express lane width: `450 cm` (owner-accepted R3, supersedes original 360 cm calibration);
+- local lane width: `400 cm` (owner-accepted R3, supersedes original 320 cm calibration);
 - central green median: `800 cm`;
 - each green/service separation strip: `400 cm`;
 - outer safety shoulder beyond each local road: `100 cm`.
 
-The resulting authored road envelope is approximately `6680 cm` wide before any future sidewalk/building frontage.
+The current accepted authored road design envelope is `7900 cm`; physical runtime assembly is `7915 cm` including native outer-curb profile protrusion. The original `6680 cm` value is historical pre-R3 calibration only.
 
 Parking bays, building sidewalks and service entrances are omitted from this first visual module. Their future addition must not alter the chunk identity or streaming architecture.
 
