@@ -589,30 +589,48 @@ UMaterial* CreateRoadVisualV2Material(
         TEXT("%s.%s"), PackageName, AssetName);
 
     UMaterial* Material = LoadObject<UMaterial>(nullptr, *ObjectPath);
-    bool bCreated = false;
-    if (!Material)
+    if (Material)
     {
-        UPackage* Package = CreatePackage(PackageName);
-        Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
-        if (!Package)
+        UMaterialExpression* ExistingBaseColor =
+            UMaterialEditingLibrary::GetMaterialPropertyInputNode(
+                Material, MP_BaseColor);
+        UMaterialExpression* ExistingRoughness =
+            UMaterialEditingLibrary::GetMaterialPropertyInputNode(
+                Material, MP_Roughness);
+        const bool bAlreadyR4 =
+            ExistingBaseColor &&
+            ExistingRoughness &&
+            !ExistingBaseColor->IsA(
+                UMaterialExpressionConstant3Vector::StaticClass()) &&
+            !ExistingRoughness->IsA(
+                UMaterialExpressionConstant::StaticClass());
+        if (bAlreadyR4)
         {
-            return nullptr;
+            Test.AddInfo(TEXT("CD869_R4_ASPHALT_GRAPH=REUSE"));
+            return Material;
         }
 
-        Material = NewObject<UMaterial>(
-            Package,
-            FName(AssetName),
-            RF_Public | RF_Standalone | RF_Transactional);
-        bCreated = Material != nullptr;
+        Test.AddError(
+            TEXT("legacy flat M_PC_L1_Asphalt must be regenerated from a clean package; in-place MaterialEditor expression replacement is unsafe on UE 5.8"));
+        return nullptr;
     }
 
-    Test.TestNotNull(TEXT("R4 project-owned asphalt material available"), Material);
-    if (!Material)
+    UPackage* Package = CreatePackage(PackageName);
+    Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
+    if (!Package)
     {
         return nullptr;
     }
 
-    UMaterialEditingLibrary::DeleteAllMaterialExpressions(Material);
+    Material = NewObject<UMaterial>(
+        Package,
+        FName(AssetName),
+        RF_Public | RF_Standalone | RF_Transactional);
+    Test.TestNotNull(TEXT("R4 project-owned asphalt material created"), Material);
+    if (!Material)
+    {
+        return nullptr;
+    }
 
     auto* WorldPosition = Cast<UMaterialExpressionWorldPosition>(
         UMaterialEditingLibrary::CreateMaterialExpression(
@@ -774,10 +792,7 @@ UMaterial* CreateRoadVisualV2Material(
         return nullptr;
     }
 
-    if (bCreated)
-    {
-        FAssetRegistryModule::AssetCreated(Material);
-    }
+    FAssetRegistryModule::AssetCreated(Material);
     Material->PostEditChange();
     if (!SaveAssetPackage(*Material, Test))
     {
