@@ -1,2 +1,2 @@
-candidate_source=e6e8deea915a57bf0bc07ba413e5e54f4c01835d
-request=wide-middle-hgate-green-human
+candidate_source=4fc04fb60a23ad5ddb05d320183266cf9bb1e076
+request=double-y-travel-red
