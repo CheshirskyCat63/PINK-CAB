@@ -308,15 +308,21 @@ bool FPinkCabHGateDeliberateCenterEntryTest::RunTest(const FString& Parameters)
     FPinkCabHGateGeometry::ApplyDriverDelta(Fourth, 0.0f, -240.0f);
     TestEqual(TEXT("old 5/R lateral position now selects fourth rearward"), Fourth.RequestedGear, 4);
 
-    FPinkCabHGateState BetweenRails;
-    FPinkCabHGateGeometry::ApplyDriverDelta(BetweenRails, -320.0f, 0.0f);
-    TestEqual(TEXT("halfway left travel remains in the neutral cross-gate"),
-        BetweenRails.RequestedGear, 0);
-    FPinkCabHGateGeometry::ApplyDriverDelta(BetweenRails, 0.0f, 240.0f);
-    TestEqual(TEXT("vertical motion between rails cannot enter a gear"),
-        BetweenRails.RequestedGear, 0);
-    TestTrue(TEXT("vertical motion between rails cannot preload fore/aft travel"),
-        FMath::IsNearlyZero(BetweenRails.LeverY, KINDA_SMALL_NUMBER));
+    FPinkCabHGateState WideMiddleLeft;
+    FPinkCabHGateGeometry::ApplyDriverDelta(WideMiddleLeft, -320.0f, 0.0f);
+    TestTrue(TEXT("center-left position sits inside forgiving 3/4 zone"),
+        FMath::IsNearlyEqual(WideMiddleLeft.LeverX, 0.0f, KINDA_SMALL_NUMBER));
+    FPinkCabHGateGeometry::ApplyDriverDelta(WideMiddleLeft, 0.0f, 240.0f);
+    TestEqual(TEXT("center-left middle-zone throw selects third"),
+        WideMiddleLeft.RequestedGear, 3);
+
+    FPinkCabHGateState WideMiddleRight;
+    FPinkCabHGateGeometry::ApplyDriverDelta(WideMiddleRight, 112.0f, 0.0f);
+    TestTrue(TEXT("center-right position sits inside forgiving 3/4 zone"),
+        FMath::IsNearlyEqual(WideMiddleRight.LeverX, 1.35f, 0.01f));
+    FPinkCabHGateGeometry::ApplyDriverDelta(WideMiddleRight, 0.0f, -240.0f);
+    TestEqual(TEXT("center-right middle-zone throw selects fourth"),
+        WideMiddleRight.RequestedGear, 4);
 
     FPinkCabHGateState First;
     FPinkCabHGateGeometry::ApplyDriverDelta(First, -640.0f, 0.0f);
