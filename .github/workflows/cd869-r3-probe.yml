@@ -1,4 +1,4 @@
-name: CD-869 R3 MetaRoad Profile Source Probe
+name: CD-869 R3 MetaRoad RoadProfile Header Probe
 
 on:
   push:
@@ -23,17 +23,13 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-      - name: Find road profile type
+      - name: Read RoadProfile API
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
-          $files=Get-ChildItem (Join-Path $env:META_ROOT 'Source') -Recurse -File -Include '*.h','*.cpp'
-          $hits=$files | Select-String -Pattern 'class .*RoadProfile|struct .*RoadProfile|RoadProfiles|RoadLayout' -CaseSensitive:$false
-          foreach($h in $hits){
-            if($h.Path -match 'Profile|Preset|Types'){
-              Write-Host ("R3_SRC={0}:{1}:{2}" -f $h.Path,$h.LineNumber,$h.Line.Trim())
-            }
-          }
-          Write-Host 'R3_SOURCE_PROBE=PASS'
+          $p=Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Public\Assets\RoadProfile.h'
+          $c=Get-Content $p
+          for($i=80;$i -le 135;$i++){ Write-Host ("R3_ROADPROFILE_API {0}: {1}" -f $i,$c[$i-1]) }
+          Write-Host 'R3_PROFILE_HEADER_PROBE=PASS'
