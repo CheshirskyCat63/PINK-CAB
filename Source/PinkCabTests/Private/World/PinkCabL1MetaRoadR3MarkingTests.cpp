@@ -105,65 +105,118 @@ bool FPinkCabL1NativeMetaRoadR3MarkingTest::RunTest(const FString& Parameters)
             Mark->GetProfile().GetPtr<FRoadLaneMarkProfileBroken>());
     }
 
-    UStaticMesh* RoadMarks = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/World/L1/Road/RoadMarks.RoadMarks"));
-    TestNotNull(TEXT("MetaRoad MarksOp baked canonical RoadMarks mesh"), RoadMarks);
-
-    if (RoadMarks)
+    constexpr int32 ExpectedNativeMarkMeshCount = 50;
+    TSet<UStaticMesh*> NativeMarkMeshes;
+    for (int32 Index = 0; Index < ExpectedNativeMarkMeshCount; ++Index)
     {
-        const FVector Size = RoadMarks->GetBounds().GetBox().GetSize();
-        TestTrue(
-            TEXT("RoadMarks spans the 1000m repeated module"),
-            FMath::IsNearlyEqual(Size.X, 100000.0, 250.0));
-        TestTrue(
-            TEXT("RoadMarks remains inside accepted 66.8m road envelope"),
-            Size.Y <= 6680.0 + 5.0);
+        const FString AssetName =
+            Index == 0
+                ? TEXT("RoadMarks")
+                : FString::Printf(TEXT("RoadMarks%d"), Index);
+        const FString ObjectPath = FString::Printf(
+            TEXT("/Game/World/L1/Road/%s.%s"),
+            *AssetName,
+            *AssetName);
+        UStaticMesh* MarkMesh = LoadObject<UStaticMesh>(
+            nullptr,
+            *ObjectPath);
+        TestNotNull(
+            *FString::Printf(
+                TEXT("MetaRoad MarksOp baked native mark span %s"),
+                *AssetName),
+            MarkMesh);
+        if (!MarkMesh)
+        {
+            continue;
+        }
 
-        for (const FStaticMaterial& Slot : RoadMarks->GetStaticMaterials())
+        NativeMarkMeshes.Add(MarkMesh);
+        for (const FStaticMaterial& Slot : MarkMesh->GetStaticMaterials())
         {
             UMaterialInterface* Material = Slot.MaterialInterface;
-            TestNotNull(TEXT("RoadMarks material assigned"), Material);
+            TestNotNull(
+                *FString::Printf(TEXT("%s material assigned"), *AssetName),
+                Material);
             if (Material)
             {
                 TestTrue(
-                    TEXT("runtime RoadMarks material is project-owned"),
+                    *FString::Printf(
+                        TEXT("%s runtime material is project-owned"),
+                        *AssetName),
                     Material->GetPathName().StartsWith(
                         TEXT("/Game/World/L1/Road/Materials/")));
             }
         }
     }
+    TestEqual(
+        TEXT("MetaRoad emits all fifty native R3 mark spans"),
+        NativeMarkMeshes.Num(),
+        ExpectedNativeMarkMeshCount);
 
     const APinkCabL1RoadChunkActor* RuntimeChunk =
         GetDefault<APinkCabL1RoadChunkActor>();
     TestNotNull(TEXT("runtime L1 chunk CDO exists"), RuntimeChunk);
 
-    UStaticMeshComponent* RuntimeMarks = nullptr;
+    FBox RuntimeMarkBounds(ForceInit);
+    int32 RuntimeMarkComponentCount = 0;
     if (RuntimeChunk)
     {
         TArray<UStaticMeshComponent*> Components;
         RuntimeChunk->GetComponents<UStaticMeshComponent>(Components);
         for (UStaticMeshComponent* Component : Components)
         {
-            if (Component &&
-                Component->GetStaticMesh() == RoadMarks)
+            if (!Component ||
+                !Component->GetStaticMesh() ||
+                !NativeMarkMeshes.Contains(Component->GetStaticMesh()))
             {
-                RuntimeMarks = Component;
-                break;
+                continue;
             }
+
+            ++RuntimeMarkComponentCount;
+            TestEqual(
+                *FString::Printf(
+                    TEXT("%s remains collision-free"),
+                    *Component->GetName()),
+                Component->GetCollisionEnabled(),
+                ECollisionEnabled::NoCollision);
+            TestFalse(
+                *FString::Printf(
+                    TEXT("%s does not generate overlaps"),
+                    *Component->GetName()),
+                Component->GetGenerateOverlapEvents());
+
+            const FBox PlacedBox =
+                Component->GetStaticMesh()->GetBounds().GetBox().TransformBy(
+                    Component->GetRelativeTransform());
+            RuntimeMarkBounds += PlacedBox;
         }
     }
 
-    TestNotNull(TEXT("runtime chunk mounts native MetaRoad RoadMarks"), RuntimeMarks);
-    if (RuntimeMarks)
+    TestEqual(
+        TEXT("runtime chunk mounts all native MetaRoad mark spans"),
+        RuntimeMarkComponentCount,
+        ExpectedNativeMarkMeshCount);
+    TestTrue(
+        TEXT("runtime native mark assembly bounds are valid"),
+        RuntimeMarkBounds.IsValid != 0);
+
+    if (RuntimeMarkBounds.IsValid)
     {
-        TestEqual(
-            TEXT("R3 road markings never participate in vehicle collision"),
-            RuntimeMarks->GetCollisionEnabled(),
-            ECollisionEnabled::NoCollision);
-        TestFalse(
-            TEXT("R3 road markings do not generate overlap events"),
-            RuntimeMarks->GetGenerateOverlapEvents());
+        const FVector Size = RuntimeMarkBounds.GetSize();
+        AddInfo(FString::Printf(
+            TEXT("CD869_R3_RUNTIME_MARK_BOUNDS=%.2f,%.2f,%.2f"),
+            Size.X,
+            Size.Y,
+            Size.Z));
+        TestTrue(
+            TEXT("native broken-mark assembly covers the full kilometre pattern"),
+            Size.X >= 99000.0 && Size.X <= 100005.0);
+        TestTrue(
+            TEXT("native mark assembly stays inside accepted road envelope"),
+            Size.Y <= 6680.0 + 5.0);
+        TestTrue(
+            TEXT("native marks remain a visual surface layer"),
+            Size.Z <= 1.0);
     }
 
     AddInfo(TEXT("CD869_R3_NATIVE_METAROAD_MARKINGS=PASS"));
