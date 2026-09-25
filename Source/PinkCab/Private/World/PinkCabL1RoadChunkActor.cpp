@@ -85,6 +85,20 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
         RoadSidewalksComponent->SetStaticMesh(SidewalksFinder.Object);
     }
 
+    RoadMarksComponent =
+        CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadMarks"));
+    RoadMarksComponent->SetupAttachment(SceneRoot);
+    RoadMarksComponent->SetMobility(EComponentMobility::Movable);
+    RoadMarksComponent->SetGenerateOverlapEvents(false);
+    RoadMarksComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> MarksFinder(
+        TEXT("/Game/World/L1/Road/RoadMarks.RoadMarks"));
+    if (MarksFinder.Succeeded())
+    {
+        RoadMarksComponent->SetStaticMesh(MarksFinder.Object);
+    }
+
     RoadCurbComponents.Reserve(NativeMetaRoadCurbMeshCount);
     for (int32 Index = 0; Index < NativeMetaRoadCurbMeshCount; ++Index)
     {
@@ -181,6 +195,8 @@ bool APinkCabL1RoadChunkActor::IsVisualReady() const
 {
     return RoadMeshComponent != nullptr &&
         RoadMeshComponent->GetStaticMesh() != nullptr &&
+        RoadMarksComponent != nullptr &&
+        RoadMarksComponent->GetStaticMesh() != nullptr &&
         AreNativeMetaRoadConstructionMeshesReady();
 }
 
