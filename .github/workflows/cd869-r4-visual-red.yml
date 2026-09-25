@@ -1,0 +1,43 @@
+name: CD-869 R4 Visual RED
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 30
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Build test module
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+      - name: Prove current R4 asphalt fails texture-relief contract
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\R4_VISUAL_RED.log"
+          New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R4.RoadVisualV2" "-TestExit=Automation Test Queue Empty"
+          $hasFail=Select-String $log -Pattern 'R4 asphalt has real Normal graph input|R4 asphalt owns a real albedo texture|R4 asphalt owns a real roughness texture|R4 asphalt owns a real normal texture|Test Completed\. Result=\{Fail\}' -Quiet
+          if(-not $hasFail){ throw 'R4_VISUAL_RED_NOT_REPRODUCED' }
+          Get-Content $log | Select-String -Pattern 'R4 asphalt|Test Completed. Result=' | Select-Object -Last 80 | ForEach-Object { Write-Host $_.Line }
+          Write-Host 'R4_VISUAL_RED=PASS'
