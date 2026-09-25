@@ -1,0 +1,284 @@
+name: CD-869 R4.1 Textured Asphalt Human
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-r4-v21-textured-asphalt
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: R4.1 textured asphalt + packaged gate + HUMAN
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869R41Human
+      ACCEPTED_R3: 55e9fd8481a114265fd43f1c6433d86df53ba991
+
+    steps:
+      - name: Checkout exact R4 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact-head and scope preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R41_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $dirty=@(git status --porcelain --untracked-files=all)
+          if($dirty.Count -ne 0){ $dirty | % { Write-Host $_ }; throw 'R41_DIRTY_CHECKOUT' }
+
+          $runtimeDelta=@(git diff --name-only $env:ACCEPTED_R3 HEAD -- Source/PinkCab Source/PinkCabVehicle Source/PinkCabInteraction Config)
+          if($runtimeDelta.Count -ne 0){
+            $runtimeDelta | % { Write-Host "R41_FORBIDDEN_RUNTIME_DELTA=$_" }
+            throw 'R41_RUNTIME_INPUT_NOT_FROZEN'
+          }
+          Write-Host "R41_HEAD=$head"
+          Write-Host 'R41_RUNTIME_INPUT_FROZEN=PASS'
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R41_EDITOR_BUILD=PASS'
+
+      - name: Prove old sterile R4 asset is RED before regeneration
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R41_RED.log'
+          New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R4.RoadVisualV2" "-TestExit=Automation Test Queue Empty"
+          $isRed=Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|R4 asphalt has real Normal graph input|R4 asphalt owns a real albedo texture|R4 asphalt owns a real roughness texture|R4 asphalt owns a real normal texture' -Quiet
+          if(-not $isRed){
+            Write-Host 'R41_RED_ALREADY_GREEN=1'
+          } else {
+            Write-Host 'R41_OLD_STERILE_ASSET_RED=PASS'
+          }
+
+      - name: Generate project-owned asphalt texture set and graph
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R41_GENERATE.log'
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadR4VisualMaterial" "-TestExit=Automation Test Queue Empty"
+          $exit=$LASTEXITCODE
+          Get-Content $log | Select-String -Pattern 'CD869_R4_|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 120 | % { Write-Host $_.Line }
+          if($exit -ne 0){ exit $exit }
+          if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){ throw 'R41_GENERATOR_FAILED' }
+          if(-not (Select-String -Path $log -Pattern 'CD869_R4_VISUAL_MATERIAL_GENERATED=PASS' -Quiet)){ throw 'R41_GENERATOR_MARKER_MISSING' }
+
+      - name: Enforce visual-only generated asset scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $allowed=@(
+            'Content/World/L1/Road/Materials/M_PC_L1_Asphalt.uasset',
+            'Content/World/L1/Road/Textures/T_PC_L1_Asphalt_Albedo.uasset',
+            'Content/World/L1/Road/Textures/T_PC_L1_Asphalt_Roughness.uasset',
+            'Content/World/L1/Road/Textures/T_PC_L1_Asphalt_Normal.uasset'
+          )
+          $changed=@(git status --porcelain --untracked-files=all)
+          foreach($line in $changed){
+            $p=$line.Substring(3).Replace('\','/')
+            Write-Host "R41_GENERATED=$p"
+            if($p -notin $allowed){ throw "R41_SCOPE_VIOLATION=$p" }
+          }
+          foreach($p in $allowed){
+            if(-not (Test-Path (Join-Path $env:GITHUB_WORKSPACE $p))){ throw "R41_EXPECTED_ASSET_MISSING=$p" }
+          }
+
+          foreach($p in $allowed){
+            $bytes=[IO.File]::ReadAllBytes((Join-Path $env:GITHUB_WORKSPACE $p))
+            $ascii=[Text.Encoding]::ASCII.GetString($bytes)
+            $unicode=[Text.Encoding]::Unicode.GetString($bytes)
+            if($ascii -match '/MetaRoad/' -or $unicode -match '/MetaRoad/'){
+              throw "R41_METAROAD_RUNTIME_DEPENDENCY=$p"
+            }
+          }
+          Write-Host 'R41_VISUAL_ONLY_ASSET_SCOPE=PASS'
+          Write-Host 'R41_METAROAD_RUNTIME_DEPENDENCY=NONE'
+
+      - name: Commit generated R4.1 visual assets
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Content/World/L1/Road/Materials/M_PC_L1_Asphalt.uasset Content/World/L1/Road/Textures
+          if(git diff --cached --quiet){
+            Write-Host "R41_ASSET_COMMIT_REUSE=$((git rev-parse HEAD).Trim())"
+          } else {
+            git commit -m 'asset(CD-869): add textured worn asphalt R4.1 [skip ci]'
+            git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+            Write-Host "R41_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+          }
+
+      - name: Run R4.1 and frozen regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $tests=@(
+            'PinkCab.World.L1Road.R4.RoadVisualV2',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad',
+            'PinkCab.World.Materialization',
+            'PinkCab.World.L1Road.R4.FrozenHGate',
+            'PinkCab.G1.HInp.PhysicalDirections',
+            'PinkCab.G1.HInp.ClutchReleaseWheelDirection',
+            'PinkCab.G1.HInp.DosingParameters'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE "Saved\GitHubGate\R41_$safe.log"
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            $fails=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
+            $queue=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
+            if($fails.Count -gt 0 -or $queue.Count -eq 0){ throw "R41_TEST_FAIL=$test" }
+            Write-Host "R41_TEST_PASS=$test"
+          }
+
+      - name: Repo hygiene and zero debt
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R41_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 cook and package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $uat=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force $archive | Out-Null
+
+          $backup="$project.r41-backup"
+          Copy-Item $project $backup -Force
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins=@($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $inner)){ throw 'R41_PACKAGE_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($inner)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $inner).Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw 'R41_SIGNATURE_INVALID' }
+          Write-Host 'R41_FRESH_PACKAGE=PASS'
+
+      - name: Two full packaged Windows-input passes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          for($attempt=1;$attempt -le 2;$attempt++){
+            Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\R41_INPUT_" + $attempt)
+            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $inner -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            if(-not (Test-Path $summary)){ throw "R41_INPUT_SUMMARY_MISSING=$attempt" }
+            foreach($marker in @(
+              'startup_menu=PASS','ignition_space_lmb=PASS','analog_handbrake_release=PASS',
+              'hgate_first=PASS','mandatory_e_wheel_launch=PASS','mouse_right_steering=PASS',
+              'service_brake_stop=PASS','hgate_reverse=PASS','reverse_movement_over_3m=PASS',
+              'menu_focus_cleanup=PASS','critical=0'
+            )){
+              if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){ throw "R41_INPUT_MARKER_MISSING attempt=$attempt marker=$marker" }
+            }
+            Write-Host "R41_PACKAGED_INPUT_PASS=$attempt"
+          }
+
+      - name: Deliver and launch one R4.1 HUMAN process
+        id: human
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R41_TEXTURED_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "R41_COPY_FAILED=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R4.1 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB R4.1 textured asphalt $sha"
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $exe) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "R41_HUMAN_EXITED=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "R41_PROCESS_COUNT=$($all.Count)" }
+            if($all[0].Path -ne $exe){ throw "R41_PROCESS_PATH=$($all[0].Path)" }
+            Write-Host "R41_HUMAN_SHA=$sha"
+            Write-Host "R41_HUMAN_RUN=$env:GITHUB_RUN_ID"
+            Write-Host "R41_HUMAN_PID=$($p.Id)"
+            Write-Host "R41_HUMAN_PATH=$($all[0].Path)"
+            Write-Host "R41_HUMAN_DELIVERY=$delivery"
+            Write-Host 'R41_HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
