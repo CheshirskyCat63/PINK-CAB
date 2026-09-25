@@ -3,7 +3,8 @@
 **Owner approval:** 2026-09-24  
 **Active project:** PINK-CAB  
 **Jira:** CD-869  
-**Execution rule:** R1 → HUMAN acceptance → R2 → HUMAN acceptance → ... → R6.
+**Execution rule:** R1 → HUMAN acceptance → R2 → HUMAN acceptance → ... → R6.  
+**Canonical road state (2026-09-25):** R1/R2/R3 HUMAN ACCEPTED / INTEGRATED / FROZEN; R4 is NEXT and not started. R3 geometry is 5×4.50 m express + 2×4.00 m local per direction, 79.0 m design / 79.15 m physical runtime assembly.
 
 ## Frozen foundation
 
@@ -70,7 +71,7 @@ R1 HUMAN acceptance checks only:
 Add the actual raised separator/curb construction required for the road to read as built geometry rather than a flat drawing. Preserve accepted R1 topology and streaming unchanged.
 
 R2 implementation contract:
-- keep the accepted 66.8 m outer road envelope and 1000 m seam unchanged;
+- preserve the then-accepted R2 **66.8 m** outer road envelope and 1000 m seam unchanged; **historical R2 value only — superseded by owner-accepted R3 to 79.0 m design / 79.15 m physical runtime assembly**;
 - central median is physically raised across the kilometre;
 - service separators between express and local roads are physically raised and open only where the accepted R1 access connector opens;
 - curb geometry visibly defines median/separator road edges;
