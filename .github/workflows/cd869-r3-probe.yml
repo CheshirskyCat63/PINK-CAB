@@ -1,4 +1,4 @@
-name: CD-869 R3 MetaRoad LaneProfile API Probe
+name: CD-869 R3 MetaRoad MarksOp Probe
 
 on:
   push:
@@ -23,13 +23,13 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-      - name: Read LaneProfile API
+      - name: Read MarksOp output contract
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
           if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
-          $p=Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Public\Assets\RoadProfile.h'
-          $c=Get-Content $p
-          for($i=1;$i -le 82;$i++){ Write-Host ("R3_LANEPROFILE_API {0}: {1}" -f $i,$c[$i-1]) }
-          Write-Host 'R3_LANEPROFILE_HEADER_PROBE=PASS'
+          $p=Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Private\RoadMeshBuild\Ops\MarksOp.cpp'
+          $hits=Select-String -Path $p -Pattern 'Mesh|Mark|Name|Output|Group|Layer' -CaseSensitive:$false
+          foreach($h in $hits){ Write-Host ("R3_MARKSOP {0}: {1}" -f $h.LineNumber,$h.Line.Trim()) }
+          Write-Host 'R3_MARKSOP_PROBE=PASS'
