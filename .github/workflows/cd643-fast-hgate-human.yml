@@ -1,0 +1,82 @@
+name: CD-643 Fast H-Gate Human Delivery
+on:
+  push:
+    branches: [feat/CD-869-r2-median-separators]
+    paths: [docs/audits/CD643_FAST_DELIVER_TRIGGER.txt]
+permissions:
+  contents: read
+jobs:
+  deliver:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 8
+    steps:
+      - name: Reuse verified warm package, smoke and launch
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $workspace='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          $source=Join-Path $workspace 'Artifacts\CD869R2MetaRoadHuman\Windows'
+          $inner=Join-Path $source 'PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $inner)){ throw "CD643_WARM_PACKAGE_MISSING $inner" }
+
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+          $smokeLog=Join-Path $workspace 'Saved\GitHubGate\CD643_FAST_HGATE_SMOKE.log'
+          Remove-Item $smokeLog -Force -ErrorAction SilentlyContinue
+          $smoke=Start-Process -FilePath $inner -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=960','-ResY=540','-PinkCabGateTelemetry',"-abslog=$smokeLog"
+          ) -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(20)
+            do {
+              Start-Sleep -Milliseconds 250
+              $smoke.Refresh()
+              if($smoke.HasExited){ throw "CD643_SMOKE_EXITED code=$($smoke.ExitCode)" }
+              $ready=(Test-Path $smokeLog) -and
+                (Select-String $smokeLog -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while(-not $ready -and [DateTime]::UtcNow -lt $deadline)
+            if(-not $ready){ throw 'CD643_SMOKE_TELEMETRY_TIMEOUT' }
+            if(Select-String $smokeLog -Pattern '(?i)Fatal error:|Assertion failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -Quiet){
+              throw 'CD643_SMOKE_CRITICAL'
+            }
+            Write-Host 'CD643_FAST_SMOKE=PASS'
+          } finally {
+            if($smoke -and -not $smoke.HasExited){ Stop-Process -Id $smoke.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+          $delivery="E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD643_HGATE_EXTENDED_1756fa8f_RUN$env:GITHUB_RUN_ID"
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "CD643_COPY_FAILED $LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+          $delivered=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB Latest.lnk','PINKCAB R2 HUMAN.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$delivered
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $delivered)
+            $s.Description='PINK CAB extended H-gate HUMAN candidate 1756fa8f'
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $delivered -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $delivered) -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if($proc.HasExited){ throw "CD643_HUMAN_EXITED code=$($proc.ExitCode)" }
+            Write-Host "CD643_HUMAN_DELIVERY=$delivery"
+            Write-Host "CD643_HUMAN_PID=$($proc.Id)"
+            Write-Host 'CD643_HUMAN_FOREGROUND=PASS'
+          } finally { $env:RUNNER_TRACKING_ID=$saved }
