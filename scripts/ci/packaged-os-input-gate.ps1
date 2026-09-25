@@ -509,7 +509,7 @@ try {
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 160
     Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "gearbox retained for reverse manipulation" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_3)
-    Move-GearCursor 1.0 -1.0 $signX $signY
+    Move-GearCursor 2.0 -1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq -1 } 4000 "H-gate requests reverse" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
     Wait-State { param($s) $s.engaged -eq -1 } 4000 "reverse engages with clutch down" | Out-Null
