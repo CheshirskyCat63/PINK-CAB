@@ -984,6 +984,8 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 
         const bool bCurbMesh =
             MeshName.StartsWith(TEXT("RoadCurbs"));
+        const bool bMarkMesh =
+            MeshName.StartsWith(TEXT("RoadMarks"));
         for (int32 Index = 0; Index < Slots.Num(); ++Index)
         {
             const FString SlotName = Slots[Index].MaterialSlotName.ToString();
@@ -994,10 +996,16 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
                 *SlotName));
             Mesh->SetMaterial(
                 Index,
-                bCurbMesh
-                    ? Shoulder
-                    : ResolveProjectMaterialForSlot(
-                        Slots[Index], Asphalt, Divider, Shoulder, Mark));
+                bMarkMesh
+                    ? Mark
+                    : bCurbMesh
+                        ? Shoulder
+                        : ResolveProjectMaterialForSlot(
+                            Slots[Index],
+                            Asphalt,
+                            Divider,
+                            Shoulder,
+                            Mark));
         }
 
         Mesh->PostEditChange();
