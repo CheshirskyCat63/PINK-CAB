@@ -16,8 +16,8 @@ constexpr double NativeMetaRoadMarkSectionX[5] =
 };
 constexpr double NativeMetaRoadMarkLaneY[10] =
 {
-    -2920.0, -1840.0, -1480.0, -1120.0, -760.0,
-      760.0,  1120.0,  1480.0,  1840.0, 2920.0
+    -3450.0, -2200.0, -1750.0, -1300.0, -850.0,
+      850.0,  1300.0,  1750.0,  2200.0, 3450.0
 };
 
 // Captured from the MetaRoad 3.2.0 generated actor after splitting the
@@ -26,13 +26,13 @@ constexpr double NativeMetaRoadMarkLaneY[10] =
 // inside Access A/B; all remaining spans retain the human-authored DefaultCurb.
 const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
 {
-    FVector(86250.0,  -3240.0, 4.25),
-    FVector(70000.0,  -3240.0, 4.25),
-    FVector(50000.0,  -3240.0, 4.25),
-    FVector(30000.0,  -3240.0, 4.25),
-    FVector(13750.0,  -3240.0, 4.25),
-    FVector(13750.12, -2400.0, 4.25),
-    FVector(13750.0,  -2600.0, 4.25),
+    FVector(86250.0,  -3950.0, 4.25),
+    FVector(70000.0,  -3950.0, 4.25),
+    FVector(50000.0,  -3950.0, 4.25),
+    FVector(30000.0,  -3950.0, 4.25),
+    FVector(13750.0,  -3950.0, 4.25),
+    FVector(13750.12, -2850.0, 4.25),
+    FVector(13750.0,  -3050.0, 4.25),
     FVector(13750.0,   -400.0, 4.25),
     FVector(30000.0,   -400.0, 4.25),
     FVector(50000.0,   -400.0, 4.25),
@@ -43,21 +43,21 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(50000.0,    400.0, 4.25),
     FVector(30000.0,    400.0, 4.25),
     FVector(13750.0,    400.0, 4.25),
-    FVector(13750.12,  2400.0, 4.25),
-    FVector(13750.0,   2600.0, 4.25),
-    FVector(13750.0,   3240.0, 4.25),
-    FVector(30000.0,   3240.0, 4.25),
-    FVector(50000.0,   3240.0, 4.25),
-    FVector(70000.0,   3240.0, 4.25),
-    FVector(86250.0,   3240.0, 4.25),
-    FVector(50000.0,  -2400.0, 4.25),
-    FVector(50000.0,  -2600.0, 4.25),
-    FVector(50000.0,   2400.0, 4.25),
-    FVector(50000.0,   2600.0, 4.25),
-    FVector(86249.88, -2400.0, 4.25),
-    FVector(86250.0,  -2600.0, 4.25),
-    FVector(86249.88,  2400.0, 4.25),
-    FVector(86250.0,   2600.0, 4.25)
+    FVector(13750.12,  2850.0, 4.25),
+    FVector(13750.0,   3050.0, 4.25),
+    FVector(13750.0,   3950.0, 4.25),
+    FVector(30000.0,   3950.0, 4.25),
+    FVector(50000.0,   3950.0, 4.25),
+    FVector(70000.0,   3950.0, 4.25),
+    FVector(86250.0,   3950.0, 4.25),
+    FVector(50000.0,  -2850.0, 4.25),
+    FVector(50000.0,  -3050.0, 4.25),
+    FVector(50000.0,   2850.0, 4.25),
+    FVector(50000.0,   3050.0, 4.25),
+    FVector(86249.88, -2850.0, 4.25),
+    FVector(86250.0,  -3050.0, 4.25),
+    FVector(86249.88,  2850.0, 4.25),
+    FVector(86250.0,   3050.0, 4.25)
 };
 }
 
