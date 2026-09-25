@@ -1,0 +1,101 @@
+name: CD-869 R4 Road Visual v2
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-r4-road-visual-v2
+  cancel-in-progress: true
+
+jobs:
+  red:
+    name: R4 preflight + MetaRoad audit + RED proof
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 45
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      METAROAD_ROOT: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4
+
+    steps:
+      - name: Checkout exact R4 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact-head clean preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R4_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $branch=(git branch --show-current).Trim()
+          $remote=(git remote get-url origin).Trim()
+          $status=@(git status --porcelain --untracked-files=all)
+          Write-Host "R4_REPO=$env:GITHUB_WORKSPACE"
+          Write-Host "R4_BRANCH=$branch"
+          Write-Host "R4_HEAD=$head"
+          Write-Host "R4_REMOTE=$remote"
+          git log -5 --oneline
+          if($status.Count -ne 0){
+            $status | ForEach-Object { Write-Host "R4_DIRTY=$_" }
+            throw 'R4_WORKTREE_NOT_CLEAN'
+          }
+          if(-not (Test-Path "$env:METAROAD_ROOT\MetaRoad.uplugin")){ throw 'R4_METAROAD_PLUGIN_MISSING' }
+          $meta=Get-Content -Raw "$env:METAROAD_ROOT\MetaRoad.uplugin" | ConvertFrom-Json
+          Write-Host "R4_METAROAD_VERSION=$($meta.VersionName)"
+          Write-Host 'R4_PREFLIGHT=PASS'
+
+      - name: Inspect installed MetaRoad asphalt without copying plugin content
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $asset=Get-ChildItem "$env:METAROAD_ROOT\Content" -Recurse -Filter 'M_Asphalt.uasset' | Select-Object -First 1
+          if(-not $asset){ throw 'R4_METAROAD_ASPHALT_MISSING' }
+          Write-Host "R4_METAROAD_ASPHALT=$($asset.FullName)"
+          $bytes=[System.IO.File]::ReadAllBytes($asset.FullName)
+          $ascii=[Text.Encoding]::ASCII.GetString($bytes)
+          $unicode=[Text.Encoding]::Unicode.GetString($bytes)
+          $tokens=@()
+          foreach($text in @($ascii,$unicode)){
+            $tokens += [regex]::Matches($text,'[A-Za-z0-9_\/\.\-]{5,}') | ForEach-Object { $_.Value }
+          }
+          $tokens = $tokens | Where-Object {
+            $_ -match '(?i)asphalt|texture|rough|normal|wet|road|MetaRoad'
+          } | Sort-Object -Unique
+          $tokens | Select-Object -First 160 | ForEach-Object { Write-Host "R4_METAROAD_TOKEN=$_" }
+          Write-Host 'R4_METAROAD_AUDIT=PASS_NO_PLUGIN_COPY'
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R4_EDITOR_BUILD=PASS'
+
+      - name: Prove current asphalt fails R4 visual contract
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R4_RED.log'
+          New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.World.L1Road.R4.RoadVisualV2" "-TestExit=Automation Test Queue Empty"
+          $exit=$LASTEXITCODE
+          $fail=@(Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|R4 BaseColor is no longer a flat constant|R4 Roughness is no longer a flat constant')
+          $pass=@(Select-String $log -Pattern 'Test Completed\. Result=\{Success\}')
+          $fail | Select-Object -Last 80 | ForEach-Object { Write-Host $_.Line }
+          if($pass.Count -gt 0 -and $fail.Count -eq 0){ throw 'R4_RED_UNEXPECTEDLY_GREEN' }
+          if($fail.Count -eq 0){ throw "R4_RED_DID_NOT_FAIL_AS_EXPECTED editorExit=$exit" }
+          Write-Host "R4_RED_EXPECTED_FAIL=PASS editorExit=$exit evidence=$($fail.Count)"
