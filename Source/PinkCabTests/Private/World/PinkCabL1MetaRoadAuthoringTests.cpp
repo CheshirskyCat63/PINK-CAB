@@ -25,6 +25,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Editor.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture.h"
+#include "Engine/TextureDefines.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "FileHelpers.h"
@@ -832,6 +834,7 @@ UTexture2D* CreateOrUpdateAsphaltTexture(
         reinterpret_cast<const uint8*>(Pixels.GetData()));
     Texture->SRGB = bSRGB;
     Texture->CompressionSettings = CompressionSettings;
+    Texture->bNormalizeNormals = CompressionSettings == TC_Normalmap;
     Texture->LODGroup = TEXTUREGROUP_World;
     Texture->AddressX = TA_Wrap;
     Texture->AddressY = TA_Wrap;
@@ -1102,7 +1105,7 @@ UMaterial* CreateRoadVisualV2Material(
     UMaterialEditingLibrary::ConnectMaterialExpressions(
         MacroNoise, FString(), MacroTint, TEXT("Alpha"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        AlbedoSample, TEXT("RGB"), TintedAlbedo, TEXT("A"));
+        AlbedoSample, FString(), TintedAlbedo, TEXT("A"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
         MacroTint, FString(), TintedAlbedo, TEXT("B"));
 
@@ -1111,7 +1114,7 @@ UMaterial* CreateRoadVisualV2Material(
     UMaterialEditingLibrary::ConnectMaterialProperty(
         RoughnessSample, TEXT("R"), MP_Roughness);
     UMaterialEditingLibrary::ConnectMaterialProperty(
-        NormalSample, TEXT("RGB"), MP_Normal);
+        NormalSample, FString(), MP_Normal);
     UMaterialEditingLibrary::ConnectMaterialProperty(
         Specular, FString(), MP_Specular);
 
