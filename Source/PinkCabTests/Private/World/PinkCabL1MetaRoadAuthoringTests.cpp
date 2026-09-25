@@ -10,6 +10,7 @@
 #include "Materials/MaterialExpression.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
+#include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionAdd.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
@@ -583,205 +584,534 @@ bool SaveAssetPackage(UObject& Asset, FAutomationTestBase& Test)
     return bSaved;
 }
 
+
+uint32 AsphaltHash2D(
+    const int32 X,
+    const int32 Y,
+    const uint32 Seed)
+{
+    uint32 H =
+        static_cast<uint32>(X) * 374761393u +
+        static_cast<uint32>(Y) * 668265263u +
+        Seed * 2246822519u;
+    H = (H ^ (H >> 13u)) * 1274126177u;
+    return H ^ (H >> 16u);
+}
+
+float AsphaltHash01(
+    const int32 X,
+    const int32 Y,
+    const uint32 Seed)
+{
+    return static_cast<float>(AsphaltHash2D(X, Y, Seed) & 0x00FFFFFFu) /
+        static_cast<float>(0x00FFFFFFu);
+}
+
+int32 WrapCell(
+    const int32 Value,
+    const int32 Period)
+{
+    const int32 M = Value % Period;
+    return M < 0 ? M + Period : M;
+}
+
+float PeriodicValueNoise(
+    const float U,
+    const float V,
+    const int32 Cells,
+    const uint32 Seed)
+{
+    const float X = U * static_cast<float>(Cells);
+    const float Y = V * static_cast<float>(Cells);
+    const int32 X0 = FMath::FloorToInt(X);
+    const int32 Y0 = FMath::FloorToInt(Y);
+    const int32 X1 = X0 + 1;
+    const int32 Y1 = Y0 + 1;
+
+    const float Tx0 = X - static_cast<float>(X0);
+    const float Ty0 = Y - static_cast<float>(Y0);
+    const float Tx = Tx0 * Tx0 * (3.0f - 2.0f * Tx0);
+    const float Ty = Ty0 * Ty0 * (3.0f - 2.0f * Ty0);
+
+    const float A = AsphaltHash01(
+        WrapCell(X0, Cells), WrapCell(Y0, Cells), Seed);
+    const float B = AsphaltHash01(
+        WrapCell(X1, Cells), WrapCell(Y0, Cells), Seed);
+    const float C = AsphaltHash01(
+        WrapCell(X0, Cells), WrapCell(Y1, Cells), Seed);
+    const float D = AsphaltHash01(
+        WrapCell(X1, Cells), WrapCell(Y1, Cells), Seed);
+
+    return FMath::Lerp(
+        FMath::Lerp(A, B, Tx),
+        FMath::Lerp(C, D, Tx),
+        Ty);
+}
+
+struct FAsphaltTextureSet
+{
+    TArray<FColor> Albedo;
+    TArray<FColor> Roughness;
+    TArray<FColor> Normal;
+};
+
+FAsphaltTextureSet BuildAsphaltTextureSet(
+    const int32 Size)
+{
+    FAsphaltTextureSet Result;
+    Result.Albedo.SetNumUninitialized(Size * Size);
+    Result.Roughness.SetNumUninitialized(Size * Size);
+    Result.Normal.SetNumUninitialized(Size * Size);
+
+    TArray<float> Height;
+    Height.SetNumUninitialized(Size * Size);
+
+    for (int32 Y = 0; Y < Size; ++Y)
+    {
+        const float V = static_cast<float>(Y) / static_cast<float>(Size);
+        for (int32 X = 0; X < Size; ++X)
+        {
+            const float U = static_cast<float>(X) / static_cast<float>(Size);
+            const int32 Index = Y * Size + X;
+
+            const float Macro =
+                PeriodicValueNoise(U, V, 4, 0xA51u);
+            const float Mid =
+                PeriodicValueNoise(U, V, 18, 0x71Bu);
+            const float Fine =
+                PeriodicValueNoise(U, V, 72, 0xC31u);
+            const float Grain =
+                AsphaltHash01(X, Y, 0x2D9u);
+            const float PatchField =
+                PeriodicValueNoise(U, V, 7, 0x99Du);
+            const float Patch =
+                FMath::SmoothStep(0.58f, 0.82f, PatchField);
+
+            const float Warp =
+                PeriodicValueNoise(U, V, 5, 0xB17u) - 0.5f;
+            const float CrackWave = FMath::Abs(
+                FMath::Sin(
+                    (V * 5.0f + U * 1.45f + Warp * 0.9f) *
+                    2.0f * PI));
+            const float CrackGate =
+                FMath::SmoothStep(
+                    0.63f,
+                    0.82f,
+                    PeriodicValueNoise(U, V, 3, 0xE45u));
+            const float Crack =
+                (1.0f - FMath::SmoothStep(0.0f, 0.075f, CrackWave)) *
+                CrackGate;
+
+            const float LightChip =
+                FMath::SmoothStep(0.976f, 0.997f, Grain);
+            const float DarkPit =
+                1.0f - FMath::SmoothStep(0.010f, 0.032f, Grain);
+
+            const float Base =
+                52.0f +
+                (Macro - 0.5f) * 17.0f +
+                (Mid - 0.5f) * 11.0f +
+                (Fine - 0.5f) * 7.0f -
+                Patch * 7.0f -
+                Crack * 23.0f +
+                LightChip * 21.0f -
+                DarkPit * 15.0f;
+
+            const uint8 R = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt(Base + 2.0f), 24, 96));
+            const uint8 G = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt(Base + 1.0f), 23, 94));
+            const uint8 B = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt(Base), 22, 92));
+            Result.Albedo[Index] = FColor(R, G, B, 255);
+
+            const float Rough =
+                0.89f +
+                (Fine - 0.5f) * 0.09f +
+                (Mid - 0.5f) * 0.05f +
+                Patch * 0.035f +
+                Crack * 0.045f -
+                LightChip * 0.025f;
+            const uint8 RoughByte = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt(Rough * 255.0f), 205, 247));
+            Result.Roughness[Index] =
+                FColor(RoughByte, RoughByte, RoughByte, 255);
+
+            Height[Index] =
+                (Mid - 0.5f) * 0.30f +
+                (Fine - 0.5f) * 0.52f +
+                (Grain - 0.5f) * 0.16f -
+                Crack * 0.38f -
+                DarkPit * 0.20f +
+                LightChip * 0.10f;
+        }
+    }
+
+    auto HeightAt = [&Height, Size](const int32 X, const int32 Y)
+    {
+        const int32 WrappedX = WrapCell(X, Size);
+        const int32 WrappedY = WrapCell(Y, Size);
+        return Height[WrappedY * Size + WrappedX];
+    };
+
+    constexpr float NormalStrength = 1.85f;
+    for (int32 Y = 0; Y < Size; ++Y)
+    {
+        for (int32 X = 0; X < Size; ++X)
+        {
+            const float Dx =
+                (HeightAt(X + 1, Y) - HeightAt(X - 1, Y)) *
+                NormalStrength;
+            const float Dy =
+                (HeightAt(X, Y + 1) - HeightAt(X, Y - 1)) *
+                NormalStrength;
+
+            const FVector3f N =
+                FVector3f(-Dx, -Dy, 1.0f).GetSafeNormal();
+            const uint8 NX = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt((N.X * 0.5f + 0.5f) * 255.0f), 0, 255));
+            const uint8 NY = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt((N.Y * 0.5f + 0.5f) * 255.0f), 0, 255));
+            const uint8 NZ = static_cast<uint8>(FMath::Clamp(
+                FMath::RoundToInt((N.Z * 0.5f + 0.5f) * 255.0f), 0, 255));
+            Result.Normal[Y * Size + X] = FColor(NX, NY, NZ, 255);
+        }
+    }
+
+    return Result;
+}
+
+UTexture2D* CreateOrUpdateAsphaltTexture(
+    const TCHAR* PackageName,
+    const TCHAR* AssetName,
+    const TArray<FColor>& Pixels,
+    const int32 Size,
+    const bool bSRGB,
+    const TextureCompressionSettings CompressionSettings,
+    FAutomationTestBase& Test)
+{
+    const FString ObjectPath = FString::Printf(
+        TEXT("%s.%s"), PackageName, AssetName);
+    UTexture2D* Texture = LoadObject<UTexture2D>(
+        nullptr, *ObjectPath);
+    bool bNewAsset = false;
+
+    if (!Texture)
+    {
+        UPackage* Package = CreatePackage(PackageName);
+        Test.TestNotNull(
+            *FString::Printf(TEXT("%s package created"), AssetName),
+            Package);
+        if (!Package)
+        {
+            return nullptr;
+        }
+
+        Texture = NewObject<UTexture2D>(
+            Package,
+            FName(AssetName),
+            RF_Public | RF_Standalone | RF_Transactional);
+        bNewAsset = true;
+    }
+
+    Test.TestNotNull(
+        *FString::Printf(TEXT("%s texture created"), AssetName),
+        Texture);
+    if (!Texture)
+    {
+        return nullptr;
+    }
+
+    Texture->PreEditChange(nullptr);
+    Texture->Source.Init(
+        Size,
+        Size,
+        1,
+        1,
+        TSF_BGRA8,
+        reinterpret_cast<const uint8*>(Pixels.GetData()));
+    Texture->SRGB = bSRGB;
+    Texture->CompressionSettings = CompressionSettings;
+    Texture->LODGroup = TEXTUREGROUP_World;
+    Texture->AddressX = TA_Wrap;
+    Texture->AddressY = TA_Wrap;
+    Texture->MipGenSettings = TMGS_FromTextureGroup;
+
+    if (bNewAsset)
+    {
+        FAssetRegistryModule::AssetCreated(Texture);
+    }
+    Texture->PostEditChange();
+
+    if (!SaveAssetPackage(*Texture, Test))
+    {
+        return nullptr;
+    }
+    return Texture;
+}
+
 UMaterial* CreateRoadVisualV2Material(
     FAutomationTestBase& Test)
 {
+    constexpr int32 TextureSize = 1024;
+    const FAsphaltTextureSet Pixels =
+        BuildAsphaltTextureSet(TextureSize);
+
+    UTexture2D* AlbedoTexture = CreateOrUpdateAsphaltTexture(
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Albedo"),
+        TEXT("T_PC_L1_Asphalt_Albedo"),
+        Pixels.Albedo,
+        TextureSize,
+        true,
+        TC_Default,
+        Test);
+    UTexture2D* RoughnessTexture = CreateOrUpdateAsphaltTexture(
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Roughness"),
+        TEXT("T_PC_L1_Asphalt_Roughness"),
+        Pixels.Roughness,
+        TextureSize,
+        false,
+        TC_Masks,
+        Test);
+    UTexture2D* NormalTexture = CreateOrUpdateAsphaltTexture(
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Normal"),
+        TEXT("T_PC_L1_Asphalt_Normal"),
+        Pixels.Normal,
+        TextureSize,
+        false,
+        TC_Normalmap,
+        Test);
+
+    const bool bTexturesReady =
+        AlbedoTexture && RoughnessTexture && NormalTexture;
+    Test.TestTrue(
+        TEXT("R4 asphalt texture set generated"),
+        bTexturesReady);
+    if (!bTexturesReady)
+    {
+        return nullptr;
+    }
+
     const TCHAR* PackageName =
         TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt");
     const TCHAR* AssetName = TEXT("M_PC_L1_Asphalt");
     const FString ObjectPath = FString::Printf(
         TEXT("%s.%s"), PackageName, AssetName);
 
-    UMaterial* Material = LoadObject<UMaterial>(nullptr, *ObjectPath);
-    if (Material)
-    {
-        UMaterialExpression* ExistingBaseColor =
-            UMaterialEditingLibrary::GetMaterialPropertyInputNode(
-                Material, MP_BaseColor);
-        UMaterialExpression* ExistingRoughness =
-            UMaterialEditingLibrary::GetMaterialPropertyInputNode(
-                Material, MP_Roughness);
-        const bool bAlreadyR4 =
-            ExistingBaseColor &&
-            ExistingRoughness &&
-            !ExistingBaseColor->IsA(
-                UMaterialExpressionConstant3Vector::StaticClass()) &&
-            !ExistingRoughness->IsA(
-                UMaterialExpressionConstant::StaticClass());
-        if (bAlreadyR4)
-        {
-            Test.AddInfo(TEXT("CD869_R4_ASPHALT_GRAPH=REUSE"));
-            return Material;
-        }
-
-        Test.AddError(
-            TEXT("legacy flat M_PC_L1_Asphalt must be regenerated from a clean package; in-place MaterialEditor expression replacement is unsafe on UE 5.8"));
-        return nullptr;
-    }
-
-    UPackage* Package = CreatePackage(PackageName);
-    Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
-    if (!Package)
-    {
-        return nullptr;
-    }
-
-    Material = NewObject<UMaterial>(
-        Package,
-        FName(AssetName),
-        RF_Public | RF_Standalone | RF_Transactional);
-    Test.TestNotNull(TEXT("R4 project-owned asphalt material created"), Material);
+    UMaterial* Material = LoadObject<UMaterial>(
+        nullptr, *ObjectPath);
     if (!Material)
     {
-        return nullptr;
+        UPackage* Package = CreatePackage(PackageName);
+        Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
+        if (!Package)
+        {
+            return nullptr;
+        }
+
+        Material = NewObject<UMaterial>(
+            Package,
+            FName(AssetName),
+            RF_Public | RF_Standalone | RF_Transactional);
+        Test.TestNotNull(
+            TEXT("R4 project-owned asphalt material created"),
+            Material);
+        if (!Material)
+        {
+            return nullptr;
+        }
+        FAssetRegistryModule::AssetCreated(Material);
     }
+
+    Material->PreEditChange(nullptr);
+    UMaterialEditingLibrary::DeleteAllMaterialExpressions(Material);
 
     auto* WorldPosition = Cast<UMaterialExpressionWorldPosition>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionWorldPosition::StaticClass(), -1000, 0));
+            Material,
+            UMaterialExpressionWorldPosition::StaticClass(),
+            -1200,
+            0));
+    auto* WorldXY = Cast<UMaterialExpressionComponentMask>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionComponentMask::StaticClass(),
+            -1000,
+            0));
+    auto* TextureFrequency = Cast<UMaterialExpressionScalarParameter>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionScalarParameter::StaticClass(),
+            -1000,
+            120));
+    auto* TextureUV = Cast<UMaterialExpressionMultiply>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionMultiply::StaticClass(),
+            -760,
+            0));
+
+    auto* AlbedoSample = Cast<UMaterialExpressionTextureSample>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionTextureSample::StaticClass(),
+            -500,
+            -160));
+    auto* RoughnessSample = Cast<UMaterialExpressionTextureSample>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionTextureSample::StaticClass(),
+            -500,
+            40));
+    auto* NormalSample = Cast<UMaterialExpressionTextureSample>(
+        UMaterialEditingLibrary::CreateMaterialExpression(
+            Material,
+            UMaterialExpressionTextureSample::StaticClass(),
+            -500,
+            240));
+
     auto* MacroFrequency = Cast<UMaterialExpressionScalarParameter>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionScalarParameter::StaticClass(), -1000, 130));
-    auto* DetailFrequency = Cast<UMaterialExpressionScalarParameter>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionScalarParameter::StaticClass(), -1000, 260));
+            Material,
+            UMaterialExpressionScalarParameter::StaticClass(),
+            -1000,
+            420));
     auto* MacroPosition = Cast<UMaterialExpressionMultiply>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionMultiply::StaticClass(), -760, -60));
-    auto* DetailPosition = Cast<UMaterialExpressionMultiply>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionMultiply::StaticClass(), -760, 190));
+            Material,
+            UMaterialExpressionMultiply::StaticClass(),
+            -760,
+            420));
     auto* MacroNoise = Cast<UMaterialExpressionNoise>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionNoise::StaticClass(), -520, -60));
-    auto* DetailNoise = Cast<UMaterialExpressionNoise>(
+            Material,
+            UMaterialExpressionNoise::StaticClass(),
+            -520,
+            420));
+    auto* MacroDark = Cast<UMaterialExpressionVectorParameter>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionNoise::StaticClass(), -520, 190));
-    auto* MacroWeight = Cast<UMaterialExpressionConstant>(
+            Material,
+            UMaterialExpressionVectorParameter::StaticClass(),
+            -260,
+            350));
+    auto* MacroLight = Cast<UMaterialExpressionVectorParameter>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionConstant::StaticClass(), -280, -10));
-    auto* DetailWeight = Cast<UMaterialExpressionConstant>(
+            Material,
+            UMaterialExpressionVectorParameter::StaticClass(),
+            -260,
+            460));
+    auto* MacroTint = Cast<UMaterialExpressionLinearInterpolate>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionConstant::StaticClass(), -280, 240));
-    auto* WeightedMacro = Cast<UMaterialExpressionMultiply>(
+            Material,
+            UMaterialExpressionLinearInterpolate::StaticClass(),
+            0,
+            390));
+    auto* TintedAlbedo = Cast<UMaterialExpressionMultiply>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionMultiply::StaticClass(), -40, -60));
-    auto* WeightedDetail = Cast<UMaterialExpressionMultiply>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionMultiply::StaticClass(), -40, 190));
-    auto* Breakup = Cast<UMaterialExpressionAdd>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionAdd::StaticClass(), 180, 50));
-    auto* DarkColor = Cast<UMaterialExpressionVectorParameter>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionVectorParameter::StaticClass(), -40, -300));
-    auto* WornColor = Cast<UMaterialExpressionVectorParameter>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionVectorParameter::StaticClass(), -40, -210));
-    auto* BaseColor = Cast<UMaterialExpressionLinearInterpolate>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionLinearInterpolate::StaticClass(), 420, -170));
-    auto* DampRoughness = Cast<UMaterialExpressionScalarParameter>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionScalarParameter::StaticClass(), 180, 300));
-    auto* DryRoughness = Cast<UMaterialExpressionScalarParameter>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionScalarParameter::StaticClass(), 180, 390));
-    auto* Roughness = Cast<UMaterialExpressionLinearInterpolate>(
-        UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionLinearInterpolate::StaticClass(), 420, 330));
+            Material,
+            UMaterialExpressionMultiply::StaticClass(),
+            260,
+            -100));
     auto* Specular = Cast<UMaterialExpressionConstant>(
         UMaterialEditingLibrary::CreateMaterialExpression(
-            Material, UMaterialExpressionConstant::StaticClass(), 420, 480));
+            Material,
+            UMaterialExpressionConstant::StaticClass(),
+            260,
+            160));
 
     const bool bAllNodes =
-        WorldPosition && MacroFrequency && DetailFrequency &&
-        MacroPosition && DetailPosition && MacroNoise && DetailNoise &&
-        MacroWeight && DetailWeight && WeightedMacro && WeightedDetail &&
-        Breakup && DarkColor && WornColor && BaseColor &&
-        DampRoughness && DryRoughness && Roughness && Specular;
-    Test.TestTrue(TEXT("R4 asphalt graph nodes created"), bAllNodes);
+        WorldPosition && WorldXY && TextureFrequency && TextureUV &&
+        AlbedoSample && RoughnessSample && NormalSample &&
+        MacroFrequency && MacroPosition && MacroNoise &&
+        MacroDark && MacroLight && MacroTint && TintedAlbedo &&
+        Specular;
+    Test.TestTrue(
+        TEXT("R4 asphalt texture-backed graph nodes created"),
+        bAllNodes);
     if (!bAllNodes)
     {
         return nullptr;
     }
 
-    MacroFrequency->ParameterName = TEXT("MacroFrequency");
-    MacroFrequency->DefaultValue = 0.00025f;
-    DetailFrequency->ParameterName = TEXT("DetailFrequency");
-    DetailFrequency->DefaultValue = 0.015f;
+    WorldXY->R = true;
+    WorldXY->G = true;
+    WorldXY->B = false;
+    WorldXY->A = false;
 
-    MacroNoise->NoiseFunction = static_cast<ENoiseFunction>(1);
+    TextureFrequency->ParameterName =
+        TEXT("TextureFrequency");
+    // 0.000833 world-cm scale = roughly one 1024 texture tile per 12 m.
+    TextureFrequency->DefaultValue = 0.0008333333f;
+
+    AlbedoSample->Texture = AlbedoTexture;
+    AlbedoSample->SamplerType = SAMPLERTYPE_Color;
+    RoughnessSample->Texture = RoughnessTexture;
+    RoughnessSample->SamplerType = SAMPLERTYPE_Masks;
+    NormalSample->Texture = NormalTexture;
+    NormalSample->SamplerType = SAMPLERTYPE_Normal;
+
+    MacroFrequency->ParameterName =
+        TEXT("MacroFrequency");
+    MacroFrequency->DefaultValue = 0.000055f;
+    MacroNoise->NoiseFunction =
+        static_cast<ENoiseFunction>(1);
     MacroNoise->Quality = 1;
-    MacroNoise->Levels = 1;
+    MacroNoise->Levels = 2;
     MacroNoise->Scale = 1.0f;
     MacroNoise->OutputMin = 0.0f;
     MacroNoise->OutputMax = 1.0f;
     MacroNoise->bTurbulence = false;
 
-    DetailNoise->NoiseFunction = static_cast<ENoiseFunction>(2);
-    DetailNoise->Quality = 1;
-    DetailNoise->Levels = 1;
-    DetailNoise->Scale = 1.0f;
-    DetailNoise->OutputMin = 0.0f;
-    DetailNoise->OutputMax = 1.0f;
-    DetailNoise->bTurbulence = false;
+    MacroDark->ParameterName =
+        TEXT("MacroDarkTint");
+    MacroDark->DefaultValue =
+        FLinearColor(0.78f, 0.79f, 0.80f, 1.0f);
+    MacroLight->ParameterName =
+        TEXT("MacroLightTint");
+    MacroLight->DefaultValue =
+        FLinearColor(1.10f, 1.08f, 1.04f, 1.0f);
 
-    MacroWeight->R = 0.72f;
-    DetailWeight->R = 0.28f;
+    // Keep dielectric reflection low. Wetness comes from roughness variation,
+    // not from a uniform oily specular coat.
+    Specular->R = 0.07f;
 
-    DarkColor->ParameterName = TEXT("AsphaltDark");
-    DarkColor->DefaultValue = FLinearColor(0.028f, 0.031f, 0.034f, 1.0f);
-    WornColor->ParameterName = TEXT("AsphaltWorn");
-    WornColor->DefaultValue = FLinearColor(0.075f, 0.073f, 0.068f, 1.0f);
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        WorldPosition, FString(), WorldXY, TEXT("Input"));
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        WorldXY, FString(), TextureUV, TEXT("A"));
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        TextureFrequency, FString(), TextureUV, TEXT("B"));
 
-    DampRoughness->ParameterName = TEXT("DampRoughness");
-    DampRoughness->DefaultValue = 0.64f;
-    DryRoughness->ParameterName = TEXT("DryRoughness");
-    DryRoughness->DefaultValue = 0.84f;
-    Specular->R = 0.18f;
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        TextureUV, FString(), AlbedoSample, TEXT("Coordinates"));
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        TextureUV, FString(), RoughnessSample, TEXT("Coordinates"));
+    UMaterialEditingLibrary::ConnectMaterialExpressions(
+        TextureUV, FString(), NormalSample, TEXT("Coordinates"));
 
     UMaterialEditingLibrary::ConnectMaterialExpressions(
         WorldPosition, FString(), MacroPosition, TEXT("A"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
         MacroFrequency, FString(), MacroPosition, TEXT("B"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        WorldPosition, FString(), DetailPosition, TEXT("A"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DetailFrequency, FString(), DetailPosition, TEXT("B"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
         MacroPosition, FString(), MacroNoise, TEXT("Position"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DetailPosition, FString(), DetailNoise, TEXT("Position"));
+        MacroDark, FString(), MacroTint, TEXT("A"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        MacroNoise, FString(), WeightedMacro, TEXT("A"));
+        MacroLight, FString(), MacroTint, TEXT("B"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        MacroWeight, FString(), WeightedMacro, TEXT("B"));
+        MacroNoise, FString(), MacroTint, TEXT("Alpha"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DetailNoise, FString(), WeightedDetail, TEXT("A"));
+        AlbedoSample, TEXT("RGB"), TintedAlbedo, TEXT("A"));
     UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DetailWeight, FString(), WeightedDetail, TEXT("B"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        WeightedMacro, FString(), Breakup, TEXT("A"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        WeightedDetail, FString(), Breakup, TEXT("B"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DarkColor, FString(), BaseColor, TEXT("A"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        WornColor, FString(), BaseColor, TEXT("B"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        Breakup, FString(), BaseColor, TEXT("Alpha"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DampRoughness, FString(), Roughness, TEXT("A"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        DryRoughness, FString(), Roughness, TEXT("B"));
-    UMaterialEditingLibrary::ConnectMaterialExpressions(
-        Breakup, FString(), Roughness, TEXT("Alpha"));
+        MacroTint, FString(), TintedAlbedo, TEXT("B"));
 
     UMaterialEditingLibrary::ConnectMaterialProperty(
-        BaseColor, FString(), MP_BaseColor);
+        TintedAlbedo, FString(), MP_BaseColor);
     UMaterialEditingLibrary::ConnectMaterialProperty(
-        Roughness, FString(), MP_Roughness);
+        RoughnessSample, TEXT("R"), MP_Roughness);
+    UMaterialEditingLibrary::ConnectMaterialProperty(
+        NormalSample, TEXT("RGB"), MP_Normal);
     UMaterialEditingLibrary::ConnectMaterialProperty(
         Specular, FString(), MP_Specular);
 
@@ -789,14 +1119,16 @@ UMaterial* CreateRoadVisualV2Material(
         UMaterialEditingLibrary::RecompileMaterial(Material);
     for (const FString& Error : CompileErrors)
     {
-        Test.AddError(FString::Printf(TEXT("R4 asphalt compile: %s"), *Error));
+        Test.AddError(
+            FString::Printf(
+                TEXT("R4 asphalt compile: %s"),
+                *Error));
     }
     if (CompileErrors.Num() > 0)
     {
         return nullptr;
     }
 
-    FAssetRegistryModule::AssetCreated(Material);
     Material->PostEditChange();
     if (!SaveAssetPackage(*Material, Test))
     {
@@ -804,7 +1136,7 @@ UMaterial* CreateRoadVisualV2Material(
     }
 
     Test.AddInfo(FString::Printf(
-        TEXT("CD869_R4_ASPHALT_GRAPH=PASS expressions=%d"),
+        TEXT("CD869_R4_ASPHALT_TEXTURE_GRAPH=PASS expressions=%d textures=3 specular=0.07"),
         UMaterialEditingLibrary::GetNumMaterialExpressions(Material)));
     return Material;
 }
