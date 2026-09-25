@@ -58,7 +58,8 @@ jobs:
               Remove-Item -LiteralPath $_.FullName -Force
             }
           $staleMarkMat='Content\World\L1\Road\Materials\M_PC_L1_Mark.uasset'
-          if((Test-Path $staleMarkMat) -and -not (git ls-files --error-unmatch $staleMarkMat 2>$null)){
+          $trackedMarkMat=@(git ls-files -- $staleMarkMat)
+          if((Test-Path $staleMarkMat) -and $trackedMarkMat.Count -eq 0){
             Write-Host "R3_REMOVE_STALE_UNTRACKED=$staleMarkMat"
             Remove-Item -LiteralPath $staleMarkMat -Force
           }
