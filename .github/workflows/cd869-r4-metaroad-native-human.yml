@@ -1,0 +1,292 @@
+name: CD-869 R4 Native MetaRoad Human
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-metaroad-native
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-r4-native-metaroad-human
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native MetaRoad R4 + package + HUMAN
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869R4NativeMetaRoad
+      ACCEPTED_R3: 55e9fd8481a114265fd43f1c6433d86df53ba991
+
+    steps:
+      - name: Checkout exact clean branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+
+      - name: Exact-head preflight and frozen runtime scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:GITHUB_SHA){ throw "R4_NATIVE_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          $status=@(git status --porcelain --untracked-files=all)
+          if($status.Count -ne 0){ $status | % { Write-Host $_ }; throw 'R4_NATIVE_DIRTY_CHECKOUT' }
+          $runtime=@(git diff --name-only $env:ACCEPTED_R3 HEAD -- Source/PinkCab Source/PinkCabVehicle Source/PinkCabInteraction Config)
+          if($runtime.Count -ne 0){
+            $runtime | % { Write-Host "R4_NATIVE_FORBIDDEN_RUNTIME_DELTA=$_" }
+            throw 'R4_NATIVE_TOUCHED_VEHICLE_OR_RUNTIME'
+          }
+          $content=@(git diff --name-only $env:ACCEPTED_R3 HEAD -- Content)
+          if($content.Count -ne 0){
+            $content | % { Write-Host "R4_NATIVE_UNEXPECTED_PREGEN_CONTENT=$_" }
+            throw 'R4_NATIVE_PREGEN_CONTENT_NOT_R3'
+          }
+          Write-Host "R4_NATIVE_HEAD=$head"
+          Write-Host 'R4_NATIVE_PREFLIGHT=PASS'
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R4_NATIVE_EDITOR_BUILD=PASS'
+
+      - name: Bind baked road meshes to native MetaRoad materials
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\R4_NATIVE_BIND.log"
+          New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){ throw 'R4_NATIVE_BIND_TEST_FAILED' }
+          if(-not (Select-String -Path $log -SimpleMatch -Pattern 'CD869_R4_NATIVE_METAROAD_MATERIALS=PASS' -Quiet)){ throw 'R4_NATIVE_BIND_MARKER_MISSING' }
+          Write-Host 'R4_NATIVE_BIND=PASS'
+
+      - name: Remove obsolete project road materials and prove MetaRoad-only references
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          foreach($rel in @(
+            'Content\World\L1\Road\Materials\M_PC_L1_Asphalt.uasset',
+            'Content\World\L1\Road\Materials\M_PC_L1_GreenDivider.uasset',
+            'Content\World\L1\Road\Materials\M_PC_L1_Shoulder.uasset',
+            'Content\World\L1\Road\Materials\M_PC_L1_Mark.uasset'
+          )){
+            $p=Join-Path $env:GITHUB_WORKSPACE $rel
+            if(Test-Path $p){ Remove-Item -LiteralPath $p -Force; Write-Host "R4_NATIVE_REMOVED=$rel" }
+          }
+
+          $changed=@(git status --porcelain --untracked-files=all)
+          if($changed.Count -eq 0){ throw 'R4_NATIVE_NO_CONTENT_CHANGE' }
+          foreach($line in $changed){
+            $p=$line.Substring(3).Replace('\','/')
+            $allowed=
+              ($p -match '^Content/World/L1/Road/(RoadSurface|RoadSidewalks|RoadCurbs[0-9]*|RoadMarks[0-9]*)\.uasset$') -or
+              ($p -match '^Content/World/L1/Road/Materials/M_PC_L1_(Asphalt|GreenDivider|Shoulder|Mark)\.uasset$')
+            Write-Host "R4_NATIVE_CHANGED=$p allowed=$allowed"
+            if(-not $allowed){ throw "R4_NATIVE_SCOPE_VIOLATION=$p" }
+          }
+
+          $expect=@{
+            'Content\World\L1\Road\RoadSurface.uasset'='MI_DriveSurface'
+            'Content\World\L1\Road\RoadSidewalks.uasset'='M_Sidewolk'
+            'Content\World\L1\Road\RoadCurbs.uasset'='M_Curb'
+            'Content\World\L1\Road\RoadMarks.uasset'='M_Mark'
+          }
+          foreach($rel in $expect.Keys){
+            $file=Join-Path $env:GITHUB_WORKSPACE $rel
+            $bytes=[IO.File]::ReadAllBytes($file)
+            $all=[Text.Encoding]::ASCII.GetString($bytes)+[Environment]::NewLine+[Text.Encoding]::Unicode.GetString($bytes)
+            if($all -notmatch [regex]::Escape($expect[$rel])){ throw "R4_NATIVE_EXPECTED_REF_MISSING=$rel expected=$($expect[$rel])" }
+            if($all -match '/Game/World/L1/Road/Materials/M_PC_L1_'){ throw "R4_NATIVE_PROJECT_MATERIAL_REF_REMAINS=$rel" }
+            Write-Host "R4_NATIVE_REF_PASS=$rel -> $($expect[$rel])"
+          }
+          Write-Host 'R4_NATIVE_METAROAD_ONLY_SCOPE=PASS'
+
+      - name: Commit native MetaRoad road bindings
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A Content/World/L1/Road
+          if(git diff --cached --quiet){ throw 'R4_NATIVE_NOTHING_TO_COMMIT' }
+          git commit -m 'asset(CD-869): use native MetaRoad visual stack for R4 [skip ci]'
+          git push origin "HEAD:refs/heads/$env:GITHUB_REF_NAME"
+          Write-Host "R4_NATIVE_ASSET_COMMIT=$((git rev-parse HEAD).Trim())"
+
+      - name: Run R4 and frozen regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad',
+            'PinkCab.World.Materialization',
+            'PinkCab.G1.HInp.PhysicalDirections',
+            'PinkCab.G1.HInp.ClutchReleaseWheelDirection',
+            'PinkCab.G1.HInp.DosingParameters'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\R4_NATIVE_$safe.log"
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){ throw "R4_NATIVE_TEST_FAIL=$test" }
+            if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){ throw "R4_NATIVE_TEST_QUEUE_MISSING=$test" }
+            Write-Host "R4_NATIVE_TEST_PASS=$test"
+          }
+
+      - name: Zero-debt code health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'R4_NATIVE_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 package with MetaRoad runtime enabled
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $backup="$project.r4-native-backup"
+          Copy-Item $project $backup -Force
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force $archive | Out-Null
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $exe=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'R4_NATIVE_PACKAGE_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($exe)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $exe).Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw 'R4_NATIVE_SIGNATURE_INVALID' }
+
+          $metaFiles=@(Get-ChildItem $archive -Recurse -File | Where-Object { $_.FullName -match '(?i)MetaRoad' })
+          $metaFiles | Select-Object -First 80 | % { Write-Host "R4_NATIVE_PACKAGED_METAROAD=$($_.FullName)" }
+          if($metaFiles.Count -eq 0){ throw 'R4_NATIVE_METAROAD_NOT_PRESENT_IN_PACKAGE' }
+          Write-Host "R4_NATIVE_PACKAGED_METAROAD_COUNT=$($metaFiles.Count)"
+          Write-Host 'R4_NATIVE_FRESH_PACKAGE=PASS'
+
+      - name: Packaged MetaRoad load smoke
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R4_NATIVE_PACKAGED_SMOKE.log'
+          $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-log','-windowed','-ResX=1280','-ResY=720',"-abslog=$log") -WorkingDirectory (Split-Path $exe) -PassThru
+          Start-Sleep -Seconds 8
+          if($p.HasExited){ throw "R4_NATIVE_SMOKE_EXITED_EARLY=$($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+          if(-not (Test-Path $log)){ throw 'R4_NATIVE_SMOKE_LOG_MISSING' }
+          $bad=@(Select-String -Path $log -Pattern 'Failed to load.*MetaRoad|Can.t find file.*MetaRoad|LogLinker: Error|Fatal error|Assertion failed')
+          if($bad.Count -ne 0){ $bad | % { Write-Host $_.Line }; throw "R4_NATIVE_PACKAGED_METAROAD_LOAD_FAIL=$($bad.Count)" }
+          Write-Host 'R4_NATIVE_PACKAGED_METAROAD_LOAD=PASS'
+
+      - name: Two full packaged Windows-input passes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          for($attempt=1;$attempt -le 2;$attempt++){
+            Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\R4_NATIVE_INPUT_" + $attempt)
+            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            if(-not (Test-Path $summary)){ throw "R4_NATIVE_INPUT_SUMMARY_MISSING=$attempt" }
+            foreach($marker in @(
+              'startup_menu=PASS','ignition_space_lmb=PASS','analog_handbrake_release=PASS',
+              'hgate_first=PASS','mandatory_e_wheel_launch=PASS','mouse_right_steering=PASS',
+              'service_brake_stop=PASS','hgate_reverse=PASS','reverse_movement_over_3m=PASS',
+              'menu_focus_cleanup=PASS','critical=0'
+            )){
+              if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){ throw "R4_NATIVE_INPUT_MARKER_MISSING attempt=$attempt marker=$marker" }
+            }
+            Write-Host "R4_NATIVE_PACKAGED_INPUT_PASS=$attempt"
+          }
+
+      - name: Deliver and launch exact native MetaRoad R4 HUMAN build
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R4_METAROAD_NATIVE_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "R4_NATIVE_COPY_FAIL=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+          Set-Content (Join-Path $delivery 'ROAD_VISUAL_STACK.txt') 'MetaRoad 3.2 native: MI_DriveSurface + M_Asphalt + M_Curb + M_Sidewolk + M_Mark' -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R4 METAROAD HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB R4 native MetaRoad $sha"
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $exe) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "R4_NATIVE_HUMAN_EXIT=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "R4_NATIVE_HUMAN_PROCESS_COUNT=$($all.Count)" }
+            if($all[0].Path -ne $exe){ throw "R4_NATIVE_HUMAN_PATH_MISMATCH=$($all[0].Path)" }
+            Write-Host "R4_NATIVE_HUMAN_SHA=$sha"
+            Write-Host "R4_NATIVE_HUMAN_RUN=$env:GITHUB_RUN_ID"
+            Write-Host "R4_NATIVE_HUMAN_PID=$($p.Id)"
+            Write-Host "R4_NATIVE_HUMAN_PATH=$($all[0].Path)"
+            Write-Host "R4_NATIVE_HUMAN_DELIVERY=$delivery"
+            Write-Host 'R4_NATIVE_HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
