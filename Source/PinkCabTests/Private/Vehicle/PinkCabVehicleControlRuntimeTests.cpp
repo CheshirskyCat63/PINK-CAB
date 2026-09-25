@@ -163,7 +163,7 @@ bool FPinkCabVehicleControlRuntimeGearboxTest::RunTest(const FString& Parameters
     FPinkCabVehicleHealthState Health;
 
     Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, -640.0f, 0.0f, 0.05f, Cockpit);
-    Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, 0.0f, 240.0f, 0.05f, Cockpit);
+    Runtime.ApplyPhysicalControl(FName(TEXT("Gearbox")), true, 0.0f, 480.0f, 0.05f, Cockpit);
     TestEqual(TEXT("top-left H slot requests first"), Runtime.GetRequestedGear(), 1);
     TestEqual(TEXT("physical request does not magically engage gear"), Runtime.GetEngagedGear(), 0);
 
