@@ -979,7 +979,7 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 
         TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
         TestTrue(
-            *FString::Printf(TEXT("%s exposes material slots"), MeshName),
+            *FString::Printf(TEXT("%s exposes material slots"), *MeshName),
             Slots.Num() > 0);
 
         const bool bCurbMesh =
