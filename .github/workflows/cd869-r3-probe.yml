@@ -1,9 +1,11 @@
-name: CD-869 R3 MetaRoad API Probe
+name: CD-869 R3 MetaRoad Profile Probe
 
 on:
   push:
-    branches: [feat/CD-869-r3-metaroad-markings]
-    paths: [.github/workflows/cd869-r3-probe.yml]
+    branches:
+      - feat/CD-869-r3-metaroad-markings
+    paths:
+      - .github/workflows/cd869-r3-probe.yml
 
 permissions:
   contents: read
@@ -11,61 +13,38 @@ permissions:
 jobs:
   probe:
     runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       META_ROOT: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: false
 
-      - name: Probe native MetaRoad +Borders presets
+      - name: Read native profile references
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
-          if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          if($head -ne $env:GITHUB_SHA){ throw "R3_HEAD_MISMATCH $head" }
           $tracked=@(git status --porcelain --untracked-files=no)
-          if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
-
-          Get-ChildItem (Join-Path $env:META_ROOT 'Source') -Recurse -File |
-            Where-Object { $_.Name -match 'RoadProfile|Preset' } |
-            ForEach-Object { Write-Host "R3_PROFILE_SOURCE=$($_.FullName)" }
-
-          $py=Join-Path $env:RUNNER_TEMP 'r3_meta_profiles.py'
-          @'
-import unreal
-for path in [
-    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/4_Lanes+Borders.4_Lanes+Borders",
-    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders.2_Lanes+Borders",
-    "/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders_Coodirect.2_Lanes+Borders_Coodirect",
-]:
-    obj=unreal.load_object(None,path)
-    print("R3_PROFILE_OBJECT", path, obj)
-    if not obj:
-        continue
-    cls=obj.get_class()
-    print("R3_PROFILE_CLASS", cls.get_name())
-    for name in ["road_layout","layout","RoadLayout","lanes","profile"]:
-        try:
-            val=obj.get_editor_property(name)
-            print("R3_PROFILE_PROP", path, name, val)
-        except Exception:
-            pass
-    try:
-        print("R3_PROFILE_EXPORT", unreal.EditorAssetLibrary.get_metadata_tag_values(obj))
-    except Exception as e:
-        print("R3_PROFILE_META_ERR", e)
-'@ | Set-Content $py -Encoding UTF8
-
-          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
-          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
-          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R3_PROFILE_PROBE.log'
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecutePythonScript=$py"
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          Get-Content $log | Select-String -Pattern 'R3_PROFILE_' | % { Write-Host $_.Line }
+          if($tracked.Count -ne 0){ $tracked | ForEach-Object { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
+          $dir=Join-Path $env:META_ROOT 'Content\MetaRoad\Profiles\RoadProfiles'
+          foreach($name in @('4_Lanes+Borders','2_Lanes+Borders','2_Lanes+Borders_Coodirect')){
+            $p=Join-Path $dir ($name + '.uasset')
+            if(-not(Test-Path $p)){ throw "R3_PROFILE_MISSING=$p" }
+            $bytes=[System.IO.File]::ReadAllBytes($p)
+            $ascii=[System.Text.Encoding]::ASCII.GetString($bytes)
+            $utf16=[System.Text.Encoding]::Unicode.GetString($bytes)
+            $refs=@()
+            foreach($txt in @($ascii,$utf16)){
+              $refs += [regex]::Matches($txt,'(?:broked|solid|double)_[A-Za-z0-9_]+') | ForEach-Object { $_.Value }
+            }
+            $refs=$refs | Sort-Object -Unique
+            Write-Host "R3_ROAD_PROFILE=$name"
+            $refs | ForEach-Object { Write-Host "R3_PROFILE_MARK_REF=$name::$_" }
+          }
           Write-Host 'R3_PROFILE_PROBE=PASS'
