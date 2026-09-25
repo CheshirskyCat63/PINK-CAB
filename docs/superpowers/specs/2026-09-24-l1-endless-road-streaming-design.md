@@ -5,7 +5,8 @@
 **Jira:** CD-869  
 **Historical execution base:** `main@ed969edac845248464f8442a78899d26e6dfecde`  
 **Current road integration:** PR #22 squash `55e9fd8481a114265fd43f1c6433d86df53ba991`  
-**Implementation branch:** `feat/CD-869-l1-endless-road`
+**Implementation branch:** `feat/CD-869-l1-endless-road`  
+**Road gate state (2026-09-25):** R1/R2/R3 HUMAN ACCEPTED / INTEGRATED / FROZEN; R4 is NEXT / NOT STARTED; R5–R6 remain frozen.
 
 ## 1. Player result
 
