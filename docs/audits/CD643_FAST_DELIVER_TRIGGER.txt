@@ -1,2 +1,2 @@
-candidate_source=1756fa8fae9560366abc641467fc52cd76fa975a
-request=extended-hgate-human
+candidate_source=1a7f70f17138d3608b83e7f580980a764bca4149
+request=wide-middle-hgate-red
