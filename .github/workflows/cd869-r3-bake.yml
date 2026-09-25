@@ -153,12 +153,13 @@ jobs:
           # untracked runtime additions after restore are RoadMarks* and mark material.
           $trackedRoadSet=@{}
           foreach($path in $trackedRoad){
-            $trackedRoadSet[$path.Replace('\\','/')]=$true
+            $trackedRoadSet[$path]=$true
           }
           foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset')){
             Get-ChildItem 'Content\\World\\L1\\Road' -Filter $pattern -File -ErrorAction SilentlyContinue |
               ForEach-Object {
-                $relative=$_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1).Replace('\\','/')
+                $relative=$_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1)
+                $relative=$relative -replace '\\\\','/'
                 if(-not $trackedRoadSet.ContainsKey($relative)){
                   Write-Host "R3_REMOVE_DUPLICATE_GENERATED=$($_.Name)"
                   Remove-Item -LiteralPath $_.FullName -Force
@@ -166,7 +167,8 @@ jobs:
               }
           }
 
-          $remainingTracked=@(git diff --name-only -- 'Content/World/L1/Road')
+          git restore --source=$env:GITHUB_SHA --worktree -- 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
+          $remainingTracked=@(git diff --name-only -- 'Content/World/L1/Road' 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap')
           if($remainingTracked.Count -ne 0){
             $remainingTracked | ForEach-Object { Write-Host "R3_UNEXPECTED_TRACKED_ROAD_DIFF=$_" }
             throw 'R3_FROZEN_TRACKED_ROAD_DIFF_REMAINS'
@@ -214,13 +216,11 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          git add -- 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
           git add -- 'Content/World/L1/Road/RoadMarks*.uasset'
           git add -- 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
 
           $staged=@(git diff --cached --name-only)
           $bad=@($staged | Where-Object {
-            $_ -ne 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap' -and
             $_ -notlike 'Content/World/L1/Road/RoadMarks*.uasset' -and
             $_ -ne 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
           })
@@ -228,7 +228,7 @@ jobs:
             $bad | ForEach-Object { Write-Host "R3_BAD_STAGED=$_" }
             throw 'R3_SCOPE_VIOLATION'
           }
-          if($staged.Count -ne 52){
+          if($staged.Count -ne 51){
             $staged | ForEach-Object { Write-Host "R3_STAGED=$_" }
             throw "R3_STAGED_COUNT=$($staged.Count)"
           }
