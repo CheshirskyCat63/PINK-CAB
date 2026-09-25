@@ -476,6 +476,21 @@ try {
     $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
     Move-GameAxis 'x' 1.0 $signX
 
+    # Double-length fore/aft contract: the old full throw (240 counts) must
+    # now stop inside neutral travel instead of immediately entering 3/4.
+    [PinkCabNativeInput]::Move(0,[int]($signY*240)); Start-Sleep -Milliseconds 350
+    $halfThrow=Get-State
+    if($halfThrow.requested -ne 0 -or [Math]::Abs($halfThrow.geary) -gt 0.60){
+        throw "CD643_HGATE_Y_HALF_THROW_NOT_NEUTRAL requested=$($halfThrow.requested) geary=$($halfThrow.geary)"
+    }
+    Write-Host 'CD643_PACKAGED_HGATE_Y_HALF_NEUTRAL=PASS'
+
+    [PinkCabNativeInput]::Move(0,[int]($signY*240)); Start-Sleep -Milliseconds 350
+    Wait-State { param($s) $s.requested -eq 3 -and $s.geary -ge 0.65 } 3000 "double-length fore/aft throw enters third" | Out-Null
+    Write-Host 'CD643_PACKAGED_HGATE_Y_DOUBLE_THROW=PASS'
+    Move-GearCursor 1.0 0.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq 0 } 3000 "double-length third exits to neutral" | Out-Null
+
     # Wide middle-zone proof. 3/4 must not require pixel-perfect aiming at
     # a single rail: any comfortable central position between the two extreme
     # outer gates should accept a deliberate fore/aft throw.
