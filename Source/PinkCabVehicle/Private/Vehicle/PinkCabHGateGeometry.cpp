@@ -5,7 +5,7 @@ namespace
 constexpr float HGateRowEngage = 0.65f;
 constexpr float HGateRowRelease = 0.35f;
 constexpr float HGateCountsX = 320.0f;
-constexpr float HGateCountsY = 240.0f;
+constexpr float HGateCountsY = 480.0f;
 constexpr float HGateMaxSubstep = 0.20f;
 
 // Forgiving owner-approved H-pattern:
