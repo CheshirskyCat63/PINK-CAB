@@ -1,4 +1,5 @@
 name: CD-869 R3 Lane Width Calibration
+# Physical runtime envelope = 79.15m including native outer curb profile.
 
 on:
   push:
