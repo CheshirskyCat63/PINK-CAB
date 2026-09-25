@@ -35,6 +35,7 @@ public:
 
 private:
     bool AreNativeMetaRoadConstructionMeshesReady() const;
+    bool AreNativeMetaRoadMarkingMeshesReady() const;
     void SetNativeMetaRoadConstructionCollision(ECollisionEnabled::Type Mode);
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
@@ -47,7 +48,7 @@ private:
     TObjectPtr<UStaticMeshComponent> RoadSidewalksComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
-    TObjectPtr<UStaticMeshComponent> RoadMarksComponent;
+    TArray<TObjectPtr<UStaticMeshComponent>> RoadMarkComponents;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TArray<TObjectPtr<UStaticMeshComponent>> RoadCurbComponents;
