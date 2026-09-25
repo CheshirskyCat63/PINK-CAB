@@ -315,6 +315,8 @@ bool FPinkCabHGateDeliberateCenterEntryTest::RunTest(const FString& Parameters)
     FPinkCabHGateGeometry::ApplyDriverDelta(BetweenRails, 0.0f, 240.0f);
     TestEqual(TEXT("vertical motion between rails cannot enter a gear"),
         BetweenRails.RequestedGear, 0);
+    TestTrue(TEXT("vertical motion between rails cannot preload fore/aft travel"),
+        FMath::IsNearlyZero(BetweenRails.LeverY, KINDA_SMALL_NUMBER));
 
     FPinkCabHGateState First;
     FPinkCabHGateGeometry::ApplyDriverDelta(First, -640.0f, 0.0f);
