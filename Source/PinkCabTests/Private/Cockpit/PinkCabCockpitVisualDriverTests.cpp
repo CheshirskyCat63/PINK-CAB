@@ -42,13 +42,22 @@ bool FPinkCabCockpitVisualGearPoseTest::RunTest(const FString& Parameters)
     const FVector Neutral = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(0);
     const FVector First = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(1);
     const FVector Second = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(2);
+    const FVector Third = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(3);
+    const FVector Fourth = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(4);
     const FVector Fifth = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(5);
     const FVector Reverse = UPinkCabCockpitVisualDriverComponent::GearLeverOffset(-1);
-    TestEqual(TEXT("neutral gear lever is centered"), Neutral, FVector::ZeroVector);
+    TestTrue(TEXT("neutral rests under relocated 3/4 rail"),
+        FMath::IsNearlyEqual(Neutral.X, 5.25f, KINDA_SMALL_NUMBER) && FMath::IsNearlyZero(Neutral.Y));
     TestTrue(TEXT("first is physical forward-left"), First.X < 0.0f && First.Y < 0.0f);
     TestTrue(TEXT("second is physical rear-left"), Second.X < 0.0f && Second.Y > 0.0f);
-    TestTrue(TEXT("fifth is physical forward-right"), Fifth.X > 0.0f && Fifth.Y < 0.0f);
-    TestTrue(TEXT("reverse is physical rear-right"), Reverse.X > 0.0f && Reverse.Y > 0.0f);
+    TestTrue(TEXT("third occupies the previous 5th visual X"),
+        FMath::IsNearlyEqual(Third.X, 5.25f, KINDA_SMALL_NUMBER) && Third.Y < 0.0f);
+    TestTrue(TEXT("fourth occupies the previous reverse visual X"),
+        FMath::IsNearlyEqual(Fourth.X, 5.25f, KINDA_SMALL_NUMBER) && Fourth.Y > 0.0f);
+    TestTrue(TEXT("fifth is one equal visual step farther right"),
+        FMath::IsNearlyEqual(Fifth.X, 10.5f, KINDA_SMALL_NUMBER) && Fifth.Y < 0.0f);
+    TestTrue(TEXT("reverse is one equal visual step farther right"),
+        FMath::IsNearlyEqual(Reverse.X, 10.5f, KINDA_SMALL_NUMBER) && Reverse.Y > 0.0f);
     return true;
 }
 
