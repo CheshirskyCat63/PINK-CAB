@@ -258,7 +258,7 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Test->TestEqual(TEXT("reverse exits into neutral corridor before crossing left"),
             Pawn->GetRequestedGear(), 0);
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -960.0f, 0.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 240.0f, 0.05f);
         const FPinkCabVehicleInputFrame ClutchFrame =
             FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
