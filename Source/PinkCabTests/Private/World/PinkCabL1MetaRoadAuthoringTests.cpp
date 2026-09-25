@@ -32,13 +32,23 @@
 namespace PinkCabL1MetaRoadAuthoring
 {
 constexpr double ChunkLengthCm = 100000.0;
-constexpr double ExpressLaneWidthCm = 360.0;
-constexpr double LocalLaneWidthCm = 320.0;
+constexpr double ExpressLaneWidthCm = 450.0;
+constexpr double LocalLaneWidthCm = 400.0;
 constexpr double HalfCentralMedianCm = 400.0;
 constexpr double ServiceSeparatorCm = 400.0;
 constexpr double OuterShoulderCm = 100.0;
-constexpr double ExpectedRoadWidthCm = 6680.0;
+constexpr double ExpectedRoadWidthCm = 7900.0;
 constexpr double R2RaisedZoneHeightCm = 12.0;
+
+static_assert(
+    ExpressLaneWidthCm == 450.0,
+    "CD-869 express lanes must remain exactly +25% from the 360 cm HUMAN baseline");
+static_assert(
+    LocalLaneWidthCm == 400.0,
+    "CD-869 local lanes must remain exactly +25% from the 320 cm HUMAN baseline");
+static_assert(
+    ExpectedRoadWidthCm == 7900.0,
+    "CD-869 widened L1 cross-section must remain 79.0 m");
 const TCHAR* AuthoringMapPackage = TEXT("/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring");
 
 
@@ -311,7 +321,7 @@ void AddSideProfile(
 
     // The accepted 1m outer shoulder becomes the native raised road-edge
     // treatment. Only the road-facing edge gets a curb; suppressing the outer
-    // curb keeps the accepted 66.8m envelope exact.
+    // curb keeps the owner-requested 79.0m widened envelope exact.
     Lanes.Add(MakeSurfaceLane(
         OuterShoulderCm,
         SectionLengthCm,
@@ -794,7 +804,7 @@ public:
                 Size.X, Size.Y, Size.Z));
             Test->TestTrue(TEXT("baked road remains approximately 1000m long"),
                 FMath::IsNearlyEqual(Size.X, ChunkLengthCm, 250.0));
-            Test->TestTrue(TEXT("baked road width matches approved 66.8m envelope"),
+            Test->TestTrue(TEXT("baked road width matches owner-requested 79.0m envelope"),
                 FMath::IsNearlyEqual(Size.Y, ExpectedRoadWidthCm, 250.0));
             Test->TestTrue(TEXT("R2 native MetaRoad raised construction has real Z relief"),
                 Size.Z >= R2RaisedZoneHeightCm - 1.0);
