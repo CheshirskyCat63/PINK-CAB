@@ -2,20 +2,27 @@
 
 namespace
 {
-constexpr float HGateColumnEngage = 0.50f;
 constexpr float HGateRowEngage = 0.65f;
 constexpr float HGateRowRelease = 0.35f;
-
-// Deliberately long physical mouse throws. The old 160/140-count mapping made
-// the H pattern too easy to cross accidentally. Horizontal and longitudinal
-// travel are now clearly separated and require a larger driver gesture.
 constexpr float HGateCountsX = 320.0f;
 constexpr float HGateCountsY = 240.0f;
 constexpr float HGateMaxSubstep = 0.20f;
 
+// Owner-approved extended H-pattern:
+//   1/2 stays at the old left rail (-1)
+//   3/4 moves to the old 5/R rail (+1)
+//   5/R moves one equal step farther right (+2)
+constexpr float HGateLeftRailX = -1.0f;
+constexpr float HGateMiddleRailX = 1.0f;
+constexpr float HGateRightRailX = 2.0f;
+constexpr float HGateColumnCapture = 0.25f;
+
 int32 ResolveColumn(const float X)
 {
-    return X < -HGateColumnEngage ? 0 : (X > HGateColumnEngage ? 2 : 1);
+    if (FMath::Abs(X - HGateLeftRailX) <= HGateColumnCapture) return 0;
+    if (FMath::Abs(X - HGateMiddleRailX) <= HGateColumnCapture) return 1;
+    if (FMath::Abs(X - HGateRightRailX) <= HGateColumnCapture) return 2;
+    return INDEX_NONE;
 }
 
 int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
@@ -31,6 +38,13 @@ int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
         return Y < -HGateRowRelease ? -1 : 0;
     }
     return Y > HGateRowEngage ? 1 : (Y < -HGateRowEngage ? -1 : 0);
+}
+
+float ColumnPosition(const int32 Column)
+{
+    if (Column == 0) return HGateLeftRailX;
+    if (Column == 2) return HGateRightRailX;
+    return HGateMiddleRailX;
 }
 }
 
@@ -59,6 +73,13 @@ bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, c
         return true;
     }
 
+    // A gear may only be entered while the lever is physically inside one of
+    // the three narrow rail capture bands. Vertical motion between rails stays N.
+    if (Column == INDEX_NONE)
+    {
+        return false;
+    }
+
     State.RequestedGear = NewRow > 0
         ? (Column == 0 ? 1 : (Column == 1 ? 3 : 5))
         : (Column == 0 ? 2 : (Column == 1 ? 4 : -1));
@@ -76,9 +97,8 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
     const float GateDy = DriverForwardCounts / HGateCountsY;
     const int32 Before = State.RequestedGear;
 
-    // When the lever is in a gear rail, only fore/aft travel is legal until
-    // the lever physically reaches neutral. Horizontal mouse movement in the
-    // same sample is ignored, preventing diagonal cuts through an H-gate wall.
+    // Inside a gear rail, fore/aft owns the sample until N is physically
+    // reached. Horizontal input in that same sample is discarded.
     if (State.LastGateRow != 0)
     {
         const int32 Steps = FMath::Max(
@@ -97,17 +117,14 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
 
             if (State.LastGateRow == 0)
             {
-                // Reaching N ends this physical phase. A later mouse sample
-                // must perform the left/right cross-gate movement.
                 break;
             }
         }
         return State.RequestedGear != Before;
     }
 
-    // In neutral, one mouse sample moves exactly one H-gate axis. Horizontal
-    // wins ties so a diagonal cross-gate gesture cannot accidentally fall into
-    // 3rd/4th before the driver has deliberately centred the lever.
+    // Across neutral, exactly one axis is accepted per sample. Horizontal wins
+    // ties, preventing a diagonal cut through an H-gate wall.
     const bool bHorizontalPhase =
         FMath::Abs(GateDx) >= FMath::Abs(GateDy);
 
@@ -120,7 +137,7 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
         for (int32 Index = 0; Index < Steps; ++Index)
         {
             const float CandidateX =
-                FMath::Clamp(State.LeverX + StepX, -1.0f, 1.0f);
+                FMath::Clamp(State.LeverX + StepX, HGateLeftRailX, HGateRightRailX);
             if (MoveGate(State, CandidateX, State.LeverY))
             {
                 State.LeverX = CandidateX;
@@ -144,7 +161,6 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
 
             if (State.LastGateRow != 0)
             {
-                // Once a gear rail is entered, this phase is complete.
                 break;
             }
         }
@@ -159,6 +175,6 @@ void FPinkCabHGateGeometry::ResetToGear(FPinkCabHGateState& State, const int32 G
     State.LastGateRow = State.RequestedGear == 0 ? 0
         : (State.RequestedGear == 1 || State.RequestedGear == 3 || State.RequestedGear == 5 ? 1 : -1);
     State.LastGateColumn = GearColumn(State.RequestedGear);
-    State.LeverX = State.LastGateColumn == 0 ? -1.0f : (State.LastGateColumn == 2 ? 1.0f : 0.0f);
+    State.LeverX = ColumnPosition(State.LastGateColumn);
     State.LeverY = State.LastGateRow > 0 ? 1.0f : (State.LastGateRow < 0 ? -1.0f : 0.0f);
 }
