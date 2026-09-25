@@ -149,7 +149,7 @@ public:
                 NAME_None, false, 0.0f, 0.0f, 0.1f);
 
             Pawn->ApplyPhysicalControlMouseDelta(
-                TEXT("Gearbox"), true, -320.0f, 0.0f, 0.05f);
+                TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
             Pawn->ApplyPhysicalControlMouseDelta(
                 TEXT("Gearbox"), true, 0.0f, 240.0f, 0.05f);
 
