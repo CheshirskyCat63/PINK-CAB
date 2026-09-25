@@ -9,6 +9,16 @@
 namespace
 {
 constexpr int32 NativeMetaRoadCurbMeshCount = 32;
+constexpr int32 NativeMetaRoadMarkMeshCount = 50;
+constexpr double NativeMetaRoadMarkSectionX[5] =
+{
+    13684.21, 30159.77, 49859.02, 70075.19, 86240.60
+};
+constexpr double NativeMetaRoadMarkLaneY[10] =
+{
+    -3450.0, -2200.0, -1750.0, -1300.0, -850.0,
+      850.0,  1300.0,  1750.0,  2200.0, 3450.0
+};
 
 // Captured from the MetaRoad 3.2.0 generated actor after splitting the
 // kilometre at the two R1 access windows. MetaRoad emits one curb mesh per
@@ -16,13 +26,13 @@ constexpr int32 NativeMetaRoadCurbMeshCount = 32;
 // inside Access A/B; all remaining spans retain the human-authored DefaultCurb.
 const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
 {
-    FVector(86250.0,  -3240.0, 4.25),
-    FVector(70000.0,  -3240.0, 4.25),
-    FVector(50000.0,  -3240.0, 4.25),
-    FVector(30000.0,  -3240.0, 4.25),
-    FVector(13750.0,  -3240.0, 4.25),
-    FVector(13750.12, -2400.0, 4.25),
-    FVector(13750.0,  -2600.0, 4.25),
+    FVector(86250.0,  -3950.0, 4.25),
+    FVector(70000.0,  -3950.0, 4.25),
+    FVector(50000.0,  -3950.0, 4.25),
+    FVector(30000.0,  -3950.0, 4.25),
+    FVector(13750.0,  -3950.0, 4.25),
+    FVector(13750.12, -2850.0, 4.25),
+    FVector(13750.0,  -3050.0, 4.25),
     FVector(13750.0,   -400.0, 4.25),
     FVector(30000.0,   -400.0, 4.25),
     FVector(50000.0,   -400.0, 4.25),
@@ -33,21 +43,21 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(50000.0,    400.0, 4.25),
     FVector(30000.0,    400.0, 4.25),
     FVector(13750.0,    400.0, 4.25),
-    FVector(13750.12,  2400.0, 4.25),
-    FVector(13750.0,   2600.0, 4.25),
-    FVector(13750.0,   3240.0, 4.25),
-    FVector(30000.0,   3240.0, 4.25),
-    FVector(50000.0,   3240.0, 4.25),
-    FVector(70000.0,   3240.0, 4.25),
-    FVector(86250.0,   3240.0, 4.25),
-    FVector(50000.0,  -2400.0, 4.25),
-    FVector(50000.0,  -2600.0, 4.25),
-    FVector(50000.0,   2400.0, 4.25),
-    FVector(50000.0,   2600.0, 4.25),
-    FVector(86249.88, -2400.0, 4.25),
-    FVector(86250.0,  -2600.0, 4.25),
-    FVector(86249.88,  2400.0, 4.25),
-    FVector(86250.0,   2600.0, 4.25)
+    FVector(13750.12,  2850.0, 4.25),
+    FVector(13750.0,   3050.0, 4.25),
+    FVector(13750.0,   3950.0, 4.25),
+    FVector(30000.0,   3950.0, 4.25),
+    FVector(50000.0,   3950.0, 4.25),
+    FVector(70000.0,   3950.0, 4.25),
+    FVector(86250.0,   3950.0, 4.25),
+    FVector(50000.0,  -2850.0, 4.25),
+    FVector(50000.0,  -3050.0, 4.25),
+    FVector(50000.0,   2850.0, 4.25),
+    FVector(50000.0,   3050.0, 4.25),
+    FVector(86249.88, -2850.0, 4.25),
+    FVector(86250.0,  -3050.0, 4.25),
+    FVector(86249.88,  2850.0, 4.25),
+    FVector(86250.0,   3050.0, 4.25)
 };
 }
 
@@ -85,6 +95,8 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
         RoadSidewalksComponent->SetStaticMesh(SidewalksFinder.Object);
     }
 
+    InitializeNativeMetaRoadMarkComponents();
+
     RoadCurbComponents.Reserve(NativeMetaRoadCurbMeshCount);
     for (int32 Index = 0; Index < NativeMetaRoadCurbMeshCount; ++Index)
     {
@@ -119,6 +131,52 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
 
     SetActorHiddenInGame(true);
     SetActorEnableCollision(false);
+}
+
+void APinkCabL1RoadChunkActor::InitializeNativeMetaRoadMarkComponents()
+{
+    // MetaRoad 3.2 MarksOp emits one mark mesh per stitched
+    // lane-boundary/section span for this five-section 1000 m module:
+    // 10 marked lane boundaries x 5 section spans = 50 native meshes.
+    // Keep the exact bake transforms and never add collision to paint.
+    RoadMarkComponents.Reserve(NativeMetaRoadMarkMeshCount);
+    int32 MarkMeshIndex = 0;
+    for (const double LaneY : NativeMetaRoadMarkLaneY)
+    {
+        for (const double SectionX : NativeMetaRoadMarkSectionX)
+        {
+            const FString AssetName =
+                MarkMeshIndex == 0
+                    ? TEXT("RoadMarks")
+                    : FString::Printf(TEXT("RoadMarks%d"), MarkMeshIndex);
+            const FName ComponentName(
+                *FString::Printf(TEXT("Native%s"), *AssetName));
+
+            UStaticMeshComponent* MarkComponent =
+                CreateDefaultSubobject<UStaticMeshComponent>(ComponentName);
+            MarkComponent->SetupAttachment(SceneRoot);
+            MarkComponent->SetMobility(EComponentMobility::Movable);
+            MarkComponent->SetGenerateOverlapEvents(false);
+            MarkComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            MarkComponent->SetRelativeLocation(
+                FVector(SectionX, LaneY, 3.0));
+
+            const FString ObjectPath = FString::Printf(
+                TEXT("/Game/World/L1/Road/%s.%s"),
+                *AssetName,
+                *AssetName);
+            ConstructorHelpers::FObjectFinder<UStaticMesh> MarksFinder(
+                *ObjectPath);
+            if (MarksFinder.Succeeded())
+            {
+                MarkComponent->SetStaticMesh(MarksFinder.Object);
+            }
+
+            RoadMarkComponents.Add(MarkComponent);
+            ++MarkMeshIndex;
+        }
+    }
+
 }
 
 bool APinkCabL1RoadChunkActor::BindChunk(
@@ -181,7 +239,27 @@ bool APinkCabL1RoadChunkActor::IsVisualReady() const
 {
     return RoadMeshComponent != nullptr &&
         RoadMeshComponent->GetStaticMesh() != nullptr &&
-        AreNativeMetaRoadConstructionMeshesReady();
+        AreNativeMetaRoadConstructionMeshesReady() &&
+        AreNativeMetaRoadMarkingMeshesReady();
+}
+
+bool APinkCabL1RoadChunkActor::AreNativeMetaRoadMarkingMeshesReady() const
+{
+    if (RoadMarkComponents.Num() != NativeMetaRoadMarkMeshCount)
+    {
+        return false;
+    }
+
+    for (const UStaticMeshComponent* Component : RoadMarkComponents)
+    {
+        if (!Component ||
+            !Component->GetStaticMesh() ||
+            Component->GetCollisionEnabled() != ECollisionEnabled::NoCollision)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool APinkCabL1RoadChunkActor::AreNativeMetaRoadConstructionMeshesReady() const

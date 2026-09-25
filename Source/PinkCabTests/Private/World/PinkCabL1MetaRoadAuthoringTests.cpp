@@ -20,6 +20,9 @@
 #include "RoadSplineComponent.h"
 #include "MetaRoadTypes.h"
 #include "Assets/RoadCurbProfile.h"
+#include "Assets/RoadLaneAttributeMark.h"
+#include "Assets/RoadMarkProfile.h"
+#include "Assets/RoadProfile.h"
 #include "EditorMode/MetaRoadEditorMode.h"
 #include "EditorModeManager.h"
 #include "EditorMode/MetaRoadBakeSettings.h"
@@ -29,14 +32,107 @@
 namespace PinkCabL1MetaRoadAuthoring
 {
 constexpr double ChunkLengthCm = 100000.0;
-constexpr double ExpressLaneWidthCm = 360.0;
-constexpr double LocalLaneWidthCm = 320.0;
+constexpr double ExpressLaneWidthCm = 450.0;
+constexpr double LocalLaneWidthCm = 400.0;
 constexpr double HalfCentralMedianCm = 400.0;
 constexpr double ServiceSeparatorCm = 400.0;
 constexpr double OuterShoulderCm = 100.0;
-constexpr double ExpectedRoadWidthCm = 6680.0;
+constexpr double ExpectedRoadWidthCm = 7900.0;
 constexpr double R2RaisedZoneHeightCm = 12.0;
+
+static_assert(
+    ExpressLaneWidthCm == 450.0,
+    "CD-869 express lanes must remain exactly +25% from the 360 cm HUMAN baseline");
+static_assert(
+    LocalLaneWidthCm == 400.0,
+    "CD-869 local lanes must remain exactly +25% from the 320 cm HUMAN baseline");
+static_assert(
+    ExpectedRoadWidthCm == 7900.0,
+    "CD-869 widened L1 cross-section must remain 79.0 m");
 const TCHAR* AuthoringMapPackage = TEXT("/Game/Dev/Authoring/L_PC_L1_MetaRoadAuthoring");
+
+
+bool ResolveNativeBrokenMark(
+    const TCHAR* RoadProfilePath,
+    FRoadLaneMark& OutMark,
+    FAutomationTestBase& Test)
+{
+    URoadProfile* RoadProfile =
+        LoadObject<URoadProfile>(nullptr, RoadProfilePath);
+    Test.TestNotNull(
+        *FString::Printf(
+            TEXT("native MetaRoad reference road profile loads: %s"),
+            RoadProfilePath),
+        RoadProfile);
+    if (!RoadProfile)
+    {
+        return false;
+    }
+
+    auto FindBrokenMark = [&OutMark](const TArray<FRoadLaneProfile>& Lanes)
+    {
+        for (const FRoadLaneProfile& Lane : Lanes)
+        {
+            for (const FRoadLaneAttributeProfile& Attribute : Lane.Attributes)
+            {
+                UClass* Descriptor =
+                    Attribute.AttributeDesctiptor.LoadSynchronous();
+                if (Descriptor !=
+                    URoadLaneAttributeMarkDescriptor::StaticClass())
+                {
+                    continue;
+                }
+
+                const FRoadLaneMark* Mark =
+                    Attribute.AttributeValueTemplate.GetPtr<FRoadLaneMark>();
+                if (!Mark ||
+                    Mark->ProfileSource !=
+                        ERoadLaneMarkProfile::UsePreset ||
+                    Mark->Profile.IsNull())
+                {
+                    continue;
+                }
+
+                Mark->Profile.LoadSynchronous();
+                if (Mark->GetProfile()
+                        .GetPtr<FRoadLaneMarkProfileBroken>() != nullptr)
+                {
+                    OutMark = *Mark;
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const bool bFound =
+        FindBrokenMark(RoadProfile->Left) ||
+        FindBrokenMark(RoadProfile->Right);
+    Test.TestTrue(
+        *FString::Printf(
+            TEXT("native MetaRoad reference exposes broken mark preset: %s"),
+            RoadProfilePath),
+        bFound);
+    if (bFound)
+    {
+        Test.AddInfo(FString::Printf(
+            TEXT("CD869_R3_NATIVE_MARK_PROFILE=%s"),
+            *OutMark.Profile.ToSoftObjectPath().ToString()));
+    }
+    return bFound;
+}
+
+void ApplyNativePresetMark(
+    FRoadLane& Lane,
+    const FRoadLaneMark& Mark)
+{
+    FRoadLaneAttribute Attribute(FRoadLaneMark::StaticStruct());
+    Attribute.AddTypedKey(0.0, Mark);
+
+    const TSoftClassPtr<URoadLaneAttributeDescriptor> MarkDescriptor(
+        URoadLaneAttributeMarkDescriptor::StaticClass());
+    Lane.Attributes.Add(MarkDescriptor, MoveTemp(Attribute));
+}
 
 void ConfigureRaisedMetaRoadZone(
     FRoadLane& Lane,
@@ -152,7 +248,9 @@ bool IsAccessOpeningSection(const double SectionStartCm)
 void AddSideProfile(
     TArray<FRoadLane>& Lanes,
     const double SectionStartCm,
-    const double SectionEndCm)
+    const double SectionEndCm,
+    const FRoadLaneMark& ExpressBrokenMark,
+    const FRoadLaneMark& LocalBrokenMark)
 {
     const double SectionLengthCm = SectionEndCm - SectionStartCm;
     const bool bAccessOpeningSection =
@@ -171,10 +269,19 @@ void AddSideProfile(
 
     for (int32 LaneIndex = 0; LaneIndex < 5; ++LaneIndex)
     {
-        Lanes.Add(MakeSurfaceLane(
+        FRoadLane ExpressLane = MakeSurfaceLane(
             ExpressLaneWidthCm,
             SectionLengthCm,
-            ERoadZoneTypes::Driving));
+            ERoadZoneTypes::Driving);
+        // R3: copy MetaRoad Free's own broken-mark preset from its
+        // 4_Lanes+Borders profile. A mark lives on the lane's OUTER edge,
+        // so the first four express lanes create exactly the four internal
+        // separators of the accepted five-lane carriageway.
+        if (LaneIndex < 4)
+        {
+            ApplyNativePresetMark(ExpressLane, ExpressBrokenMark);
+        }
+        Lanes.Add(MoveTemp(ExpressLane));
     }
 
     // Preserve the accepted R1 variable-width connector and separator.
@@ -199,15 +306,22 @@ void AddSideProfile(
 
     for (int32 LaneIndex = 0; LaneIndex < 2; ++LaneIndex)
     {
-        Lanes.Add(MakeSurfaceLane(
+        FRoadLane LocalLane = MakeSurfaceLane(
             LocalLaneWidthCm,
             SectionLengthCm,
-            ERoadZoneTypes::Driving));
+            ERoadZoneTypes::Driving);
+        // R3 local-road separator comes directly from MetaRoad Free's
+        // 2_Lanes+Borders_Coodirect reference profile.
+        if (LaneIndex == 0)
+        {
+            ApplyNativePresetMark(LocalLane, LocalBrokenMark);
+        }
+        Lanes.Add(MoveTemp(LocalLane));
     }
 
     // The accepted 1m outer shoulder becomes the native raised road-edge
     // treatment. Only the road-facing edge gets a curb; suppressing the outer
-    // curb keeps the accepted 66.8m envelope exact.
+    // curb keeps the owner-requested 79.0m widened envelope exact.
     Lanes.Add(MakeSurfaceLane(
         OuterShoulderCm,
         SectionLengthCm,
@@ -220,13 +334,25 @@ void AddSideProfile(
 void AddRoadSection(
     FRoadLayout& Layout,
     const double SectionStartCm,
-    const double SectionEndCm)
+    const double SectionEndCm,
+    const FRoadLaneMark& ExpressBrokenMark,
+    const FRoadLaneMark& LocalBrokenMark)
 {
     FRoadLaneSection Section;
     Section.Side = ERoadLaneSectionSide::Both;
     Section.SOffset = SectionStartCm;
-    AddSideProfile(Section.Left, SectionStartCm, SectionEndCm);
-    AddSideProfile(Section.Right, SectionStartCm, SectionEndCm);
+    AddSideProfile(
+        Section.Left,
+        SectionStartCm,
+        SectionEndCm,
+        ExpressBrokenMark,
+        LocalBrokenMark);
+    AddSideProfile(
+        Section.Right,
+        SectionStartCm,
+        SectionEndCm,
+        ExpressBrokenMark,
+        LocalBrokenMark);
     Layout.Sections.Add(MoveTemp(Section));
 }
 
@@ -263,6 +389,20 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
     Layout.Sections.Reset();
     Layout.Direction = ERoadDirection::RightHand;
 
+    FRoadLaneMark ExpressBrokenMark;
+    FRoadLaneMark LocalBrokenMark;
+    if (!ResolveNativeBrokenMark(
+            TEXT("/MetaRoad/MetaRoad/Profiles/RoadProfiles/4_Lanes+Borders.4_Lanes+Borders"),
+            ExpressBrokenMark,
+            Test) ||
+        !ResolveNativeBrokenMark(
+            TEXT("/MetaRoad/MetaRoad/Profiles/RoadProfiles/2_Lanes+Borders_Coodirect.2_Lanes+Borders_Coodirect"),
+            LocalBrokenMark,
+            Test))
+    {
+        return false;
+    }
+
     // Split only around the two 50m FULLY OPEN connector plateaus.
     // MetaRoad keeps its DefaultCurb on the separator through each taper, then
     // the zero-width separator lane disappears for the 50m crossing itself.
@@ -281,7 +421,9 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
         AddRoadSection(
             Layout,
             SectionOffsets[Index],
-            SectionOffsets[Index + 1]);
+            SectionOffsets[Index + 1],
+            ExpressBrokenMark,
+            LocalBrokenMark);
     }
 
     Spline->UpdateRoadLayout();
@@ -328,6 +470,26 @@ bool ConfigureStraightRoad(AMetaRoad& Road, FAutomationTestBase& Test)
                     Index),
                 Layout.Sections[Index].Right.Num(),
                 ExpectedSurfaceCount);
+            const TSoftClassPtr<URoadLaneAttributeDescriptor> MarkDescriptor(
+                URoadLaneAttributeMarkDescriptor::StaticClass());
+            for (const TArray<FRoadLane>* Side :
+                { &Layout.Sections[Index].Left, &Layout.Sections[Index].Right })
+            {
+                int32 MarkedLaneCount = 0;
+                for (const FRoadLane& Lane : *Side)
+                {
+                    if (Lane.Attributes.Contains(MarkDescriptor))
+                    {
+                        ++MarkedLaneCount;
+                    }
+                }
+                Test.TestEqual(
+                    *FString::Printf(
+                        TEXT("section %d carries four express + one local native MetaRoad marks per side"),
+                        Index),
+                    MarkedLaneCount,
+                    5);
+            }
         }
         Test.TestTrue(
             TEXT("access A section disables service curbs"),
@@ -496,9 +658,14 @@ UMaterial* ResolveProjectMaterialForSlot(
     const FStaticMaterial& Slot,
     UMaterial* Asphalt,
     UMaterial* Divider,
-    UMaterial* Shoulder)
+    UMaterial* Shoulder,
+    UMaterial* Mark)
 {
     const FString SlotName = Slot.MaterialSlotName.ToString();
+    if (SlotName.Contains(TEXT("Mark"), ESearchCase::IgnoreCase))
+    {
+        return Mark;
+    }
     if (SlotName.Contains(TEXT("Median"), ESearchCase::IgnoreCase)
         || SlotName.Contains(TEXT("Divider"), ESearchCase::IgnoreCase))
     {
@@ -637,7 +804,7 @@ public:
                 Size.X, Size.Y, Size.Z));
             Test->TestTrue(TEXT("baked road remains approximately 1000m long"),
                 FMath::IsNearlyEqual(Size.X, ChunkLengthCm, 250.0));
-            Test->TestTrue(TEXT("baked road width matches approved 66.8m envelope"),
+            Test->TestTrue(TEXT("baked road width matches owner-requested 79.0m envelope"),
                 FMath::IsNearlyEqual(Size.Y, ExpectedRoadWidthCm, 250.0));
             Test->TestTrue(TEXT("R2 native MetaRoad raised construction has real Z relief"),
                 Size.Z >= R2RaisedZoneHeightCm - 1.0);
@@ -768,63 +935,52 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         0.78f,
         0.18f,
         *this);
+    UMaterial* Mark = CreateSimpleSurfaceMaterial(
+        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark"),
+        TEXT("M_PC_L1_Mark"),
+        FLinearColor(0.82f, 0.82f, 0.78f, 1.0f),
+        0.72f,
+        0.12f,
+        *this);
 
-    if (!Asphalt || !Divider || !Shoulder)
+    if (!Asphalt || !Divider || !Shoulder || !Mark)
     {
         return false;
     }
 
-    const TCHAR* GeneratedMeshNames[] = {
+    TArray<FString> GeneratedMeshNames = {
         TEXT("RoadSurface"),
-        TEXT("RoadSidewalks"),
-        TEXT("RoadCurbs"),
-        TEXT("RoadCurbs1"),
-        TEXT("RoadCurbs2"),
-        TEXT("RoadCurbs3"),
-        TEXT("RoadCurbs4"),
-        TEXT("RoadCurbs5"),
-        TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7"),
-        TEXT("RoadCurbs8"),
-        TEXT("RoadCurbs9"),
-        TEXT("RoadCurbs10"),
-        TEXT("RoadCurbs11"),
-        TEXT("RoadCurbs12"),
-        TEXT("RoadCurbs13"),
-        TEXT("RoadCurbs14"),
-        TEXT("RoadCurbs15"),
-        TEXT("RoadCurbs16"),
-        TEXT("RoadCurbs17"),
-        TEXT("RoadCurbs18"),
-        TEXT("RoadCurbs19"),
-        TEXT("RoadCurbs20"),
-        TEXT("RoadCurbs21"),
-        TEXT("RoadCurbs22"),
-        TEXT("RoadCurbs23"),
-        TEXT("RoadCurbs24"),
-        TEXT("RoadCurbs25"),
-        TEXT("RoadCurbs26"),
-        TEXT("RoadCurbs27"),
-        TEXT("RoadCurbs28"),
-        TEXT("RoadCurbs29"),
-        TEXT("RoadCurbs30"),
-        TEXT("RoadCurbs31")
+        TEXT("RoadSidewalks")
     };
+    for (int32 Index = 0; Index < 32; ++Index)
+    {
+        GeneratedMeshNames.Add(
+            Index == 0
+                ? TEXT("RoadCurbs")
+                : FString::Printf(TEXT("RoadCurbs%d"), Index));
+    }
+    for (int32 Index = 0; Index < 50; ++Index)
+    {
+        GeneratedMeshNames.Add(
+            Index == 0
+                ? TEXT("RoadMarks")
+                : FString::Printf(TEXT("RoadMarks%d"), Index));
+    }
 
     int32 ReboundMeshCount = 0;
-    for (const TCHAR* MeshName : GeneratedMeshNames)
+    for (const FString& MeshName : GeneratedMeshNames)
     {
         const FString ObjectPath = FString::Printf(
             TEXT("/Game/World/L1/Road/%s.%s"),
-            MeshName,
-            MeshName);
+            *MeshName,
+            *MeshName);
         UStaticMesh* Mesh = LoadObject<UStaticMesh>(
             nullptr,
             *ObjectPath);
         TestNotNull(
             *FString::Printf(
                 TEXT("native MetaRoad mesh loads for runtime ownership: %s"),
-                MeshName),
+                *MeshName),
             Mesh);
         if (!Mesh)
         {
@@ -833,32 +989,40 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 
         TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
         TestTrue(
-            *FString::Printf(TEXT("%s exposes material slots"), MeshName),
+            *FString::Printf(TEXT("%s exposes material slots"), *MeshName),
             Slots.Num() > 0);
 
         const bool bCurbMesh =
-            FString(MeshName).StartsWith(TEXT("RoadCurbs"));
+            MeshName.StartsWith(TEXT("RoadCurbs"));
+        const bool bMarkMesh =
+            MeshName.StartsWith(TEXT("RoadMarks"));
         for (int32 Index = 0; Index < Slots.Num(); ++Index)
         {
             const FString SlotName = Slots[Index].MaterialSlotName.ToString();
             AddInfo(FString::Printf(
                 TEXT("CD869_NATIVE_SLOT[%s][%d]=%s"),
-                MeshName,
+                *MeshName,
                 Index,
                 *SlotName));
             Mesh->SetMaterial(
                 Index,
-                bCurbMesh
-                    ? Shoulder
-                    : ResolveProjectMaterialForSlot(
-                        Slots[Index], Asphalt, Divider, Shoulder));
+                bMarkMesh
+                    ? Mark
+                    : bCurbMesh
+                        ? Shoulder
+                        : ResolveProjectMaterialForSlot(
+                            Slots[Index],
+                            Asphalt,
+                            Divider,
+                            Shoulder,
+                            Mark));
         }
 
         Mesh->PostEditChange();
         TestTrue(
             *FString::Printf(
                 TEXT("%s saved after project material rebinding"),
-                MeshName),
+                *MeshName),
             SaveGeneratedMeshPackage(*Mesh, *this));
 
         for (int32 Index = 0; Index < Mesh->GetStaticMaterials().Num(); ++Index)
@@ -882,9 +1046,9 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
     }
 
     TestEqual(
-        TEXT("all native MetaRoad R2 meshes rebound for runtime"),
+        TEXT("all native MetaRoad R2 construction and R3 mark meshes rebound for runtime"),
         ReboundMeshCount,
-        static_cast<int32>(UE_ARRAY_COUNT(GeneratedMeshNames)));
+        GeneratedMeshNames.Num());
 
     AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
     return true;
