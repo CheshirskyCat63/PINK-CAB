@@ -174,19 +174,28 @@ bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameter
     {
         const TArray<FName> MetaRoadDependencies =
             PinkCabL1EndlessRoadAssetContract::FindMetaRoadDependencies(Root);
+        bool bHasNativeAsphaltStack = false;
         for (const FName Dependency : MetaRoadDependencies)
         {
-            AddError(FString::Printf(
-                TEXT("runtime root %s retains MetaRoad dependency %s"),
+            const FString DependencyPath = Dependency.ToString();
+            AddInfo(FString::Printf(
+                TEXT("CD869_R4_NATIVE_METAROAD_DEP[%s]=%s"),
                 *Root.ToString(),
-                *Dependency.ToString()));
+                *DependencyPath));
+            bHasNativeAsphaltStack |=
+                DependencyPath.Contains(TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface")) ||
+                DependencyPath.Contains(TEXT("/MetaRoad/MetaRoad/Materials/Master/M_Asphalt"));
         }
-        TestEqual(
+        TestTrue(
             *FString::Printf(
-                TEXT("%s has no transitive MetaRoad package dependency"),
+                TEXT("%s retains native MetaRoad runtime dependencies"),
                 *Root.ToString()),
-            MetaRoadDependencies.Num(),
-            0);
+            MetaRoadDependencies.Num() > 0);
+        TestTrue(
+            *FString::Printf(
+                TEXT("%s reaches the native MetaRoad asphalt stack"),
+                *Root.ToString()),
+            bHasNativeAsphaltStack);
     }
 
     const TArray<FStaticMaterial>& Materials = Road->GetStaticMaterials();
@@ -210,11 +219,12 @@ bool FPinkCabL1EndlessRoadMaterialContractTest::RunTest(const FString& Parameter
             TEXT("CD869_ROAD_MATERIAL_SLOT[%d]=%s"),
             Index,
             *Path));
+        TestEqual(
+            *FString::Printf(TEXT("road material slot %d uses native MetaRoad drive surface"), Index),
+            Path,
+            FString(TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface")));
         TestTrue(
-            *FString::Printf(TEXT("road material slot %d is project-owned"), Index),
-            Path.StartsWith(TEXT("/Game/World/L1/Road/Materials/")));
-        TestFalse(
-            *FString::Printf(TEXT("road material slot %d has no runtime MetaRoad dependency"), Index),
+            *FString::Printf(TEXT("road material slot %d remains MetaRoad-owned"), Index),
             Path.StartsWith(TEXT("/MetaRoad/")));
         TestFalse(
             *FString::Printf(TEXT("road material slot %d is not Engine default"), Index),
