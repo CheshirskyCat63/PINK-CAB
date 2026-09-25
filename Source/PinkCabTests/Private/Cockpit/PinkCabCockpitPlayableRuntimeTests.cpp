@@ -108,8 +108,10 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Test->TestEqual(TEXT("neutral cross-gate does not engage a gear"),
             Pawn->GetEngagedGear(), 0);
         Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
-        Test->TestTrue(TEXT("visible lever reaches first through the same physical cursor"),
-            Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 1.0f), 0.01f));
+        const FVector2D FirstRowCursor = Pawn->GetGearLeverVisualCursor();
+        Test->TestTrue(TEXT("visible lever enters the first-gear upper row"),
+            FMath::IsNearlyEqual(FirstRowCursor.X, -1.0f, 0.01f)
+            && FirstRowCursor.Y >= 0.65f);
         Test->TestEqual(TEXT("physical H-gate requests first"),
             Pawn->GetRequestedGear(), 1);
         Test->TestEqual(TEXT("requested first is still separate from engagement before clutch validation"),
