@@ -151,7 +151,7 @@ public:
             Pawn->ApplyPhysicalControlMouseDelta(
                 TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
             Pawn->ApplyPhysicalControlMouseDelta(
-                TEXT("Gearbox"), true, 0.0f, 240.0f, 0.05f);
+                TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
 
             const FPinkCabVehicleInputFrame ClutchFrame =
                 FPinkCabVehicleInputFrame::FromDigital(
