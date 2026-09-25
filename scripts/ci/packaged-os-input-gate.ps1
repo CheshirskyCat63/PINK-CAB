@@ -111,7 +111,7 @@ function Wait-State([scriptblock]$Predicate,[int]$TimeoutMs,[string]$Description
     $last=Get-State
     throw "Timed out: $Description. Last=$($last.raw)"
 }
-function Focus-GameWindow([IntPtr]$Handle) {
+function Focus-GameWindow([IntPtr]$Handle,[bool]$AllowMouseFallback=$true) {
     for($i=0;$i -lt 12;$i++) {
         [PinkCabNativeInput]::ShowWindow($Handle,9) | Out-Null
 
@@ -144,16 +144,20 @@ function Focus-GameWindow([IntPtr]$Handle) {
         Start-Sleep -Milliseconds 180
         if([PinkCabNativeInput]::GetForegroundWindow() -eq $Handle){ return }
 
-        $rect=New-Object PinkCabNativeInput+RECT
-        if([PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) {
-            $x=[int](($rect.Left+$rect.Right)/2)
-            $y=[int](($rect.Top+$rect.Bottom)/2)
-            [PinkCabNativeInput]::SetCursorPos($x,$y) | Out-Null
-            [PinkCabNativeInput]::LeftDown()
-            Start-Sleep -Milliseconds 40
-            [PinkCabNativeInput]::LeftUp()
+        if($AllowMouseFallback) {
+            $rect=New-Object PinkCabNativeInput+RECT
+            if([PinkCabNativeInput]::GetWindowRect($Handle,[ref]$rect)) {
+                $x=[int](($rect.Left+$rect.Right)/2)
+                $y=[int](($rect.Top+$rect.Bottom)/2)
+                [PinkCabNativeInput]::SetCursorPos($x,$y) | Out-Null
+                [PinkCabNativeInput]::LeftDown()
+                Start-Sleep -Milliseconds 40
+                [PinkCabNativeInput]::LeftUp()
+            }
+            Start-Sleep -Milliseconds 180
+        } else {
+            Start-Sleep -Milliseconds 120
         }
-        Start-Sleep -Milliseconds 180
     }
     $fg=[PinkCabNativeInput]::GetForegroundWindow()
     throw "Packaged game could not acquire foreground focus. target=$Handle foreground=$fg"
@@ -386,7 +390,7 @@ try {
         # but refocus and retry the calibration sample instead of treating one
         # dropped mouse packet as a product regression.
         for($attempt=1; $attempt -le 4; ++$attempt) {
-            Focus-GameWindow $script:GameHwnd
+            Focus-GameWindow $script:GameHwnd $false
             Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 1500 "gaze remains active during aim calibration" | Out-Null
             Start-Sleep -Milliseconds (120 * $attempt)
 
@@ -427,10 +431,63 @@ try {
     if($aimed.target -ne 'Ignition'){
         throw "Closed-loop gaze did not select Ignition. Last=$($aimed.raw)"
     }
-    [PinkCabNativeInput]::LeftDown()
-    Start-Sleep -Milliseconds 350
-    [PinkCabNativeInput]::LeftUp()
-    Wait-State { param($s) $s.ignition -eq 1 } 2500 "LMB starts ignition through gaze-selected target" | Out-Null
+
+    $ignitionStarted=$false
+    for($attempt=1; $attempt -le 3 -and -not $ignitionStarted; ++$attempt) {
+        Focus-GameWindow $script:GameHwnd $false
+
+        if(-not [PinkCabNativeInput]::IsKeyDown($VK_SPACE)) {
+            Write-Host "PACKAGED_OS_INPUT_SPACE_REPRIME attempt=$attempt reason=os-key-not-held"
+            [PinkCabNativeInput]::KeyUp($VK_SPACE)
+            Start-Sleep -Milliseconds 100
+            [PinkCabNativeInput]::KeyDown($VK_SPACE)
+            Start-Sleep -Milliseconds 220
+        }
+
+        $preClick=Get-State
+        if($preClick.gaze -ne 1 -or $preClick.target -ne 'Ignition') {
+            Write-Host "PACKAGED_OS_INPUT_SPACE_REPRIME attempt=$attempt reason=semantic-gaze-lost state=$($preClick.raw)"
+            [PinkCabNativeInput]::KeyUp($VK_SPACE)
+            Start-Sleep -Milliseconds 100
+            [PinkCabNativeInput]::KeyDown($VK_SPACE)
+            Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 1800 "Space re-prime restores gaze mode" | Out-Null
+
+            for($i=0;$i -lt 36;$i++) {
+                $s=Get-State
+                if($s.target -eq 'Ignition' -and [Math]::Abs($s.aimyaw) -le 4.0 -and [Math]::Abs($s.aimpitch) -le 4.0) { break }
+                $dx=[int][Math]::Round((-1.0*$s.aimyaw)/$yawPerCount)
+                $dy=[int][Math]::Round((-1.0*$s.aimpitch)/$pitchPerCount)
+                if($dx -gt 45){$dx=45}; if($dx -lt -45){$dx=-45}
+                if($dy -gt 45){$dy=45}; if($dy -lt -45){$dy=-45}
+                [PinkCabNativeInput]::Move($dx,$dy)
+                Start-Sleep -Milliseconds 180
+            }
+            $preClick=Get-State
+        }
+
+        if($preClick.target -ne 'Ignition' -or $preClick.gaze -ne 1) {
+            throw "Ignition target unavailable before click attempt=$attempt Last=$($preClick.raw)"
+        }
+
+        Write-Host "PACKAGED_OS_INPUT_IGNITION_PRECLICK attempt=$attempt keyHeld=$([PinkCabNativeInput]::IsKeyDown($VK_SPACE)) state=$($preClick.raw)"
+        [PinkCabNativeInput]::LeftDown()
+        Start-Sleep -Milliseconds 120
+        $heldClick=Get-State
+        Write-Host "PACKAGED_OS_INPUT_IGNITION_HELD attempt=$attempt state=$($heldClick.raw)"
+        [PinkCabNativeInput]::LeftUp()
+        Start-Sleep -Milliseconds 240
+        $postClick=Get-State
+        Write-Host "PACKAGED_OS_INPUT_IGNITION_POSTCLICK attempt=$attempt keyHeld=$([PinkCabNativeInput]::IsKeyDown($VK_SPACE)) state=$($postClick.raw)"
+        if($postClick.ignition -eq 1) {
+            $ignitionStarted=$true
+            break
+        }
+    }
+    if(-not $ignitionStarted) {
+        $lastIgnition=Get-State
+        throw "LMB did not start ignition after focused Space-held retries. Last=$($lastIgnition.raw)"
+    }
+    Write-Host 'PACKAGED_OS_INPUT_IGNITION_SPACE_LMB=PASS'
     [PinkCabNativeInput]::KeyUp($VK_SPACE)
     Wait-State { param($s) $s.gaze -eq 0 } 1500 "Space exits gaze mode" | Out-Null
 
