@@ -150,12 +150,18 @@ jobs:
 
           # Remove any noncanonical duplicate generated layers. The only allowed
           # untracked runtime additions after restore are RoadMarks* and mark material.
+          $trackedRoadSet=@{}
+          foreach($path in $trackedRoad){
+            $trackedRoadSet[$path.Replace('\\','/')]=$true
+          }
           foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset')){
             Get-ChildItem 'Content\\World\\L1\\Road' -Filter $pattern -File -ErrorAction SilentlyContinue |
-              Where-Object { -not (git ls-files --error-unmatch $_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1).Replace('\\','/') 2>$null) } |
               ForEach-Object {
-                Write-Host "R3_REMOVE_DUPLICATE_GENERATED=$($_.Name)"
-                Remove-Item -LiteralPath $_.FullName -Force
+                $relative=$_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1).Replace('\\','/')
+                if(-not $trackedRoadSet.ContainsKey($relative)){
+                  Write-Host "R3_REMOVE_DUPLICATE_GENERATED=$($_.Name)"
+                  Remove-Item -LiteralPath $_.FullName -Force
+                }
               }
           }
 
