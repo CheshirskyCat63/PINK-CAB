@@ -149,11 +149,11 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
                 Material);
             if (Material)
             {
-                const FString Name(MeshName);
+                const FString MaterialOwnerMeshName(MeshName);
                 const FString ExpectedPath =
-                    Name == TEXT("RoadSurface")
+                    MaterialOwnerMeshName == TEXT("RoadSurface")
                         ? TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface")
-                        : Name == TEXT("RoadSidewalks")
+                        : MaterialOwnerMeshName == TEXT("RoadSidewalks")
                             ? TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk")
                             : TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb");
                 TestEqual(
