@@ -938,58 +938,39 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         return false;
     }
 
-    const TCHAR* GeneratedMeshNames[] = {
+    TArray<FString> GeneratedMeshNames = {
         TEXT("RoadSurface"),
-        TEXT("RoadSidewalks"),
-        TEXT("RoadCurbs"),
-        TEXT("RoadCurbs1"),
-        TEXT("RoadCurbs2"),
-        TEXT("RoadCurbs3"),
-        TEXT("RoadCurbs4"),
-        TEXT("RoadCurbs5"),
-        TEXT("RoadCurbs6"),
-        TEXT("RoadCurbs7"),
-        TEXT("RoadCurbs8"),
-        TEXT("RoadCurbs9"),
-        TEXT("RoadCurbs10"),
-        TEXT("RoadCurbs11"),
-        TEXT("RoadCurbs12"),
-        TEXT("RoadCurbs13"),
-        TEXT("RoadCurbs14"),
-        TEXT("RoadCurbs15"),
-        TEXT("RoadCurbs16"),
-        TEXT("RoadCurbs17"),
-        TEXT("RoadCurbs18"),
-        TEXT("RoadCurbs19"),
-        TEXT("RoadCurbs20"),
-        TEXT("RoadCurbs21"),
-        TEXT("RoadCurbs22"),
-        TEXT("RoadCurbs23"),
-        TEXT("RoadCurbs24"),
-        TEXT("RoadCurbs25"),
-        TEXT("RoadCurbs26"),
-        TEXT("RoadCurbs27"),
-        TEXT("RoadCurbs28"),
-        TEXT("RoadCurbs29"),
-        TEXT("RoadCurbs30"),
-        TEXT("RoadCurbs31"),
-        TEXT("RoadMarks")
+        TEXT("RoadSidewalks")
     };
+    for (int32 Index = 0; Index < 32; ++Index)
+    {
+        GeneratedMeshNames.Add(
+            Index == 0
+                ? TEXT("RoadCurbs")
+                : FString::Printf(TEXT("RoadCurbs%d"), Index));
+    }
+    for (int32 Index = 0; Index < 50; ++Index)
+    {
+        GeneratedMeshNames.Add(
+            Index == 0
+                ? TEXT("RoadMarks")
+                : FString::Printf(TEXT("RoadMarks%d"), Index));
+    }
 
     int32 ReboundMeshCount = 0;
-    for (const TCHAR* MeshName : GeneratedMeshNames)
+    for (const FString& MeshName : GeneratedMeshNames)
     {
         const FString ObjectPath = FString::Printf(
             TEXT("/Game/World/L1/Road/%s.%s"),
-            MeshName,
-            MeshName);
+            *MeshName,
+            *MeshName);
         UStaticMesh* Mesh = LoadObject<UStaticMesh>(
             nullptr,
             *ObjectPath);
         TestNotNull(
             *FString::Printf(
                 TEXT("native MetaRoad mesh loads for runtime ownership: %s"),
-                MeshName),
+                *MeshName),
             Mesh);
         if (!Mesh)
         {
@@ -1002,13 +983,13 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
             Slots.Num() > 0);
 
         const bool bCurbMesh =
-            FString(MeshName).StartsWith(TEXT("RoadCurbs"));
+            MeshName.StartsWith(TEXT("RoadCurbs"));
         for (int32 Index = 0; Index < Slots.Num(); ++Index)
         {
             const FString SlotName = Slots[Index].MaterialSlotName.ToString();
             AddInfo(FString::Printf(
                 TEXT("CD869_NATIVE_SLOT[%s][%d]=%s"),
-                MeshName,
+                *MeshName,
                 Index,
                 *SlotName));
             Mesh->SetMaterial(
@@ -1023,7 +1004,7 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         TestTrue(
             *FString::Printf(
                 TEXT("%s saved after project material rebinding"),
-                MeshName),
+                *MeshName),
             SaveGeneratedMeshPackage(*Mesh, *this));
 
         for (int32 Index = 0; Index < Mesh->GetStaticMaterials().Num(); ++Index)
@@ -1047,9 +1028,9 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
     }
 
     TestEqual(
-        TEXT("all native MetaRoad R2 meshes rebound for runtime"),
+        TEXT("all native MetaRoad R2 construction and R3 mark meshes rebound for runtime"),
         ReboundMeshCount,
-        static_cast<int32>(UE_ARRAY_COUNT(GeneratedMeshNames)));
+        GeneratedMeshNames.Num());
 
     AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
     return true;
