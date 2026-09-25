@@ -31,34 +31,20 @@ jobs:
           $tracked=@(git status --porcelain --untracked-files=no)
           if($tracked.Count -ne 0){ $tracked | % { Write-Host $_ }; throw 'R3_TRACKED_DIRTY' }
           Write-Host "R3_PREFLIGHT_HEAD=$head"
-          git remote -v | % { Write-Host "R3_REMOTE $_" }
-          git log -5 --oneline | % { Write-Host "R3_LOG $_" }
 
-          $files=@(
-            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\RoadLaneAttribute.h'),
-            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\Assets\RoadLaneAttributeMark.h'),
-            (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\MetaRoadTypes.h'),
-            (Join-Path $env:META_ROOT 'Source\MetaRoad\Private\Assets\RoadLaneAttributeDescriptor.cpp'),
-            (Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadDragDropHandler.cpp')
-          )
-          foreach($f in $files){
-            if(-not (Test-Path $f)){ throw "R3_PLUGIN_FILE_MISSING=$f" }
-            Write-Host "===== R3_FILE $f ====="
-            $content=Get-Content $f
-            $patterns=@('struct METAROAD_API FRoadLaneAttribute','struct METAROAD_API FRoadLane','FRoadLaneAttribute','Attributes','AddKey','AttributeValueTemplate','URoadLaneAttributeMarkDescriptor','FRoadLaneMark','Descriptor','TObjectPtr')
-            $idx=@()
-            for($i=0;$i -lt $content.Count;$i++){
-              foreach($p in $patterns){ if($content[$i] -match [regex]::Escape($p)){ $idx += $i; break } }
-            }
-            $shown=@{}
-            foreach($i in $idx){
-              $a=[Math]::Max(0,$i-8); $b=[Math]::Min($content.Count-1,$i+16)
-              for($j=$a;$j -le $b;$j++){
-                if(-not $shown.ContainsKey($j)){ Write-Host ("{0}: {1}" -f ($j+1),$content[$j]); $shown[$j]=$true }
-              }
-              Write-Host '---'
+          function Show-Range([string]$Path,[int]$Start,[int]$End,[string]$Tag){
+            if(-not(Test-Path $Path)){ throw "R3_PLUGIN_FILE_MISSING=$Path" }
+            Write-Host "===== R3_RANGE $Tag ====="
+            $c=Get-Content $Path
+            for($i=$Start;$i -le $End;$i++){
+              if($i -le $c.Count){ Write-Host ("{0}: {1}" -f $i,$c[$i-1]) }
             }
           }
+
+          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\RoadLaneAttribute.h') 160 285 'RoadLaneAttribute'
+          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\Assets\RoadLaneAttributeMark.h') 160 235 'RoadLaneAttributeMark'
+          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoad\Public\MetaRoadTypes.h') 490 530 'FRoadLane'
+          Show-Range (Join-Path $env:META_ROOT 'Source\MetaRoadEditor\Private\EditorMode\MetaRoadDragDropHandler.cpp') 286 307 'MarkDrop'
 
           $profiles=Join-Path $env:META_ROOT 'Content\MetaRoad\Profiles\Marks'
           Get-ChildItem $profiles -Filter '*.uasset' | Sort-Object Name | % { Write-Host "R3_MARK_PROFILE=$($_.BaseName)" }
