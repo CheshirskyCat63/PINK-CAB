@@ -1,0 +1,86 @@
+name: CD-869 R4 Input A-B Isolation
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-r4-input-ab
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: Compare accepted R3 and exact R4 packaged input
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    env:
+      R3_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R3_METAROAD_aa5d7c99_RUN36095423828\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+      R4_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R4_VISUAL_53b39347_RUN36113804371\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Run identical packaged input gate on R3 then R4
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+
+          function Stop-PinkCab {
+            Get-Process PinkCab -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+          }
+
+          function Run-Gate([string]$Name,[string]$Exe) {
+            Stop-PinkCab
+            if(-not (Test-Path $Exe)){ throw "$Name EXE missing: $Exe" }
+            $dir=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\AB_" + $Name)
+            try {
+              & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $Exe -EvidenceDir $dir -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+              if($LASTEXITCODE -ne 0){ throw "$Name gate exit=$LASTEXITCODE" }
+              Write-Host "AB_RESULT $Name=PASS"
+              return $true
+            }
+            catch {
+              Write-Host "AB_RESULT $Name=FAIL error=$($_.Exception.Message)"
+              $log=Join-Path $dir 'PACKAGED_OS_INPUT.log'
+              if(Test-Path $log){
+                Get-Content $log -Tail 80 | ForEach-Object { Write-Host "AB_$Name $_" }
+              }
+              return $false
+            }
+          }
+
+          $r3=$false
+          $r4=$false
+          try {
+            $r3=Run-Gate 'R3' $env:R3_EXE
+            $r4=Run-Gate 'R4' $env:R4_EXE
+            Write-Host "AB_FINAL R3=$r3 R4=$r4"
+          }
+          finally {
+            Stop-PinkCab
+            if(Test-Path $env:R3_EXE){
+              $saved=$env:RUNNER_TRACKING_ID
+              $env:RUNNER_TRACKING_ID=''
+              try {
+                $p=Start-Process -FilePath $env:R3_EXE -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $env:R3_EXE) -PassThru
+                Start-Sleep -Seconds 5
+                Write-Host "AB_RESTORED_R3_PID=$($p.Id)"
+              } finally { $env:RUNNER_TRACKING_ID=$saved }
+            }
+          }
+
+          if(-not $r3){ throw 'AB_ACCEPTED_R3_GATE_FAILED_ENVIRONMENT_OR_HARNESS_UNSTABLE' }
+          if(-not $r4){ throw 'AB_R4_PACKAGE_INPUT_REGRESSION_REPRODUCED' }
+          Write-Host 'AB_BOTH_PASS'
