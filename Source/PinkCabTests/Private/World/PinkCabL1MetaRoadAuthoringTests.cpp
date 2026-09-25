@@ -17,11 +17,14 @@
 #include "Materials/MaterialExpressionScalarParameter.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
 #include "Materials/MaterialExpressionWorldPosition.h"
+#include "Materials/MaterialExpressionTextureCoordinate.h"
+#include "Materials/MaterialExpressionTextureSample.h"
 #include "Modules/ModuleManager.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Editor.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "FileHelpers.h"
 #include "HAL/PlatformTime.h"
@@ -1329,10 +1332,16 @@ bool FPinkCabL1RoadR4RoadVisualV2::RunTest(const FString& Parameters)
         UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_BaseColor);
     UMaterialExpression* RoughnessInput =
         UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_Roughness);
+    UMaterialExpression* NormalInput =
+        UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_Normal);
+    UMaterialExpression* SpecularInput =
+        UMaterialEditingLibrary::GetMaterialPropertyInputNode(Asphalt, MP_Specular);
 
     TestNotNull(TEXT("R4 asphalt has BaseColor graph input"), BaseColorInput);
     TestNotNull(TEXT("R4 asphalt has Roughness graph input"), RoughnessInput);
-    if (!BaseColorInput || !RoughnessInput)
+    TestNotNull(TEXT("R4 asphalt has real Normal graph input"), NormalInput);
+    TestNotNull(TEXT("R4 asphalt has explicit low-specular input"), SpecularInput);
+    if (!BaseColorInput || !RoughnessInput || !NormalInput || !SpecularInput)
     {
         return false;
     }
@@ -1343,6 +1352,29 @@ bool FPinkCabL1RoadR4RoadVisualV2::RunTest(const FString& Parameters)
     TestFalse(
         TEXT("R4 Roughness is no longer a flat constant"),
         RoughnessInput->IsA(UMaterialExpressionConstant::StaticClass()));
+
+    UTexture2D* AlbedoTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Albedo.T_PC_L1_Asphalt_Albedo"));
+    UTexture2D* RoughnessTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Roughness.T_PC_L1_Asphalt_Roughness"));
+    UTexture2D* NormalTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/Textures/T_PC_L1_Asphalt_Normal.T_PC_L1_Asphalt_Normal"));
+    TestNotNull(TEXT("R4 asphalt owns a real albedo texture"), AlbedoTexture);
+    TestNotNull(TEXT("R4 asphalt owns a real roughness texture"), RoughnessTexture);
+    TestNotNull(TEXT("R4 asphalt owns a real normal texture"), NormalTexture);
+
+    const UMaterialExpressionConstant* SpecularConstant =
+        Cast<UMaterialExpressionConstant>(SpecularInput);
+    TestNotNull(TEXT("R4 asphalt specular remains an explicit constant"), SpecularConstant);
+    if (SpecularConstant)
+    {
+        TestTrue(
+            TEXT("R4 asphalt specular is low enough to avoid an oil-polished road"),
+            SpecularConstant->R <= 0.10f);
+    }
 
     UStaticMesh* RoadSurface = LoadObject<UStaticMesh>(
         nullptr,
