@@ -194,8 +194,8 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
 
             // R3 is additive visual-only state. Keep the frozen R2
             // construction count/bounds independent from RoadMarks.
-            if (Component->GetStaticMesh()->GetPathName() ==
-                TEXT("/Game/World/L1/Road/RoadMarks.RoadMarks"))
+            if (Component->GetStaticMesh()->GetPathName().StartsWith(
+                    TEXT("/Game/World/L1/Road/RoadMarks")))
             {
                 TestEqual(
                     TEXT("R3 RoadMarks remains collision-free inside R2 regression"),
