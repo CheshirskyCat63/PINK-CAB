@@ -198,7 +198,7 @@ private:
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;
     bool bGearLeverDragging = false;
-    FVector2D GearLeverCursor = FVector2D::ZeroVector;
+    FVector2D GearLeverCursor = FVector2D(1.0f, 0.0f);
 
     bool bPackagedGateTelemetryEnabled = false;
     double NextPackagedGateTelemetrySeconds = 0.0;

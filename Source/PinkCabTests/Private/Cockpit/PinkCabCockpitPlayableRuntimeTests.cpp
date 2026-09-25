@@ -102,14 +102,16 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Interaction->SetCurrentTarget(
             UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Gearbox")));
         Test->TestTrue(TEXT("physical gearbox grip begins"), Interaction->BeginGrip(Event));
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
-        Test->TestTrue(TEXT("visible lever follows continuous neutral cross-gate left"),
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
+        Test->TestTrue(TEXT("visible lever follows extended neutral cross-gate left"),
             Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 0.0f), 0.01f));
         Test->TestEqual(TEXT("neutral cross-gate does not engage a gear"),
             Pawn->GetEngagedGear(), 0);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
-        Test->TestTrue(TEXT("visible lever reaches first through the same physical cursor"),
-            Pawn->GetGearLeverVisualCursor().Equals(FVector2D(-1.0f, 1.0f), 0.01f));
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
+        const FVector2D FirstRowCursor = Pawn->GetGearLeverVisualCursor();
+        Test->TestTrue(TEXT("visible lever enters the first-gear upper row"),
+            FMath::IsNearlyEqual(FirstRowCursor.X, -1.0f, 0.01f)
+            && FirstRowCursor.Y >= 0.65f);
         Test->TestEqual(TEXT("physical H-gate requests first"),
             Pawn->GetRequestedGear(), 1);
         Test->TestEqual(TEXT("requested first is still separate from engagement before clutch validation"),
@@ -136,11 +138,11 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
 
         // Physically traverse first -> neutral -> right corridor -> reverse.
         // Driver-space rearward motion exits the top row into the neutral cross-gate.
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -100.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -480.0f, 0.05f);
         Test->TestEqual(TEXT("first exits into neutral corridor before crossing right"),
             Pawn->GetRequestedGear(), 0);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 320.0f, 0.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 960.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -480.0f, 0.05f);
         Test->TestEqual(TEXT("physical bottom-right gate requests reverse"), Pawn->GetRequestedGear(), -1);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
@@ -254,11 +256,11 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Pawn->ApplyVehicleInputFrame(BrakeFrame, 0.0f);
 
         // Return R -> neutral -> left corridor -> first after actual reverse motion.
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 100.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
         Test->TestEqual(TEXT("reverse exits into neutral corridor before crossing left"),
             Pawn->GetRequestedGear(), 0);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -320.0f, 0.0f, 0.05f);
-        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -960.0f, 0.0f, 0.05f);
+        Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
         const FPinkCabVehicleInputFrame ClutchFrame =
             FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);

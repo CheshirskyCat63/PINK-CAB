@@ -2,16 +2,28 @@
 
 namespace
 {
-constexpr float HGateColumnEngage = 0.50f;
 constexpr float HGateRowEngage = 0.65f;
 constexpr float HGateRowRelease = 0.35f;
-constexpr float HGateCountsX = 160.0f;
-constexpr float HGateCountsY = 140.0f;
+constexpr float HGateCountsX = 320.0f;
+constexpr float HGateCountsY = 480.0f;
 constexpr float HGateMaxSubstep = 0.20f;
+
+// Forgiving owner-approved H-pattern:
+//   1/2 owns only the extreme-left region.
+//   5/R owns only the extreme-right region.
+//   3/4 owns the broad middle region between them, so the driver does not
+//   have to pixel-hunt a narrow center rail with the mouse.
+constexpr float HGateLeftRailX = -1.0f;
+constexpr float HGateMiddleRailX = 1.0f;
+constexpr float HGateRightRailX = 2.0f;
+constexpr float HGateLeftZoneMaxX = -0.50f;
+constexpr float HGateRightZoneMinX = 1.50f;
 
 int32 ResolveColumn(const float X)
 {
-    return X < -HGateColumnEngage ? 0 : (X > HGateColumnEngage ? 2 : 1);
+    if (X <= HGateLeftZoneMaxX) return 0;
+    if (X >= HGateRightZoneMinX) return 2;
+    return 1;
 }
 
 int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
@@ -27,6 +39,13 @@ int32 ResolveRow(const FPinkCabHGateState& State, const float Y)
         return Y < -HGateRowRelease ? -1 : 0;
     }
     return Y > HGateRowEngage ? 1 : (Y < -HGateRowEngage ? -1 : 0);
+}
+
+float ColumnPosition(const int32 Column)
+{
+    if (Column == 0) return HGateLeftRailX;
+    if (Column == 2) return HGateRightRailX;
+    return HGateMiddleRailX;
 }
 }
 
@@ -55,6 +74,8 @@ bool FPinkCabHGateGeometry::MoveGate(FPinkCabHGateState& State, const float X, c
         return true;
     }
 
+    // The entire comfortable middle region resolves to the 3/4 column.
+    // Only the two outer edge regions resolve to 1/2 and 5/R.
     State.RequestedGear = NewRow > 0
         ? (Column == 0 ? 1 : (Column == 1 ? 3 : 5))
         : (Column == 0 ? 2 : (Column == 1 ? 4 : -1));
@@ -70,41 +91,79 @@ bool FPinkCabHGateGeometry::ApplyDriverDelta(
 {
     const float GateDx = DriverRightCounts / HGateCountsX;
     const float GateDy = DriverForwardCounts / HGateCountsY;
-    const int32 Steps = FMath::Max(
-        1,
-        FMath::CeilToInt(
-            FMath::Max(FMath::Abs(GateDx), FMath::Abs(GateDy)) / HGateMaxSubstep));
-    const float StepX = GateDx / static_cast<float>(Steps);
-    const float StepY = GateDy / static_cast<float>(Steps);
     const int32 Before = State.RequestedGear;
 
-    for (int32 Index = 0; Index < Steps; ++Index)
+    // Inside a gear rail, fore/aft owns the sample until N is physically
+    // reached. Horizontal input in that same sample is discarded.
+    if (State.LastGateRow != 0)
     {
-        if (State.LastGateRow != 0)
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
+        const float StepY = GateDy / static_cast<float>(Steps);
+
+        for (int32 Index = 0; Index < Steps; ++Index)
         {
-            const float CandidateY = FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
+            const float CandidateY =
+                FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
             if (MoveGate(State, State.LeverX, CandidateY))
             {
                 State.LeverY = CandidateY;
             }
-            if (State.LastGateRow != 0)
+
+            if (State.LastGateRow == 0)
             {
-                continue;
+                break;
             }
         }
+        return State.RequestedGear != Before;
+    }
 
-        const float CandidateX = FMath::Clamp(State.LeverX + StepX, -1.0f, 1.0f);
-        if (MoveGate(State, CandidateX, State.LeverY))
-        {
-            State.LeverX = CandidateX;
-        }
+    // Across neutral, exactly one axis is accepted per sample. Horizontal wins
+    // ties, preventing a diagonal cut through an H-gate wall.
+    const bool bHorizontalPhase =
+        FMath::Abs(GateDx) >= FMath::Abs(GateDy);
 
-        const float CandidateY = FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
-        if (MoveGate(State, State.LeverX, CandidateY))
+    if (bHorizontalPhase)
+    {
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDx) / HGateMaxSubstep));
+        const float StepX = GateDx / static_cast<float>(Steps);
+        for (int32 Index = 0; Index < Steps; ++Index)
         {
-            State.LeverY = CandidateY;
+            const float CandidateX =
+                FMath::Clamp(State.LeverX + StepX, HGateLeftRailX, HGateRightRailX);
+            if (MoveGate(State, CandidateX, State.LeverY))
+            {
+                State.LeverX = CandidateX;
+            }
         }
     }
+    else
+    {
+        // At neutral every horizontal position belongs to a deliberate column
+        // region, so fore/aft motion is always available without precision aiming.
+        const int32 Steps = FMath::Max(
+            1,
+            FMath::CeilToInt(FMath::Abs(GateDy) / HGateMaxSubstep));
+        const float StepY = GateDy / static_cast<float>(Steps);
+        for (int32 Index = 0; Index < Steps; ++Index)
+        {
+            const float CandidateY =
+                FMath::Clamp(State.LeverY + StepY, -1.0f, 1.0f);
+            if (MoveGate(State, State.LeverX, CandidateY))
+            {
+                State.LeverY = CandidateY;
+            }
+
+            if (State.LastGateRow != 0)
+            {
+                break;
+            }
+        }
+    }
+
     return State.RequestedGear != Before;
 }
 
@@ -114,6 +173,6 @@ void FPinkCabHGateGeometry::ResetToGear(FPinkCabHGateState& State, const int32 G
     State.LastGateRow = State.RequestedGear == 0 ? 0
         : (State.RequestedGear == 1 || State.RequestedGear == 3 || State.RequestedGear == 5 ? 1 : -1);
     State.LastGateColumn = GearColumn(State.RequestedGear);
-    State.LeverX = State.LastGateColumn == 0 ? -1.0f : (State.LastGateColumn == 2 ? 1.0f : 0.0f);
+    State.LeverX = ColumnPosition(State.LastGateColumn);
     State.LeverY = State.LastGateRow > 0 ? 1.0f : (State.LastGateRow < 0 ? -1.0f : 0.0f);
 }

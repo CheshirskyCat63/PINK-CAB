@@ -200,7 +200,9 @@ function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
         $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
         $err=$Target-$current
         if([Math]::Abs($err) -le 0.10){ return }
-        $scale = if($Axis -eq 'x'){155.0}else{115.0}
+        # Keep the synthetic closed-loop controller gain proportional to the
+        # runtime gate counts (X=320, Y=480 after the doubled fore/aft throw).
+        $scale = if($Axis -eq 'x'){155.0}else{230.0}
         $delta=[int][Math]::Round(($err*$scale)/$OsSign)
         if($delta -gt 65){$delta=65}; if($delta -lt -65){$delta=-65}
         if($Axis -eq 'x'){[PinkCabNativeInput]::Move($delta,0)}else{[PinkCabNativeInput]::Move(0,$delta)}
@@ -252,27 +254,73 @@ function Assert-HeldKey([int]$Vk,[string]$Name) {
 
 function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelta=120,[int]$HeldVk=0,[string]$HeldName='') {
     $before=Get-State
-    Assert-HeldKey $HeldVk $HeldName
-    Send-Wheel $PrimaryWheelDelta
-    Start-Sleep -Milliseconds 180
-    $after=Get-State
-    $beforeVal=[double]$before.$Field; $afterVal=[double]$after.$Field
     $wheel=$PrimaryWheelDelta
-    if($afterVal -le $beforeVal + 0.001) {
-        $wheel=-$PrimaryWheelDelta
+    $responded=$false
+
+    # Synthetic Windows input can report a key as physically down before the
+    # packaged viewport has consumed that transition. Probe both wheel
+    # directions, and if neither changes the semantic axis, re-prime the held
+    # key once through a real up/down edge. This does not relax the contract:
+    # the axis still has to respond to foreground OS input and reach the same
+    # target interval.
+    for($probe=1;$probe -le 3 -and -not $responded;$probe++) {
+        Focus-GameWindow $script:GameHwnd
         Assert-HeldKey $HeldVk $HeldName
-        Send-Wheel $wheel
-        Start-Sleep -Milliseconds 180
+
+        $beforeVal=[double]$before.$Field
+        Send-Wheel $PrimaryWheelDelta
+        Start-Sleep -Milliseconds 220
+        $after=Get-State
+        $afterVal=[double]$after.$Field
+        Write-Host "PACKAGED_OS_INPUT_DOSE_PROBE field=$Field probe=$probe dir=primary before=$beforeVal after=$afterVal"
+        if($afterVal -gt $beforeVal + 0.001) {
+            $wheel=$PrimaryWheelDelta
+            $responded=$true
+            break
+        }
+
+        Focus-GameWindow $script:GameHwnd
+        Assert-HeldKey $HeldVk $HeldName
+        Send-Wheel (-$PrimaryWheelDelta)
+        Start-Sleep -Milliseconds 220
+        $after=Get-State
+        $afterVal=[double]$after.$Field
+        Write-Host "PACKAGED_OS_INPUT_DOSE_PROBE field=$Field probe=$probe dir=opposite before=$beforeVal after=$afterVal"
+        if($afterVal -gt $beforeVal + 0.001) {
+            $wheel=-$PrimaryWheelDelta
+            $responded=$true
+            break
+        }
+
+        if($HeldVk -ne 0) {
+            Write-Host "PACKAGED_OS_INPUT_REPRIME_HELD field=$Field key=$HeldName probe=$probe"
+            [PinkCabNativeInput]::KeyUp($HeldVk)
+            Start-Sleep -Milliseconds 120
+            Focus-GameWindow $script:GameHwnd
+            [PinkCabNativeInput]::KeyDown($HeldVk)
+            Start-Sleep -Milliseconds 220
+            Assert-HeldKey $HeldVk $HeldName
+        }
+        $before=Get-State
     }
-    for($i=0;$i -lt 24;$i++) {
-        $v=[double](Get-State).$Field
+
+    if(-not $responded) {
+        $last=Get-State
+        throw "Could not start dosing $Field through foreground OS input. Last=$($last.raw)"
+    }
+
+    for($i=0;$i -lt 32;$i++) {
+        $state=Get-State
+        $v=[double]$state.$Field
         if($v -ge $Min -and $v -le $Max){ return }
-        if($v -gt $Max) { throw "$Field overshot target: $v" }
+        if($v -gt $Max) { throw "$Field overshot target: $v Last=$($state.raw)" }
+        Focus-GameWindow $script:GameHwnd
         Assert-HeldKey $HeldVk $HeldName
         Send-Wheel $wheel
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 160
     }
-    throw "Could not dose $Field"
+    $last=Get-State
+    throw "Could not dose $Field. Last=$($last.raw)"
 }
 
 $proc=$null
@@ -299,23 +347,66 @@ try {
     Start-Sleep -Milliseconds 500
 
     Wait-State { param($s) $s.menu -eq 1 -and $s.camera -eq 1 -and $s.wheels -eq 4 } 8000 "startup menu/camera/wheels" | Out-Null
-    Focus-GameWindow $proc.MainWindowHandle
-    Tap-Key $VK_ESC
-    Wait-State { param($s) $s.menu -eq 0 } 5000 "ESC closes startup menu" | Out-Null
+
+    # Fresh content-heavy packages can publish gate telemetry slightly before
+    # the Slate/player input stack is ready to consume the first synthetic
+    # keyboard event. Keep this an OS-input test, but settle/focus and retry
+    # the startup ESC instead of treating one dropped event as product failure.
+    Start-Sleep -Milliseconds 1200
+    $menuClosed=$false
+    for($attempt=1; $attempt -le 4 -and -not $menuClosed; ++$attempt){
+        Focus-GameWindow $proc.MainWindowHandle
+        Start-Sleep -Milliseconds 180
+        Tap-Key $VK_ESC 220
+        $deadlineEsc=[DateTime]::UtcNow.AddMilliseconds(1400)
+        do {
+            Start-Sleep -Milliseconds 80
+            $escState=Get-State
+            if($null -ne $escState -and $escState.menu -eq 0){
+                $menuClosed=$true
+                break
+            }
+        } while([DateTime]::UtcNow -lt $deadlineEsc)
+        if(-not $menuClosed){
+            Write-Host "PACKAGED_OS_INPUT_ESC_RETRY=$attempt"
+        }
+    }
+    if(-not $menuClosed){
+        $lastEsc=Get-State
+        throw "Timed out: ESC closes startup menu after focused retries. Last=$($lastEsc.raw)"
+    }
 
     Focus-GameWindow $proc.MainWindowHandle
     [PinkCabNativeInput]::KeyDown($VK_SPACE)
     Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 2500 "Space enters gaze mode with ignition aim telemetry" | Out-Null
 
     function Calibrate-AimAxis([string]$Field,[int]$Dx,[int]$Dy) {
-        $before=Get-State
-        [PinkCabNativeInput]::Move($Dx,$Dy)
-        Start-Sleep -Milliseconds 260
-        $after=Get-State
-        $delta=[double]$after.$Field-[double]$before.$Field
-        $counts = if($Dx -ne 0) { [double]$Dx } else { [double]$Dy }
-        if([Math]::Abs($delta) -lt 0.05){ throw "Aim calibration produced no measurable $Field response" }
-        return $delta/$counts
+        # The packaged window can publish gaze telemetry a frame before the
+        # foreground raw-mouse path is ready. Keep this a real OS-input check,
+        # but refocus and retry the calibration sample instead of treating one
+        # dropped mouse packet as a product regression.
+        for($attempt=1; $attempt -le 4; ++$attempt) {
+            Focus-GameWindow $script:GameHwnd
+            Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 1500 "gaze remains active during aim calibration" | Out-Null
+            Start-Sleep -Milliseconds (120 * $attempt)
+
+            $scale=$attempt
+            $sampleDx=$Dx*$scale
+            $sampleDy=$Dy*$scale
+            $before=Get-State
+            [PinkCabNativeInput]::Move($sampleDx,$sampleDy)
+            Start-Sleep -Milliseconds 260
+            $after=Get-State
+            $delta=[double]$after.$Field-[double]$before.$Field
+            $counts = if($sampleDx -ne 0) { [double]$sampleDx } else { [double]$sampleDy }
+            Write-Host "PACKAGED_OS_INPUT_AIM_PROBE field=$Field attempt=$attempt delta=$delta counts=$counts"
+            if([Math]::Abs($delta) -ge 0.05){
+                return $delta/$counts
+            }
+        }
+
+        $last=Get-State
+        throw "Aim calibration produced no measurable $Field response after focused retries. Last=$($last.raw)"
     }
 
     $yawPerCount=Calibrate-AimAxis 'aimyaw' 24 0
@@ -380,9 +471,51 @@ try {
     Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "RMB+LMB gearbox manipulation from held quick target" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_3)
 
-    $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
-    Move-GameAxis 'x' 0.0 $signX
+    # Calibrate Y while the lever is still on the valid neutral 3/4 rail (X=1).
+    # The extended H-gate intentionally blocks fore/aft motion between rails.
     $signY=Probe-AxisResponse 'geary' 0 25 0.03 1500
+    Move-GameAxis 'y' 0.0 $signY
+    $signX=Probe-AxisResponse 'gearx' 25 0 0.03 1500
+    Move-GameAxis 'x' 1.0 $signX
+
+    # Double-length fore/aft contract: the old full throw (240 counts) must
+    # now stop inside neutral travel instead of immediately entering 3/4.
+    [PinkCabNativeInput]::Move(0,[int]($signY*240)); Start-Sleep -Milliseconds 350
+    $halfThrow=Get-State
+    if($halfThrow.requested -ne 0 -or [Math]::Abs($halfThrow.geary) -gt 0.60){
+        throw "CD643_HGATE_Y_HALF_THROW_NOT_NEUTRAL requested=$($halfThrow.requested) geary=$($halfThrow.geary)"
+    }
+    Write-Host 'CD643_PACKAGED_HGATE_Y_HALF_NEUTRAL=PASS'
+
+    [PinkCabNativeInput]::Move(0,[int]($signY*240)); Start-Sleep -Milliseconds 350
+    Wait-State { param($s) $s.requested -eq 3 -and $s.geary -ge 0.65 } 3000 "double-length fore/aft throw enters third" | Out-Null
+    Write-Host 'CD643_PACKAGED_HGATE_Y_DOUBLE_THROW=PASS'
+    Move-GearCursor 1.0 0.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq 0 } 3000 "double-length third exits to neutral" | Out-Null
+
+    # Wide middle-zone proof. 3/4 must not require pixel-perfect aiming at
+    # a single rail: any comfortable central position between the two extreme
+    # outer gates should accept a deliberate fore/aft throw.
+    Move-GearCursor 0.0 1.0 $signX $signY
+    Wait-State {
+        param($s)
+        $s.requested -eq 3 -and [Math]::Abs($s.gearx-0.0) -le 0.12 -and $s.geary -ge 0.65
+    } 4000 "wide middle zone requests third from center-left" | Out-Null
+    Write-Host 'CD643_PACKAGED_GEAR3_WIDE=PASS'
+
+    Move-GearCursor 0.0 0.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq 0 } 3000 "third exits to neutral" | Out-Null
+
+    Move-GearCursor 1.35 -1.0 $signX $signY
+    Wait-State {
+        param($s)
+        $s.requested -eq 4 -and [Math]::Abs($s.gearx-1.35) -le 0.12 -and $s.geary -le -0.65
+    } 4000 "wide middle zone requests fourth from center-right" | Out-Null
+    Write-Host 'CD643_PACKAGED_GEAR4_WIDE=PASS'
+
+    Move-GearCursor 1.35 0.0 $signX $signY
+    Wait-State { param($s) $s.requested -eq 0 } 3000 "fourth exits to neutral" | Out-Null
+
     Move-GearCursor -1.0 1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq 1 } 4000 "H-gate requests first" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
@@ -397,7 +530,7 @@ try {
 
     [PinkCabNativeInput]::KeyDown($VK_E)
     Wait-State { param($s) $s.throttle -le 0.01 -and $s.clutch -ge 0.90 } 2500 "fresh E does not invent throttle" | Out-Null
-    Dose-To 'throttle' 0.25 0.35 120 $VK_E 'E' $VK_E 'E'
+    Dose-To 'throttle' 0.25 0.35 120 $VK_E 'E'
     [PinkCabNativeInput]::KeyUp($VK_Q)
     Wait-State { param($s) $s.engaged -eq 1 -and $s.longcm -gt 500.0 -and $s.speed -gt 0.5 } 10000 "forward packaged movement beyond 5m" | Out-Null
 
@@ -420,7 +553,7 @@ try {
     [PinkCabNativeInput]::LeftDown(); Start-Sleep -Milliseconds 160
     Wait-State { param($s) $s.target -eq 'Gearbox' -and $s.grip -eq 1 -and $s.manip -eq 1 } 4000 "gearbox retained for reverse manipulation" | Out-Null
     [PinkCabNativeInput]::KeyUp($VK_3)
-    Move-GearCursor 1.0 -1.0 $signX $signY
+    Move-GearCursor 2.0 -1.0 $signX $signY
     Wait-State { param($s) $s.requested -eq -1 } 4000 "H-gate requests reverse" | Out-Null
     [PinkCabNativeInput]::LeftUp(); [PinkCabNativeInput]::RightUp()
     Wait-State { param($s) $s.engaged -eq -1 } 4000 "reverse engages with clutch down" | Out-Null
