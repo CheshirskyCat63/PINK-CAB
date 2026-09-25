@@ -903,31 +903,33 @@ UMaterial* CreateRoadVisualV2Material(
 
     UMaterial* Material = LoadObject<UMaterial>(
         nullptr, *ObjectPath);
-    if (!Material)
+    if (Material)
     {
-        UPackage* Package = CreatePackage(PackageName);
-        Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
-        if (!Package)
-        {
-            return nullptr;
-        }
-
-        Material = NewObject<UMaterial>(
-            Package,
-            FName(AssetName),
-            RF_Public | RF_Standalone | RF_Transactional);
-        Test.TestNotNull(
-            TEXT("R4 project-owned asphalt material created"),
-            Material);
-        if (!Material)
-        {
-            return nullptr;
-        }
-        FAssetRegistryModule::AssetCreated(Material);
+        Test.AddError(
+            TEXT("R4 asphalt graph regeneration requires a clean package; UE 5.8 cannot safely replace the loaded canonical material graph in-place"));
+        return nullptr;
     }
 
+    UPackage* Package = CreatePackage(PackageName);
+    Test.TestNotNull(TEXT("R4 asphalt package created"), Package);
+    if (!Package)
+    {
+        return nullptr;
+    }
+
+    Material = NewObject<UMaterial>(
+        Package,
+        FName(AssetName),
+        RF_Public | RF_Standalone | RF_Transactional);
+    Test.TestNotNull(
+        TEXT("R4 project-owned asphalt material created"),
+        Material);
+    if (!Material)
+    {
+        return nullptr;
+    }
+    FAssetRegistryModule::AssetCreated(Material);
     Material->PreEditChange(nullptr);
-    UMaterialEditingLibrary::DeleteAllMaterialExpressions(Material);
 
     auto* WorldPosition = Cast<UMaterialExpressionWorldPosition>(
         UMaterialEditingLibrary::CreateMaterialExpression(
