@@ -154,12 +154,13 @@ TSet<UStaticMesh*> LoadNativeMarkMeshes(FAutomationTestBase& Test)
                 Material);
             if (Material)
             {
-                Test.TestTrue(
+                Test.TestEqual(
                     *FString::Printf(
-                        TEXT("%s runtime material is project-owned"),
+                        TEXT("%s uses the exact R3 road-mark paint material"),
                         *AssetName),
-                    Material->GetPathName().StartsWith(
-                        TEXT("/Game/World/L1/Road/Materials/")));
+                    Material->GetPathName(),
+                    FString(
+                        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark.M_PC_L1_Mark")));
             }
         }
     }
