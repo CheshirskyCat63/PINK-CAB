@@ -1,0 +1,44 @@
+name: CD-869 R4 Material API Audit
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 10
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: false
+      - name: Inspect UE 5.8 texture and material APIs
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $src=Join-Path $env:UE_ROOT 'Engine\Source'
+          $patterns=@(
+            'class UMaterialExpressionNormalFromHeightmap',
+            'UMaterialExpressionNormalFromHeightmap',
+            'class UMaterialExpressionTextureSample',
+            'class UMaterialExpressionTextureCoordinate',
+            'FTextureSource',
+            'void Init\(',
+            'Source.Init\(',
+            'TSF_BGRA8',
+            'MipGenSettings'
+          )
+          foreach($pattern in $patterns){
+            Write-Host "=== PATTERN $pattern ==="
+            Get-ChildItem $src -Recurse -Include *.h,*.cpp -File -ErrorAction SilentlyContinue |
+              Select-String -Pattern $pattern -ErrorAction SilentlyContinue |
+              Select-Object -First 25 |
+              ForEach-Object { Write-Host "$($_.Path):$($_.LineNumber):$($_.Line.Trim())" }
+          }
