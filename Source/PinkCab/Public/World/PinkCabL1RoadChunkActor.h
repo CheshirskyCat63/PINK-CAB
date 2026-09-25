@@ -47,6 +47,9 @@ private:
     TObjectPtr<UStaticMeshComponent> RoadSidewalksComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
+    TObjectPtr<UStaticMeshComponent> RoadMarksComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TArray<TObjectPtr<UStaticMeshComponent>> RoadCurbComponents;
 
     bool bBound = false;
