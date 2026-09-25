@@ -80,6 +80,10 @@ jobs:
           $ErrorActionPreference='Stop'
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $legacy=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Materials\M_PC_L1_Asphalt.uasset'
+          if(-not (Test-Path $legacy)){ throw 'R41_LEGACY_ASPHALT_MISSING_BEFORE_CLEAN_REGEN' }
+          Remove-Item -LiteralPath $legacy -Force
+          Write-Host 'R41_LEGACY_ASPHALT_REMOVED_FOR_CLEAN_REGEN=PASS'
           $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R41_GENERATE.log'
           & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadR4VisualMaterial" "-TestExit=Automation Test Queue Empty"
           $exit=$LASTEXITCODE
