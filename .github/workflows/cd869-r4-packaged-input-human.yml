@@ -1,0 +1,163 @@
+name: CD-869 R4 Packaged Input Human Gate
+
+on:
+  push:
+    branches:
+      - feat/CD-869-r4-road-visual-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-r4-packaged-input-human
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify frozen controls on exact R4 package
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    env:
+      R4_SHA: 53b393475feb5f99046a3f07a54592242bab0a3a
+      R4_RUN: 36113804371
+      R4_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R4_VISUAL_53b39347_RUN36113804371\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+      R4_DELIVERY: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R4_VISUAL_53b39347_RUN36113804371
+      R3_EXE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_R3_METAROAD_aa5d7c99_RUN36095423828\Windows\PinkCab\Binaries\Win64\PinkCab.exe
+
+    steps:
+      - name: Checkout branch for scripts and scope proof
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Prove R4 did not modify car or input owners
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $accepted='55e9fd8481a114265fd43f1c6433d86df53ba991'
+
+          $runtimeDelta=@(git diff --name-only $accepted HEAD -- Source/PinkCab Source/PinkCabVehicle Source/PinkCabInteraction Config)
+          if($runtimeDelta.Count -ne 0){
+            $runtimeDelta | ForEach-Object { Write-Host "R4_FORBIDDEN_RUNTIME_DELTA=$_" }
+            throw 'R4_MODIFIED_FROZEN_RUNTIME_OR_INPUT'
+          }
+
+          $contentDelta=@(git diff --name-only $accepted HEAD -- Content)
+          foreach($p in $contentDelta){
+            Write-Host "R4_CONTENT_DELTA=$p"
+            if($p -ne 'Content/World/L1/Road/Materials/M_PC_L1_Asphalt.uasset'){
+              throw "R4_UNEXPECTED_CONTENT_DELTA=$p"
+            }
+          }
+          Write-Host 'R4_CAR_INPUT_SOURCE_BYTES_FROZEN=PASS'
+
+      - name: Verify exact delivered package provenance
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          if(-not (Test-Path $env:R4_EXE)){ throw "R4_EXE_MISSING $env:R4_EXE" }
+          $candidate=Join-Path $env:R4_DELIVERY 'CANDIDATE_SHA.txt'
+          $runId=Join-Path $env:R4_DELIVERY 'RUN_ID.txt'
+          if(-not (Test-Path $candidate)){ throw 'R4_CANDIDATE_SHA_FILE_MISSING' }
+          if(-not (Test-Path $runId)){ throw 'R4_RUN_ID_FILE_MISSING' }
+          $sha=(Get-Content -Raw $candidate).Trim()
+          $run=(Get-Content -Raw $runId).Trim()
+          if($sha -ne $env:R4_SHA){ throw "R4_DELIVERY_SHA_MISMATCH $sha != $env:R4_SHA" }
+          if($run -ne $env:R4_RUN){ throw "R4_DELIVERY_RUN_MISMATCH $run != $env:R4_RUN" }
+          $sig=Get-AuthenticodeSignature $env:R4_EXE
+          if($sig.Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw "R4_EXE_SIGNATURE_INVALID $($sig.Status)"
+          }
+          Write-Host "R4_DELIVERY_SHA=$sha"
+          Write-Host "R4_DELIVERY_RUN=$run"
+          Write-Host 'R4_DELIVERY_PROVENANCE=PASS'
+
+      - name: Full packaged OS-input gate on exact R4 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+
+          function Stop-PinkCab {
+            $ps=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            foreach($p in $ps){
+              Write-Host "R4_INPUT_STOP pid=$($p.Id) path=$($p.Path)"
+              Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            }
+            Start-Sleep -Seconds 2
+            if(@(Get-Process PinkCab -ErrorAction SilentlyContinue).Count -ne 0){
+              throw 'R4_INPUT_COULD_NOT_REAP_PINKCAB'
+            }
+          }
+
+          Stop-PinkCab
+          $evidence=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\R4_PACKAGED_INPUT'
+          try {
+            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $env:R4_EXE -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            if($LASTEXITCODE -ne 0){ throw "R4_PACKAGED_INPUT_EXIT=$LASTEXITCODE" }
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            if(-not (Test-Path $summary)){ throw 'R4_PACKAGED_INPUT_SUMMARY_MISSING' }
+            Get-Content $summary | ForEach-Object { Write-Host "R4_INPUT_SUMMARY=$_" }
+            if(-not (Select-String $summary -Pattern 'PASS' -Quiet)){
+              throw 'R4_PACKAGED_INPUT_SUMMARY_NOT_PASS'
+            }
+            Write-Host 'R4_PACKAGED_OS_INPUT=PASS'
+          }
+          catch {
+            Stop-PinkCab
+            if(Test-Path $env:R3_EXE){
+              $saved=$env:RUNNER_TRACKING_ID
+              $env:RUNNER_TRACKING_ID=''
+              try {
+                $p=Start-Process -FilePath $env:R3_EXE -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $env:R3_EXE) -PassThru
+                Start-Sleep -Seconds 5
+                Write-Host "R4_INPUT_FAIL_RESTORED_R3_PID=$($p.Id)"
+              } finally { $env:RUNNER_TRACKING_ID=$saved }
+            }
+            throw
+          }
+
+      - name: Install shortcuts and launch exact R4 as one process
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $stale=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+          foreach($p in $stale){
+            Write-Host "R4_HUMAN_REAP pid=$($p.Id) path=$($p.Path)"
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+          Start-Sleep -Seconds 2
+          if(@(Get-Process PinkCab -ErrorAction SilentlyContinue).Count -ne 0){ throw 'R4_HUMAN_STRAY_PROCESS' }
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R4 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$env:R4_EXE
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $env:R4_EXE)
+            $s.Description="PINK CAB R4 exact package $env:R4_SHA run $env:R4_RUN"
+            $s.Save()
+            Write-Host "R4_HUMAN_SHORTCUT=$lnk"
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $env:R4_EXE -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $env:R4_EXE) -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if($proc.HasExited){ throw "R4_HUMAN_EXITED_EARLY code=$($proc.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "R4_HUMAN_EXPECTED_ONE_PROCESS count=$($all.Count)" }
+            if($all[0].Path -ne $env:R4_EXE){ throw "R4_HUMAN_WRONG_PROCESS_PATH $($all[0].Path)" }
+            Write-Host "R4_HUMAN_PID=$($proc.Id)"
+            Write-Host "R4_HUMAN_PATH=$($all[0].Path)"
+            Write-Host 'R4_HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
