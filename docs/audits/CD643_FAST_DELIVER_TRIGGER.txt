@@ -1,2 +1,0 @@
-candidate_source=bc3cbf0bb69cdf91887170634af44e2c47e030fe
-request=double-y-travel-green-human-v2
