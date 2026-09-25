@@ -37,8 +37,8 @@ jobs:
             $p=Join-Path $dir ($name + '.uasset')
             if(-not(Test-Path $p)){ throw "R3_PROFILE_MISSING=$p" }
             $bytes=[System.IO.File]::ReadAllBytes($p)
-            $ascii=[System.Text.Encoding]::ASCII.GetString($bytes)
-            $utf16=[System.Text.Encoding]::Unicode.GetString($bytes)
+            $ascii=([System.Text.Encoding]::ASCII.GetString($bytes)) -replace [char]0,''
+            $utf16=([System.Text.Encoding]::Unicode.GetString($bytes)) -replace [char]0,''
             $refs=@()
             foreach($txt in @($ascii,$utf16)){
               $refs += [regex]::Matches($txt,'(?:broked|solid|double)_[A-Za-z0-9_]+') | ForEach-Object { $_.Value }
