@@ -46,9 +46,8 @@ jobs:
             throw 'R3_TRACKED_WORKSPACE_DIRTY'
           }
 
-          if(-not (git merge-base --is-ancestor $env:BASE_SHA HEAD)){
-            throw 'R3_BASE_NOT_ANCESTOR'
-          }
+          git merge-base --is-ancestor $env:BASE_SHA HEAD
+          if($LASTEXITCODE -ne 0){ throw 'R3_BASE_NOT_ANCESTOR' }
 
           $trackedMarks=@(git ls-files 'Content/World/L1/Road/RoadMarks*.uasset')
           if($trackedMarks.Count -ne 0){ throw "R3_RED_INVALID_TRACKED_MARKS=$($trackedMarks.Count)" }
@@ -139,20 +138,36 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $modifiedTracked=@(git diff --name-only)
-          foreach($path in $modifiedTracked){
-            if($path -like 'Content/World/L1/Road/RoadMarks*.uasset' -or
-               $path -eq 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'){
-              continue
-            }
+
+          # Restore every tracked runtime road file byte-for-byte. R3 is allowed
+          # to add only native mark meshes + mark material; the authoring map may
+          # change because it now carries the MetaRoad mark attributes.
+          $trackedRoad=@(git ls-files 'Content/World/L1/Road/**' 'Content/World/L1/Road/*')
+          foreach($path in $trackedRoad){
             Write-Host "R3_RESTORE_FROZEN=$path"
             git restore --source=$env:GITHUB_SHA --worktree -- $path
           }
-          $remainingTracked=@(git diff --name-only)
-          if($remainingTracked.Count -ne 0){
-            $remainingTracked | ForEach-Object { Write-Host "R3_UNEXPECTED_TRACKED_DIFF=$_" }
-            throw 'R3_FROZEN_TRACKED_DIFF_REMAINS'
+
+          # Remove any noncanonical duplicate generated layers. The only allowed
+          # untracked runtime additions after restore are RoadMarks* and mark material.
+          foreach($pattern in @('RoadSurface*.uasset','RoadSidewalks*.uasset','RoadCurbs*.uasset')){
+            Get-ChildItem 'Content\\World\\L1\\Road' -Filter $pattern -File -ErrorAction SilentlyContinue |
+              Where-Object { -not (git ls-files --error-unmatch $_.FullName.Substring($env:GITHUB_WORKSPACE.Length+1).Replace('\\','/') 2>$null) } |
+              ForEach-Object {
+                Write-Host "R3_REMOVE_DUPLICATE_GENERATED=$($_.Name)"
+                Remove-Item -LiteralPath $_.FullName -Force
+              }
           }
+
+          $remainingTracked=@(git diff --name-only -- 'Content/World/L1/Road')
+          if($remainingTracked.Count -ne 0){
+            $remainingTracked | ForEach-Object { Write-Host "R3_UNEXPECTED_TRACKED_ROAD_DIFF=$_" }
+            throw 'R3_FROZEN_TRACKED_ROAD_DIFF_REMAINS'
+          }
+
+          $marks=@(Get-ChildItem 'Content\\World\\L1\\Road' -Filter 'RoadMarks*.uasset' -File)
+          if($marks.Count -ne 50){ throw "R3_CANONICAL_MARK_COUNT=$($marks.Count)" }
+          if(-not(Test-Path 'Content\\World\\L1\\Road\\Materials\\M_PC_L1_Mark.uasset')){ throw 'R3_MARK_MATERIAL_MISSING_AFTER_RESTORE' }
           Write-Host 'R3_R2_BINARIES_EXACT=PASS'
 
       - name: GREEN - native R3 markings and frozen world regressions
@@ -192,11 +207,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
+          git add -- 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap'
           git add -- 'Content/World/L1/Road/RoadMarks*.uasset'
           git add -- 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
 
           $staged=@(git diff --cached --name-only)
           $bad=@($staged | Where-Object {
+            $_ -ne 'Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap' -and
             $_ -notlike 'Content/World/L1/Road/RoadMarks*.uasset' -and
             $_ -ne 'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
           })
@@ -204,7 +221,7 @@ jobs:
             $bad | ForEach-Object { Write-Host "R3_BAD_STAGED=$_" }
             throw 'R3_SCOPE_VIOLATION'
           }
-          if($staged.Count -ne 51){
+          if($staged.Count -ne 52){
             $staged | ForEach-Object { Write-Host "R3_STAGED=$_" }
             throw "R3_STAGED_COUNT=$($staged.Count)"
           }
