@@ -109,7 +109,7 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'CD869_TEXTURE_REPAIR_EDITOR_BUILD=PASS'
 
@@ -173,7 +173,10 @@ jobs:
             $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
             $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
 
-            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCab Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           } finally {
             Move-Item $backup $project -Force
