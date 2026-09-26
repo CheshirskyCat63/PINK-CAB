@@ -359,11 +359,11 @@ bool FPinkCabLowRpmCoupledOverloadStallTest::RunTest(const FString& Parameters)
 
     const FPinkCabVehicleControlOutput Output = Runtime.Update(
         EngineStateTick(false, false, false),
-        EngineStateTelemetry(0.0f, 700.0f),
+        EngineStateTelemetry(0.0f, 925.0f),
         Cockpit,
         Health);
 
-    TestEqual(TEXT("low-rpm fully coupled first gear enters Stalled"),
+    TestEqual(TEXT("stopping in gear at warm idle floor enters Stalled"),
         Cockpit.GetIgnitionState(), EPinkCabIgnitionState::Stalled);
     TestEqual(TEXT("stall removes throttle command"),
         Output.Controls.Throttle, 0.0f);
