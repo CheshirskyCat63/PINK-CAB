@@ -78,7 +78,7 @@ FORBIDDEN_PATTERNS = {
     "DIRECT_LINEAR_VELOCITY_WRITE": r"\b(?:SetPhysicsLinearVelocity|SetAllPhysicsLinearVelocity|SetLinearVelocity)\s*\(",
     "DIRECT_ANGULAR_VELOCITY_WRITE": r"\b(?:SetPhysicsAngularVelocity(?:InRadians|InDegrees)?|SetAllPhysicsAngularVelocity(?:InRadians|InDegrees)?|SetAngularVelocity)\s*\(",
     "DIRECT_ACTOR_TELEPORT": r"\b(?:AddActorWorldOffset|SetActorLocation(?:AndRotation)?)\s*\(",
-    "CHAOS_ASSIST_NONFALSE": r"\bMovement\.(?:TorqueControl|TargetRotationControl|StabilizeControl)\.Enabled\s*=\s*(?!false\b)",
+    "CHAOS_ASSIST_NONFALSE": r"\bMovement\.(?:TorqueControl|TargetRotationControl|StabilizeControl)\.Enabled\s*=\s*(?!false\b)[A-Za-z_]",
 }
 
 def scan():
