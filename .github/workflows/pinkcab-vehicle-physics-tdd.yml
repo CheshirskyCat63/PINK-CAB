@@ -14,10 +14,24 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Source/PinkCabTests/Private/Vehicle/PinkCabVehiclePhysicsBaselineTests.cpp'
+      - 'Source/PinkCabVehicle/**'
+      - 'Source/PinkCab/Private/Vehicle/**'
+      - 'Source/PinkCab/Public/Vehicle/**'
+      - 'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn*.cpp'
+      - 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h'
+      - 'Source/PinkCabTests/Private/Vehicle/**'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
+      - 'scripts/ci/verify_vehicle_physics_writers.py'
+      - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
+      - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
   workflow_dispatch:
+    inputs:
+      freeze_baseline:
+        description: 'Explicitly create a new immutable physics baseline'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -116,7 +130,7 @@ jobs:
           $ErrorActionPreference='Stop'
           $expected='${{ github.event.pull_request.head.sha || github.sha }}'
           $freezeRoot=''
-          if('${{ github.event_name }}' -eq 'push' -and '${{ github.ref }}' -eq 'refs/heads/main'){
+          if('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.freeze_baseline }}' -eq 'true'){
             $freezeRoot=$env:BASELINE_ROOT_BASE
           }
           & .\scripts\ci\capture-vehicle-physics-baseline.ps1 `
