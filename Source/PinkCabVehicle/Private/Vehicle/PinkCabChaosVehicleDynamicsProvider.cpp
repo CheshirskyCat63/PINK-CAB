@@ -7,8 +7,6 @@ namespace
 void PopulateActuationTelemetry(
     UChaosWheeledVehicleMovementComponent& Movement,
     const FPinkCabVehicleControlState& Controls,
-    const FPinkCabEngineActuationResult& Actuation,
-    const float EngineTorqueCurveNm,
     FPinkCabCausalActuationTelemetry& Out)
 {
     Out = {};
@@ -105,8 +103,6 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
     PopulateActuationTelemetry(
         *Movement,
         Controls,
-        {},
-        0.0f,
         LastCausalActuation);
 
     Movement->SetThrottleInput(
