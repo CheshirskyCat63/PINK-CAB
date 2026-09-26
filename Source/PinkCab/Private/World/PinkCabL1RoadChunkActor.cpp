@@ -87,9 +87,6 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
 
     RoadPhysicalMaterial =
         PinkCabRoadSurfacePhysics::LoadDryAsphaltPhysicalMaterial();
-    PinkCabRoadSurfacePhysics::ApplyDryAsphaltPhysicalMaterial(
-        RoadMeshComponent,
-        RoadPhysicalMaterial);
 
     RoadSidewalksComponent =
         CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadSidewalks"));
@@ -221,6 +218,9 @@ bool APinkCabL1RoadChunkActor::BindChunk(
 
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
+    PinkCabRoadSurfacePhysics::ApplyDryAsphaltPhysicalMaterial(
+        RoadMeshComponent,
+        RoadPhysicalMaterial);
     RoadMeshComponent->SetCollisionEnabled(
         ECollisionEnabled::QueryAndPhysics);
     SetNativeMetaRoadConstructionCollision(
