@@ -138,11 +138,17 @@ public:
 
             // This test owns only road seam continuity. Keep it independent
             // from engine/clutch/stall rules by crossing on chassis inertia.
+            // Explicitly decouple the drivetrain: a raw velocity fixture must
+            // not inherit the live pawn's pre-existing 1st-gear mechanical sim.
+            Movement->EnableMechanicalSim(false);
+            Movement->SetTargetGear(0, true);
+
             FPinkCabVehicleControlState FreeRoll;
             FreeRoll.SetThrottle(0.0f);
             FreeRoll.SetSteering(0.0f);
             FreeRoll.SetBrake(0.0f);
             FreeRoll.SetHandbrake(0.0f);
+            FreeRoll.SetDriveline(0, 0, 0.0f);
             Pawn->GetPinkCabDynamicsProvider().ApplyControls(FreeRoll);
 
             USkeletalMeshComponent* Mesh = Pawn->GetMesh();
