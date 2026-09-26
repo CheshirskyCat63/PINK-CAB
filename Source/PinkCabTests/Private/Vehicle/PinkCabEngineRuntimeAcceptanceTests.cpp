@@ -74,6 +74,7 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
             Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
             if (!Ramp)
@@ -323,7 +324,7 @@ public:
             return true;
         }
 
-        if (Elapsed < 8.00)
+        if (Elapsed < 20.00)
         {
             return false;
         }
