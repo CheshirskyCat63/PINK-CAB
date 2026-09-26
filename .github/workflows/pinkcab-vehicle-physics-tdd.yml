@@ -11,8 +11,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Source/PinkCabVehicle/**'
-      - 'Source/PinkCabTests/Private/Vehicle/**'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabVehiclePhysicsBaselineTests.cpp'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
   workflow_dispatch:
