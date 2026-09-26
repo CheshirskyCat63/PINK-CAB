@@ -1,9 +1,11 @@
 # PINK CAB — Vehicle Physics / Suspension / Handling Calibration Program
 
 **Program mirror:** 2026-09-26  
-**Scope:** planning/admin only; no vehicle or world runtime changed by this document.  
-**Git baseline audited:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
-**Runtime owner:** Unreal Engine 5.8.2 Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider`.  
+**Scope:** canonical program + execution evidence; accepted control grammar and world remain frozen unless a stage explicitly says otherwise.  
+**Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
+**Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
+**Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
+**Current execution point:** **PHY-002 · State-writer inventory**.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -66,9 +68,10 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 **Reuse owners:** CD-848 / CD-645.  
 ### PHY-001 — Freeze executable baseline
 
+**Status:** **DONE · exact-main verified 2026-09-26**.  
 **Change:** Pin main SHA, accepted vehicle SHA, active candidate, profile version, executable/hash and rollback build.  
 **Acceptance:** Exact executable ↔ manifest SHA; rollback launches prior accepted physics.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Evidence:** canonical `main@0e1a8bce8e29e56a1c16c28c9945467aed986048`, Windows run **36213319172**, UE **5.8.3**, profile `PINKCAB_TATRA613_CHAOS` schema/calibration **1/1**, deterministic profile hash `E83EAC2B6FA5D39F`, candidate exe SHA-256 `bb95af6903f3ad18140da2b54d366a981e839d9f35e97e1a7e27599ebd1d6084`. Immutable baseline root: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\PHYSICS_BASELINE_0e1a8bc_RUN36213319172`. Prior accepted rollback: `8168d72406af6934ab20eace583c2b895f0620b7`, run **35809749568**, exe SHA-256 `994a66da0f62e56cdf65f4fdf4625b98d43ecd7366787075aa3c19a674df8469`; its historical unsigned Authenticode state is recorded, while identity is enforced by BUILD_SHA + GATE_MANIFEST + SHA-256. Original rollback run is successful launch evidence. No owner feel gate was required because PHY-001 changes no driving behavior.
 
 ### PHY-002 — State-writer inventory
 
