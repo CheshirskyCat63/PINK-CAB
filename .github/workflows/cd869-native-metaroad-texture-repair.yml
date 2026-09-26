@@ -1,0 +1,315 @@
+name: CD-869 Native MetaRoad Texture Repair
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-native-metaroad-texture-repair
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    name: Restore native MetaRoad textures, verify, package, HUMAN
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869NativeTextureRepair
+      BASELINE: 269d8b4b5b79f33eb2160d177a282c3cec965772
+      R4_SOURCE: 0950cf0b59efbfb777040e709a5aa0fcdf2c2599
+
+    steps:
+      - name: Checkout exact repair head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          $status=@(git status --porcelain --untracked-files=all)
+          if($status.Count -ne 0){ $status | % { Write-Host $_ }; throw 'CD869_TEXTURE_REPAIR_DIRTY_PREFLIGHT' }
+          git merge-base --is-ancestor $env:BASELINE HEAD
+          if($LASTEXITCODE -ne 0){ throw 'CD869_TEXTURE_REPAIR_NOT_BASED_ON_269D' }
+          $descriptor=Get-Content -Raw .\PinkCab.uproject | ConvertFrom-Json
+          $meta=@($descriptor.Plugins | Where-Object { $_.Name -eq 'MetaRoad' })
+          if($meta.Count -ne 1 -or -not $meta[0].Enabled){ throw 'CD869_METAROAD_NOT_ENABLED' }
+          if($meta[0].PSObject.Properties.Name -contains 'TargetAllowList'){ throw 'CD869_METAROAD_STILL_EDITOR_ONLY' }
+          Write-Host "CD869_TEXTURE_REPAIR_PREFLIGHT=PASS head=$head"
+
+      - name: Restore canonical R4 native MetaRoad road bindings
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git lfs fetch origin $env:R4_SOURCE
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $paths=@(
+            'Content/World/L1/Road/RoadSurface.uasset',
+            'Content/World/L1/Road/RoadSidewalks.uasset'
+          )
+          for($i=0;$i -lt 32;$i++){
+            $paths += if($i -eq 0){ 'Content/World/L1/Road/RoadCurbs.uasset' } else { "Content/World/L1/Road/RoadCurbs$i.uasset" }
+          }
+          for($i=0;$i -lt 50;$i++){
+            $paths += if($i -eq 0){ 'Content/World/L1/Road/RoadMarks.uasset' } else { "Content/World/L1/Road/RoadMarks$i.uasset" }
+          }
+
+          git checkout $env:R4_SOURCE -- $paths
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          git lfs checkout -- $paths
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          foreach($rel in @(
+            'Content/World/L1/Road/Materials/M_PC_L1_Asphalt.uasset',
+            'Content/World/L1/Road/Materials/M_PC_L1_GreenDivider.uasset',
+            'Content/World/L1/Road/Materials/M_PC_L1_Shoulder.uasset',
+            'Content/World/L1/Road/Materials/M_PC_L1_Mark.uasset'
+          )){
+            if(Test-Path $rel){ Remove-Item -LiteralPath $rel -Force }
+          }
+
+          foreach($p in $paths){
+            $first=[Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($p)[0..([Math]::Min(80,(Get-Item $p).Length-1))])
+            if($first -like 'version https://git-lfs.github.com/spec/v1*'){ throw "CD869_LFS_NOT_MATERIALIZED=$p" }
+          }
+
+          $changed=@(git status --porcelain --untracked-files=all)
+          foreach($line in $changed){ Write-Host "CD869_TEXTURE_REPAIR_CHANGED=$line" }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A Content/World/L1/Road
+          git diff --cached --quiet
+          $hasAssetDelta=($LASTEXITCODE -ne 0)
+          $global:LASTEXITCODE=0
+          if(-not $hasAssetDelta){
+            Write-Host 'CD869_TEXTURE_REPAIR_ASSETS_ALREADY_NATIVE=1'
+          } else {
+            git commit -m 'asset(CD-869): restore native MetaRoad texture stack'
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            if($env:GITHUB_HEAD_REF){
+              git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            }
+          }
+
+          $candidate=(git rev-parse HEAD).Trim()
+          Write-Host "CD869_TEXTURE_REPAIR_ASSET_SHA=$candidate"
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_TEXTURE_REPAIR_EDITOR_BUILD=PASS'
+
+      - name: Native MetaRoad and frozen-road tests
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1EndlessRoad.Asset.MaterialContract',
+            'PinkCab.World.L1EndlessRoad.Physics.SeamCrossing',
+            'PinkCab.Vehicle.Physics.EngineState.LowRpmCoupledOverloadStalls'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\NATIVE_TEXTURE_$safe.log"
+            New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){ throw "CD869_TEXTURE_TEST_FAIL=$test" }
+            if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){ throw "CD869_TEXTURE_TEST_QUEUE_MISSING=$test" }
+            Write-Host "CD869_TEXTURE_TEST_PASS=$test"
+          }
+
+      - name: Zero-debt code health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_TEXTURE_REPAIR_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 package with MetaRoad runtime content
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $backup="$project.native-texture-backup"
+          Copy-Item $project $backup -Force
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+
+          foreach($stale in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\StagedBuilds\Windows'),
+            $archive
+          )){
+            if(Test-Path $stale){ Remove-Item $stale -Recurse -Force }
+          }
+          New-Item -ItemType Directory -Force $archive | Out-Null
+
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCab Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $exe=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_TEXTURE_PACKAGE_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($exe)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $exe).Status -ne [System.Management.Automation.SignatureStatus]::Valid){ throw 'CD869_TEXTURE_SIGNATURE_INVALID' }
+
+          $candidate=(git rev-parse HEAD).Trim()
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $candidate -NoNewline
+          Write-Host "CD869_TEXTURE_FRESH_PACKAGE=PASS sha=$candidate"
+
+      - name: Packaged native texture audit
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_NATIVE_TEXTURE_PACKAGED.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $p=Start-Process -FilePath $exe -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=1280','-ResY=720',
+            '-PinkCabGateTelemetry','-PinkCabRoadMaterialAudit',
+            "-abslog=$log"
+          ) -WorkingDirectory (Split-Path $exe) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            do {
+              Start-Sleep -Milliseconds 300
+              $p.Refresh()
+              if($p.HasExited){ throw "CD869_TEXTURE_SMOKE_EXITED_EARLY=$($p.ExitCode)" }
+              $native=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS materials=PASS textures8k=PASS' -Quiet)
+              $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while(( -not $native -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
+
+            if(-not $native){ throw 'CD869_NATIVE_8K_TEXTURE_AUDIT_MISSING' }
+            if(-not $wheels){ throw 'CD869_TEXTURE_WHEEL_TELEMETRY_MISSING' }
+            $bad=@(Select-String $log -Pattern '(?i)Failed to load.*MetaRoad|Can.t find file.*MetaRoad|LogLinker: Error|Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception' -ErrorAction SilentlyContinue)
+            if($bad.Count -ne 0){ $bad | % { Write-Host $_.Line }; throw "CD869_TEXTURE_PACKAGED_CRITICAL=$($bad.Count)" }
+            Write-Host 'CD869_NATIVE_8K_TEXTURE_PACKAGED=PASS'
+          } finally {
+            if($p -and -not $p.HasExited){ Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+      - name: Two packaged Windows-input regression passes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          for($attempt=1;$attempt -le 2;$attempt++){
+            Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+            $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\CD869_NATIVE_TEXTURE_INPUT_" + $attempt)
+            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            if(-not (Test-Path $summary)){ throw "CD869_TEXTURE_INPUT_SUMMARY_MISSING=$attempt" }
+            foreach($marker in @(
+              'startup_menu=PASS',
+              'ignition_space_lmb=PASS',
+              'hgate_first=PASS',
+              'mandatory_e_wheel_launch=PASS',
+              'service_brake_stop=PASS',
+              'hgate_reverse=PASS',
+              'reverse_movement_over_3m=PASS',
+              'critical=0'
+            )){
+              if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){ throw "CD869_TEXTURE_INPUT_MARKER_MISSING attempt=$attempt marker=$marker" }
+            }
+            Write-Host "CD869_TEXTURE_PACKAGED_INPUT_PASS=$attempt"
+          }
+
+      - name: Deliver and launch HUMAN candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_NATIVE_TEXTURES_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "CD869_TEXTURE_DELIVERY_COPY_FAIL=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_TEXTURE_DELIVERY_EXE_MISSING' }
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+          Set-Content (Join-Path $delivery 'ROAD_VISUAL_STACK.txt') 'MetaRoad 3.2 native: MI_DriveSurface -> M_Asphalt + 8K Albedo/Normal/Roughness; M_Sidewolk; M_Curb; M_Mark' -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB NATIVE TEXTURES HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB native MetaRoad texture repair $sha"
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $exe) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "CD869_TEXTURE_HUMAN_EXITED=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "CD869_TEXTURE_HUMAN_PROCESS_COUNT=$($all.Count)" }
+            Write-Host "CD869_NATIVE_TEXTURE_HUMAN_SHA=$sha"
+            Write-Host "CD869_NATIVE_TEXTURE_HUMAN_RUN=$env:GITHUB_RUN_ID"
+            Write-Host "CD869_NATIVE_TEXTURE_HUMAN_PID=$($p.Id)"
+            Write-Host "CD869_NATIVE_TEXTURE_HUMAN_PATH=$($p.Path)"
+            Write-Host "CD869_NATIVE_TEXTURE_HUMAN_DELIVERY=$delivery"
+            Write-Host 'HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
