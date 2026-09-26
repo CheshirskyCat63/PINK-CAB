@@ -10,6 +10,7 @@ on:
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
       - 'scripts/ci/verify_vehicle_physics_writers.py'
       - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
+      - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
   push:
     branches: [main]
     paths:
