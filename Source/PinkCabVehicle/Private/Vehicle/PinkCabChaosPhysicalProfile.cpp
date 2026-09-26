@@ -135,7 +135,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 2;
+    R.CalibrationVersion = 3;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -154,6 +154,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.EngineIdleRpm = P(925.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
+    R.EngineRevDownRate = P(1800.0f, A::Calibration);
     // Supercharged/high-rev design target: strong low/mid response and a broad
     // compressor-fed plateau with roughly 250 hp still available at the 8500 rpm
     // redline. This changes engine character only; pedal, gearbox, steering and
@@ -189,6 +190,7 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         EngineIdleRpm.Authority,
         EngineBrakeEffect.Authority,
         EngineRevUpMOI.Authority,
+        EngineRevDownRate.Authority,
         NormalizedTorqueCurve.Authority,
         bUseAutomaticGears.Authority,
         bUseAutoReverse.Authority,
@@ -215,6 +217,7 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     Movement.EngineSetup.EngineIdleRPM = EngineIdleRpm.Value;
     Movement.EngineSetup.EngineBrakeEffect = EngineBrakeEffect.Value;
     Movement.EngineSetup.EngineRevUpMOI = EngineRevUpMOI.Value;
+    Movement.EngineSetup.EngineRevDownRate = EngineRevDownRate.Value;
     FRichCurve* TorqueCurve = Movement.EngineSetup.TorqueCurve.GetRichCurve();
     TorqueCurve->Reset();
     for (const FVector2D& Key : NormalizedTorqueCurve.Value)
