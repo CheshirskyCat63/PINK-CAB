@@ -38,11 +38,15 @@ jobs:
 
           $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          if(Test-Path $inner){
-            Write-Host "CD869_PACKAGE_REUSE=1 $inner"
+          $sourceSha=Join-Path $archive 'SOURCE_SHA.txt'
+          $reuse=(Test-Path $inner) -and
+              (Test-Path $sourceSha) -and
+              ((Get-Content -Raw $sourceSha).Trim() -eq $head)
+          if($reuse){
+            Write-Host "CD869_PACKAGE_REUSE=1 sha=$head $inner"
             'package_ready=true' | Out-File $env:GITHUB_OUTPUT -Append
           } else {
-            Write-Host 'CD869_PACKAGE_REUSE=0'
+            Write-Host "CD869_PACKAGE_REUSE=0 sha=$head"
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
           }
 
@@ -54,6 +58,12 @@ jobs:
           $uat=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          foreach($stale in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\StagedBuilds\Windows')
+          )){
+            if(Test-Path $stale){ Remove-Item $stale -Recurse -Force }
+          }
           if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $archive | Out-Null
 
@@ -76,7 +86,9 @@ jobs:
 
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $inner)){ throw 'CD869_INNER_EXE_MISSING_AFTER_COOK' }
-          Write-Host 'CD869_PACKAGE_BUILD=PASS'
+          $head=(git rev-parse HEAD).Trim()
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $head -NoNewline
+          Write-Host "CD869_PACKAGE_BUILD=PASS sha=$head"
 
       - name: Sign only the real game executable
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
@@ -108,6 +120,7 @@ jobs:
             '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
             '-log','-windowed','-ResX=1280','-ResY=720',
             '-PinkCabGateTelemetry',
+            '-PinkCabRoadMaterialAudit',
             "-abslog=$log"
           ) -WorkingDirectory (Split-Path $inner) -PassThru
           try {
@@ -118,10 +131,12 @@ jobs:
               if($proc.HasExited){ throw "CD869_SMOKE_EXITED_EARLY code=$($proc.ExitCode)" }
               $loaded=(Test-Path $log) -and [bool](Select-String $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
               $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
-            } while(( -not $loaded -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
+              $materials=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS' -Quiet)
+            } while(( -not $loaded -or -not $wheels -or -not $materials) -and [DateTime]::UtcNow -lt $deadline)
 
             if(-not $loaded){ throw 'CD869_SMOKE_MAP_NOT_LOADED' }
             if(-not $wheels){ throw 'CD869_SMOKE_TATRA_TELEMETRY_MISSING' }
+            if(-not $materials){ throw 'CD869_SMOKE_ROAD_MATERIAL_AUDIT_MISSING' }
 
             $critical=@(Select-String $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -ErrorAction SilentlyContinue)
             if($critical.Count -gt 0){ throw "CD869_SMOKE_CRITICAL=$($critical.Count)" }
