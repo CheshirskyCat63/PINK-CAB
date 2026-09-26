@@ -34,8 +34,9 @@ jobs:
       TEST_LOG: Saved\GitHubGate\VEHICLE_PHYSICS_TDD.log
       BASELINE_JSON: Saved\GitHubGate\VEHICLE_PHYSICS_BASELINE.json
       ROLLBACK_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568
-      ROLLBACK_SHA: aa44a2266fb9266147609dd99b6d6fd6d2a48c45
+      ROLLBACK_SHA: 8168d72406af6934ab20eace583c2b895f0620b7
       ROLLBACK_RUN_ID: '35809749568'
+      BASELINE_ROOT_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
 
     steps:
       - name: Checkout exact PR head
@@ -110,6 +111,10 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $expected='${{ github.event.pull_request.head.sha || github.sha }}'
+          $freezeRoot=''
+          if('${{ github.event_name }}' -eq 'push' -and '${{ github.ref }}' -eq 'refs/heads/main'){
+            $freezeRoot=$env:BASELINE_ROOT_BASE
+          }
           & .\scripts\ci\capture-vehicle-physics-baseline.ps1 `
             -CandidateSha $expected `
             -CurrentExe (Join-Path $env:GITHUB_WORKSPACE 'Binaries\Win64\PinkCab.exe') `
@@ -118,6 +123,7 @@ jobs:
             -RollbackRunId $env:ROLLBACK_RUN_ID `
             -ProfileLog (Join-Path $env:GITHUB_WORKSPACE $env:TEST_LOG) `
             -EngineRoot $env:UE_ROOT `
+            -FreezeRootBase $freezeRoot `
             -OutputPath (Join-Path $env:GITHUB_WORKSPACE $env:BASELINE_JSON)
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
