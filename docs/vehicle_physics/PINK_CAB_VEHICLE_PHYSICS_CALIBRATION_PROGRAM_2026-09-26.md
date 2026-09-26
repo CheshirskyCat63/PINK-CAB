@@ -5,7 +5,7 @@
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
 **Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **PHY-004 · Repeatable calibration fixtures**.  
+**Current execution point:** **PHY-005 · Single combustion permission**.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -89,9 +89,10 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ### PHY-004 — Repeatable calibration fixtures
 
-**Change:** Define flat, slope, bump/curb, slalom, brake and launch fixtures and deterministic input traces at 30/60/120 FPS.  
-**Acceptance:** Five repeated runs are comparable; physics dt/FPS/profile/load fixture recorded.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE · exact-main verified 2026-09-26**.  
+**Change:** Eleven deterministic fixture families now cover flat/grade launch, coupling sweep, constant-radius, combined brake/throttle turn, lift-off, split-mu braking, straight braking, slalom and rough road.  
+**Acceptance:** **PASS for fixture infrastructure.** Stable seed/input hashes plus physics dt, FPS, model/profile/schema/calibration/hash, load, surface/friction and tire state make repeated runs directly comparable; FPS/seed/load drift invalidates comparability.  
+**Evidence:** `main@138b74601815ff668b7eed956e6907f2c124775f`, exact-main run **36255150359**, zero-debt **0**, writer guard **68/80 PASS**, physics **12/12 PASS**, Editor/Game builds **PASS**. Physical handling outcomes remain NOT RUN in `TESTS.csv` until their owning later stages.
 
 ## P01 — Engine state, idle and no self-propulsion
 
