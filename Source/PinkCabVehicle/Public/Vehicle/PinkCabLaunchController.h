@@ -11,6 +11,7 @@ public:
     bool BeginLaunchAttempt();
     bool ApplyThrottleDoseSteps(int32 SignedSteps);
     void NotifyMotionMode(EPinkCabVehicleMotionMode InMode);
+    void ResetThrottleDemand();
 
     EPinkCabVehicleMotionMode GetMotionMode() const;
     uint32 GetLaunchSerial() const;
