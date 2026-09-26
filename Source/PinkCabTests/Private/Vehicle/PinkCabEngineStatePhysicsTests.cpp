@@ -335,7 +335,7 @@ bool FPinkCabWarmIdleProfileTest::RunTest(const FString& Parameters)
         NewObject<UChaosWheeledVehicleMovementComponent>();
     Profile.ApplyToMovement(*Movement);
     TestEqual(TEXT("Chaos receives profile idle target"),
-        Movement->EngineSetup.IdleRPM, Profile.EngineIdleRpm.Value);
+        Movement->EngineSetup.EngineIdleRPM, Profile.EngineIdleRpm.Value);
 
     const FPinkCabGearboxControllerConfig GearboxDefaults;
     TestEqual(TEXT("gearbox neutral rpm seed aligns until P02 centralization"),
