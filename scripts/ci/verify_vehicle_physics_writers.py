@@ -63,6 +63,7 @@ WRITER_PATTERNS = {
     "CONTROL_DRIVELINE": r"\bSetDriveline\s*\(",
     "CONTROL_TORQUE_CAPACITY": r"\bSetDrivetrainTorqueCapacity\s*\(",
     "CONTROL_EXTERNAL_REAR_TORQUE": r"\bSetExternalRearDriveTorquePerWheel\s*\(",
+    "CONTROL_RESOLVED_ENGINE_ACTUATION": r"\bSetResolvedEngineActuation\s*\(",
     "HEALTH_DAMAGE": r"\bApplyFunctionalDamage\s*\(",
     "HEALTH_REPAIR": r"\bRestoreFunctionalHealthTo\s*\(",
     "HEALTH_CLUTCH_TEMP": r"\bSetClutchTemperature01\s*\(",
