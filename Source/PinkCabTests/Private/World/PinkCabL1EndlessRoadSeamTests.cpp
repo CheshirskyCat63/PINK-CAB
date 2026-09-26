@@ -5,10 +5,9 @@
 #include "EngineUtils.h"
 #include "HAL/PlatformTime.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Interaction/PinkCabInteractionModel.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
-#include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 #include "World/PinkCabL1RoadChunkActor.h"
 
