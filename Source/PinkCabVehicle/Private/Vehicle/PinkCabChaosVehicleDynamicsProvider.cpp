@@ -1,35 +1,9 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
-#include "Vehicle/PinkCabEngineActuationResolver.h"
-
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
 namespace
 {
-float GetEngineTorqueCurveNm(
-    const UChaosWheeledVehicleMovementComponent& Movement,
-    const float EngineRpm)
-{
-    const float NormalizedTorque =
-        Movement.EngineSetup.TorqueCurve.GetRichCurveConst()->Eval(EngineRpm);
-    return Movement.EngineSetup.MaxTorque
-        * FMath::Max(NormalizedTorque, 0.0f);
-}
-
-FPinkCabEngineActuationResult ResolveEngineActuation(
-    const UChaosWheeledVehicleMovementComponent& Movement,
-    const FPinkCabVehicleControlState& Controls,
-    const float EngineRpm,
-    const float EngineTorqueCurveNm)
-{
-    FPinkCabEngineActuationInput Input;
-    Input.HealthClampedControlThrottle01 = Controls.Throttle;
-    Input.EngineRpm = EngineRpm;
-    Input.MaxRpm = Movement.EngineSetup.MaxRPM;
-    Input.EngineTorqueCurveNm = EngineTorqueCurveNm;
-    return FPinkCabEngineActuationResolver::Resolve(Input);
-}
-
 void PopulateActuationTelemetry(
     UChaosWheeledVehicleMovementComponent& Movement,
     const FPinkCabVehicleControlState& Controls,
@@ -41,11 +15,13 @@ void PopulateActuationTelemetry(
     Out.HealthClampedControlThrottle01 =
         FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
     Out.EngineThrottlePreLimiter01 =
-        Actuation.EngineThrottlePreLimiter01;
-    Out.EngineThrottleFinal01 = Actuation.EngineThrottleFinal01;
-    Out.EngineTorqueCurveNm = EngineTorqueCurveNm;
+        Controls.GetResolvedEngineThrottlePreLimiter01();
+    Out.EngineThrottleFinal01 =
+        Controls.GetResolvedEngineThrottle01();
+    Out.EngineTorqueCurveNm =
+        Controls.GetResolvedEngineTorqueCurveNm();
     Out.RequestedEngineTorqueAfterLimiterHealthNm =
-        Actuation.RequestedEngineTorqueAfterLimiterHealthNm;
+        Controls.GetAvailableEngineTorqueNm();
     Out.EffectiveGearRatio =
         Controls.EngagedGear != 0
             ? Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear)
@@ -126,23 +102,15 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
     LastControls = Controls;
     Movement->SetSteeringInput(Controls.Steering);
 
-    const float EngineRpm = Movement->GetEngineRotationSpeed();
-    const float EngineTorqueCurveNm =
-        GetEngineTorqueCurveNm(*Movement, EngineRpm);
-    const FPinkCabEngineActuationResult Actuation =
-        ResolveEngineActuation(
-            *Movement,
-            Controls,
-            EngineRpm,
-            EngineTorqueCurveNm);
     PopulateActuationTelemetry(
         *Movement,
         Controls,
-        Actuation,
-        EngineTorqueCurveNm,
+        {},
+        0.0f,
         LastCausalActuation);
 
-    Movement->SetThrottleInput(Actuation.EngineThrottleFinal01);
+    Movement->SetThrottleInput(
+        Controls.GetResolvedEngineThrottle01());
     Movement->SetBrakeInput(Controls.Brake);
     ApplyRearWheelTorques(*Movement, Controls);
     PopulateConfiguredAssistFlags(*Movement, LastCausalActuation);
