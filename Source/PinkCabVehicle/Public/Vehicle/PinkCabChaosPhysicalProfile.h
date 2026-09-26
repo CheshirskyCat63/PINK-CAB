@@ -57,10 +57,24 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
 {
     static FPinkCabChaosPhysicalProfile ForVariant(EPinkCabCalibrationVariant Variant);
 
+    bool HasValidEnvelope() const;
+    uint64 GetDeterministicProfileHash() const;
     bool HasCompleteProvenance() const;
     void ApplyToMovement(UChaosWheeledVehicleMovementComponent& Movement) const;
     void ApplyToFrontWheel(UChaosVehicleWheel& Wheel) const;
     void ApplyToRearWheel(UChaosVehicleWheel& Wheel) const;
+
+    // P00-S versioned identity envelope. These fields identify the exact
+    // calibration data without changing runtime driving behavior.
+    FName ModelId;
+    FName ProfileId;
+    int32 SchemaVersion = 0;
+    int32 CalibrationVersion = 0;
+    FName UnitSystemId;
+    FName ProvenanceSetId;
+    FName CompatibilityId;
+    FName MigrationId;
+    EPinkCabCalibrationVariant CalibrationVariant = EPinkCabCalibrationVariant::Nominal;
 
     TPinkCabPhysicalParameter<float> ReferenceMassKg;
     TPinkCabPhysicalParameter<float> WheelbaseMm;

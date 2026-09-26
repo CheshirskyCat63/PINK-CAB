@@ -17,6 +17,7 @@ bool HasAuthority(const EPinkCabPhysicalParameterAuthority Authority)
     return Authority != EPinkCabPhysicalParameterAuthority::Unspecified;
 }
 
+
 template <int32 N>
 bool AllAuthoritiesSpecified(
     const EPinkCabPhysicalParameterAuthority (&Authorities)[N])
@@ -131,6 +132,15 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
 {
     using A = EPinkCabPhysicalParameterAuthority;
     FPinkCabChaosPhysicalProfile R;
+    R.ModelId = FName(TEXT("TATRA_613"));
+    R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
+    R.SchemaVersion = 1;
+    R.CalibrationVersion = 1;
+    R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
+    R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
+    R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
+    R.MigrationId = FName(TEXT("PINKCAB_TATRA613_PROFILE_V1"));
+    R.CalibrationVariant = Variant;
     const FPinkCabTatraProfile Tatra = FPinkCabTatraProfile::Canonical();
     R.ReferenceMassKg = P(Tatra.GetReferenceCrewMassKg(), A::DesignTarget);
     R.WheelbaseMm = P(2980.0f, A::Source);
@@ -163,6 +173,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     return R;
 }
 
+
 bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
 {
     const EPinkCabPhysicalParameterAuthority Authorities[] = {
@@ -186,7 +197,8 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         ReverseGearRatios.Authority,
         SteeringAngleRatio.Authority,
     };
-    return AllAuthoritiesSpecified(Authorities)
+    return HasValidEnvelope()
+        && AllAuthoritiesSpecified(Authorities)
         && HasWheelProvenance(FrontWheel)
         && HasWheelProvenanceTail(FrontWheel)
         && HasWheelProvenance(RearWheel)
