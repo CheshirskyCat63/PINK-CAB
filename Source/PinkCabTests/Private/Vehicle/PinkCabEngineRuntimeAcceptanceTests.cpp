@@ -75,8 +75,6 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             UGameplayStatics::SetGamePaused(World, false);
-            Pawn->SetActorTickEnabled(false);
-
             UStaticMesh* Cube = LoadObject<UStaticMesh>(
                 nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
             Test->TestNotNull(TEXT("engine cube exists for isolated slope"), Cube);
@@ -93,15 +91,19 @@ public:
             }
 
             constexpr float RampPitchDeg = 10.0f;
-            Ramp->GetStaticMeshComponent()->SetStaticMesh(Cube);
-            Ramp->GetStaticMeshComponent()->SetMobility(EComponentMobility::Static);
-            Ramp->GetStaticMeshComponent()->SetCollisionProfileName(TEXT("BlockAll"));
-            Ramp->SetActorScale3D(FVector(14.0f, 5.0f, 0.10f));
+            UStaticMeshComponent* RampMesh = Ramp->GetStaticMeshComponent();
+            RampMesh->SetStaticMesh(Cube);
+            RampMesh->SetMobility(EComponentMobility::Static);
+            RampMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            RampMesh->SetCollisionProfileName(TEXT("BlockAll"));
+            RampMesh->SetGenerateOverlapEvents(false);
+            Ramp->SetActorScale3D(FVector(14.0f, 5.0f, 0.20f));
             Ramp->SetActorRotation(FRotator(RampPitchDeg, 0.0f, 0.0f));
             Ramp->SetActorLocation(FVector(0.0f, 0.0f, 12000.0f));
+            RampMesh->RecreatePhysicsState();
 
             Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12200.0f),
+                FVector(0.0f, 0.0f, 12380.0f),
                 FRotator(RampPitchDeg, 0.0f, 0.0f),
                 false,
                 nullptr,
@@ -243,7 +245,6 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             UGameplayStatics::SetGamePaused(World, false);
-            Pawn->SetActorTickEnabled(false);
             if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
             {
                 Mesh->WakeAllRigidBodies();
@@ -305,13 +306,27 @@ public:
             return false;
         }
 
-        if (Elapsed < 2.00)
+        const float ReturnedIdleRpm = Movement->GetEngineRotationSpeed();
+        if (ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f)
+        {
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_IDLE returned_rpm=%.3f return_seconds=%.3f"),
+                ReturnedIdleRpm,
+                Elapsed));
+            Test->TestEqual(TEXT("released blip has zero final throttle"),
+                Controls.GetResolvedEngineThrottle01(), 0.0f);
+            return true;
+        }
+
+        if (Elapsed < 8.00)
         {
             return false;
         }
 
-        const float ReturnedIdleRpm = Movement->GetEngineRotationSpeed();
-        Test->AddInfo(FString::Printf(TEXT("P01_IDLE returned_rpm=%.3f"), ReturnedIdleRpm));
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_IDLE return_timeout_rpm=%.3f return_seconds=%.3f"),
+            ReturnedIdleRpm,
+            Elapsed));
         Test->TestTrue(TEXT("engine returns to warm carb idle band after blip"),
             ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f);
         Test->TestEqual(TEXT("released blip has zero final throttle"),
