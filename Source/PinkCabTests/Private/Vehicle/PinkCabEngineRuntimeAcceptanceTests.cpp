@@ -172,10 +172,25 @@ public:
             HorizontalSpeedCmPerSec,
             *StartLocation.ToString(),
             *EndLocation.ToString()));
+        float MaxAbsWheelAngularVelocity = 0.0f;
+        for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+        {
+            if (Wheel)
+            {
+                MaxAbsWheelAngularVelocity = FMath::Max(
+                    MaxAbsWheelAngularVelocity,
+                    FMath::Abs(Wheel->GetWheelAngularVelocity()));
+            }
+        }
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f"),
+            MaxAbsWheelAngularVelocity));
         Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
-            HorizontalTravelCm > 5.0f);
-        Test->TestTrue(TEXT("slope creates physical rolling speed"),
-            HorizontalSpeedCmPerSec > StartHorizontalSpeedCmPerSec + 5.0f);
+            HorizontalTravelCm > 20.0f);
+        Test->TestTrue(TEXT("slope vehicle remains physically rolling"),
+            HorizontalSpeedCmPerSec > 10.0f);
+        Test->TestTrue(TEXT("slope motion includes wheel rotation"),
+            MaxAbsWheelAngularVelocity > 0.05f);
         Test->TestEqual(TEXT("slope coast remains zero engine throttle"),
             Movement->GetThrottleInput(), 0.0f);
         Test->TestEqual(TEXT("slope coast remains zero external drive torque"),
