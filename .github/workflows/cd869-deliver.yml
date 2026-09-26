@@ -73,7 +73,8 @@ jobs:
           try {
             $descriptor=Get-Content -Raw $project | ConvertFrom-Json
             $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
-            $descriptor.Plugins=@($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            # MetaRoad runtime/content is required by the canonical R4 road visual stack.
+            # StructUtils remains editor-only through PinkCab.uproject TargetAllowList.
             $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
 
             & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
