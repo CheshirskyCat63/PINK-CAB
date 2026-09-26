@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabCausalTelemetry.h"
+#include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 
 namespace
@@ -124,6 +125,47 @@ bool FPinkCabCausalFrameAvailabilityContractTest::RunTest(const FString& Paramet
 
     TestEqual(TEXT("permission-gated available torque is zero while engine permission is false"),
         Frame.PermissionGatedAvailableEngineTorqueNm, 0.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCausalActuationResolverTest,
+    "PinkCab.Vehicle.Physics.Telemetry.ActuationResolver",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
+{
+    FPinkCabEngineActuationInput Input;
+    Input.HealthClampedControlThrottle01 = 0.25f;
+    Input.EngineRpm = 3000.0f;
+    Input.MaxRpm = 8500.0f;
+    Input.EngineTorqueCurveNm = 220.0f;
+
+    const FPinkCabEngineActuationResult Normal =
+        FPinkCabEngineActuationResolver::Resolve(Input);
+    TestTrue(TEXT("mechanical throttle curve is captured before limiter"),
+        Normal.EngineThrottlePreLimiter01 > Input.HealthClampedControlThrottle01);
+    TestEqual(TEXT("below limiter final throttle equals pre-limiter throttle"),
+        Normal.EngineThrottleFinal01, Normal.EngineThrottlePreLimiter01);
+    TestTrue(TEXT("available torque is torque curve times final throttle"),
+        FMath::IsNearlyEqual(
+            Normal.RequestedEngineTorqueAfterLimiterHealthNm,
+            Input.EngineTorqueCurveNm * Normal.EngineThrottleFinal01,
+            1.0e-5f));
+
+    Input.EngineRpm = Input.MaxRpm;
+    const FPinkCabEngineActuationResult Limited =
+        FPinkCabEngineActuationResolver::Resolve(Input);
+    TestEqual(TEXT("hard limiter cuts final engine throttle"), Limited.EngineThrottleFinal01, 0.0f);
+    TestEqual(TEXT("hard limiter cuts requested engine torque"), Limited.RequestedEngineTorqueAfterLimiterHealthNm, 0.0f);
+
+    Input.HealthClampedControlThrottle01 = 0.0f;
+    Input.EngineRpm = 1000.0f;
+    const FPinkCabEngineActuationResult Zero =
+        FPinkCabEngineActuationResolver::Resolve(Input);
+    TestEqual(TEXT("zero health-clamped control remains zero before limiter"), Zero.EngineThrottlePreLimiter01, 0.0f);
+    TestEqual(TEXT("zero control has zero requested combustion torque"), Zero.RequestedEngineTorqueAfterLimiterHealthNm, 0.0f);
     return true;
 }
 
