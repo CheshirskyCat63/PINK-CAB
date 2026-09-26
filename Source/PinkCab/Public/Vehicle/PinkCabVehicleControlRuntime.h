@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Vehicle/PinkCabCausalTelemetry.h"
 #include "Vehicle/PinkCabDrivetrainCondition.h"
 #include "Vehicle/PinkCabGearboxController.h"
 #include "Vehicle/PinkCabHandbrakeActuator.h"
@@ -115,6 +116,10 @@ public:
     float GetLastSpeedKmh() const { return LastSpeedKmh; }
     float GetLastEngineRpm() const { return LastEngineRpm; }
     float GetDrivetrainTorqueCapacity() const { return DrivetrainTorqueCapacity; }
+    const FPinkCabCausalControlTelemetry& GetCausalControlTelemetry() const
+    {
+        return CausalControlTelemetry;
+    }
 
 private:
     void UpdateMotion(const TOptional<FPinkCabVehicleTelemetry>& Telemetry, float DeltaSeconds);
@@ -146,6 +151,7 @@ private:
     FPinkCabHandbrakeActuator HandbrakeActuator;
     FPinkCabGearboxController GearboxController;
     FPinkCabDrivetrainCondition DrivetrainCondition;
+    FPinkCabCausalControlTelemetry CausalControlTelemetry;
     EPinkCabPedalWheelRecipient LastWheelRecipient = EPinkCabPedalWheelRecipient::None;
     float SmoothedClutch = 0.0f;
     float SmoothedBrake = 0.0f;
@@ -159,4 +165,5 @@ private:
     float DrivetrainTorqueCapacity = 1.0f;
     uint32 LastProcessedGearEventSerial = 0;
     bool bThrottleHeldLastFrame = false;
+    bool bCausalPreparedFramePending = false;
 };

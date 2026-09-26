@@ -88,6 +88,10 @@ FPinkCabPreparedVehicleControlFrame FPinkCabVehicleControlRuntime::PrepareInputF
     FPinkCabCockpitState& Cockpit,
     const float DeltaSeconds)
 {
+    CausalControlTelemetry.RawThrottle01 = FMath::Clamp(InputFrame.Throttle, 0.0f, 1.0f);
+    CausalControlTelemetry.RawBrake01 = FMath::Clamp(InputFrame.Brake, 0.0f, 1.0f);
+    CausalControlTelemetry.RawClutch01 = FMath::Clamp(InputFrame.Clutch, 0.0f, 1.0f);
+
     const EPinkCabVehicleMotionMode PreviousMotionMode = MotionClassifier.GetMode();
     UpdateMotion(Telemetry, DeltaSeconds);
     const bool bThrottleHeld = InputFrame.Throttle > 0.5f;
@@ -96,6 +100,10 @@ FPinkCabPreparedVehicleControlFrame FPinkCabVehicleControlRuntime::PrepareInputF
     FPinkCabPreparedVehicleControlFrame Result;
     Result.Frame = ResolvePedalTargets(InputFrame, WheelSteps, Cockpit, DeltaSeconds);
     Result.WheelRecipient = LastWheelRecipient;
+    CausalControlTelemetry.PreparedThrottle01 = FMath::Clamp(Result.Frame.Throttle, 0.0f, 1.0f);
+    CausalControlTelemetry.PreparedBrake01 = FMath::Clamp(Result.Frame.Brake, 0.0f, 1.0f);
+    CausalControlTelemetry.PreparedClutch01 = FMath::Clamp(Result.Frame.Clutch, 0.0f, 1.0f);
+    bCausalPreparedFramePending = true;
     bThrottleHeldLastFrame = bThrottleHeld;
     return Result;
 }
@@ -153,6 +161,10 @@ FPinkCabDrivetrainConditionOutput FPinkCabVehicleControlRuntime::ApplyDrivetrain
     ConditionInput.ClutchCoupling = GearboxController.ComputeClutchCoupling(EffectiveInput.Clutch);
     ConditionInput.EngagedGear = GearboxController.GetEngagedGear();
     const FPinkCabDrivetrainConditionOutput Output = DrivetrainCondition.Step(ConditionInput, Health);
+    CausalControlTelemetry.ExpectedCoupledRpm = ConditionInput.ExpectedCoupledRpm;
+    CausalControlTelemetry.EngineTorqueFactor = Output.EngineTorqueFactor;
+    CausalControlTelemetry.BrakeEffectiveness = Output.BrakeEffectiveness;
+    CausalControlTelemetry.DrivetrainTorqueCapacity01 = Output.DrivetrainTorqueCapacity;
     EffectiveInput.Throttle *= Output.EngineTorqueFactor;
     EffectiveInput.Brake *= Output.BrakeEffectiveness;
     DisplayedEngineRpm = Output.DisplayedEngineRpm;
@@ -170,8 +182,12 @@ void FPinkCabVehicleControlRuntime::ApplySteering(
     const bool bGazeHeld,
     const float DeltaSeconds)
 {
+    CausalControlTelemetry.RawSteeringMouseDelta = DriverMouseX;
     const float Steering = SteeringController.Step(
         DriverMouseX, bGazeHeld, LastSpeedKmh, MotionClassifier.GetMode(), DeltaSeconds);
+    CausalControlTelemetry.SteeringVirtualCursor = SteeringController.GetVirtualCursor();
+    CausalControlTelemetry.SteeringTarget = SteeringController.GetTarget();
+    CausalControlTelemetry.FinalSteeringCommand = Steering;
     ControlState.SetSteering(Steering);
 }
 
@@ -182,6 +198,17 @@ const FPinkCabVehicleControlState& FPinkCabVehicleControlRuntime::ResolveControl
     FPinkCabCockpitState& Cockpit,
     FPinkCabVehicleHealthState& Health)
 {
+    if (!bCausalPreparedFramePending)
+    {
+        CausalControlTelemetry.RawThrottle01 = FMath::Clamp(InputFrame.Throttle, 0.0f, 1.0f);
+        CausalControlTelemetry.RawBrake01 = FMath::Clamp(InputFrame.Brake, 0.0f, 1.0f);
+        CausalControlTelemetry.RawClutch01 = FMath::Clamp(InputFrame.Clutch, 0.0f, 1.0f);
+        CausalControlTelemetry.PreparedThrottle01 = CausalControlTelemetry.RawThrottle01;
+        CausalControlTelemetry.PreparedBrake01 = CausalControlTelemetry.RawBrake01;
+        CausalControlTelemetry.PreparedClutch01 = CausalControlTelemetry.RawClutch01;
+    }
+    bCausalPreparedFramePending = false;
+
     FPinkCabVehicleInputFrame EffectiveInput = InputFrame;
     DisplayedClutchPedal = FMath::Clamp(InputFrame.Clutch, 0.0f, 1.0f);
     DisplayedBrakePedal = FMath::Clamp(InputFrame.Brake, 0.0f, 1.0f);
@@ -190,6 +217,8 @@ const FPinkCabVehicleControlState& FPinkCabVehicleControlRuntime::ResolveControl
     EvaluateGearbox(EffectiveInput, Cockpit, Health);
     const FPinkCabDrivetrainConditionOutput Condition =
         ApplyDrivetrainCondition(EffectiveInput, DeltaSeconds, Cockpit, Health);
+    CausalControlTelemetry.PostDrivetrainThrottle01 =
+        FMath::Clamp(EffectiveInput.Throttle, 0.0f, 1.0f);
     const float EffectiveHandbrake = HandbrakeActuator.GetBrakeCommand()
         * (MotionClassifier.GetMode() == EPinkCabVehicleMotionMode::Moving
             ? Condition.HandbrakeEffectiveness : 1.0f);
