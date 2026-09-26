@@ -75,45 +75,35 @@ FPinkCabCalibrationInputKeyframe Key(
 TArray<FPinkCabCalibrationInputKeyframe> TraceFor(
     const EPinkCabCalibrationFixtureKind Kind)
 {
-    switch (Kind)
-    {
-    case EPinkCabCalibrationFixtureKind::FlatLaunch:
-    case EPinkCabCalibrationFixtureKind::GradeLaunch:
-        return {Key(0.0,0,0,1,0,0,1), Key(0.5,0.25f,0,0.5f,0,0,1),
-            Key(1.5,0.25f,0,0,0,0,1), Key(4.0,0,1,0,0,0,1)};
-    case EPinkCabCalibrationFixtureKind::LimiterCouplingSweep:
-        return {Key(0.0,1,0,1,0,0,1), Key(1.0,1,0,0.75f,0,0,1),
+    static const TArray<FPinkCabCalibrationInputKeyframe> Traces[] = {
+        {Key(0.0,0,0,1,0,0,1), Key(0.5,0.25f,0,0.5f,0,0,1),
+            Key(1.5,0.25f,0,0,0,0,1), Key(4.0,0,1,0,0,0,1)},
+        {Key(0.0,0,0,1,0,0,1), Key(0.5,0.25f,0,0.5f,0,0,1),
+            Key(1.5,0.25f,0,0,0,0,1), Key(4.0,0,1,0,0,0,1)},
+        {Key(0.0,1,0,1,0,0,1), Key(1.0,1,0,0.75f,0,0,1),
             Key(2.0,1,0,0.5f,0,0,1), Key(3.0,1,0,0.25f,0,0,1),
-            Key(4.0,1,0,0,0,0,1)};
-    case EPinkCabCalibrationFixtureKind::ConstantRadius:
-        return {Key(0.0,0.30f,0,0,0,0,2), Key(1.0,0.30f,0,0,0,0.30f,2),
-            Key(5.0,0.30f,0,0,0,0.30f,2), Key(6.0,0,0,0,0,0,2)};
-    case EPinkCabCalibrationFixtureKind::CombinedBrakeTurn:
-        return {Key(0.0,0.30f,0,0,0,0.25f,2), Key(1.0,0,0.50f,0,0,0.25f,2),
-            Key(3.0,0,0,0,0,0,2)};
-    case EPinkCabCalibrationFixtureKind::CombinedThrottleTurn:
-        return {Key(0.0,0.20f,0,0,0,0.25f,2), Key(1.0,0.60f,0,0,0,0.25f,2),
-            Key(3.0,0,0,0,0,0,2)};
-    case EPinkCabCalibrationFixtureKind::LiftOff:
-        return {Key(0.0,0.50f,0,0,0,0.25f,3), Key(2.0,0,0,0,0,0.25f,3),
-            Key(4.0,0,0,0,0,0,3)};
-    case EPinkCabCalibrationFixtureKind::SplitMu:
-        return {Key(0.0,0.35f,0,0,0,0,2), Key(2.0,0,0.75f,0,0,0,2),
-            Key(4.0,0,0,0,0,0,2)};
-    case EPinkCabCalibrationFixtureKind::Braking:
-        return {Key(0.0,0.40f,0,0,0,0,3), Key(2.0,0,0.25f,0,0,0,3),
+            Key(4.0,1,0,0,0,0,1)},
+        {Key(0.0,0.30f,0,0,0,0,2), Key(1.0,0.30f,0,0,0,0.30f,2),
+            Key(5.0,0.30f,0,0,0,0.30f,2), Key(6.0,0,0,0,0,0,2)},
+        {Key(0.0,0.30f,0,0,0,0.25f,2), Key(1.0,0,0.50f,0,0,0.25f,2),
+            Key(3.0,0,0,0,0,0,2)},
+        {Key(0.0,0.20f,0,0,0,0.25f,2), Key(1.0,0.60f,0,0,0,0.25f,2),
+            Key(3.0,0,0,0,0,0,2)},
+        {Key(0.0,0.50f,0,0,0,0.25f,3), Key(2.0,0,0,0,0,0.25f,3),
+            Key(4.0,0,0,0,0,0,3)},
+        {Key(0.0,0.35f,0,0,0,0,2), Key(2.0,0,0.75f,0,0,0,2),
+            Key(4.0,0,0,0,0,0,2)},
+        {Key(0.0,0.40f,0,0,0,0,3), Key(2.0,0,0.25f,0,0,0,3),
             Key(3.0,0,0.50f,0,0,0,3), Key(4.0,0,0.75f,0,0,0,3),
-            Key(5.0,0,1,0,0,0,3)};
-    case EPinkCabCalibrationFixtureKind::Slalom:
-        return {Key(0.0,0.30f,0,0,0,0,2), Key(0.75,0.30f,0,0,0,0.30f,2),
+            Key(5.0,0,1,0,0,0,3)},
+        {Key(0.0,0.30f,0,0,0,0,2), Key(0.75,0.30f,0,0,0,0.30f,2),
             Key(1.5,0.30f,0,0,0,-0.30f,2), Key(2.25,0.30f,0,0,0,0.30f,2),
-            Key(3.0,0.30f,0,0,0,-0.30f,2), Key(3.75,0,0,0,0,0,2)};
-    case EPinkCabCalibrationFixtureKind::RoughRoad:
-        return {Key(0.0,0.25f,0,0,0,0,2), Key(5.0,0.25f,0,0,0,0,2),
-            Key(6.0,0,0,0,0,0,2)};
-    default:
-        return {};
-    }
+            Key(3.0,0.30f,0,0,0,-0.30f,2), Key(3.75,0,0,0,0,0,2)},
+        {Key(0.0,0.25f,0,0,0,0,2), Key(5.0,0.25f,0,0,0,0,2),
+            Key(6.0,0,0,0,0,0,2)}
+    };
+    const int32 Index = static_cast<int32>(Kind);
+    return Traces[FMath::Clamp(Index, 0, static_cast<int32>(UE_ARRAY_COUNT(Traces)) - 1)];
 }
 
 uint64 HashBytes(const FString& Text)
