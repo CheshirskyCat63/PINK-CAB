@@ -128,6 +128,8 @@ def load_manifest(path: Path):
                 expected = int(row["expected_count"])
             except ValueError as exc:
                 raise SystemExit(f"PINKCAB_PHY002_MANIFEST_COUNT_INVALID key={key}") from exc
+            if expected <= 0 or not row["authority"].strip() or not row["classification"].strip() or not row["notes"].strip():
+                raise SystemExit(f"PINKCAB_PHY002_MANIFEST_METADATA_INVALID key={key}")
             rows[key] = {**row, "expected_count": expected}
     return rows
 
