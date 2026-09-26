@@ -31,7 +31,7 @@ FPinkCabEngineActuationResult ResolveEngineActuation(
 }
 
 void PopulateActuationTelemetry(
-    const UChaosWheeledVehicleMovementComponent& Movement,
+    UChaosWheeledVehicleMovementComponent& Movement,
     const FPinkCabVehicleControlState& Controls,
     const FPinkCabEngineActuationResult& Actuation,
     const float EngineTorqueCurveNm,
