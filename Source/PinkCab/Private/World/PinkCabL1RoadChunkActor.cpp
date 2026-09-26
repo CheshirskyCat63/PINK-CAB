@@ -63,7 +63,9 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(86250.0,   3050.0, 4.25)
 };
 
-bool HasProjectOwnedRoadMaterials(const UStaticMeshComponent* Component)
+bool HasExactRoadMaterial(
+    const UStaticMeshComponent* Component,
+    const TCHAR* ExpectedPath)
 {
     if (!Component || Component->GetNumMaterials() <= 0)
     {
@@ -73,9 +75,26 @@ bool HasProjectOwnedRoadMaterials(const UStaticMeshComponent* Component)
     for (int32 Index = 0; Index < Component->GetNumMaterials(); ++Index)
     {
         const UMaterialInterface* Material = Component->GetMaterial(Index);
-        if (!Material ||
-            !Material->GetPathName().StartsWith(
-                TEXT("/Game/World/L1/Road/Materials/")))
+        if (!Material || Material->GetPathName() != ExpectedPath)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CanLoadNativeMetaRoadAsphaltTextures()
+{
+    static const TCHAR* RequiredTexturePaths[] =
+    {
+        TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Albedo.tiggcjdo_8K_Albedo"),
+        TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Normal.tiggcjdo_8K_Normal"),
+        TEXT("/MetaRoad/MetaRoad/Textures/Asphalt/tiggcjdo_8K_Roughness.tiggcjdo_8K_Roughness")
+    };
+
+    for (const TCHAR* TexturePath : RequiredTexturePaths)
+    {
+        if (!LoadObject<UObject>(nullptr, TexturePath))
         {
             return false;
         }
@@ -245,24 +264,39 @@ bool APinkCabL1RoadChunkActor::BindChunk(
         if (!bAuditReported)
         {
             bool bMaterialsValid =
-                HasProjectOwnedRoadMaterials(RoadMeshComponent)
-                && HasProjectOwnedRoadMaterials(RoadSidewalksComponent);
+                HasExactRoadMaterial(
+                    RoadMeshComponent,
+                    TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface"))
+                && HasExactRoadMaterial(
+                    RoadSidewalksComponent,
+                    TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk"));
             for (const UStaticMeshComponent* Component : RoadMarkComponents)
             {
                 bMaterialsValid &=
-                    HasProjectOwnedRoadMaterials(Component);
+                    HasExactRoadMaterial(
+                        Component,
+                        TEXT("/MetaRoad/MetaRoad/Materials/M_Mark.M_Mark"));
             }
             for (const UStaticMeshComponent* Component : RoadCurbComponents)
             {
                 bMaterialsValid &=
-                    HasProjectOwnedRoadMaterials(Component);
+                    HasExactRoadMaterial(
+                        Component,
+                        TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb"));
             }
+
+            const bool bTexturesValid =
+                CanLoadNativeMetaRoadAsphaltTextures();
+            const bool bAuditValid =
+                bMaterialsValid && bTexturesValid;
 
             UE_LOG(
                 LogTemp,
                 Display,
-                TEXT("PINKCAB_ROAD_MATERIAL_AUDIT=%s"),
-                bMaterialsValid ? TEXT("PASS") : TEXT("FAIL"));
+                TEXT("PINKCAB_ROAD_MATERIAL_AUDIT=%s materials=%s textures8k=%s"),
+                bAuditValid ? TEXT("PASS") : TEXT("FAIL"),
+                bMaterialsValid ? TEXT("PASS") : TEXT("FAIL"),
+                bTexturesValid ? TEXT("PASS") : TEXT("FAIL"));
             bAuditReported = true;
         }
     }
