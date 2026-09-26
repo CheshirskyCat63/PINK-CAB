@@ -343,4 +343,34 @@ bool FPinkCabWarmIdleProfileTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabLowRpmCoupledOverloadStallTest,
+    "PinkCab.Vehicle.Physics.EngineState.LowRpmCoupledOverloadStalls",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabLowRpmCoupledOverloadStallTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleHealthState Health;
+
+    TestTrue(TEXT("stall fixture starts engine"), Cockpit.StartEngine());
+    Runtime.ForceGearState(1, 1, Cockpit);
+
+    const FPinkCabVehicleControlOutput Output = Runtime.Update(
+        EngineStateTick(false, false, false),
+        EngineStateTelemetry(0.0f, 700.0f),
+        Cockpit,
+        Health);
+
+    TestEqual(TEXT("low-rpm fully coupled first gear enters Stalled"),
+        Cockpit.GetIgnitionState(), EPinkCabIgnitionState::Stalled);
+    TestEqual(TEXT("stall removes throttle command"),
+        Output.Controls.Throttle, 0.0f);
+    TestEqual(TEXT("stall preserves engaged gear for physical back-drive/coast"),
+        Runtime.GetEngagedGear(), 1);
+    return true;
+}
+
+
 #endif
