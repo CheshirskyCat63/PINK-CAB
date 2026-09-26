@@ -1,0 +1,35 @@
+# PINK CAB · Vehicle Physics Calibration Program
+
+Current planning/admin mirror for the vehicle-physics refinement program requested on 2026-09-26.
+
+## Authority and scope
+
+- Audited Git baseline: `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.
+- Runtime dynamics owner: Unreal Engine 5.8.2 Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider`.
+- Current control/mechanics authority: Confluence page 47 / Jira CD-848.
+- Primary calibration umbrella: Jira CD-648 and existing subsystem owners CD-611/612/643–659/670/722/740/855/856.
+- Durable Confluence program: page `22413538`, child of page 47.
+- This branch is documentation/admin only. It does **not** change runtime, vehicle controls, city, MetaRoad, content or accepted world gates.
+
+## Documents
+
+1. [PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md](PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md) — P00–P11 execution program with PHY-001..048.
+2. [PARAMETER_LEDGER_2026-09-26.md](PARAMETER_LEDGER_2026-09-26.md) — audited current executable values, conflicting historical authorities and disposition.
+
+## First execution order
+
+Do not begin with “feel tuning.” Execute:
+
+`P00 observability → P01 engine-off/idle correctness → P02 clutch/RPM continuity → P03 steering/input feel → P04 acceleration/gearing → P05 mass/wheels/inertia → P06 suspension → P07 tires/brakes/heat → P08 persistence/soak → P09 613/603-I/77 profiles → P10 cabin extension seam → P11 evidence/human/admin convergence`.
+
+The engine-off symptom is not yet assigned to a root cause. Current code already gates the partial-clutch external torque path on Running ignition, while final provider throttle/torque paths and Chaos mechanical-sim state have separate responsibilities. P00 instrumentation is therefore mandatory before any fix.
+
+## Current numerical conflicts that must not be hidden
+
+- Physical profile idle: 750 RPM; requested next warm carb calibration: 900–950 RPM.
+- Physical profile max: 8500 RPM; gearbox safe-engine threshold: 6500 RPM.
+- Executable boosted profile: 260 Nm / roughly 250 hp test target; older Confluence drivetrain text: 240 Nm / 180 hp.
+- Executable ratios/final drive differ from historical page-27 ratios/final drive.
+- Current 2980/1520/1520 geometry and 205/70R14 wheel data are donor Tatra 613 provenance, not automatic Tatra 603 Series 1 or Tatra 77 truth.
+
+No one of those conflicts is “fixed” by this docs branch. They are explicitly converted into measured implementation gates.
