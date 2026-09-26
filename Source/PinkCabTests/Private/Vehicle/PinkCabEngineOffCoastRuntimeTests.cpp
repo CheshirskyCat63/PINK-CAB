@@ -6,6 +6,7 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 
@@ -46,6 +47,8 @@ public:
 
         if (!bInitialized)
         {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
             if (!Movement->bMechanicalSimEnabled)
             {
                 Test->TestTrue(TEXT("ignition starts live engine before coast fixture"),
@@ -62,6 +65,8 @@ public:
             Mesh->SetPhysicsLinearVelocity(FixtureVelocity);
             InitialSpeedCmPerSec =
                 Mesh->GetPhysicsLinearVelocity().Size();
+            InitialLocation = Pawn->GetActorLocation();
+            Mesh->WakeAllRigidBodies();
             Test->TestTrue(TEXT("coast fixture has meaningful initial speed"),
                 InitialSpeedCmPerSec > 500.0f);
 
@@ -92,6 +97,13 @@ public:
 
         const float CoastSpeed =
             Mesh->GetPhysicsLinearVelocity().Size();
+        const float CoastTravelCm =
+            FVector::Dist2D(Pawn->GetActorLocation(), InitialLocation);
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_FLAT_COAST travel_cm=%.3f initial_speed_cm_s=%.3f coast_speed_cm_s=%.3f"),
+            CoastTravelCm, InitialSpeedCmPerSec, CoastSpeed));
+        Test->TestTrue(TEXT("engine-off body physically advances while coasting"),
+            CoastTravelCm > 20.0f);
         Test->TestTrue(TEXT("engine-off body is still physically free to coast"),
             CoastSpeed > 10.0f);
         Test->TestEqual(TEXT("engine-off coast still has zero Chaos throttle"),
@@ -104,6 +116,7 @@ private:
     bool bInitialized = false;
     double ObserveStartSeconds = 0.0;
     float InitialSpeedCmPerSec = 0.0f;
+    FVector InitialLocation = FVector::ZeroVector;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
