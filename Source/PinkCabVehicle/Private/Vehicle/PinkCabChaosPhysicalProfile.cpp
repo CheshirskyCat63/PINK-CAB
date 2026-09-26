@@ -151,7 +151,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.TerminalTargetKmh = P(195.0f, A::DesignTarget);
     R.bRearWheelDrive = P(true, A::DesignTarget);
     R.EngineMaxRpm = P(8500.0f, A::Calibration);
-    R.EngineIdleRpm = P(750.0f, A::Calibration);
+    R.EngineIdleRpm = P(925.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
     // Supercharged/high-rev design target: strong low/mid response and a broad
