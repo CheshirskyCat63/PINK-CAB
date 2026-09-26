@@ -5,6 +5,7 @@
 #include "World/PinkCabChunkId.h"
 #include "PinkCabL1RoadChunkActor.generated.h"
 
+class UPhysicalMaterial;
 class USceneComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -32,6 +33,7 @@ public:
     UStaticMesh* GetRoadMesh() const;
     void SetRoadMesh(UStaticMesh* Mesh);
     UStaticMeshComponent* GetRoadMeshComponent() const { return RoadMeshComponent; }
+    UPhysicalMaterial* GetRoadPhysicalMaterial() const { return RoadPhysicalMaterial; }
 
 private:
     void InitializeNativeMetaRoadMarkComponents();
@@ -44,6 +46,9 @@ private:
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<UStaticMeshComponent> RoadMeshComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
+    TObjectPtr<UPhysicalMaterial> RoadPhysicalMaterial;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|World|L1")
     TObjectPtr<UStaticMeshComponent> RoadSidewalksComponent;
