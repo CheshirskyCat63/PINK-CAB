@@ -1,6 +1,7 @@
 # PINK CAB — Vehicle Physics Parameter Ledger — 2026-09-26
 
-Baseline audited: `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.
+Original audit baseline: `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
+PHY-001 frozen baseline: `main@0e1a8bce8e29e56a1c16c28c9945467aed986048`, Windows run **36213319172**, UE **5.8.3**, profile hash `E83EAC2B6FA5D39F`, candidate exe SHA-256 `bb95af6903f3ad18140da2b54d366a981e839d9f35e97e1a7e27599ebd1d6084`.
 
 | Parameter | Current executable/code | Other authority | Program treatment |
 |---|---:|---|---|
