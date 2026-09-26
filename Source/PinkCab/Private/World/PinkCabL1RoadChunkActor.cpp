@@ -3,6 +3,9 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
 #include "World/PinkCabL1EndlessRoadModel.h"
 
@@ -59,6 +62,26 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(86249.88,  2850.0, 4.25),
     FVector(86250.0,   3050.0, 4.25)
 };
+
+bool HasProjectOwnedRoadMaterials(const UStaticMeshComponent* Component)
+{
+    if (!Component || Component->GetNumMaterials() <= 0)
+    {
+        return false;
+    }
+
+    for (int32 Index = 0; Index < Component->GetNumMaterials(); ++Index)
+    {
+        const UMaterialInterface* Material = Component->GetMaterial(Index);
+        if (!Material ||
+            !Material->GetPathName().StartsWith(
+                TEXT("/Game/World/L1/Road/Materials/")))
+        {
+            return false;
+        }
+    }
+    return true;
+}
 }
 
 APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
@@ -215,6 +238,34 @@ bool APinkCabL1RoadChunkActor::BindChunk(
         ECollisionEnabled::QueryAndPhysics);
     SetNativeMetaRoadConstructionCollision(
         ECollisionEnabled::QueryAndPhysics);
+
+    if (FParse::Param(FCommandLine::Get(), TEXT("PinkCabRoadMaterialAudit")))
+    {
+        static bool bAuditReported = false;
+        if (!bAuditReported)
+        {
+            bool bMaterialsValid =
+                HasProjectOwnedRoadMaterials(RoadMeshComponent)
+                && HasProjectOwnedRoadMaterials(RoadSidewalksComponent);
+            for (const UStaticMeshComponent* Component : RoadMarkComponents)
+            {
+                bMaterialsValid &=
+                    HasProjectOwnedRoadMaterials(Component);
+            }
+            for (const UStaticMeshComponent* Component : RoadCurbComponents)
+            {
+                bMaterialsValid &=
+                    HasProjectOwnedRoadMaterials(Component);
+            }
+
+            UE_LOG(
+                LogTemp,
+                Display,
+                TEXT("PINKCAB_ROAD_MATERIAL_AUDIT=%s"),
+                bMaterialsValid ? TEXT("PASS") : TEXT("FAIL"));
+            bAuditReported = true;
+        }
+    }
     return true;
 }
 
