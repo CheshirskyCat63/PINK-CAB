@@ -3,7 +3,8 @@
 **Program mirror:** 2026-09-26  
 **Scope:** canonical program + execution evidence; accepted control grammar and world remain frozen unless a stage explicitly says otherwise.  
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
-**Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
+**Current canonical runtime main:** `eae3907ca4287a94abf9c205a8f4c89d2c99ef5a`.  
+**PHY-001 frozen rollback baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`, run **36213319172**.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
 **Current execution point:** **P01 technical acceptance GREEN / HUMAN GATE PENDING**. Do not begin P02 until the owner accepts the launched P01 candidate.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
@@ -38,15 +39,15 @@ This is the acceptance doctrine for P00–P11; it does not change the accepted c
 
 At exact audited `main`:
 
-- `FPinkCabChaosPhysicalProfile` uses **IdleRPM 750**, **MaxRPM 8500**, **MaxTorque 260 Nm**, ~**250 hp** design test, final drive **3.2**, forward ratios **4.6/2.2/1.5/1.1/0.85**, reverse **4.6**.
-- `FPinkCabGearboxControllerConfig` still uses **IdleRpm 750** and **MaxSafeEngineRpm 6500**, so the engine/gearbox RPM envelope is internally inconsistent with the 8500-rpm physical profile.
+- P01 exact main uses **IdleRPM 925**, **MaxRPM 8500**, **MaxTorque 260 Nm**, explicit **EngineRevDownRate 1800**, ~**250 hp** design test, final drive **3.2**, forward ratios **4.6/2.2/1.5/1.1/0.85**, reverse **4.6**. Current profile identity is schema/calibration **1/3**, hash `7A90D02ED12B1E93`.
+- The temporary gearbox idle seed is aligned to **925 RPM**, but `MaxSafeEngineRpm=6500` remains a known P02 blocker against the 8500-rpm physical profile; PHY-010 owns centralizing the full RPM envelope.
 - Current wheel/profile seed: radius **32.13 cm**, width **20.5 cm**, wheelbase **2980 mm**, tracks **1520/1520 mm**, reference service mass **1657 kg**; these are Tatra-613 donor/profile values and must not silently define final 603-I or 77 geometry.
 - Nominal suspension seed is spring **170**, damping ratio **0.38**, travel **160 mm front / 180 mm rear**; current values are calibration seeds, not accepted final ride targets.
 - `WheelLoadRatio = 0.38` on both axles deliberately weakens tire-force dependence on wheel load; it must be tested as a calibration choice, not treated as an invisible stability requirement.
 - Nominal front/rear friction-force multipliers are **2.00 / 0.50**; the rear reduction was authored to make wheelspin easier and is therefore a high-priority shortcut candidate.
 - Current steering config is explicitly speed-shaped (1400 counts base; stationary travel scale 3.60; moving 1.35→2.20; response 2.5/s stationary, 10.5→6.0/s moving; high-speed target gain 0.55 at 120 km/h). The current implementation multiplies the held steering target by this speed gain, so speed alone can change the final command.
 - Throttle response currently uses `pow(driver, 0.55)`; 25% driver input becomes roughly 47% engine command and 50% becomes roughly 68%, so dosability must be checked independently from power changes.
-- Partial-clutch drive torque is authored separately in `FPinkCabChaosCockpitBridge`; it is gated by Running state, while `FPinkCabChaosVehicleDynamicsProvider` still receives throttle commands independently. Existing live engine-restore test proves mechanical-sim enable/disable, **not** the stronger invariant “engine Off can never generate positive wheel drive torque.” This is why P00/P01 starts with telemetry/root-cause proof rather than a blind throttle-zero patch.
+- P01 now resolves one authoritative combustion permission and one post-health/post-limiter engine actuation result shared by native Chaos throttle and the partial-clutch external torque path. Engine Off/Stalled positive propulsion is runtime-proven zero. P02 still owns energy continuity and wheel→engine reaction across the partial/full coupling boundary.
 
 ## Current authority conflicts to resolve, not paper over
 
@@ -96,30 +97,29 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ## P01 — Engine state, idle and no self-propulsion
 
+**Status:** **TECHNICAL GREEN · HUMAN GATE PENDING**.  
 **Reuse owners:** CD-612 / CD-644 / CD-659.  
-### PHY-005 — Single combustion permission
+**Canonical runtime:** `main@eae3907ca4287a94abf9c205a8f4c89d2c99ef5a`, exact-main run **36264255545**, **23/23** focused physics tests PASS, writer guard **72 groups / 84 occurrences**, zero-debt **0**.  
+**Profile:** `TATRA_613 / PINKCAB_TATRA613_CHAOS`, schema/calibration **1/3**, hash `7A90D02ED12B1E93`.  
+**Human package:** run **36266076177**; fresh package/sign/smoke/install/launch PASS; owner verdict is not recorded yet.
 
-**Change:** All positive propulsion paths require authoritative Running state; stop/stall clears stale propulsion commands without freezing chassis.  
-**Acceptance:** Off + 100% throttle + 1st and Off + partial clutch + R produce zero positive engine drive torque.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+### PHY-005 — Single combustion permission — DONE
 
-### PHY-006 — Coast is not propulsion
+One authoritative Running-state permission and one resolved post-health/post-limiter actuation result now feed both native Chaos throttle and the partial-clutch external rear-torque path. Off/Stalled matrix coverage proves zero positive engine-generated propulsion across throttle/gear/clutch combinations.
 
-**Change:** Preserve inertia, gravity, tire/contact drag and rolling resistance while engine is Off; never zero world velocity to fake a fix.  
-**Acceptance:** Off in N rolls on slope; after key-off on flat, vehicle coasts/decelerates physically.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+### PHY-006 — Coast is not propulsion — DONE
 
-### PHY-007 — Start/stall/restart state machine
+Engine Off preserves chassis physics instead of freezing velocity. Flat key-off runtime proof: **300.595 cm/s** at key-off, **195.934 cm** physical post-key-off travel, **202.344 cm/s** remaining speed, zero Chaos throttle and zero external rear drive torque. Isolated neutral 20° slope proof: **54.168 cm** downhill travel and **1.269 rad/s** max wheel angular velocity with zero engine contribution.
 
-**Change:** Verify Off/Running/Stalled transitions, low-RPM stall causality and restart cleanup without new controls.  
-**Acceptance:** Low-RPM coupled overload can stall; restart restores torque exactly once and no hidden throttle persists.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+### PHY-007 — Start/stall/restart state machine — DONE
 
-### PHY-008 — Warm carb idle 900–950 RPM
+Off/Running/Stalled transitions, stale-propulsion cleanup, restart behavior and low-RPM coupled-overload stall are covered by exact-main automation. No new input grammar or hidden assist was introduced.
 
-**Change:** Move idle target into versioned vehicle profile; use 925 RPM as calibration center until owner feel gate, and align tach/audio/tests with profile.  
-**Acceptance:** Warm healthy N idle remains 900–950 after settling and returns there after a blip.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+### PHY-008 — Warm carb idle 900–950 RPM — DONE
+
+Warm neutral idle is **925 RPM**. A 55% neutral throttle blip reached **4429.622 RPM** and returned to **949.435 RPM** in **7.600 s** using explicit profile calibration `EngineRevDownRate=1800`. Calibration identity advanced to v3 and is fingerprinted.
+
+**Evidence:** `docs/vehicle_physics/evidence/P01_ENGINE_STATE_RUNTIME_2026-09-26.md`.
 
 ## P02 — Clutch + transmission energy continuity
 
