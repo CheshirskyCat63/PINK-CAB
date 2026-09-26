@@ -914,36 +914,24 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
 {
     using namespace PinkCabL1MetaRoadAuthoring;
 
-    UMaterial* Asphalt = CreateSimpleSurfaceMaterial(
-        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Asphalt"),
-        TEXT("M_PC_L1_Asphalt"),
-        FLinearColor(0.030f, 0.034f, 0.040f, 1.0f),
-        0.70f,
-        0.24f,
-        *this);
-    UMaterial* Divider = CreateSimpleSurfaceMaterial(
-        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_GreenDivider"),
-        TEXT("M_PC_L1_GreenDivider"),
-        FLinearColor(0.025f, 0.070f, 0.030f, 1.0f),
-        0.88f,
-        0.10f,
-        *this);
-    UMaterial* Shoulder = CreateSimpleSurfaceMaterial(
-        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Shoulder"),
-        TEXT("M_PC_L1_Shoulder"),
-        FLinearColor(0.045f, 0.048f, 0.052f, 1.0f),
-        0.78f,
-        0.18f,
-        *this);
-    UMaterial* Mark = CreateSimpleSurfaceMaterial(
-        TEXT("/Game/World/L1/Road/Materials/M_PC_L1_Mark"),
-        TEXT("M_PC_L1_Mark"),
-        FLinearColor(0.82f, 0.82f, 0.78f, 1.0f),
-        0.72f,
-        0.12f,
-        *this);
+    UMaterialInterface* DriveSurface = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface"));
+    UMaterialInterface* Sidewalk = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk"));
+    UMaterialInterface* Curb = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb"));
+    UMaterialInterface* Mark = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/M_Mark.M_Mark"));
 
-    if (!Asphalt || !Divider || !Shoulder || !Mark)
+    TestNotNull(TEXT("native MetaRoad MI_DriveSurface loads"), DriveSurface);
+    TestNotNull(TEXT("native MetaRoad M_Sidewolk loads"), Sidewalk);
+    TestNotNull(TEXT("native MetaRoad M_Curb loads"), Curb);
+    TestNotNull(TEXT("native MetaRoad M_Mark loads"), Mark);
+    if (!DriveSurface || !Sidewalk || !Curb || !Mark)
     {
         return false;
     }
@@ -979,7 +967,7 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
             *ObjectPath);
         TestNotNull(
             *FString::Printf(
-                TEXT("native MetaRoad mesh loads for runtime ownership: %s"),
+                TEXT("native MetaRoad baked mesh loads: %s"),
                 *MeshName),
             Mesh);
         if (!Mesh)
@@ -991,37 +979,53 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         TestTrue(
             *FString::Printf(TEXT("%s exposes material slots"), *MeshName),
             Slots.Num() > 0);
+        if (Slots.Num() == 0)
+        {
+            continue;
+        }
 
-        const bool bCurbMesh =
-            MeshName.StartsWith(TEXT("RoadCurbs"));
-        const bool bMarkMesh =
-            MeshName.StartsWith(TEXT("RoadMarks"));
+        UMaterialInterface* ExpectedMaterial = nullptr;
+        if (MeshName == TEXT("RoadSurface"))
+        {
+            ExpectedMaterial = DriveSurface;
+        }
+        else if (MeshName == TEXT("RoadSidewalks"))
+        {
+            ExpectedMaterial = Sidewalk;
+        }
+        else if (MeshName.StartsWith(TEXT("RoadCurbs")))
+        {
+            ExpectedMaterial = Curb;
+        }
+        else if (MeshName.StartsWith(TEXT("RoadMarks")))
+        {
+            ExpectedMaterial = Mark;
+        }
+
+        TestNotNull(
+            *FString::Printf(TEXT("%s resolves native MetaRoad material"), *MeshName),
+            ExpectedMaterial);
+        if (!ExpectedMaterial)
+        {
+            continue;
+        }
+
         for (int32 Index = 0; Index < Slots.Num(); ++Index)
         {
             const FString SlotName = Slots[Index].MaterialSlotName.ToString();
             AddInfo(FString::Printf(
-                TEXT("CD869_NATIVE_SLOT[%s][%d]=%s"),
+                TEXT("CD869_R4_NATIVE_SLOT[%s][%d]=%s -> %s"),
                 *MeshName,
                 Index,
-                *SlotName));
-            Mesh->SetMaterial(
-                Index,
-                bMarkMesh
-                    ? Mark
-                    : bCurbMesh
-                        ? Shoulder
-                        : ResolveProjectMaterialForSlot(
-                            Slots[Index],
-                            Asphalt,
-                            Divider,
-                            Shoulder,
-                            Mark));
+                *SlotName,
+                *ExpectedMaterial->GetPathName()));
+            Mesh->SetMaterial(Index, ExpectedMaterial);
         }
 
         Mesh->PostEditChange();
         TestTrue(
             *FString::Printf(
-                TEXT("%s saved after project material rebinding"),
+                TEXT("%s saved with native MetaRoad material"),
                 *MeshName),
             SaveGeneratedMeshPackage(*Mesh, *this));
 
@@ -1029,28 +1033,122 @@ bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
         {
             UMaterialInterface* Material =
                 Mesh->GetStaticMaterials()[Index].MaterialInterface;
-            TestNotNull(TEXT("runtime road material remains assigned"), Material);
+            TestNotNull(TEXT("native MetaRoad runtime material remains assigned"), Material);
             if (Material)
             {
-                const FString Path = Material->GetPathName();
+                TestEqual(
+                    *FString::Printf(
+                        TEXT("%s[%d] uses exact native MetaRoad material"),
+                        *MeshName,
+                        Index),
+                    Material->GetPathName(),
+                    ExpectedMaterial->GetPathName());
                 TestTrue(
-                    TEXT("runtime material is owned by PINK-CAB content"),
-                    Path.StartsWith(
-                        TEXT("/Game/World/L1/Road/Materials/")));
-                TestFalse(
-                    TEXT("runtime material no longer depends on MetaRoad content"),
-                    Path.StartsWith(TEXT("/MetaRoad/")));
+                    TEXT("R4 runtime road material is MetaRoad-owned"),
+                    Material->GetPathName().StartsWith(TEXT("/MetaRoad/")));
             }
         }
         ++ReboundMeshCount;
     }
 
     TestEqual(
-        TEXT("all native MetaRoad R2 construction and R3 mark meshes rebound for runtime"),
+        TEXT("all native MetaRoad R2/R3 road meshes rebound to native MetaRoad materials"),
         ReboundMeshCount,
         GeneratedMeshNames.Num());
 
-    AddInfo(TEXT("CD869_RUNTIME_MATERIAL_OWNERSHIP=PASS"));
+    AddInfo(TEXT("CD869_R4_NATIVE_METAROAD_MATERIALS=PASS"));
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1RoadR4NativeMetaRoadVisualStack,
+    "PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1RoadR4NativeMetaRoadVisualStack::RunTest(
+    const FString& Parameters)
+{
+    struct FExpectedMeshMaterial
+    {
+        FString MeshName;
+        FString MaterialPath;
+    };
+
+    TArray<FExpectedMeshMaterial> Expectations;
+    Expectations.Add({
+        TEXT("RoadSurface"),
+        TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface")});
+    Expectations.Add({
+        TEXT("RoadSidewalks"),
+        TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk")});
+    for (int32 Index = 0; Index < 32; ++Index)
+    {
+        Expectations.Add({
+            Index == 0
+                ? TEXT("RoadCurbs")
+                : FString::Printf(TEXT("RoadCurbs%d"), Index),
+            TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb")});
+    }
+    for (int32 Index = 0; Index < 50; ++Index)
+    {
+        Expectations.Add({
+            Index == 0
+                ? TEXT("RoadMarks")
+                : FString::Printf(TEXT("RoadMarks%d"), Index),
+            TEXT("/MetaRoad/MetaRoad/Materials/M_Mark.M_Mark")});
+    }
+
+    int32 Verified = 0;
+    for (const FExpectedMeshMaterial& Entry : Expectations)
+    {
+        UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+            nullptr,
+            *FString::Printf(
+                TEXT("/Game/World/L1/Road/%s.%s"),
+                *Entry.MeshName,
+                *Entry.MeshName));
+        TestNotNull(
+            *FString::Printf(TEXT("%s loads"), *Entry.MeshName),
+            Mesh);
+        if (!Mesh)
+        {
+            continue;
+        }
+
+        TestTrue(
+            *FString::Printf(TEXT("%s keeps material slots"), *Entry.MeshName),
+            Mesh->GetStaticMaterials().Num() > 0);
+        for (const FStaticMaterial& Slot : Mesh->GetStaticMaterials())
+        {
+            UMaterialInterface* Material = Slot.MaterialInterface;
+            TestNotNull(TEXT("native MetaRoad material assigned"), Material);
+            if (Material)
+            {
+                TestEqual(
+                    *FString::Printf(
+                        TEXT("%s uses expected native MetaRoad stack"),
+                        *Entry.MeshName),
+                    Material->GetPathName(),
+                    Entry.MaterialPath);
+            }
+        }
+        ++Verified;
+    }
+
+    TestEqual(TEXT("all R4 native MetaRoad road meshes verified"), Verified, Expectations.Num());
+
+    UMaterialInterface* DriveSurface = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface"));
+    TestNotNull(TEXT("MetaRoad MI_DriveSurface runtime asset loads"), DriveSurface);
+
+    UMaterial* AsphaltMaster = LoadObject<UMaterial>(
+        nullptr,
+        TEXT("/MetaRoad/MetaRoad/Materials/Master/M_Asphalt.M_Asphalt"));
+    TestNotNull(TEXT("MetaRoad M_Asphalt master loads"), AsphaltMaster);
+
+    AddInfo(TEXT("CD869_R4_NATIVE_METAROAD_VISUAL_STACK=PASS"));
     return true;
 }
 
