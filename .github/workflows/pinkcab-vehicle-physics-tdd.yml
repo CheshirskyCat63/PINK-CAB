@@ -8,6 +8,8 @@ on:
       - 'Source/PinkCabTests/Private/Vehicle/**'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
+      - 'scripts/ci/verify_vehicle_physics_writers.py'
+      - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
   push:
     branches: [main]
     paths:
@@ -57,6 +59,8 @@ jobs:
           python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/VEHICLE_PHYSICS_WRITERS.json
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force -Path (Split-Path $env:TEST_LOG) | Out-Null
           Write-Host "PINKCAB_PHYSICS_EXACT_HEAD=$head"
@@ -134,6 +138,7 @@ jobs:
           path: |
             Saved/GitHubGate/VEHICLE_PHYSICS_TDD.log
             Saved/GitHubGate/VEHICLE_PHYSICS_BASELINE.json
+            Saved/GitHubGate/VEHICLE_PHYSICS_WRITERS.json
             Saved/Reports/code-health.json
           if-no-files-found: warn
           retention-days: 30
