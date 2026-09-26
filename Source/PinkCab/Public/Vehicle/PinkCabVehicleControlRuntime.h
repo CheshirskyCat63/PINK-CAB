@@ -86,6 +86,7 @@ public:
 
     void ApplySteering(float DriverMouseX, bool bGazeHeld, float DeltaSeconds);
     void ResetThrottleInputLatch() { bThrottleHeldLastFrame = false; }
+    void ResetEngineTransition();
     bool ResetTransient(FPinkCabCockpitState& Cockpit);
     void ApplyHealthCapabilities(
         const FPinkCabVehicleHealthService& HealthService,
