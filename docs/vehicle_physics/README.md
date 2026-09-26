@@ -1,20 +1,20 @@
 # PINK CAB · Vehicle Physics Calibration Program
 
-Current planning/admin mirror for the vehicle-physics refinement program requested on 2026-09-26.
+Canonical planning/admin mirror for the vehicle-physics refinement program requested on 2026-09-26.
 
 ## Authority and scope
 
 - Audited Git baseline: `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.
 - Runtime dynamics owner: Unreal Engine 5.8.2 Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider`.
 - Current control/mechanics authority: Confluence page 47 / Jira CD-848.
-- Primary calibration umbrella: Jira CD-648 and existing subsystem owners CD-611/612/643–659/670/722/740/855/856.
+- Single execution umbrella: Jira CD-648; existing subsystem cards remain domain owners. CD-921 is terminal integration/evidence only.
 - Durable Confluence program: page `22413538`, child of page 47.
-- This branch is documentation/admin only. It does **not** change runtime, vehicle controls, city, MetaRoad, content or accepted world gates.
+- This documentation/admin program does **not** change runtime, vehicle controls, city, MetaRoad, content or accepted world gates. The current city/world state is intentionally frozen while Vehicle Physics V2 executes.
 
 ## Documents
 
 1. [PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md](PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md) — P00–P11 execution program with PHY-001..048.
-2. [PARAMETER_LEDGER_2026-09-26.md](PARAMETER_LEDGER_2026-09-26.md) — audited current executable values, conflicting historical authorities and disposition.
+2. [PARAMETER_LEDGER_2026-09-26.md](PARAMETER_LEDGER_2026-09-26.md) — audited current executable values, conflicting historical authorities and disposition.\n3. [TASKS.csv](TASKS.csv) — canonical PHY-001..048 execution registry; all rows begin PLANNED.\n4. [TESTS.csv](TESTS.csv) — 96 acceptance rows; all rows begin NOT RUN.\n5. [SOURCE_PACKAGE_MAP_2026-09-26.md](SOURCE_PACKAGE_MAP_2026-09-26.md) — complete disposition of the uploaded detailed-plan package and its source snapshots.\n6. [ADMIN_AND_HANDOFF_2026-09-26.md](ADMIN_AND_HANDOFF_2026-09-26.md) — clean authority graph, city freeze and exact next execution order.
 
 ## First execution order
 
@@ -33,3 +33,8 @@ The engine-off symptom is not yet assigned to a root cause. Current code already
 - Current 2980/1520/1520 geometry and 205/70R14 wheel data are donor Tatra 613 provenance, not automatic Tatra 603 Series 1 or Tatra 77 truth.
 
 No one of those conflicts is “fixed” by this docs branch. They are explicitly converted into measured implementation gates.
+
+
+## Current focus lock
+
+The current city/MetaRoad/world state is frozen. Development focus is Vehicle Physics V2 only until the owner explicitly reopens world work. Execute from CD-648 and the canonical documents in this folder; use CD-921 only for terminal integration/evidence.
