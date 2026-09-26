@@ -291,27 +291,44 @@ FPinkCabCalibrationRunDescriptor FPinkCabCalibrationRunDescriptor::FromFixture(
     return R;
 }
 
+namespace
+{
+bool MatchesExecutionAndProfile(
+    const FPinkCabCalibrationRunDescriptor& A,
+    const FPinkCabCalibrationRunDescriptor& B)
+{
+    return A.FixtureId == B.FixtureId
+        && A.Seed == B.Seed
+        && FMath::IsNearlyEqual(A.PhysicsDeltaSeconds, B.PhysicsDeltaSeconds)
+        && A.FpsCap == B.FpsCap
+        && A.ModelId == B.ModelId
+        && A.ProfileId == B.ProfileId
+        && A.ProfileSchemaVersion == B.ProfileSchemaVersion
+        && A.CalibrationVersion == B.CalibrationVersion
+        && A.ProfileHash == B.ProfileHash;
+}
+
+bool MatchesLoadSurfaceTireAndTrace(
+    const FPinkCabCalibrationRunDescriptor& A,
+    const FPinkCabCalibrationRunDescriptor& B)
+{
+    return FMath::IsNearlyEqual(A.VehicleMassKg, B.VehicleMassKg)
+        && A.LoadStateId == B.LoadStateId
+        && A.SurfaceId == B.SurfaceId
+        && FMath::IsNearlyEqual(A.SurfaceFrictionScale, B.SurfaceFrictionScale)
+        && A.TireStateId == B.TireStateId
+        && FMath::IsNearlyEqual(A.TireTemperatureC, B.TireTemperatureC)
+        && FMath::IsNearlyEqual(A.TireWear01, B.TireWear01)
+        && A.InputTraceHash == B.InputTraceHash
+        && A.FixtureHash == B.FixtureHash;
+}
+}
+
 bool FPinkCabCalibrationRunDescriptor::IsComparableTo(
     const FPinkCabCalibrationRunDescriptor& Other) const
 {
-    return FixtureId == Other.FixtureId
-        && Seed == Other.Seed
-        && FMath::IsNearlyEqual(PhysicsDeltaSeconds, Other.PhysicsDeltaSeconds)
-        && FpsCap == Other.FpsCap
-        && ModelId == Other.ModelId
-        && ProfileId == Other.ProfileId
-        && ProfileSchemaVersion == Other.ProfileSchemaVersion
-        && CalibrationVersion == Other.CalibrationVersion
-        && ProfileHash == Other.ProfileHash
-        && FMath::IsNearlyEqual(VehicleMassKg, Other.VehicleMassKg)
-        && LoadStateId == Other.LoadStateId
-        && SurfaceId == Other.SurfaceId
-        && FMath::IsNearlyEqual(SurfaceFrictionScale, Other.SurfaceFrictionScale)
-        && TireStateId == Other.TireStateId
-        && FMath::IsNearlyEqual(TireTemperatureC, Other.TireTemperatureC)
-        && FMath::IsNearlyEqual(TireWear01, Other.TireWear01)
-        && InputTraceHash == Other.InputTraceHash
-        && FixtureHash == Other.FixtureHash;
+    return MatchesExecutionAndProfile(*this, Other)
+        && MatchesLoadSurfaceTireAndTrace(*this, Other);
 }
 
 FString FPinkCabCalibrationRunDescriptor::ToMetadataText() const
