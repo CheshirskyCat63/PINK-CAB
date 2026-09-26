@@ -5,7 +5,10 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "HAL/FileManager.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/PackageName.h"
+#include "Misc/Paths.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "UObject/Package.h"
@@ -36,6 +39,10 @@ bool SavePhysicalMaterial(
         FPackageName::LongPackageNameToFilename(
             DryAsphaltPackage,
             FPackageName::GetAssetPackageExtension());
+
+    IFileManager::Get().MakeDirectory(
+        *FPaths::GetPath(Filename),
+        true);
 
     FSavePackageArgs SaveArgs;
     SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
