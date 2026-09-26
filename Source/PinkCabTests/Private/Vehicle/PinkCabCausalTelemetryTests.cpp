@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabCausalTelemetry.h"
+#include "Vehicle/PinkCabCausalTelemetryFrameBuilder.h"
 #include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 
@@ -166,6 +167,97 @@ bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
         FPinkCabEngineActuationResolver::Resolve(Input);
     TestEqual(TEXT("zero health-clamped control remains zero before limiter"), Zero.EngineThrottlePreLimiter01, 0.0f);
     TestEqual(TEXT("zero control has zero requested combustion torque"), Zero.RequestedEngineTorqueAfterLimiterHealthNm, 0.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCausalFrameBuilderTest,
+    "PinkCab.Vehicle.Physics.Telemetry.FrameBuilder",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
+{
+    FPinkCabCausalTelemetryBuildInput Input;
+    Input.TimestampSeconds = 42.5;
+    Input.DeltaSeconds = 1.0f / 60.0f;
+    Input.IgnitionState = EPinkCabCausalIgnitionState::Running;
+    Input.ModelId = TEXT("TATRA_613");
+    Input.ProfileId = TEXT("PINKCAB_TATRA613_CHAOS");
+    Input.ProfileSchemaVersion = 1;
+    Input.CalibrationVersion = 1;
+    Input.ProfileHash = 0x1234ull;
+    Input.Control.ExpectedCoupledRpm = 1800.0f;
+    Input.Control.FinalSteeringCommand = 0.25f;
+    Input.Controls.SetDriveline(2, 1, 0.50f);
+    Input.Controls.SetDrivetrainTorqueCapacity(0.80f);
+    Input.Vehicle.EngineRpm = 1200.0f;
+    Input.Vehicle.SpeedKmh = 36.0f;
+    Input.Vehicle.CurrentGear = 1;
+    Input.Vehicle.TargetGear = 0;
+    Input.Vehicle.CausalActuation.RequestedEngineTorqueAfterLimiterHealthNm = 90.0f;
+    Input.Vehicle.CausalActuation.DriveTorquePath =
+        EPinkCabCausalDriveTorquePath::ExternalPartialClutch;
+    FPinkCabCausalWheelTelemetry Wheel;
+    Wheel.WheelIndex = 2;
+    Wheel.DriveTorqueNm = 120.0f;
+    Input.Vehicle.CausalWheels.Add(Wheel);
+    Input.EngineHealthFactor01 = 0.75f;
+    Input.WorldSpeedMps = 10.0f;
+    Input.VehicleMassKg = 1600.0f;
+
+    const FPinkCabCausalTelemetryFrame Frame =
+        FPinkCabCausalTelemetryFrameBuilder::Build(Input);
+
+    TestTrue(TEXT("running ignition permits combustion"), Frame.bCombustionPermission);
+    TestEqual(TEXT("requested gear copied"), Frame.RequestedGear, 2);
+    TestEqual(TEXT("engaged gear copied"), Frame.EngagedGear, 1);
+    TestEqual(TEXT("Chaos target gear remains independently visible"), Frame.ChaosTargetGear, 0);
+    TestEqual(TEXT("engine rpm copied"), Frame.EngineRpm, 1200.0f);
+    TestEqual(TEXT("expected coupled rpm copied"), Frame.ExpectedCoupledRpm, 1800.0f);
+    TestEqual(TEXT("clutch slip derived"), Frame.ClutchSlipRpm, 600.0f);
+    TestEqual(TEXT("health factor copied"), Frame.EngineHealthFactor01, 0.75f);
+    TestEqual(TEXT("permission-gated torque remains visible while running"),
+        Frame.PermissionGatedAvailableEngineTorqueNm, 90.0f);
+    TestEqual(TEXT("world speed copied"), Frame.WorldSpeedMps, 10.0f);
+    TestTrue(TEXT("translational energy is physically derived"),
+        FMath::IsNearlyEqual(Frame.TranslationalKineticEnergyJ, 80000.0, 0.01));
+    TestEqual(TEXT("per-wheel causal payload copied"), Frame.Wheels.Num(), 1);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCausalWheelCsvTest,
+    "PinkCab.Vehicle.Physics.Telemetry.WheelCsvAvailability",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCausalWheelCsvTest::RunTest(const FString& Parameters)
+{
+    FPinkCabCausalTelemetryTrace Trace(1);
+    FPinkCabCausalTelemetryFrame Frame;
+    FPinkCabCausalWheelTelemetry Wheel;
+    Wheel.WheelIndex = 3;
+    Wheel.bInContact = true;
+    Wheel.WheelRpm = 321.0f;
+    Wheel.SteerAngleDeg = -2.5f;
+    Wheel.SuspensionSpringForce = 4567.0f;
+    Wheel.SlipAngle = 0.12f;
+    Wheel.SlipMagnitude = 4.0f;
+    Wheel.DriveTorqueNm = 200.0f;
+    Wheel.BrakeTorqueNm = 30.0f;
+    Frame.Wheels.Add(Wheel);
+    TestTrue(TEXT("wheel fixture records"), Trace.Record(Frame));
+
+    const FString Csv = Trace.ToWheelCsv();
+    TestTrue(TEXT("wheel csv includes wheel index"), Csv.Contains(TEXT("wheel_index")));
+    TestTrue(TEXT("wheel csv includes drive torque"), Csv.Contains(TEXT("drive_torque_nm")));
+    TestTrue(TEXT("wheel csv includes explicit normal-load availability"),
+        Csv.Contains(TEXT("normal_load_available")));
+    TestTrue(TEXT("wheel csv includes explicit longitudinal-force availability"),
+        Csv.Contains(TEXT("longitudinal_force_available")));
+    TestTrue(TEXT("wheel csv includes fixture rpm"), Csv.Contains(TEXT("321.000000")));
+    TestTrue(TEXT("unavailable exact forces serialize as unavailable flags, not invented availability"),
+        Csv.Contains(TEXT(",0,0.000000,0,0.000000,0,0.000000")));
     return true;
 }
 
