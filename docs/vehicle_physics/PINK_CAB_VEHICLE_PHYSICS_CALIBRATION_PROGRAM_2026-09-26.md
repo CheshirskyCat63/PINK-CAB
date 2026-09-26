@@ -2,7 +2,7 @@
 
 **Program mirror:** 2026-09-26  
 **Scope:** planning/admin only; no vehicle or world runtime changed by this document.  
-**Git baseline audited:** `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.  
+**Git baseline audited:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
 **Runtime owner:** Unreal Engine 5.8.2 Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider`.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
@@ -16,6 +16,22 @@
 - Continuous clutch and analog handbrake stay continuous. No ABS, ESP, auto-countersteer, yaw rescue, autothrottle, auto-rev-match or hidden speed/trajectory correction.
 - City, MetaRoad, fare/economy, save transaction semantics and accepted R1/R2/R3 world work are out of scope.
 
+## Driving-physics intent — causal simulation without hidden helpers
+
+The target is **simulation-leaning but not tedious**. Assetto Corsa is used only as a reference for connected physical causality: driver input → engine/drivetrain → tire forces → load transfer/suspension → chassis response. PINK CAB does not import racing-car parameters, assists or maintenance burden from another game.
+
+Accessibility comes from the car and the input mapping, not from trajectory rescue:
+
+- predictable tire build-up, breakaway and recovery; the player gets warning before full loss of grip;
+- fast manual countersteer remains available at speed;
+- small pedal/steering mistakes are survivable because the physical tune is readable, not because software secretly corrects them;
+- large mistakes remain real mistakes: wheelspin, lockup, stall and spin are valid outcomes;
+- no auto-countersteer, yaw rescue, hidden brake/throttle/clutch/gear choice, velocity overwrite, hidden speed wall or direct-force boost;
+- speed-dependent mouse shaping may change **device sensitivity/integration**, but changing vehicle speed alone must not retroactively shrink an already-authored steering target;
+- normal 30-minute driving must not require service; wear/heat must be caused by actual work/slip, not arbitrary command-time accumulation.
+
+This is the acceptance doctrine for P00–P11; it does not change the accepted control grammar.
+
 ## Verified current-code facts that force this program
 
 At exact audited `main`:
@@ -24,7 +40,10 @@ At exact audited `main`:
 - `FPinkCabGearboxControllerConfig` still uses **IdleRpm 750** and **MaxSafeEngineRpm 6500**, so the engine/gearbox RPM envelope is internally inconsistent with the 8500-rpm physical profile.
 - Current wheel/profile seed: radius **32.13 cm**, width **20.5 cm**, wheelbase **2980 mm**, tracks **1520/1520 mm**, reference service mass **1657 kg**; these are Tatra-613 donor/profile values and must not silently define final 603-I or 77 geometry.
 - Nominal suspension seed is spring **170**, damping ratio **0.38**, travel **160 mm front / 180 mm rear**; current values are calibration seeds, not accepted final ride targets.
-- Current steering config is explicitly speed-shaped (1400 counts base; stationary travel scale 3.60; moving 1.35→2.20; response 2.5/s stationary, 10.5→6.0/s moving; high-speed target gain 0.55 at 120 km/h).
+- `WheelLoadRatio = 0.38` on both axles deliberately weakens tire-force dependence on wheel load; it must be tested as a calibration choice, not treated as an invisible stability requirement.
+- Nominal front/rear friction-force multipliers are **2.00 / 0.50**; the rear reduction was authored to make wheelspin easier and is therefore a high-priority shortcut candidate.
+- Current steering config is explicitly speed-shaped (1400 counts base; stationary travel scale 3.60; moving 1.35→2.20; response 2.5/s stationary, 10.5→6.0/s moving; high-speed target gain 0.55 at 120 km/h). The current implementation multiplies the held steering target by this speed gain, so speed alone can change the final command.
+- Throttle response currently uses `pow(driver, 0.55)`; 25% driver input becomes roughly 47% engine command and 50% becomes roughly 68%, so dosability must be checked independently from power changes.
 - Partial-clutch drive torque is authored separately in `FPinkCabChaosCockpitBridge`; it is gated by Running state, while `FPinkCabChaosVehicleDynamicsProvider` still receives throttle commands independently. Existing live engine-restore test proves mechanical-sim enable/disable, **not** the stronger invariant “engine Off can never generate positive wheel drive torque.” This is why P00/P01 starts with telemetry/root-cause proof rather than a blind throttle-zero patch.
 
 ## Current authority conflicts to resolve, not paper over
@@ -33,7 +52,10 @@ At exact audited `main`:
 2. Code has **750 idle**, while the owner requirement for the next calibration is a warm carbureted **900–950 RPM**; **925 RPM** is the proposed center for A/B, not a claim that the final tune is already accepted.
 3. Gearbox **6500 MaxSafeEngineRpm** conflicts with the 8500-rpm profile and can misclassify legitimate operating range as dangerous overrev.
 4. Some Confluence page banners still say RMB+LMB is mandatory for lever movement although the current page-47/recovery authority allows direct authored LMB contextual manipulation. Physics work must follow page 47 / recovery contract, not stale banners.
-5. Hero canon remains bespoke early/Gen-1 603-family. A 613 may remain a donor/reference profile; supporting 613/603-I/77 profiles does **not** silently redefine the hero identity.
+5. `WheelLoadRatio=0.38` and front/rear friction multipliers `2.00/0.50` are current tuning shortcuts/candidates, not accepted physics doctrine. P06/P07 must re-derive load transfer, combined grip and rear breakaway from evidence.
+6. The speed steering gain currently changes the final held target; P03 must separate device sensitivity from physical steering authority so speed alone cannot steer the car for or against the player.
+7. `pow(driver,0.55)` materially amplifies small throttle inputs; P03/P04 must A/B dosability before calling quicker acceleration successful.
+8. Hero canon remains bespoke early/Gen-1 603-family. A 613 may remain a donor/reference profile; supporting 613/603-I/77 profiles does **not** silently redefine the hero identity.
 
 ## Execution rule
 
@@ -98,8 +120,8 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 **Reuse owners:** CD-643 / CD-644 / CD-645 / CD-659.  
 ### PHY-009 — Unify final torque path
 
-**Change:** Partial-clutch external rear torque and fully-coupled Chaos torque must share engine-running, health, sign, ratio and limit checks.  
-**Acceptance:** Coupling sweep has no torque discontinuity; identical safety/health gates apply to both paths.  
+**Change:** Partial-clutch external rear torque and fully-coupled Chaos torque must consume one authoritative available-engine-torque result containing ignition, limiter, health/damage, torque-capacity, sign and ratio rules. Include wheel→engine reaction/load rather than a one-way torque shortcut.  
+**Acceptance:** Coupling `0.5 → 0.999 → 1.0` has no discontinuity in delivered torque/RPM/energy, including limiter approach, 1st and R; repeat under hill load and hot/worn clutch.  
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ### PHY-010 — Central RPM envelope
@@ -125,8 +147,8 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 **Reuse owners:** CD-649 / CD-611 / CD-825.  
 ### PHY-013 — Steering transfer calibration
 
-**Change:** Tune target sensitivity separately from visible/physical steering travel: heavy at standstill, lighter rolling, calmer high speed, no auto-center.  
-**Acceptance:** Small right input steers right; deliberate countersteer remains available at speed.  
+**Change:** Separate mouse-device integration from physical steering target. Heavy standstill feel and calmer high-speed mouse sensitivity may change how quickly the driver moves the target, but vehicle speed alone may not multiply/shrink a held target or create auto-centering.  
+**Acceptance:** Small right input steers right; a fixed authored target remains fixed while speed changes without new mouse input; deliberate countersteer can reach the mechanically available target at speed; no post-input steering motion exists without a declared physical/self-aligning source.  
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ### PHY-014 — Frame-rate independent mouse trace
@@ -137,8 +159,8 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ### PHY-015 — Pedal wheel dosing response
 
-**Change:** Keep E→W→Q wheel priority, per-launch throttle reset and progressive wheel-burst acceleration; tune only response/curve.  
-**Acceptance:** One wheel detent is precise; reversal/pause resets burst acceleration; no double recipient.  
+**Change:** Keep E→W→Q wheel priority and per-launch throttle reset, but explicitly A/B the throttle transfer curve (`pow(driver,0.55)` baseline) for low-input dosability. Tune response/curve only; never add throttle based on slip, RPM rescue or launch outcome.  
+**Acceptance:** One wheel detent is precise; 25/50/100% commands remain clearly distinct and monotonic; reversal/pause resets burst acceleration; no double recipient and no hidden throttle.  
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ### PHY-016 — Ownership regression
@@ -233,8 +255,8 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 **Reuse owners:** CD-650 / CD-653 / CD-656 / CD-740.  
 ### PHY-029 — Longitudinal/lateral grip
 
-**Change:** Calibrate slip curves/load sensitivity and dry/wet surfaces as one continuous model.  
-**Acceptance:** Throttle produces progressive breakaway; grip recovery does not snap without corresponding load transfer.  
+**Change:** Calibrate slip curves, load sensitivity, axle balance, differential behavior and dry/wet surfaces as one continuous model. Use `WheelLoadRatio=1.0` as the physical reference A/B before accepting any reduced value; remove the `2.00/0.50` front/rear friction asymmetry unless telemetry proves a vehicle-specific reason rather than a wheelspin shortcut.  
+**Acceptance:** combined braking+cornering and throttle+cornering consume one grip budget; throttle and lift can produce progressive rear breakaway; split-µ/differential behavior is causal; recovery does not snap without corresponding load transfer; deliberate bad input can still spin the car.  
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ### PHY-030 — Service brake without ABS
@@ -251,8 +273,8 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ### PHY-032 — Work-based heat/wear
 
-**Change:** Compute clutch heat from slip power and brake heat from braking work; normal 30-min driving must remain serviceable.  
-**Acceptance:** Free-rev with clutch open cannot heat rear brakes; prolonged clutch slip heats clutch causally.  
+**Change:** Compute clutch heat from transmitted torque × relative shaft speed and brake heat from actual brake work at each rotating wheel; command value or body speed alone is insufficient. Normal 30-min driving must remain serviceable.  
+**Acceptance:** Free-rev with clutch open cannot heat rear brakes; a locked stationary/near-stationary wheel does not accumulate fictitious brake work from body-speed formulas; prolonged clutch slip heats clutch causally and proportionally.  
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ## P08 — Persistence, health and boundary safety

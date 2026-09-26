@@ -1,6 +1,6 @@
 # PINK CAB — Vehicle Physics Parameter Ledger — 2026-09-26
 
-Baseline audited: `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.
+Baseline audited: `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.
 
 | Parameter | Current executable/code | Other authority | Program treatment |
 |---|---:|---|---|
@@ -18,16 +18,17 @@ Baseline audited: `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.
 | Front/rear track | 1520 / 1520 mm | Current page 28: donor 613 source | Keep only in 613 profile |
 | Tire | 205/70 R14, radius 32.13 cm, width 20.5 cm | donor-source provenance | Per-model explicit wheel data |
 | Front steer lock | 41° seed | calibration | Preserve semantics, tune effective high-speed gain separately |
-| Nominal front/rear friction multiplier | 2.00 / 0.50 | current executable calibration | Treat as high-risk tune: validate dry/wet combined grip before changing |
+| Nominal front/rear friction multiplier | 2.00 / 0.50 | current executable calibration; rear deliberately weakened for easy wheelspin | Treat as **open blocker**, not accepted doctrine: re-derive axle balance from load/tires/differential; keep only if telemetry proves a vehicle-specific reason |
 | Spring rate | 170 nominal | calibration seed | Derive from sag/load target; retain low/nominal/high variants for experiments |
+| Wheel load ratio | 0.38 front/rear | current executable calibration | A/B against 1.0 physical load-sensitivity reference; any reduction requires explicit evidence and cannot substitute for correct mass/CoM/suspension/tire balance |
 | Damping ratio | 0.38 | calibration seed | Tune decay after bump, not camera-only softness |
 | Travel | front 8+8 cm; rear 9+9 cm | current tests | Validate against model geometry and full-load reserve |
 | Steering base counts | 1400 | executable | A/B only; mechanics unchanged |
 | Steering stationary travel scale | 3.60 | executable | Maintains heavy standstill feel |
 | Moving travel scale | 1.35 → 2.20 | executable | Calibrate low-speed response vs high-speed stability |
 | Steering response | 2.5/s stationary; 10.5→6.0/s moving | executable | Compare at 30/60/120 FPS |
-| High-speed target gain | 0.55 at 120 km/h | executable | Ensure countersteer authority remains |
-| Throttle response | `pow(driver, 0.55)` | executable | Tune only after engine-state/torque-path correctness |
+| High-speed target gain | 0.55 at 120 km/h | executable; currently multiplies held steering target | **Do not accept as hidden final-angle reduction**: speed may shape device sensitivity/integration, but a held authored target must not change solely because vehicle speed changes |
+| Throttle response | `pow(driver, 0.55)` | executable; 25% → ~46.6%, 50% → ~68.3% command | A/B low-input dosability after engine-state/torque-path correctness; faster response must not come from concealed throttle amplification |
 | Clutch release range | runtime cockpit currently 0.20–1.20 s | current owner docs say numeric envelope is not necessarily final owner-lock | Preserve mechanic; calibrate after engine/RPM consistency |
 | Stall RPM | 850 | current drivetrain condition | Recalibrate with 900–950 idle so idle/stall bands do not collide |
 | Lug start / lug stall | 1000 / 800 | executable | Profileize and test coupled low-RPM behavior |
@@ -35,3 +36,7 @@ Baseline audited: `main@7df0fc546e36141c2866a5f5028599eedd37c4a2`.
 ## Authority rule
 
 A value is not “correct” merely because it appears in Jira, Confluence or a test. For executable behavior, exact source/profile + runtime evidence wins. Historical values remain traceable and are explicitly superseded only after the owner accepts the replacement profile.
+
+## 2026-09-26 causality acceptance note
+
+Parameter tuning is subordinate to the no-assist contract. Assetto Corsa is only a reference for connected causality/readability, not a numeric donor. Any candidate that improves lap/acceleration feel by hidden steering-angle reduction, yaw rescue, artificial axle grip asymmetry, direct-force boost or non-causal heat/wear fails even if it feels easier.
