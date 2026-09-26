@@ -82,7 +82,7 @@ public:
                 return true;
             }
 
-            constexpr float RampPitchDeg = 10.0f;
+            constexpr float RampPitchDeg = 20.0f;
             UBoxComponent* RampBox = NewObject<UBoxComponent>(Ramp);
             Ramp->SetRootComponent(RampBox);
             RampBox->SetBoxExtent(FVector(700.0f, 250.0f, 60.0f));
@@ -324,7 +324,7 @@ public:
             return true;
         }
 
-        if (Elapsed < 20.00)
+        if (Elapsed < 8.00)
         {
             return false;
         }
