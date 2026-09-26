@@ -138,6 +138,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
 {
     FPinkCabEngineActuationInput Input;
+    Input.bCombustionAllowed = true;
     Input.HealthClampedControlThrottle01 = 0.25f;
     Input.EngineRpm = 3000.0f;
     Input.MaxRpm = 8500.0f;
