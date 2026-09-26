@@ -40,9 +40,15 @@ FPinkCabEngineActuationResult FPinkCabEngineActuationResolver::Resolve(
     const FPinkCabEngineActuationInput& Input)
 {
     FPinkCabEngineActuationResult Result;
+    Result.bCombustionAllowed = Input.bCombustionAllowed;
     Result.EngineThrottlePreLimiter01 =
         FPinkCabThrottleResponse::ToEngineThrottle(
             Input.HealthClampedControlThrottle01);
+    if (!Input.bCombustionAllowed)
+    {
+        return Result;
+    }
+
     Result.EngineThrottleFinal01 = ApplyPinkCabRevLimiter(
         Result.EngineThrottlePreLimiter01,
         Input.EngineRpm,
