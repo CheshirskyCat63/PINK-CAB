@@ -122,7 +122,7 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPhysicsProfileEnvelopeIdentityTest,
-    "PinkCab.Vehicle.PhysicsProfile.Envelope.Identity",
+    "PinkCab.Vehicle.Physics.Profile.Envelope.Identity",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Parameters)
 {
@@ -151,7 +151,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPhysicsProfileEnvelopeHashTest,
-    "PinkCab.Vehicle.PhysicsProfile.Envelope.DeterministicHash",
+    "PinkCab.Vehicle.Physics.Profile.Envelope.DeterministicHash",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FPinkCabPhysicsProfileEnvelopeHashTest::RunTest(const FString& Parameters)
 {

@@ -68,7 +68,7 @@ jobs:
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log=Join-Path $env:GITHUB_WORKSPACE $env:TEST_LOG
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Vehicle.PhysicsProfile" "-TestExit=Automation Test Queue Empty"
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Vehicle.Physics" "-TestExit=Automation Test Queue Empty"
           $exit=$LASTEXITCODE
           if(Test-Path $log){
             Get-Content $log | Select-String -Pattern 'Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
