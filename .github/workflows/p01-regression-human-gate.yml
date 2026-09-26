@@ -1,0 +1,205 @@
+name: P01 Regression Human Gate
+
+on:
+  push:
+    branches:
+      - 'fix/CD-612-p01-human-regressions'
+    paths:
+      - '.github/workflows/p01-regression-human-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pinkcab-p01-regression-human
+  cancel-in-progress: true
+
+jobs:
+  verify-package-launch:
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      CANDIDATE_SHA: 60bdf849ed867a4a37d819057c47bd18c2f9acdd
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\P01Regression
+
+    steps:
+      - name: Checkout exact regression candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+          lfs: true
+          clean: false
+
+      - name: Exact-head preflight
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if($head -ne $env:CANDIDATE_SHA){ throw "P01_REGRESSION_HEAD_MISMATCH $head" }
+          $dirty=@(git status --porcelain --untracked-files=no)
+          if($dirty.Count -gt 0){ $dirty | % { Write-Host $_ }; throw 'P01_REGRESSION_TRACKED_DIRTY' }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host "P01_REGRESSION_EXACT_HEAD=$head"
+
+      - name: Build editor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $build=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\Build.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          & $build PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -MaxParallelActions=6
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+      - name: Focused stall and road regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $suites=@(
+            'PinkCab.Vehicle.Physics.EngineState.LowRpmCoupledOverloadStalls',
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1EndlessRoad'
+          )
+          foreach($suite in $suites){
+            $safe=($suite -replace '[^A-Za-z0-9_.-]','_')
+            $log=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\REGRESSION_$safe.log")
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $suite" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0 -or (Select-String $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet)){
+              Get-Content $log | Select-Object -Last 220 | % { Write-Host $_ }
+              throw "P01_REGRESSION_TEST_FAIL=$suite"
+            }
+            Write-Host "P01_REGRESSION_TEST_PASS=$suite"
+          }
+
+      - name: Clean exact Win64 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab,UnrealEditor,UnrealEditor-Cmd -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+          foreach($stale in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\StagedBuilds\Windows')
+          )){
+            if(Test-Path $stale){ Remove-Item $stale -Recurse -Force }
+          }
+          $uat=Join-Path $env:UE_ROOT 'Engine\Build\BatchFiles\RunUAT.bat'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          if(Test-Path $archive){ Remove-Item $archive -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $archive | Out-Null
+          $backup="$project.p01-regression-backup"
+          Copy-Item $project $backup -Force
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor.Plugins=@($descriptor.Plugins | Where-Object { $_.Name -notin @('MetaRoad','StructUtils') })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output "-AdditionalBuildArgs=-MaxParallelActions=6"
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+          $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not(Test-Path $inner)){ throw 'P01_REGRESSION_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($inner)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $env:CANDIDATE_SHA -NoNewline
+          Write-Host 'P01_REGRESSION_PACKAGE=PASS'
+
+      - name: Packaged road-material smoke
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $inner=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\P01_REGRESSION_SMOKE.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+          $proc=Start-Process -FilePath $inner -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=1280','-ResY=720',
+            '-PinkCabGateTelemetry','-PinkCabRoadMaterialAudit',
+            "-abslog=$log"
+          ) -WorkingDirectory (Split-Path $inner) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(40)
+            do {
+              Start-Sleep -Milliseconds 300
+              $proc.Refresh()
+              if($proc.HasExited){ throw "P01_REGRESSION_SMOKE_EXITED code=$($proc.ExitCode)" }
+              $loaded=(Test-Path $log) -and (Select-String $log -Pattern 'L_PinkCab_L1_EndlessStraight' -Quiet)
+              $wheels=(Test-Path $log) -and (Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+              $materials=(Test-Path $log) -and (Select-String $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS' -Quiet)
+            } while((-not $loaded -or -not $wheels -or -not $materials) -and [DateTime]::UtcNow -lt $deadline)
+            if(-not $loaded){ throw 'P01_REGRESSION_MAP_MISSING' }
+            if(-not $wheels){ throw 'P01_REGRESSION_WHEELS_MISSING' }
+            if(-not $materials){ throw 'P01_REGRESSION_ROAD_MATERIALS_FAIL' }
+            if(Select-String $log -Pattern '(?i)Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -Quiet){
+              throw 'P01_REGRESSION_CRITICAL_LOG'
+            }
+            Write-Host 'P01_REGRESSION_PACKAGED_SMOKE=PASS'
+          } finally {
+            if($proc -and -not $proc.HasExited){ Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+      - name: Install and launch HUMAN build
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process -Name PinkCab -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+          $short=$env:CANDIDATE_SHA.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("P01_REGRESSION_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "P01_REGRESSION_COPY_FAIL=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $env:CANDIDATE_SHA -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB P01 REGRESSION HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $sc=$ws.CreateShortcut($lnk)
+            $sc.TargetPath=$inner
+            $sc.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $sc.WorkingDirectory=(Split-Path $inner)
+            $sc.Description="PINK CAB P01 regression $env:CANDIDATE_SHA"
+            $sc.Save()
+            Write-Host "P01_REGRESSION_SHORTCUT=$lnk"
+          }
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $proc=Start-Process -FilePath $inner -ArgumentList @(
+              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+              '-windowed','-ResX=1600','-ResY=900'
+            ) -WorkingDirectory (Split-Path $inner) -PassThru
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if($proc.HasExited){ throw "P01_REGRESSION_HUMAN_EXITED=$($proc.ExitCode)" }
+            Write-Host "P01_REGRESSION_DELIVERY=$delivery"
+            Write-Host "P01_REGRESSION_HUMAN_PID=$($proc.Id)"
+            Write-Host 'HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
+
+      - name: Upload regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKCAB-P01-regression-${{ env.CANDIDATE_SHA }}-${{ github.run_id }}
+          path: Saved/GitHubGate/
+          if-no-files-found: warn
+          retention-days: 30
