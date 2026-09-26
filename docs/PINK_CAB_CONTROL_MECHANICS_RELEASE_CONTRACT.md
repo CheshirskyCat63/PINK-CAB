@@ -41,7 +41,7 @@ Hard rules:
 - no auto-rev-match;
 - no auto-countersteer;
 - no yaw rescue / rotational edge guard;
-- no ABS or ESP;
+- no ABS, TC or ESP;
 - no hidden trajectory correction;
 - focus loss/menu clears transient ownership/presses and cannot confirm a gear accidentally.
 
@@ -115,7 +115,7 @@ PINK CAB is city arcade-sim racing/taxi driving with mechanical skill, not a 1:1
 - Target feel: calm readable center, repeatable small corrections, deliberate fast countersteer, progressive grip breakaway/recovery, readable RWD oversteer, visible mass without endless boat oscillation.
 - Control quality must come from input transfer, tires, suspension, load transfer and feedback — not hidden assists.
 
-Current project power/terminal calibration remains 180 hp / 240 Nm / about 195 km/h until separately recalibrated and verified; the 535i reference does not silently import BMW factory powertrain numbers.
+Current executable gameplay tune observed by the 2026-09-26 audit is approximately **250 hp / 260 Nm / 8500 RPM max / 750 RPM idle**; it is not a historical factory claim. The next healthy warmed carbureted idle target is **900–950 RPM**. Older 180 hp / 240 Nm / 6000–6200 RPM values remain historical reference until a versioned profile explicitly re-accepts them. The 535i reference does not silently import BMW factory powertrain numbers, and Assetto Corsa is only a causality/readability reference, never a numeric donor.
 
 ## 5. Causal mechanical consequences
 
@@ -162,6 +162,14 @@ These are implementation tasks/findings, not runtime proof:
 - Vehicle Health needs dedicated clutch and gearbox/transmission channels without deleting existing channels;
 - save schema/versioning must preserve new drivetrain damage;
 - clutch release numeric range remains an explicit reconciliation item.
+
+## 6.1 Vehicle Physics V2 execution authority · 2026-09-26
+
+The accepted control grammar above remains frozen. Physics correctness/calibration executes under **Jira CD-648** with canonical Confluence program **22413538** and Git `docs/vehicle_physics/`. **CD-921 is terminal integration/evidence only**, not the implementation umbrella.
+
+No-assist causality is explicit: speed-sensitive input shaping may change device sensitivity/integration, but vehicle speed alone must not rewrite a held physical steering target; no auto-countersteer, yaw rescue, hidden throttle/brake/clutch/gear decision, hidden trajectory correction, velocity overwrite, direct-force boost, ABS, TC or ESP is allowed in base road handling.
+
+Runtime physics remains **NOT VERIFIED** until exact-SHA telemetry/tests and owner feel gates are executed.
 
 ## 7. Existing implementation owners
 
