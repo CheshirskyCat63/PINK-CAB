@@ -8,6 +8,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
@@ -72,6 +73,8 @@ public:
 
         if (!bInitialized)
         {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
 
             UStaticMesh* Cube = LoadObject<UStaticMesh>(
@@ -98,13 +101,14 @@ public:
             Ramp->SetActorLocation(FVector(0.0f, 0.0f, 12000.0f));
 
             Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12320.0f),
+                FVector(0.0f, 0.0f, 12200.0f),
                 FRotator(RampPitchDeg, 0.0f, 0.0f),
                 false,
                 nullptr,
                 ETeleportType::TeleportPhysics);
             Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
             Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
 
             Controls.SetThrottle(1.0f);
             Controls.SetBrake(0.0f);
@@ -129,7 +133,7 @@ public:
         const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
         if (!bSettled)
         {
-            if (Elapsed < 0.60)
+            if (Elapsed < 0.90)
             {
                 return false;
             }
@@ -154,6 +158,13 @@ public:
         const float StartHorizontalSpeedCmPerSec =
             FVector2D(StartVelocity.X, StartVelocity.Y).Size();
 
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_SLOPE travel_cm=%.3f start_speed_cm_s=%.3f end_speed_cm_s=%.3f start=%s end=%s"),
+            HorizontalTravelCm,
+            StartHorizontalSpeedCmPerSec,
+            HorizontalSpeedCmPerSec,
+            *StartLocation.ToString(),
+            *EndLocation.ToString()));
         Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
             HorizontalTravelCm > 5.0f);
         Test->TestTrue(TEXT("slope creates physical rolling speed"),
@@ -230,7 +241,13 @@ public:
 
         if (!bInitialized)
         {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
+            if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
+            {
+                Mesh->WakeAllRigidBodies();
+            }
             Cockpit.StartEngine();
             Controls.SetBrake(0.0f);
             Controls.SetHandbrake(1.0f);
@@ -254,6 +271,10 @@ public:
                 return false;
             }
             IdleBeforeBlip = Movement->GetEngineRotationSpeed();
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_IDLE settled_rpm=%.3f configured_idle=%.3f"),
+                IdleBeforeBlip,
+                Movement->EngineSetup.EngineIdleRPM));
             Test->TestTrue(TEXT("warm healthy neutral idle settles inside 900-950 rpm"),
                 IdleBeforeBlip >= 900.0f && IdleBeforeBlip <= 950.0f);
 
@@ -272,6 +293,7 @@ public:
                 return false;
             }
             const float BlipRpm = Movement->GetEngineRotationSpeed();
+            Test->AddInfo(FString::Printf(TEXT("P01_IDLE blip_rpm=%.3f"), BlipRpm));
             Test->TestTrue(TEXT("neutral throttle blip raises rpm above idle"),
                 BlipRpm > IdleBeforeBlip + 150.0f);
 
@@ -289,6 +311,7 @@ public:
         }
 
         const float ReturnedIdleRpm = Movement->GetEngineRotationSpeed();
+        Test->AddInfo(FString::Printf(TEXT("P01_IDLE returned_rpm=%.3f"), ReturnedIdleRpm));
         Test->TestTrue(TEXT("engine returns to warm carb idle band after blip"),
             ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f);
         Test->TestEqual(TEXT("released blip has zero final throttle"),
