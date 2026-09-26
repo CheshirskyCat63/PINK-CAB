@@ -5,10 +5,9 @@
 #include "EngineUtils.h"
 #include "HAL/PlatformTime.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Interaction/PinkCabInteractionModel.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
-#include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 #include "World/PinkCabL1RoadChunkActor.h"
 
@@ -137,31 +136,30 @@ public:
                 PinkCabL1EndlessRoadSeamTests::HasCollisionOnChunk(
                     Streamer->FindActiveChunkActor(1)));
 
-            Test->TestTrue(TEXT("seam smoke ignition interaction succeeds"),
-                Pawn->ApplyCockpitInteraction(
-                    {FName(TEXT("Ignition")),
-                     EPinkCabInteractionGesture::PressHold,
-                     1}));
+            // This test owns only road seam continuity. Keep it independent
+            // from engine/clutch/stall rules by crossing on chassis inertia.
+            // Explicitly decouple the drivetrain: a raw velocity fixture must
+            // not inherit the live pawn's pre-existing 1st-gear mechanical sim.
+            Movement->EnableMechanicalSim(false);
+            Movement->SetTargetGear(0, true);
 
-            Pawn->ApplyPhysicalControlMouseDelta(
-                TEXT("Handbrake"), true, 0.0f, 500.0f, 0.1f);
-            Pawn->ApplyPhysicalControlMouseDelta(
-                NAME_None, false, 0.0f, 0.0f, 0.1f);
+            FPinkCabVehicleControlState FreeRoll;
+            FreeRoll.SetThrottle(0.0f);
+            FreeRoll.SetSteering(0.0f);
+            FreeRoll.SetBrake(0.0f);
+            FreeRoll.SetHandbrake(0.0f);
+            FreeRoll.SetDriveline(0, 0, 0.0f);
+            Pawn->GetPinkCabDynamicsProvider().ApplyControls(FreeRoll);
 
-            Pawn->ApplyPhysicalControlMouseDelta(
-                TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(
-                TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
-
-            const FPinkCabVehicleInputFrame ClutchFrame =
-                FPinkCabVehicleInputFrame::FromDigital(
-                    false, true, false, false);
-            Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
-
-            const FPinkCabVehicleInputFrame CoupledFrame =
-                FPinkCabVehicleInputFrame::FromDigital(
-                    false, false, false, false);
-            Pawn->ApplyVehicleInputFrame(CoupledFrame, 0.0f);
+            USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+            Test->TestNotNull(TEXT("seam fixture has physical vehicle mesh"), Mesh);
+            if (!Mesh)
+            {
+                return true;
+            }
+            Mesh->SetPhysicsLinearVelocity(FVector(900.0f, 0.0f, 0.0f));
+            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
 
             State->StartedSeconds = FPlatformTime::Seconds();
             State->bPrepared = true;
@@ -173,7 +171,7 @@ public:
         if (Elapsed > 12.0)
         {
             Test->AddError(FString::Printf(
-                TEXT("Tatra did not complete seam crossing in 12s: X=%.1f speed=%.1f gear=%d contacts=%d"),
+                TEXT("Tatra did not complete inertial seam crossing in 12s: X=%.1f speed=%.1f gear=%d contacts=%d"),
                 Pawn->GetActorLocation().X,
                 Movement->GetForwardSpeed(),
                 Movement->GetCurrentGear(),
@@ -184,17 +182,10 @@ public:
         const int32 Contacts =
             PinkCabL1EndlessRoadSeamTests::CountWheelContacts(*Movement);
 
-        if (Movement->GetCurrentGear() != 1 || Contacts < 2)
+        if (Contacts < 2)
         {
             return false;
         }
-
-        FPinkCabVehicleControlState Controls;
-        Controls.SetThrottle(0.25f);
-        Controls.SetSteering(0.0f);
-        Controls.SetBrake(0.0f);
-        Controls.SetHandbrake(0.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
 
         const double X = Pawn->GetActorLocation().X;
         if (X <= 100100.0 || Streamer->GetCurrentChunkIndex() != 1)
