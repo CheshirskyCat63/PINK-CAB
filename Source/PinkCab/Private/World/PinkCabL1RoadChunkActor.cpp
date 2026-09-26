@@ -63,9 +63,7 @@ const FVector NativeMetaRoadCurbRelativeLocations[NativeMetaRoadCurbMeshCount] =
     FVector(86250.0,   3050.0, 4.25)
 };
 
-bool HasExactRoadMaterial(
-    const UStaticMeshComponent* Component,
-    const TCHAR* ExpectedPath)
+bool HasExactRoadMaterial(const UStaticMeshComponent* Component, const TCHAR* ExpectedPath)
 {
     if (!Component || Component->GetNumMaterials() <= 0)
     {
