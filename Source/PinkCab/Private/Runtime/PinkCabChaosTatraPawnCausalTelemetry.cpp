@@ -28,7 +28,7 @@ void APinkCabChaosTatraPawn::RecordCausalTelemetry(
     const double NowSeconds,
     const float DeltaSeconds)
 {
-    if (!bCausalTelemetryEnabled || CausalTelemetryTrace.IsSaturated())
+    if (!bCausalTelemetryEnabled)
     {
         return;
     }
