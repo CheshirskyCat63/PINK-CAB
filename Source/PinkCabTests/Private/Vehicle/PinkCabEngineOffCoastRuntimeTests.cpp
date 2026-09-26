@@ -105,10 +105,10 @@ public:
             }
 
             Cockpit.StopEngine();
-            FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+            FPinkCabChaosVehicleDynamicsProvider KeyOffProvider(Movement);
             Test->TestTrue(TEXT("key-off controls apply"),
                 FPinkCabChaosCockpitBridge::Apply(
-                    Cockpit, *Movement, Controls, Provider));
+                    Cockpit, *Movement, Controls, KeyOffProvider));
             Test->TestFalse(TEXT("key-off disables mechanical engine sim"),
                 Movement->bMechanicalSimEnabled);
             Test->TestFalse(TEXT("key-off denies combustion"),
