@@ -130,3 +130,48 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
     }
     return Csv;
 }
+
+
+FString FPinkCabCausalTelemetryTrace::ToWheelCsv() const
+{
+    FString Csv = TEXT(
+        "sequence,timestamp_s,wheel_index,in_contact,wheel_rpm,steer_angle_deg,"
+        "suspension_length,spring_force_n,slip_angle,slip_magnitude,drive_torque_nm,"
+        "brake_torque_nm,abs_configured,abs_active,tc_configured,"
+        "normal_load_available,normal_load_n,slip_ratio_available,slip_ratio,"
+        "longitudinal_force_available,longitudinal_force_n,lateral_force_available,lateral_force_n\n");
+
+    for (const FPinkCabCausalTelemetryFrame& Frame : Frames)
+    {
+        for (const FPinkCabCausalWheelTelemetry& Wheel : Frame.Wheels)
+        {
+            Csv += FString::Printf(
+                TEXT("%llu,%.9f,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,")
+                TEXT("%d,%d,%d,%d,%.6f,%d,%.6f,%d,%.6f,%d,%.6f\n"),
+                static_cast<unsigned long long>(Frame.Sequence),
+                Frame.TimestampSeconds,
+                Wheel.WheelIndex,
+                Wheel.bInContact ? 1 : 0,
+                Wheel.WheelRpm,
+                Wheel.SteerAngleDeg,
+                Wheel.NormalizedSuspensionLength,
+                Wheel.SuspensionSpringForce,
+                Wheel.SlipAngle,
+                Wheel.SlipMagnitude,
+                Wheel.DriveTorqueNm,
+                Wheel.BrakeTorqueNm,
+                Wheel.bABSConfigured ? 1 : 0,
+                Wheel.bABSActivated ? 1 : 0,
+                Wheel.bTractionControlConfigured ? 1 : 0,
+                Wheel.bHasNormalLoad ? 1 : 0,
+                Wheel.NormalLoadN,
+                Wheel.bHasSlipRatio ? 1 : 0,
+                Wheel.SlipRatio,
+                Wheel.bHasLongitudinalForce ? 1 : 0,
+                Wheel.LongitudinalForceN,
+                Wheel.bHasLateralForce ? 1 : 0,
+                Wheel.LateralForceN);
+        }
+    }
+    return Csv;
+}
