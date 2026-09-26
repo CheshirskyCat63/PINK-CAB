@@ -3,10 +3,9 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
-#include "Engine/StaticMeshActor.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -75,15 +74,7 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             UGameplayStatics::SetGamePaused(World, false);
-            UStaticMesh* Cube = LoadObject<UStaticMesh>(
-                nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
-            Test->TestNotNull(TEXT("engine cube exists for isolated slope"), Cube);
-            if (!Cube)
-            {
-                return true;
-            }
-
-            Ramp = World->SpawnActor<AStaticMeshActor>();
+            Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
             if (!Ramp)
             {
@@ -91,19 +82,32 @@ public:
             }
 
             constexpr float RampPitchDeg = 10.0f;
-            UStaticMeshComponent* RampMesh = Ramp->GetStaticMeshComponent();
-            RampMesh->SetStaticMesh(Cube);
-            RampMesh->SetMobility(EComponentMobility::Static);
-            RampMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-            RampMesh->SetCollisionProfileName(TEXT("BlockAll"));
-            RampMesh->SetGenerateOverlapEvents(false);
-            Ramp->SetActorScale3D(FVector(14.0f, 5.0f, 0.20f));
+            UBoxComponent* RampBox = NewObject<UBoxComponent>(Ramp);
+            Ramp->SetRootComponent(RampBox);
+            RampBox->SetBoxExtent(FVector(700.0f, 250.0f, 60.0f));
+            RampBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            RampBox->SetCollisionObjectType(ECC_WorldStatic);
+            RampBox->SetCollisionResponseToAllChannels(ECR_Block);
+            RampBox->SetGenerateOverlapEvents(false);
+            RampBox->RegisterComponent();
             Ramp->SetActorRotation(FRotator(RampPitchDeg, 0.0f, 0.0f));
             Ramp->SetActorLocation(FVector(0.0f, 0.0f, 12000.0f));
-            RampMesh->RecreatePhysicsState();
+            RampBox->RecreatePhysicsState();
+
+            FHitResult RampProbe;
+            const bool bRampProbeHit = World->LineTraceSingleByChannel(
+                RampProbe,
+                FVector(0.0f, 0.0f, 12500.0f),
+                FVector(0.0f, 0.0f, 11500.0f),
+                ECC_Visibility);
+            Test->TestTrue(TEXT("isolated slope fixture has query collision"), bRampProbeHit);
+            if (!bRampProbeHit)
+            {
+                return true;
+            }
 
             Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12380.0f),
+                FVector(0.0f, 0.0f, 12280.0f),
                 FRotator(RampPitchDeg, 0.0f, 0.0f),
                 false,
                 nullptr,
@@ -186,7 +190,7 @@ public:
 
 private:
     FAutomationTestBase* Test = nullptr;
-    AStaticMeshActor* Ramp = nullptr;
+    AActor* Ramp = nullptr;
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
     bool bInitialized = false;
@@ -245,6 +249,7 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
             if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
             {
                 Mesh->WakeAllRigidBodies();
