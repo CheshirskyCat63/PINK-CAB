@@ -93,7 +93,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A Content/World/L1/Road
-          if(git diff --cached --quiet){
+          git diff --cached --quiet
+          $hasAssetDelta=($LASTEXITCODE -ne 0)
+          $global:LASTEXITCODE=0
+          if(-not $hasAssetDelta){
             Write-Host 'CD869_TEXTURE_REPAIR_ASSETS_ALREADY_NATIVE=1'
           } else {
             git commit -m 'asset(CD-869): restore native MetaRoad texture stack'
