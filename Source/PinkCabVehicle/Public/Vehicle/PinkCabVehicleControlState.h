@@ -23,6 +23,30 @@ struct FPinkCabVehicleControlState
     {
         ExternalRearDriveTorquePerWheelNm = TorqueNm;
     }
+    void SetResolvedEngineActuation(
+        bool bAllowed,
+        float PreLimiterThrottle01,
+        float FinalThrottle01,
+        float TorqueCurveNm,
+        float AvailableTorqueNm)
+    {
+        bCombustionAllowed = bAllowed;
+        ResolvedEngineThrottlePreLimiter01 =
+            FMath::Clamp(PreLimiterThrottle01, 0.0f, 1.0f);
+        ResolvedEngineThrottle01 =
+            FMath::Clamp(FinalThrottle01, 0.0f, 1.0f);
+        ResolvedEngineTorqueCurveNm = FMath::Max(TorqueCurveNm, 0.0f);
+        AvailableEngineTorqueNm = FMath::Max(AvailableTorqueNm, 0.0f);
+    }
+
+    bool IsCombustionAllowed() const { return bCombustionAllowed; }
+    float GetResolvedEngineThrottlePreLimiter01() const
+    {
+        return ResolvedEngineThrottlePreLimiter01;
+    }
+    float GetResolvedEngineThrottle01() const { return ResolvedEngineThrottle01; }
+    float GetResolvedEngineTorqueCurveNm() const { return ResolvedEngineTorqueCurveNm; }
+    float GetAvailableEngineTorqueNm() const { return AvailableEngineTorqueNm; }
 
     float Steering = 0.0f;
     float Throttle = 0.0f;
@@ -34,4 +58,9 @@ struct FPinkCabVehicleControlState
     float ClutchCoupling = 1.0f;
     float DrivetrainTorqueCapacity = 1.0f;
     float ExternalRearDriveTorquePerWheelNm = 0.0f;
+    bool bCombustionAllowed = false;
+    float ResolvedEngineThrottlePreLimiter01 = 0.0f;
+    float ResolvedEngineThrottle01 = 0.0f;
+    float ResolvedEngineTorqueCurveNm = 0.0f;
+    float AvailableEngineTorqueNm = 0.0f;
 };

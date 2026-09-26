@@ -62,3 +62,11 @@ float FPinkCabLaunchController::GetThrottleTarget() const
 {
     return ThrottleTarget;
 }
+
+
+void FPinkCabLaunchController::ResetThrottleDemand()
+{
+    ThrottleTarget = 0.0f;
+    bLaunchActive = false;
+    bThrottleDoseRequired = false;
+}

@@ -4,6 +4,7 @@
 
 struct PINKCABVEHICLE_API FPinkCabEngineActuationInput
 {
+    bool bCombustionAllowed = false;
     float HealthClampedControlThrottle01 = 0.0f;
     float EngineRpm = 0.0f;
     float MaxRpm = 0.0f;
@@ -12,6 +13,7 @@ struct PINKCABVEHICLE_API FPinkCabEngineActuationInput
 
 struct PINKCABVEHICLE_API FPinkCabEngineActuationResult
 {
+    bool bCombustionAllowed = false;
     float EngineThrottlePreLimiter01 = 0.0f;
     float EngineThrottleFinal01 = 0.0f;
     float RequestedEngineTorqueAfterLimiterHealthNm = 0.0f;

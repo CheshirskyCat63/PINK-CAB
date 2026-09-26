@@ -62,9 +62,15 @@ void APinkCabChaosTatraPawn::ResetTransientCockpitInput()
 
 bool APinkCabChaosTatraPawn::ApplyCockpitInteraction(const FPinkCabInteractionEvent& Event)
 {
+    const EPinkCabIgnitionState PreviousIgnition =
+        CockpitState.GetIgnitionState();
     if (!FPinkCabCockpitInteractionRouter::Apply(Event, CockpitState))
     {
         return false;
+    }
+    if (CockpitState.GetIgnitionState() != PreviousIgnition)
+    {
+        VehicleControlRuntime.ResetEngineTransition();
     }
     SyncCockpitToChaos();
     return true;
