@@ -141,6 +141,7 @@ public:
     const TArray<FPinkCabCausalTelemetryFrame>& GetFrames() const { return Frames; }
 
     FString ToCsv() const;
+    FString ToWheelCsv() const;
 
 private:
     int32 Capacity = 4096;
