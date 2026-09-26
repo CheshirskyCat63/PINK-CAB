@@ -44,7 +44,7 @@ bool FPinkCabDrivetrainCondition::ShouldLaunchStall(
         && Input.EngagedGear != 0
         && Input.ClutchCoupling > 0.80f
         && Input.EngineRpm > 0.0f
-        && Input.EngineRpm < Config.StallRpm
+        && Input.ExpectedCoupledRpm < Config.StallRpm
         && FMath::Abs(Input.SpeedKmh) < 3.0f
         && Input.Throttle < 0.12f;
 }
