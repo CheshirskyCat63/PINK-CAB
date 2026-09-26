@@ -252,6 +252,14 @@ void APinkCabChaosTatraPawn::BeginPlay()
 
     bPackagedGateTelemetryEnabled =
         FParse::Param(FCommandLine::Get(), TEXT("PinkCabGateTelemetry"));
+    bCausalTelemetryEnabled =
+        FParse::Param(FCommandLine::Get(), TEXT("PinkCabCausalTelemetry"));
+    if (bCausalTelemetryEnabled)
+    {
+        CausalTelemetryTrace.Reset();
+        UE_LOG(LogTemp, Display, TEXT("PINKCAB_PHY003_TRACE_BEGIN capacity=%d"),
+            CausalTelemetryTrace.GetCapacity());
+    }
     if (bPackagedGateTelemetryEnabled)
     {
         PackagedGateStartLocation = GetActorLocation();
@@ -263,6 +271,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
 
 void APinkCabChaosTatraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    FlushCausalTelemetry();
     ResetTransientCockpitInput();
     if (DriverUi)
     {
@@ -311,7 +320,9 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
     UpdateDriverUiState(Presentation);
-    EmitPackagedGateTelemetry(FPlatformTime::Seconds());
+    const double TelemetryNowSeconds = FPlatformTime::Seconds();
+    RecordCausalTelemetry(TelemetryNowSeconds, DeltaSeconds);
+    EmitPackagedGateTelemetry(TelemetryNowSeconds);
 }
 
 UChaosWheeledVehicleMovementComponent* APinkCabChaosTatraPawn::GetChaosMovement() const
