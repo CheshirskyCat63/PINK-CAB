@@ -104,73 +104,109 @@ void AddCouplingSweep(
     Out.Add(MoveTemp(F));
 }
 
-void AddHandlingFixtures(
+void AddConstantRadius(
     TArray<FPinkCabCalibrationFixtureSpec>& Out,
     const FPinkCabChaosPhysicalProfile& Profile)
 {
-    auto Radius = BaseFixture(Profile, TEXT("CONSTANT_RADIUS"), 41004);
-    Radius.InputTrace = {
+    auto F = BaseFixture(Profile, TEXT("CONSTANT_RADIUS"), 41004);
+    F.InputTrace = {
         Key(0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 2),
         Key(1.0f, 0.35f, 0.0f, 0.0f, 0.25f, 2),
         Key(8.0f, 0.35f, 0.0f, 0.0f, 0.25f, 2)};
-    Out.Add(MoveTemp(Radius));
+    Out.Add(MoveTemp(F));
+}
 
-    auto BrakeTurn = BaseFixture(Profile, TEXT("COMBINED_BRAKE_TURN"), 41005);
-    BrakeTurn.InputTrace = {
+void AddCombinedBrakeTurn(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("COMBINED_BRAKE_TURN"), 41005);
+    F.InputTrace = {
         Key(0.0f, 0.45f, 0.0f, 0.0f, 0.25f, 3),
         Key(2.0f, 0.0f, 0.50f, 0.0f, 0.25f, 3),
         Key(5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 3)};
-    Out.Add(MoveTemp(BrakeTurn));
+    Out.Add(MoveTemp(F));
+}
 
-    auto ThrottleTurn = BaseFixture(Profile, TEXT("COMBINED_THROTTLE_TURN"), 41006);
-    ThrottleTurn.InputTrace = {
+void AddCombinedThrottleTurn(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("COMBINED_THROTTLE_TURN"), 41006);
+    F.InputTrace = {
         Key(0.0f, 0.25f, 0.0f, 0.0f, 0.25f, 2),
         Key(2.0f, 0.65f, 0.0f, 0.0f, 0.25f, 2),
         Key(5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2)};
-    Out.Add(MoveTemp(ThrottleTurn));
+    Out.Add(MoveTemp(F));
+}
 
-    auto LiftOff = BaseFixture(Profile, TEXT("LIFT_OFF"), 41007);
-    LiftOff.InputTrace = {
+void AddLiftOff(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("LIFT_OFF"), 41007);
+    F.InputTrace = {
         Key(0.0f, 0.60f, 0.0f, 0.0f, 0.20f, 3),
         Key(3.0f, 0.0f, 0.0f, 0.0f, 0.20f, 3),
         Key(6.0f, 0.0f, 0.0f, 0.0f, -0.15f, 3)};
-    Out.Add(MoveTemp(LiftOff));
+    Out.Add(MoveTemp(F));
+}
 
-    auto Split = BaseFixture(Profile, TEXT("SPLIT_MU_BRAKE"), 41008);
-    Split.SurfaceId = TEXT("SPLIT_MU_DRY_WET");
-    Split.SurfaceFrictionScale = 0.65f;
-    Split.InputTrace = {
+void AddSplitMu(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("SPLIT_MU_BRAKE"), 41008);
+    F.SurfaceId = TEXT("SPLIT_MU_DRY_WET");
+    F.SurfaceFrictionScale = 0.65f;
+    F.InputTrace = {
         Key(0.0f, 0.40f, 0.0f, 0.0f, 0.0f, 3),
         Key(2.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3),
         Key(5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 3)};
-    Out.Add(MoveTemp(Split));
+    Out.Add(MoveTemp(F));
+}
 
-    auto Brake = BaseFixture(Profile, TEXT("STRAIGHT_BRAKING"), 41009);
-    Brake.InputTrace = {
+void AddStraightBraking(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("STRAIGHT_BRAKING"), 41009);
+    F.InputTrace = {
         Key(0.0f, 0.50f, 0.0f, 0.0f, 0.0f, 3),
         Key(2.0f, 0.0f, 0.25f, 0.0f, 0.0f, 3),
         Key(3.0f, 0.0f, 0.50f, 0.0f, 0.0f, 3),
         Key(4.0f, 0.0f, 1.00f, 0.0f, 0.0f, 3)};
-    Out.Add(MoveTemp(Brake));
+    Out.Add(MoveTemp(F));
+}
 
-    auto Slalom = BaseFixture(Profile, TEXT("SLALOM"), 41010);
-    Slalom.InputTrace = {
+void AddSlalom(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("SLALOM"), 41010);
+    F.InputTrace = {
         Key(0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 2),
         Key(1.0f, 0.35f, 0.0f, 0.0f, 0.30f, 2),
         Key(2.0f, 0.35f, 0.0f, 0.0f, -0.30f, 2),
         Key(3.0f, 0.35f, 0.0f, 0.0f, 0.30f, 2),
         Key(4.0f, 0.35f, 0.0f, 0.0f, -0.30f, 2)};
-    Out.Add(MoveTemp(Slalom));
+    Out.Add(MoveTemp(F));
+}
 
-    auto Rough = BaseFixture(Profile, TEXT("ROUGH_ROAD"), 41011);
-    Rough.SurfaceId = TEXT("ROUGH_ROAD_STANDARD");
-    Rough.InputTrace = {
+void AddRoughRoad(
+    TArray<FPinkCabCalibrationFixtureSpec>& Out,
+    const FPinkCabChaosPhysicalProfile& Profile)
+{
+    auto F = BaseFixture(Profile, TEXT("ROUGH_ROAD"), 41011);
+    F.SurfaceId = TEXT("ROUGH_ROAD_STANDARD");
+    F.InputTrace = {
         Key(0.0f, 0.25f, 0.0f, 0.0f, 0.0f, 2),
         Key(2.0f, 0.35f, 0.0f, 0.0f, 0.10f, 2),
         Key(6.0f, 0.25f, 0.0f, 0.0f, -0.10f, 2)};
-    Out.Add(MoveTemp(Rough));
+    Out.Add(MoveTemp(F));
 }
 }
+
 
 uint64 FPinkCabCalibrationFixtureSpec::GetInputTraceHash() const
 {
@@ -315,6 +351,13 @@ FPinkCabCalibrationFixtureLibrary::BuildCanonicalSet(
     AddFlatLaunch(Result, Profile);
     AddGradeLaunch(Result, Profile);
     AddCouplingSweep(Result, Profile);
-    AddHandlingFixtures(Result, Profile);
+    AddConstantRadius(Result, Profile);
+    AddCombinedBrakeTurn(Result, Profile);
+    AddCombinedThrottleTurn(Result, Profile);
+    AddLiftOff(Result, Profile);
+    AddSplitMu(Result, Profile);
+    AddStraightBraking(Result, Profile);
+    AddSlalom(Result, Profile);
+    AddRoughRoad(Result, Profile);
     return Result;
 }
