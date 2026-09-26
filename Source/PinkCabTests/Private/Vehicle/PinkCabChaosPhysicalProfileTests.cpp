@@ -119,6 +119,69 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPhysicsProfileEnvelopeIdentityTest,
+    "PinkCab.Vehicle.PhysicsProfile.Envelope.Identity",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+
+    TestTrue(TEXT("profile envelope validates"), Profile.HasValidEnvelope());
+    TestEqual(TEXT("model id is the current 613 donor profile only"),
+        Profile.ModelId, FName(TEXT("TATRA_613")));
+    TestEqual(TEXT("profile id is stable"),
+        Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
+    TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
+    TestEqual(TEXT("calibration starts at v1"), Profile.CalibrationVersion, 1);
+    TestEqual(TEXT("unit contract id is explicit"),
+        Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
+    TestEqual(TEXT("provenance set id is explicit"),
+        Profile.ProvenanceSetId, FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26")));
+    TestEqual(TEXT("compatibility id is explicit"),
+        Profile.CompatibilityId, FName(TEXT("PINKCAB_CHAOS_PROFILE_V1")));
+    TestEqual(TEXT("migration id is explicit"),
+        Profile.MigrationId, FName(TEXT("PINKCAB_TATRA613_PROFILE_V1")));
+    TestEqual(TEXT("variant identity is retained"),
+        Profile.CalibrationVariant, EPinkCabCalibrationVariant::Nominal);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPhysicsProfileEnvelopeHashTest,
+    "PinkCab.Vehicle.PhysicsProfile.Envelope.DeterministicHash",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabPhysicsProfileEnvelopeHashTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosPhysicalProfile NominalA =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const FPinkCabChaosPhysicalProfile NominalB =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const FPinkCabChaosPhysicalProfile Low =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Low);
+
+    const uint64 HashA = NominalA.GetDeterministicProfileHash();
+    const uint64 HashB = NominalB.GetDeterministicProfileHash();
+    const uint64 LowHash = Low.GetDeterministicProfileHash();
+
+    TestTrue(TEXT("profile hash is non-zero"), HashA != 0);
+    TestEqual(TEXT("same profile produces same deterministic hash"), HashA, HashB);
+    TestTrue(TEXT("calibration variant changes deterministic hash"), HashA != LowHash);
+
+    FPinkCabChaosPhysicalProfile Mutated = NominalA;
+    Mutated.EngineIdleRpm.Value += 1.0f;
+    TestTrue(TEXT("physical parameter mutation changes deterministic hash"),
+        HashA != Mutated.GetDeterministicProfileHash());
+
+    Mutated = NominalA;
+    Mutated.EngineIdleRpm.Authority = EPinkCabPhysicalParameterAuthority::Source;
+    TestTrue(TEXT("provenance mutation changes deterministic hash"),
+        HashA != Mutated.GetDeterministicProfileHash());
+    return true;
+}
+
 #endif
 
 #if WITH_DEV_AUTOMATION_TESTS
