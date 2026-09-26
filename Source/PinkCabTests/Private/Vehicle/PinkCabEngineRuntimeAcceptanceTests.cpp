@@ -242,6 +242,7 @@ public:
                 Movement->bMechanicalSimEnabled);
             Phase = EPhase::SettlingIdle;
             PhaseStartSeconds = FPlatformTime::Seconds();
+            bInitialized = true;
             return false;
         }
 
