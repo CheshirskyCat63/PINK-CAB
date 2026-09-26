@@ -149,12 +149,19 @@ bool FPinkCabL1NativeMetaRoadR2AssetTest::RunTest(const FString& Parameters)
                 Material);
             if (Material)
             {
-                TestTrue(
+                const FString MaterialOwnerMeshName(MeshName);
+                const FString ExpectedPath =
+                    MaterialOwnerMeshName == TEXT("RoadSurface")
+                        ? TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface")
+                        : MaterialOwnerMeshName == TEXT("RoadSidewalks")
+                            ? TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk")
+                            : TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb");
+                TestEqual(
                     *FString::Printf(
-                        TEXT("%s runtime material is project-owned"),
+                        TEXT("%s runtime material stays native MetaRoad"),
                         MeshName),
-                    Material->GetPathName().StartsWith(
-                        TEXT("/Game/World/L1/Road/Materials/")));
+                    Material->GetPathName(),
+                    ExpectedPath);
             }
         }
     }
