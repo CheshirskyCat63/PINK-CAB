@@ -6,8 +6,12 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
-#include "Interaction/PinkCabInteractionModel.h"
+#include "Kismet/GameplayStatics.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabVehicleControlState.h"
 
 class FPinkCabEngineOffCoastCommand final : public IAutomationLatentCommand
 {
@@ -46,64 +50,124 @@ public:
 
         if (!bInitialized)
         {
-            if (!Movement->bMechanicalSimEnabled)
-            {
-                Test->TestTrue(TEXT("ignition starts live engine before coast fixture"),
-                    Pawn->ApplyCockpitInteraction(
-                        {FName(TEXT("Ignition")),
-                         EPinkCabInteractionGesture::PressHold,
-                         1}));
-            }
-            Test->TestTrue(TEXT("precondition mechanical sim is Running"),
-                Movement->bMechanicalSimEnabled);
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
+            Mesh->WakeAllRigidBodies();
 
-            const FVector FixtureVelocity =
-                Pawn->GetActorForwardVector() * 800.0f;
-            Mesh->SetPhysicsLinearVelocity(FixtureVelocity);
-            InitialSpeedCmPerSec =
-                Mesh->GetPhysicsLinearVelocity().Size();
-            Test->TestTrue(TEXT("coast fixture has meaningful initial speed"),
-                InitialSpeedCmPerSec > 500.0f);
+            Test->TestTrue(TEXT("fixture starts local engine"), Cockpit.StartEngine());
+            Controls.SetThrottle(0.75f);
+            Controls.SetBrake(0.0f);
+            Controls.SetHandbrake(0.0f);
+            Controls.SetDriveline(1, 1, 0.50f);
 
-            Test->TestTrue(TEXT("key-off interaction applies"),
-                Pawn->ApplyCockpitInteraction(
-                    {FName(TEXT("Ignition")),
-                     EPinkCabInteractionGesture::PressHold,
-                     1}));
-            Test->TestFalse(TEXT("key-off disables mechanical engine sim"),
-                Movement->bMechanicalSimEnabled);
-            Test->TestEqual(TEXT("key-off sends zero Chaos throttle"),
-                Movement->GetThrottleInput(), 0.0f);
+            FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+            Test->TestTrue(TEXT("running launch controls apply"),
+                FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, Provider));
+            Test->TestTrue(TEXT("launch has combustion permission"),
+                Controls.IsCombustionAllowed());
+            Test->TestTrue(TEXT("partial-clutch launch requests positive torque"),
+                Controls.ExternalRearDriveTorquePerWheelNm > 0.0f);
 
-            const float ImmediateSpeed =
-                Mesh->GetPhysicsLinearVelocity().Size();
-            Test->TestTrue(TEXT("key-off preserves chassis inertia immediately"),
-                ImmediateSpeed > InitialSpeedCmPerSec * 0.80f);
-
-            ObserveStartSeconds = FPlatformTime::Seconds();
+            LaunchStartLocation = Mesh->GetComponentLocation();
+            PhaseStartSeconds = FPlatformTime::Seconds();
             bInitialized = true;
             return false;
         }
 
-        if (FPlatformTime::Seconds() - ObserveStartSeconds < 0.20)
+        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (!bKeyedOff)
+        {
+            FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+            if (!FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, Provider))
+            {
+                Test->AddError(TEXT("running launch actuation refresh failed"));
+                return true;
+            }
+
+            const float SpeedCmPerSec =
+                Mesh->GetPhysicsLinearVelocity().Size2D();
+            const float LaunchTravelCm =
+                FVector::Dist2D(Mesh->GetComponentLocation(), LaunchStartLocation);
+            if (SpeedCmPerSec < 300.0f || LaunchTravelCm < 100.0f)
+            {
+                if (Elapsed < 6.0)
+                {
+                    return false;
+                }
+                Test->AddError(FString::Printf(
+                    TEXT("live drivetrain failed to establish coast precondition speed=%.3f travel=%.3f"),
+                    SpeedCmPerSec,
+                    LaunchTravelCm));
+                return true;
+            }
+
+            Cockpit.StopEngine();
+            FPinkCabChaosVehicleDynamicsProvider KeyOffProvider(Movement);
+            Test->TestTrue(TEXT("key-off controls apply"),
+                FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, KeyOffProvider));
+            Test->TestFalse(TEXT("key-off disables mechanical engine sim"),
+                Movement->bMechanicalSimEnabled);
+            Test->TestFalse(TEXT("key-off denies combustion"),
+                Controls.IsCombustionAllowed());
+            Test->TestEqual(TEXT("key-off sends zero Chaos throttle"),
+                Movement->GetThrottleInput(), 0.0f);
+            Test->TestEqual(TEXT("key-off clears external drive torque"),
+                Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+
+            KeyOffLocation = Mesh->GetComponentLocation();
+            KeyOffSpeedCmPerSec = SpeedCmPerSec;
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            bKeyedOff = true;
+            return false;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider OffProvider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, *Movement, Controls, OffProvider))
+        {
+            Test->AddError(TEXT("engine-off actuation refresh failed"));
+            return true;
+        }
+
+        if (Elapsed < 0.75)
         {
             return false;
         }
 
-        const float CoastSpeed =
-            Mesh->GetPhysicsLinearVelocity().Size();
-        Test->TestTrue(TEXT("engine-off body is still physically free to coast"),
-            CoastSpeed > 10.0f);
+        const float CoastSpeedCmPerSec =
+            Mesh->GetPhysicsLinearVelocity().Size2D();
+        const float CoastTravelCm =
+            FVector::Dist2D(Mesh->GetComponentLocation(), KeyOffLocation);
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_FLAT_COAST keyoff_speed_cm_s=%.3f coast_speed_cm_s=%.3f post_keyoff_travel_cm=%.3f"),
+            KeyOffSpeedCmPerSec,
+            CoastSpeedCmPerSec,
+            CoastTravelCm));
+        Test->TestTrue(TEXT("engine-off body physically advances after key-off"),
+            CoastTravelCm > 20.0f);
+        Test->TestTrue(TEXT("engine-off body remains physically free to coast"),
+            CoastSpeedCmPerSec > 10.0f);
         Test->TestEqual(TEXT("engine-off coast still has zero Chaos throttle"),
             Movement->GetThrottleInput(), 0.0f);
+        Test->TestEqual(TEXT("engine-off coast has zero external drive torque"),
+            Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
         return true;
     }
 
 private:
     FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
     bool bInitialized = false;
-    double ObserveStartSeconds = 0.0;
-    float InitialSpeedCmPerSec = 0.0f;
+    bool bKeyedOff = false;
+    double PhaseStartSeconds = 0.0;
+    float KeyOffSpeedCmPerSec = 0.0f;
+    FVector LaunchStartLocation = FVector::ZeroVector;
+    FVector KeyOffLocation = FVector::ZeroVector;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

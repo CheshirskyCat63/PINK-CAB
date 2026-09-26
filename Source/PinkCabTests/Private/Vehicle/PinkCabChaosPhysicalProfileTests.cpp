@@ -26,6 +26,8 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("FIRST EURO boosted torque target"), Profile.MaxTorqueNm.Value, 260.0f);
     TestEqual(TEXT("high-rev redline target"), Profile.EngineMaxRpm.Value, 8500.0f);
     TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
+    TestEqual(TEXT("P01 free-rev return is explicit and responsive"),
+        Profile.EngineRevDownRate.Value, 1800.0f);
     const float RedlineTorqueFactor = Profile.NormalizedTorqueCurve.Value.Last().Y;
     const float RedlinePowerHp = Profile.MaxTorqueNm.Value * RedlineTorqueFactor * Profile.EngineMaxRpm.Value / 7127.0f;
     TestTrue(TEXT("redline stays around 250 honest horsepower"), FMath::IsNearlyEqual(RedlinePowerHp, 250.0f, 5.0f));
@@ -135,7 +137,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("P01 idle calibration advances profile to v2"), Profile.CalibrationVersion, 2);
+    TestEqual(TEXT("P01 idle/rev-down calibration advances profile to v3"), Profile.CalibrationVersion, 3);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
@@ -206,6 +208,7 @@ bool FPinkCabChaosPhysicalProfileAppliedDefaultsTest::RunTest(const FString& Par
     TestEqual(TEXT("engine torque comes from profile"), Movement->EngineSetup.MaxTorque, Profile.MaxTorqueNm.Value);
     TestEqual(TEXT("engine redline comes from profile"), Movement->EngineSetup.MaxRPM, Profile.EngineMaxRpm.Value);
     TestEqual(TEXT("engine rev-up inertia comes from profile"), Movement->EngineSetup.EngineRevUpMOI, Profile.EngineRevUpMOI.Value);
+    TestEqual(TEXT("engine rev-down rate comes from profile"), Movement->EngineSetup.EngineRevDownRate, Profile.EngineRevDownRate.Value);
     TestEqual(TEXT("front radius comes from profile"), Front->WheelRadius, Profile.FrontWheel.WheelRadiusCm.Value);
     TestEqual(TEXT("front spring comes from profile"), Front->SpringRate, Profile.FrontWheel.SpringRate.Value);
     TestEqual(TEXT("rear steer comes from profile"), Rear->MaxSteerAngle, Profile.RearWheel.MaxSteerAngleDeg.Value);

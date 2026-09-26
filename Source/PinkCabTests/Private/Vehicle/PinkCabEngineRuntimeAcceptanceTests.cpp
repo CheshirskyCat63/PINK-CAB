@@ -1,0 +1,393 @@
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "Misc/AutomationTest.h"
+#include "Tests/AutomationCommon.h"
+#include "EngineUtils.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/BoxComponent.h"
+#include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabVehicleControlState.h"
+
+namespace
+{
+APinkCabChaosTatraPawn* FindTatra(UWorld& World)
+{
+    for (TActorIterator<APinkCabChaosTatraPawn> It(&World); It; ++It)
+    {
+        return *It;
+    }
+    return nullptr;
+}
+
+bool ApplyEngineState(
+    APinkCabChaosTatraPawn& Pawn,
+    FPinkCabCockpitState& Cockpit,
+    FPinkCabVehicleControlState& Controls)
+{
+    UChaosWheeledVehicleMovementComponent* Movement = Pawn.GetChaosMovement();
+    if (!Movement)
+    {
+        return false;
+    }
+    FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+    return FPinkCabChaosCockpitBridge::Apply(
+        Cockpit, *Movement, Controls, Provider);
+}
+}
+
+class FPinkCabEngineOffSlopeCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabEngineOffSlopeCommand(FAutomationTestBase* InTest)
+        : Test(InTest) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
+        if (!Pawn)
+        {
+            return false;
+        }
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
+        Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
+        if (!Movement || !Mesh)
+        {
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
+            Ramp = World->SpawnActor<AActor>();
+            Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
+            if (!Ramp)
+            {
+                return true;
+            }
+
+            constexpr float RampPitchDeg = 20.0f;
+            UBoxComponent* RampBox = NewObject<UBoxComponent>(Ramp);
+            Ramp->SetRootComponent(RampBox);
+            RampBox->SetBoxExtent(FVector(700.0f, 250.0f, 60.0f));
+            RampBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            RampBox->SetCollisionObjectType(ECC_WorldStatic);
+            RampBox->SetCollisionResponseToAllChannels(ECR_Block);
+            RampBox->SetGenerateOverlapEvents(false);
+            RampBox->RegisterComponent();
+            Ramp->SetActorRotation(FRotator(RampPitchDeg, 0.0f, 0.0f));
+            Ramp->SetActorLocation(FVector(0.0f, 0.0f, 12000.0f));
+            RampBox->RecreatePhysicsState();
+
+            FHitResult RampProbe;
+            const bool bRampProbeHit = World->LineTraceSingleByChannel(
+                RampProbe,
+                FVector(0.0f, 0.0f, 12500.0f),
+                FVector(0.0f, 0.0f, 11500.0f),
+                ECC_Visibility);
+            Test->TestTrue(TEXT("isolated slope fixture has query collision"), bRampProbeHit);
+            if (!bRampProbeHit)
+            {
+                return true;
+            }
+
+            Pawn->SetActorLocationAndRotation(
+                FVector(0.0f, 0.0f, 12280.0f),
+                FRotator(RampPitchDeg, 0.0f, 0.0f),
+                false,
+                nullptr,
+                ETeleportType::TeleportPhysics);
+            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
+
+            Controls.SetThrottle(1.0f);
+            Controls.SetBrake(0.0f);
+            Controls.SetHandbrake(0.0f);
+            Controls.SetDriveline(0, 0, 0.0f);
+            Test->TestTrue(TEXT("off neutral slope state applies"),
+                ApplyEngineState(*Pawn, Cockpit, Controls));
+            Test->TestFalse(TEXT("off slope denies combustion"),
+                Controls.IsCombustionAllowed());
+            Test->TestEqual(TEXT("off slope final throttle is zero"),
+                Controls.GetResolvedEngineThrottle01(), 0.0f);
+            Test->TestEqual(TEXT("off slope external drive torque is zero"),
+                Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+            Test->TestFalse(TEXT("off slope mechanical engine sim disabled"),
+                Movement->bMechanicalSimEnabled);
+
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            bInitialized = true;
+            return false;
+        }
+
+        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (!bSettled)
+        {
+            if (Elapsed < 0.90)
+            {
+                return false;
+            }
+            StartLocation = Pawn->GetActorLocation();
+            StartVelocity = Mesh->GetPhysicsLinearVelocity();
+            bSettled = true;
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            return false;
+        }
+
+        if (FPlatformTime::Seconds() - PhaseStartSeconds < 1.20)
+        {
+            return false;
+        }
+
+        const FVector EndLocation = Pawn->GetActorLocation();
+        const FVector EndVelocity = Mesh->GetPhysicsLinearVelocity();
+        const float HorizontalTravelCm =
+            FVector2D(EndLocation - StartLocation).Size();
+        const float HorizontalSpeedCmPerSec =
+            FVector2D(EndVelocity.X, EndVelocity.Y).Size();
+        const float StartHorizontalSpeedCmPerSec =
+            FVector2D(StartVelocity.X, StartVelocity.Y).Size();
+
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_SLOPE travel_cm=%.3f start_speed_cm_s=%.3f end_speed_cm_s=%.3f start=%s end=%s"),
+            HorizontalTravelCm,
+            StartHorizontalSpeedCmPerSec,
+            HorizontalSpeedCmPerSec,
+            *StartLocation.ToString(),
+            *EndLocation.ToString()));
+        float MaxAbsWheelAngularVelocity = 0.0f;
+        for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+        {
+            if (Wheel)
+            {
+                MaxAbsWheelAngularVelocity = FMath::Max(
+                    MaxAbsWheelAngularVelocity,
+                    FMath::Abs(Wheel->GetWheelAngularVelocity()));
+            }
+        }
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f"),
+            MaxAbsWheelAngularVelocity));
+        Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
+            HorizontalTravelCm > 20.0f);
+        Test->TestTrue(TEXT("slope vehicle remains physically rolling"),
+            HorizontalSpeedCmPerSec > 10.0f);
+        Test->TestTrue(TEXT("slope motion includes wheel rotation"),
+            MaxAbsWheelAngularVelocity > 0.05f);
+        Test->TestEqual(TEXT("slope coast remains zero engine throttle"),
+            Movement->GetThrottleInput(), 0.0f);
+        Test->TestEqual(TEXT("slope coast remains zero external drive torque"),
+            Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+
+        if (Ramp)
+        {
+            Ramp->Destroy();
+            Ramp = nullptr;
+        }
+        return true;
+    }
+
+private:
+    FAutomationTestBase* Test = nullptr;
+    AActor* Ramp = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    bool bInitialized = false;
+    bool bSettled = false;
+    double PhaseStartSeconds = 0.0;
+    FVector StartLocation = FVector::ZeroVector;
+    FVector StartVelocity = FVector::ZeroVector;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabEngineOffNeutralSlopeRuntimeTest,
+    "PinkCab.Vehicle.Physics.EngineState.LiveOffNeutralSlope",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabEngineOffNeutralSlopeRuntimeTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(
+        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("slope runtime map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabEngineOffSlopeCommand(this));
+    return true;
+}
+
+class FPinkCabWarmIdleBlipCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabWarmIdleBlipCommand(FAutomationTestBase* InTest)
+        : Test(InTest) {}
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
+        if (!Pawn)
+        {
+            return false;
+        }
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        Test->TestNotNull(TEXT("idle fixture has movement"), Movement);
+        if (!Movement)
+        {
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
+            if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
+            {
+                Mesh->WakeAllRigidBodies();
+            }
+            Cockpit.StartEngine();
+            Controls.SetBrake(0.0f);
+            Controls.SetHandbrake(1.0f);
+            Controls.SetDriveline(0, 0, 0.0f);
+            Controls.SetThrottle(0.0f);
+            Test->TestTrue(TEXT("warm idle engine state applies"),
+                ApplyEngineState(*Pawn, Cockpit, Controls));
+            Test->TestTrue(TEXT("warm idle enables mechanical sim"),
+                Movement->bMechanicalSimEnabled);
+            Phase = EPhase::SettlingIdle;
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            bInitialized = true;
+            return false;
+        }
+
+        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (Phase == EPhase::SettlingIdle)
+        {
+            if (Elapsed < 1.50)
+            {
+                return false;
+            }
+            IdleBeforeBlip = Movement->GetEngineRotationSpeed();
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_IDLE settled_rpm=%.3f configured_idle=%.3f"),
+                IdleBeforeBlip,
+                Movement->EngineSetup.EngineIdleRPM));
+            Test->TestTrue(TEXT("warm healthy neutral idle settles inside 900-950 rpm"),
+                IdleBeforeBlip >= 900.0f && IdleBeforeBlip <= 950.0f);
+
+            Controls.SetThrottle(0.55f);
+            Test->TestTrue(TEXT("throttle blip applies through authoritative bridge"),
+                ApplyEngineState(*Pawn, Cockpit, Controls));
+            Phase = EPhase::Blipping;
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            return false;
+        }
+
+        if (Phase == EPhase::Blipping)
+        {
+            if (Elapsed < 0.70)
+            {
+                return false;
+            }
+            const float BlipRpm = Movement->GetEngineRotationSpeed();
+            Test->AddInfo(FString::Printf(TEXT("P01_IDLE blip_rpm=%.3f"), BlipRpm));
+            Test->TestTrue(TEXT("neutral throttle blip raises rpm above idle"),
+                BlipRpm > IdleBeforeBlip + 150.0f);
+
+            Controls.SetThrottle(0.0f);
+            Test->TestTrue(TEXT("blip release applies zero driver throttle"),
+                ApplyEngineState(*Pawn, Cockpit, Controls));
+            Phase = EPhase::ReturningIdle;
+            PhaseStartSeconds = FPlatformTime::Seconds();
+            return false;
+        }
+
+        const float ReturnedIdleRpm = Movement->GetEngineRotationSpeed();
+        if (ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f)
+        {
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_IDLE returned_rpm=%.3f return_seconds=%.3f"),
+                ReturnedIdleRpm,
+                Elapsed));
+            Test->TestEqual(TEXT("released blip has zero final throttle"),
+                Controls.GetResolvedEngineThrottle01(), 0.0f);
+            return true;
+        }
+
+        if (Elapsed < 8.00)
+        {
+            return false;
+        }
+
+        Test->AddInfo(FString::Printf(
+            TEXT("P01_IDLE return_timeout_rpm=%.3f return_seconds=%.3f"),
+            ReturnedIdleRpm,
+            Elapsed));
+        Test->TestTrue(TEXT("engine returns to warm carb idle band after blip"),
+            ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f);
+        Test->TestEqual(TEXT("released blip has zero final throttle"),
+            Controls.GetResolvedEngineThrottle01(), 0.0f);
+        return true;
+    }
+
+private:
+    enum class EPhase : uint8
+    {
+        SettlingIdle,
+        Blipping,
+        ReturningIdle
+    };
+
+    FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    bool bInitialized = false;
+    EPhase Phase = EPhase::SettlingIdle;
+    double PhaseStartSeconds = 0.0;
+    float IdleBeforeBlip = 0.0f;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabWarmIdleBlipRuntimeTest,
+    "PinkCab.Vehicle.Physics.EngineState.LiveWarmIdleBlipReturn",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabWarmIdleBlipRuntimeTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(
+        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+    TestTrue(TEXT("idle runtime map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabWarmIdleBlipCommand(this));
+    return true;
+}
+
+#endif
