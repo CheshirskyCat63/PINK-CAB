@@ -5,7 +5,7 @@
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
 **Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **PHY-002 · State-writer inventory**.  
+**Current execution point:** **PHY-003 · Causal drivetrain telemetry**.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -75,9 +75,10 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ### PHY-002 — State-writer inventory
 
+**Status:** **DONE · exact-main verified 2026-09-26**.  
 **Change:** Map every writer/consumer for ignition, engine RPM/torque, throttle, clutch, gear request/engagement, steering, wheel drive/brake torque, mass and health.  
-**Acceptance:** One authoritative writer per runtime state; every force/torque/velocity side path classified.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Acceptance:** **PASS.** Machine manifest contains **68 classified writer groups / 80 executable occurrences**. Exact-main guard reports **0 unknown, 0 stale, 0 count mismatch, 0 forbidden side paths**.  
+**Evidence:** canonical runtime merge `main@e5077942ee93499247e61d358c55f0b2c222cb72`; exact-main Windows run **36230537265**; repo/code-health **32/32 PASS**, zero-debt **0**, `PinkCab.Vehicle.Physics` **3/3 PASS**, Editor/Game build **PASS**. Authority artifacts: `STATE_WRITER_INVENTORY.csv` and `STATE_WRITER_CONSUMER_MAP.md`. RED audit exposed dormant `AlignInitialPresentationToGround()`, which could teleport the physical pawn and zero linear/angular velocity; repository audit found no production call site, so the dead method was removed rather than allowlisted. Guard now rejects direct force/impulse/torque/velocity/actor-teleport writers and non-false Chaos assist-control assignments. No owner feel gate was required because PHY-002 did not change accepted driving tuning or controls.
 
 ### PHY-003 — Causal drivetrain telemetry
 
