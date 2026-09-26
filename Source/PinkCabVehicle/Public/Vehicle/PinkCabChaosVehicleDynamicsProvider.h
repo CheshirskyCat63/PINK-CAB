@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Vehicle/PinkCabCausalTelemetry.h"
 #include "Vehicle/PinkCabVehicleDynamicsProvider.h"
 
 class UChaosWheeledVehicleMovementComponent;
@@ -18,8 +19,13 @@ public:
     }
 
     const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }
+    const FPinkCabCausalActuationTelemetry& GetLastCausalActuationTelemetry() const
+    {
+        return LastCausalActuation;
+    }
 
 private:
     UChaosWheeledVehicleMovementComponent* Movement = nullptr;
     FPinkCabVehicleControlState LastControls;
+    FPinkCabCausalActuationTelemetry LastCausalActuation;
 };

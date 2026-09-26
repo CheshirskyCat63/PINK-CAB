@@ -158,6 +158,8 @@ private:
     void EnsurePlayableLighting();
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
     void EmitPackagedGateTelemetry(double NowSeconds);
+    void RecordCausalTelemetry(double NowSeconds, float DeltaSeconds);
+    void FlushCausalTelemetry();
     void CaptureMouseWheelUp();
     void CaptureMouseWheelDown();
     void QueueMouseWheelStep(int32 Step);
@@ -200,6 +202,8 @@ private:
     FVector2D GearLeverCursor = FVector2D(1.0f, 0.0f);
 
     bool bPackagedGateTelemetryEnabled = false;
+    bool bCausalTelemetryEnabled = false;
+    FPinkCabCausalTelemetryTrace CausalTelemetryTrace{16384};
     double NextPackagedGateTelemetrySeconds = 0.0;
     FVector PackagedGateStartLocation = FVector::ZeroVector;
     FVector PackagedGateStartForward = FVector::ForwardVector;

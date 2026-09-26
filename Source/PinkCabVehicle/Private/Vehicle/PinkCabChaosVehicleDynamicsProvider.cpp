@@ -1,37 +1,111 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
-#include "Vehicle/PinkCabThrottleResponse.h"
+#include "Vehicle/PinkCabEngineActuationResolver.h"
 
+#include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
 namespace
 {
-float ApplyPinkCabRevLimiter(float RequestedEngineThrottle, float EngineRpm, float MaxRpm)
+float GetEngineTorqueCurveNm(
+    const UChaosWheeledVehicleMovementComponent& Movement,
+    const float EngineRpm)
 {
-    if (MaxRpm <= KINDA_SMALL_NUMBER)
-    {
-        return RequestedEngineThrottle;
-    }
+    const float NormalizedTorque =
+        Movement.EngineSetup.TorqueCurve.GetRichCurveConst()->Eval(EngineRpm);
+    return Movement.EngineSetup.MaxTorque
+        * FMath::Max(NormalizedTorque, 0.0f);
+}
 
-    // UE 5.8 Chaos does not clamp free-running engine Omega to MaxRPM. Once a
-    // large physics step overshoots MaxRPM it can keep producing clamped-curve
-    // torque and run away. PINK CAB owns the limiter at the control boundary so
-    // we do not patch Engine source and the behavior remains deterministic.
-    constexpr float SoftLimiterStartRatio = 0.965f;
-    constexpr float HardLimiterCutRatio = 0.995f;
-    const float SoftStartRpm = MaxRpm * SoftLimiterStartRatio;
-    const float HardCutRpm = MaxRpm * HardLimiterCutRatio;
-    if (EngineRpm <= SoftStartRpm)
-    {
-        return RequestedEngineThrottle;
-    }
-    if (EngineRpm >= HardCutRpm)
-    {
-        return 0.0f;
-    }
+FPinkCabEngineActuationResult ResolveEngineActuation(
+    const UChaosWheeledVehicleMovementComponent& Movement,
+    const FPinkCabVehicleControlState& Controls,
+    const float EngineRpm,
+    const float EngineTorqueCurveNm)
+{
+    FPinkCabEngineActuationInput Input;
+    Input.HealthClampedControlThrottle01 = Controls.Throttle;
+    Input.EngineRpm = EngineRpm;
+    Input.MaxRpm = Movement.EngineSetup.MaxRPM;
+    Input.EngineTorqueCurveNm = EngineTorqueCurveNm;
+    return FPinkCabEngineActuationResolver::Resolve(Input);
+}
 
-    const float Remaining = 1.0f - FMath::Clamp(
-        (EngineRpm - SoftStartRpm) / (HardCutRpm - SoftStartRpm), 0.0f, 1.0f);
-    return RequestedEngineThrottle * Remaining;
+void PopulateActuationTelemetry(
+    UChaosWheeledVehicleMovementComponent& Movement,
+    const FPinkCabVehicleControlState& Controls,
+    const FPinkCabEngineActuationResult& Actuation,
+    const float EngineTorqueCurveNm,
+    FPinkCabCausalActuationTelemetry& Out)
+{
+    Out = {};
+    Out.HealthClampedControlThrottle01 =
+        FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
+    Out.EngineThrottlePreLimiter01 =
+        Actuation.EngineThrottlePreLimiter01;
+    Out.EngineThrottleFinal01 = Actuation.EngineThrottleFinal01;
+    Out.EngineTorqueCurveNm = EngineTorqueCurveNm;
+    Out.RequestedEngineTorqueAfterLimiterHealthNm =
+        Actuation.RequestedEngineTorqueAfterLimiterHealthNm;
+    Out.EffectiveGearRatio =
+        Controls.EngagedGear != 0
+            ? Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear)
+            : 0.0f;
+    Out.ConfiguredFinalDriveRatio = Movement.TransmissionSetup.FinalRatio;
+    Out.TransmissionEfficiency =
+        Movement.TransmissionSetup.TransmissionEfficiency;
+    Out.ExternalRearDriveTorquePerWheelNm =
+        Controls.ExternalRearDriveTorquePerWheelNm;
+    Out.DriveTorquePath =
+        FMath::Abs(Controls.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER
+            ? EPinkCabCausalDriveTorquePath::ExternalPartialClutch
+            : (Controls.EngagedGear != 0 && Controls.ClutchCoupling >= 1.0f
+                ? EPinkCabCausalDriveTorquePath::ChaosMechanical
+                : EPinkCabCausalDriveTorquePath::None);
+    Out.bTorqueControlEnabled = Movement.TorqueControl.Enabled;
+    Out.bTargetRotationControlEnabled =
+        Movement.TargetRotationControl.Enabled;
+    Out.bStabilizeControlEnabled = Movement.StabilizeControl.Enabled;
+    Out.AssistContribution = 0.0f;
+}
+
+void ApplyRearWheelTorques(
+    UChaosWheeledVehicleMovementComponent& Movement,
+    const FPinkCabVehicleControlState& Controls)
+{
+    Movement.SetHandbrakeInput(false);
+    constexpr float RearHandbrakeMaxTorqueNm = 1700.0f;
+    const float RearBrakeTorqueNm =
+        FMath::Clamp(Controls.Handbrake, 0.0f, 1.0f)
+        * RearHandbrakeMaxTorqueNm;
+    const int32 WheelCount = Movement.GetNumWheels();
+    for (int32 WheelIndex = 2; WheelIndex < FMath::Min(WheelCount, 4); ++WheelIndex)
+    {
+        Movement.SetTorqueCombineMethod(
+            ETorqueCombineMethod::Additive,
+            WheelIndex);
+        Movement.SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
+        Movement.SetDriveTorque(
+            Controls.ExternalRearDriveTorquePerWheelNm,
+            WheelIndex);
+    }
+}
+
+void PopulateConfiguredAssistFlags(
+    const UChaosWheeledVehicleMovementComponent& Movement,
+    FPinkCabCausalActuationTelemetry& Out)
+{
+    Out.bAnyAbsConfigured = false;
+    Out.bAnyTractionControlConfigured = false;
+    for (const UChaosVehicleWheel* Wheel : Movement.Wheels)
+    {
+        if (!Wheel)
+        {
+            continue;
+        }
+        Out.bAnyAbsConfigured |= Wheel->bABSEnabled;
+        Out.bAnyTractionControlConfigured |=
+            Wheel->bTractionControlEnabled;
+    }
 }
 }
 
@@ -41,7 +115,8 @@ FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
 {
 }
 
-bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleControlState& Controls)
+bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
+    const FPinkCabVehicleControlState& Controls)
 {
     if (!Movement)
     {
@@ -49,72 +124,27 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     }
 
     LastControls = Controls;
-    // PINK CAB semantic steering is permanently player-facing: + = right.
-    // Runtime signed-displacement evidence on the Tatra chassis confirms that
-    // Chaos expects the same sign here. Do not add another inversion at this
-    // boundary; input/controller and physical vehicle must stay right-positive.
     Movement->SetSteeringInput(Controls.Steering);
-    const float RequestedEngineThrottle =
-        FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
-    const float LimitedEngineThrottle = ApplyPinkCabRevLimiter(
-        RequestedEngineThrottle,
-        Movement->GetEngineRotationSpeed(),
-        Movement->EngineSetup.MaxRPM);
-    Movement->SetThrottleInput(LimitedEngineThrottle);
+
+    const float EngineRpm = Movement->GetEngineRotationSpeed();
+    const float EngineTorqueCurveNm =
+        GetEngineTorqueCurveNm(*Movement, EngineRpm);
+    const FPinkCabEngineActuationResult Actuation =
+        ResolveEngineActuation(
+            *Movement,
+            Controls,
+            EngineRpm,
+            EngineTorqueCurveNm);
+    PopulateActuationTelemetry(
+        *Movement,
+        Controls,
+        Actuation,
+        EngineTorqueCurveNm,
+        LastCausalActuation);
+
+    Movement->SetThrottleInput(Actuation.EngineThrottleFinal01);
     Movement->SetBrakeInput(Controls.Brake);
-
-    // PINK CAB owns a continuous parking/hydraulic handbrake actuator. Keep
-    // Chaos' bool handbrake path disabled and add authored analog torque only
-    // to the canonical rear axle.
-    Movement->SetHandbrakeInput(false);
-    constexpr float RearHandbrakeMaxTorqueNm = 1700.0f;
-    const float RearBrakeTorqueNm =
-        FMath::Clamp(Controls.Handbrake, 0.0f, 1.0f) * RearHandbrakeMaxTorqueNm;
-    const int32 WheelCount = Movement->GetNumWheels();
-    for (int32 WheelIndex = 2; WheelIndex < FMath::Min(WheelCount, 4); ++WheelIndex)
-    {
-        Movement->SetTorqueCombineMethod(ETorqueCombineMethod::Additive, WheelIndex);
-        Movement->SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
-        Movement->SetDriveTorque(Controls.ExternalRearDriveTorquePerWheelNm, WheelIndex);
-    }
-    return true;
-}
-
-bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const
-{
-    if (!Movement)
-    {
-        return false;
-    }
-
-    OutTelemetry.SpeedKmh = Movement->GetForwardSpeed() * 0.036f;
-    OutTelemetry.EngineRpm = Movement->GetEngineRotationSpeed();
-    OutTelemetry.CurrentGear = Movement->GetCurrentGear();
-    OutTelemetry.NormalizedSteering = LastControls.Steering;
-    OutTelemetry.NormalizedThrottle = LastControls.Throttle;
-    OutTelemetry.NormalizedBrake = LastControls.Brake;
-    OutTelemetry.NormalizedClutch = LastControls.Clutch;
-    OutTelemetry.NormalizedHandbrake = LastControls.Handbrake;
-
-    OutTelemetry.Wheels.Reset();
-    const int32 WheelCount = Movement->GetNumWheels();
-    OutTelemetry.Wheels.Reserve(WheelCount);
-    for (int32 WheelIndex = 0; WheelIndex < WheelCount; ++WheelIndex)
-    {
-        const FWheelStatus Status = Movement->GetWheelState(WheelIndex);
-        FPinkCabWheelTelemetry Wheel;
-        Wheel.bInContact = Status.bInContact;
-        Wheel.NormalizedSuspensionLength = Status.NormalizedSuspensionLength;
-        Wheel.SpringForce = Status.SpringForce;
-        Wheel.SlipAngle = Status.SlipAngle;
-        Wheel.bIsSlipping = Status.bIsSlipping;
-        Wheel.SlipMagnitude = Status.SlipMagnitude;
-        Wheel.bIsSkidding = Status.bIsSkidding;
-        Wheel.SkidMagnitude = Status.SkidMagnitude;
-        Wheel.DriveTorque = Status.DriveTorque;
-        Wheel.BrakeTorque = Status.BrakeTorque;
-        Wheel.bABSActivated = Status.bABSActivated;
-        OutTelemetry.Wheels.Add(Wheel);
-    }
+    ApplyRearWheelTorques(*Movement, Controls);
+    PopulateConfiguredAssistFlags(*Movement, LastCausalActuation);
     return true;
 }
