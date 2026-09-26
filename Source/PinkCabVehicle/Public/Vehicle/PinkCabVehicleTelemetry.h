@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Vehicle/PinkCabCausalTelemetry.h"
 
 struct FPinkCabWheelTelemetry
 {
@@ -22,10 +23,13 @@ struct FPinkCabVehicleTelemetry
     float SpeedKmh = 0.0f;
     float EngineRpm = 0.0f;
     int32 CurrentGear = 0;
+    int32 TargetGear = 0;
     float NormalizedSteering = 0.0f;
     float NormalizedThrottle = 0.0f;
     float NormalizedBrake = 0.0f;
     float NormalizedClutch = 0.0f;
     float NormalizedHandbrake = 0.0f;
     TArray<FPinkCabWheelTelemetry> Wheels;
+    FPinkCabCausalActuationTelemetry CausalActuation;
+    TArray<FPinkCabCausalWheelTelemetry> CausalWheels;
 };

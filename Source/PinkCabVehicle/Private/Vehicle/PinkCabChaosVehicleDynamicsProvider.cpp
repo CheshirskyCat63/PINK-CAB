@@ -1,39 +1,8 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
-#include "Vehicle/PinkCabThrottleResponse.h"
+#include "Vehicle/PinkCabEngineActuationResolver.h"
 
+#include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-
-namespace
-{
-float ApplyPinkCabRevLimiter(float RequestedEngineThrottle, float EngineRpm, float MaxRpm)
-{
-    if (MaxRpm <= KINDA_SMALL_NUMBER)
-    {
-        return RequestedEngineThrottle;
-    }
-
-    // UE 5.8 Chaos does not clamp free-running engine Omega to MaxRPM. Once a
-    // large physics step overshoots MaxRPM it can keep producing clamped-curve
-    // torque and run away. PINK CAB owns the limiter at the control boundary so
-    // we do not patch Engine source and the behavior remains deterministic.
-    constexpr float SoftLimiterStartRatio = 0.965f;
-    constexpr float HardLimiterCutRatio = 0.995f;
-    const float SoftStartRpm = MaxRpm * SoftLimiterStartRatio;
-    const float HardCutRpm = MaxRpm * HardLimiterCutRatio;
-    if (EngineRpm <= SoftStartRpm)
-    {
-        return RequestedEngineThrottle;
-    }
-    if (EngineRpm >= HardCutRpm)
-    {
-        return 0.0f;
-    }
-
-    const float Remaining = 1.0f - FMath::Clamp(
-        (EngineRpm - SoftStartRpm) / (HardCutRpm - SoftStartRpm), 0.0f, 1.0f);
-    return RequestedEngineThrottle * Remaining;
-}
-}
 
 FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
     UChaosWheeledVehicleMovementComponent* InMovement)
@@ -41,7 +10,8 @@ FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
 {
 }
 
-bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleControlState& Controls)
+bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
+    const FPinkCabVehicleControlState& Controls)
 {
     if (!Movement)
     {
@@ -49,18 +19,57 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     }
 
     LastControls = Controls;
-    // PINK CAB semantic steering is permanently player-facing: + = right.
-    // Runtime signed-displacement evidence on the Tatra chassis confirms that
-    // Chaos expects the same sign here. Do not add another inversion at this
-    // boundary; input/controller and physical vehicle must stay right-positive.
     Movement->SetSteeringInput(Controls.Steering);
-    const float RequestedEngineThrottle =
-        FPinkCabThrottleResponse::ToEngineThrottle(Controls.Throttle);
-    const float LimitedEngineThrottle = ApplyPinkCabRevLimiter(
-        RequestedEngineThrottle,
-        Movement->GetEngineRotationSpeed(),
-        Movement->EngineSetup.MaxRPM);
-    Movement->SetThrottleInput(LimitedEngineThrottle);
+
+    const float EngineRpm = Movement->GetEngineRotationSpeed();
+    const float NormalizedTorque =
+        Movement->EngineSetup.TorqueCurve.GetRichCurveConst()->Eval(EngineRpm);
+    const float EngineTorqueCurveNm =
+        Movement->EngineSetup.MaxTorque * FMath::Max(NormalizedTorque, 0.0f);
+
+    FPinkCabEngineActuationInput ActuationInput;
+    ActuationInput.HealthClampedControlThrottle01 = Controls.Throttle;
+    ActuationInput.EngineRpm = EngineRpm;
+    ActuationInput.MaxRpm = Movement->EngineSetup.MaxRPM;
+    ActuationInput.EngineTorqueCurveNm = EngineTorqueCurveNm;
+    const FPinkCabEngineActuationResult Actuation =
+        FPinkCabEngineActuationResolver::Resolve(ActuationInput);
+
+    LastCausalActuation = {};
+    LastCausalActuation.HealthClampedControlThrottle01 =
+        FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
+    LastCausalActuation.EngineThrottlePreLimiter01 =
+        Actuation.EngineThrottlePreLimiter01;
+    LastCausalActuation.EngineThrottleFinal01 =
+        Actuation.EngineThrottleFinal01;
+    LastCausalActuation.EngineTorqueCurveNm = EngineTorqueCurveNm;
+    LastCausalActuation.RequestedEngineTorqueAfterLimiterHealthNm =
+        Actuation.RequestedEngineTorqueAfterLimiterHealthNm;
+    LastCausalActuation.EffectiveGearRatio =
+        Controls.EngagedGear != 0
+            ? Movement->TransmissionSetup.GetGearRatio(Controls.EngagedGear)
+            : 0.0f;
+    LastCausalActuation.ConfiguredFinalDriveRatio =
+        Movement->TransmissionSetup.FinalRatio;
+    LastCausalActuation.TransmissionEfficiency =
+        Movement->TransmissionSetup.TransmissionEfficiency;
+    LastCausalActuation.ExternalRearDriveTorquePerWheelNm =
+        Controls.ExternalRearDriveTorquePerWheelNm;
+    LastCausalActuation.DriveTorquePath =
+        FMath::Abs(Controls.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER
+            ? EPinkCabCausalDriveTorquePath::ExternalPartialClutch
+            : (Controls.EngagedGear != 0 && Controls.ClutchCoupling >= 1.0f
+                ? EPinkCabCausalDriveTorquePath::ChaosMechanical
+                : EPinkCabCausalDriveTorquePath::None);
+    LastCausalActuation.bTorqueControlEnabled =
+        Movement->TorqueControl.Enabled;
+    LastCausalActuation.bTargetRotationControlEnabled =
+        Movement->TargetRotationControl.Enabled;
+    LastCausalActuation.bStabilizeControlEnabled =
+        Movement->StabilizeControl.Enabled;
+    LastCausalActuation.AssistContribution = 0.0f;
+
+    Movement->SetThrottleInput(Actuation.EngineThrottleFinal01);
     Movement->SetBrakeInput(Controls.Brake);
 
     // PINK CAB owns a continuous parking/hydraulic handbrake actuator. Keep
@@ -73,14 +82,32 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(const FPinkCabVehicleCo
     const int32 WheelCount = Movement->GetNumWheels();
     for (int32 WheelIndex = 2; WheelIndex < FMath::Min(WheelCount, 4); ++WheelIndex)
     {
-        Movement->SetTorqueCombineMethod(ETorqueCombineMethod::Additive, WheelIndex);
+        Movement->SetTorqueCombineMethod(
+            ETorqueCombineMethod::Additive,
+            WheelIndex);
         Movement->SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
-        Movement->SetDriveTorque(Controls.ExternalRearDriveTorquePerWheelNm, WheelIndex);
+        Movement->SetDriveTorque(
+            Controls.ExternalRearDriveTorquePerWheelNm,
+            WheelIndex);
+    }
+
+    LastCausalActuation.bAnyAbsConfigured = false;
+    LastCausalActuation.bAnyTractionControlConfigured = false;
+    for (UChaosVehicleWheel* Wheel : Movement->Wheels)
+    {
+        if (!Wheel)
+        {
+            continue;
+        }
+        LastCausalActuation.bAnyAbsConfigured |= Wheel->bABSEnabled;
+        LastCausalActuation.bAnyTractionControlConfigured |=
+            Wheel->bTractionControlEnabled;
     }
     return true;
 }
 
-bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const
+bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(
+    FPinkCabVehicleTelemetry& OutTelemetry) const
 {
     if (!Movement)
     {
@@ -90,21 +117,26 @@ bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(FPinkCabVehicleTelemetr
     OutTelemetry.SpeedKmh = Movement->GetForwardSpeed() * 0.036f;
     OutTelemetry.EngineRpm = Movement->GetEngineRotationSpeed();
     OutTelemetry.CurrentGear = Movement->GetCurrentGear();
+    OutTelemetry.TargetGear = Movement->GetTargetGear();
     OutTelemetry.NormalizedSteering = LastControls.Steering;
     OutTelemetry.NormalizedThrottle = LastControls.Throttle;
     OutTelemetry.NormalizedBrake = LastControls.Brake;
     OutTelemetry.NormalizedClutch = LastControls.Clutch;
     OutTelemetry.NormalizedHandbrake = LastControls.Handbrake;
+    OutTelemetry.CausalActuation = LastCausalActuation;
 
     OutTelemetry.Wheels.Reset();
+    OutTelemetry.CausalWheels.Reset();
     const int32 WheelCount = Movement->GetNumWheels();
     OutTelemetry.Wheels.Reserve(WheelCount);
+    OutTelemetry.CausalWheels.Reserve(WheelCount);
     for (int32 WheelIndex = 0; WheelIndex < WheelCount; ++WheelIndex)
     {
         const FWheelStatus Status = Movement->GetWheelState(WheelIndex);
         FPinkCabWheelTelemetry Wheel;
         Wheel.bInContact = Status.bInContact;
-        Wheel.NormalizedSuspensionLength = Status.NormalizedSuspensionLength;
+        Wheel.NormalizedSuspensionLength =
+            Status.NormalizedSuspensionLength;
         Wheel.SpringForce = Status.SpringForce;
         Wheel.SlipAngle = Status.SlipAngle;
         Wheel.bIsSlipping = Status.bIsSlipping;
@@ -115,6 +147,42 @@ bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(FPinkCabVehicleTelemetr
         Wheel.BrakeTorque = Status.BrakeTorque;
         Wheel.bABSActivated = Status.bABSActivated;
         OutTelemetry.Wheels.Add(Wheel);
+
+        FPinkCabCausalWheelTelemetry CausalWheel;
+        CausalWheel.WheelIndex = WheelIndex;
+        CausalWheel.bInContact = Status.bInContact;
+        CausalWheel.NormalizedSuspensionLength =
+            Status.NormalizedSuspensionLength;
+        CausalWheel.SuspensionSpringForce = Status.SpringForce;
+        CausalWheel.SlipAngle = Status.SlipAngle;
+        CausalWheel.SlipMagnitude = Status.SlipMagnitude;
+        CausalWheel.DriveTorqueNm = Status.DriveTorque;
+        CausalWheel.BrakeTorqueNm = Status.BrakeTorque;
+        CausalWheel.bABSActivated = Status.bABSActivated;
+
+        if (Movement->Wheels.IsValidIndex(WheelIndex))
+        {
+            if (const UChaosVehicleWheel* ChaosWheel =
+                    Movement->Wheels[WheelIndex])
+            {
+                CausalWheel.WheelAngularVelocityRadPerSec =
+                    ChaosWheel->GetWheelAngularVelocity();
+                CausalWheel.WheelRpm =
+                    CausalWheel.WheelAngularVelocityRadPerSec
+                    * (60.0f / (2.0f * PI));
+                CausalWheel.SteerAngleDeg =
+                    ChaosWheel->GetSteerAngle();
+                CausalWheel.bABSConfigured =
+                    ChaosWheel->bABSEnabled;
+                CausalWheel.bTractionControlConfigured =
+                    ChaosWheel->bTractionControlEnabled;
+            }
+        }
+
+        // UE 5.8 FWheelStatus does not expose exact normal load,
+        // slip ratio, or longitudinal/lateral tire force. Availability
+        // remains false instead of fabricating proxy values.
+        OutTelemetry.CausalWheels.Add(CausalWheel);
     }
     return true;
 }
