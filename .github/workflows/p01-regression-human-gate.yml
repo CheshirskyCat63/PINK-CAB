@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 35
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
-      CANDIDATE_SHA: 60bdf849ed867a4a37d819057c47bd18c2f9acdd
+      CANDIDATE_SHA: 26c9a9cf2c6bcb643b91246f9e48042c5c2197bd
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       ARCHIVE: Artifacts\P01Regression
 
