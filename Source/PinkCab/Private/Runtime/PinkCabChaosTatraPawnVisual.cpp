@@ -60,63 +60,6 @@ void APinkCabChaosTatraPawn::EnsurePlayableLighting()
 }
 
 
-bool APinkCabChaosTatraPawn::AlignInitialPresentationToGround()
-{
-    UWorld* World = GetWorld();
-    if (!World || !VehicleVisualShell)
-    {
-        return false;
-    }
-
-    static const FName WheelIds[] = {
-        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
-    float LowestTyreZ = TNumericLimits<float>::Max();
-    for (const FName WheelId : WheelIds)
-    {
-        UStaticMeshComponent* Wheel = VehicleVisualShell->GetPresentationPartComponent(WheelId);
-        if (!Wheel || !Wheel->IsRegistered() || !Wheel->GetStaticMesh())
-        {
-            return false;
-        }
-        Wheel->SetVisibility(true, false);
-        Wheel->SetHiddenInGame(false, false);
-        LowestTyreZ = FMath::Min(LowestTyreZ, Wheel->Bounds.GetBox().Min.Z);
-    }
-    if (!FMath::IsFinite(LowestTyreZ))
-    {
-        return false;
-    }
-
-    const FVector ActorLocation = GetActorLocation();
-    FHitResult GroundHit;
-    FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(this);
-    const FVector TraceStart(ActorLocation.X, ActorLocation.Y, ActorLocation.Z + 500.0f);
-    const FVector TraceEnd(ActorLocation.X, ActorLocation.Y, ActorLocation.Z - 1500.0f);
-    if (!World->LineTraceSingleByChannel(
-            GroundHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
-    {
-        return false;
-    }
-
-    // Recovery isolation: keep the whole physical car 20 cm higher than the
-    // previous tyre-ground alignment so chassis/physics penetration cannot
-    // pin the vehicle after the Tatra presentation swap.
-    constexpr float BaselineTyreClearanceCm = 1.0f;
-    constexpr float RecoverySpawnLiftCm = 20.0f;
-    constexpr float TyreClearanceCm = BaselineTyreClearanceCm + RecoverySpawnLiftCm;
-    const float OffsetZ = GroundHit.ImpactPoint.Z + TyreClearanceCm - LowestTyreZ;
-    AddActorWorldOffset(
-        FVector(0.0f, 0.0f, OffsetZ), false, nullptr, ETeleportType::TeleportPhysics);
-
-    if (USkeletalMeshComponent* PhysicsMesh = GetMesh())
-    {
-        PhysicsMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-        PhysicsMesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-    }
-    return true;
-}
-
 bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
 {
     if (!VehicleVisualShell)

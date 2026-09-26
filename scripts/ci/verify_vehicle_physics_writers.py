@@ -66,6 +66,7 @@ FORBIDDEN_PATTERNS = {
     "DIRECT_ADD_TORQUE": r"\bAddTorque(?:InRadians|InDegrees)?\s*\(",
     "DIRECT_LINEAR_VELOCITY_WRITE": r"\b(?:SetPhysicsLinearVelocity|SetAllPhysicsLinearVelocity|SetLinearVelocity)\s*\(",
     "DIRECT_ANGULAR_VELOCITY_WRITE": r"\b(?:SetPhysicsAngularVelocity(?:InRadians|InDegrees)?|SetAllPhysicsAngularVelocity(?:InRadians|InDegrees)?|SetAngularVelocity)\s*\(",
+    "DIRECT_ACTOR_TELEPORT": r"\b(?:AddActorWorldOffset|SetActorLocation(?:AndRotation)?)\s*\(",
 }
 
 def scan():
@@ -76,6 +77,10 @@ def scan():
         if not path.is_file() or path.suffix not in {".cpp", ".h"} or not in_scope(path.relative_to(ROOT)):
             continue
         rel = path.relative_to(ROOT).as_posix()
+        # Inventory executable writer sites. Most headers are declarations only;
+        # keep the inline control-state setters because they mutate the transport state.
+        if path.suffix == ".h" and rel != "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleControlState.h":
+            continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for category, pattern in WRITER_PATTERNS.items():
             matches = list(re.finditer(pattern, text))

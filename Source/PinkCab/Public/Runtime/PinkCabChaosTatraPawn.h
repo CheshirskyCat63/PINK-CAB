@@ -157,7 +157,6 @@ private:
     void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
     void EnsurePlayableLighting();
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
-    bool AlignInitialPresentationToGround();
     void EmitPackagedGateTelemetry(double NowSeconds);
     void CaptureMouseWheelUp();
     void CaptureMouseWheelDown();
