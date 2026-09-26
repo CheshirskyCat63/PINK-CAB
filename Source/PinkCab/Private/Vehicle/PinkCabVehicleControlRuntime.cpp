@@ -172,6 +172,8 @@ FPinkCabDrivetrainConditionOutput FPinkCabVehicleControlRuntime::ApplyDrivetrain
     if (Output.bShouldStall)
     {
         Cockpit.StallEngine();
+        EffectiveInput.Throttle = 0.0f;
+        ResetEngineTransition();
         DisplayedEngineRpm = 0.0f;
     }
     return Output;
@@ -324,4 +326,16 @@ void FPinkCabVehicleControlRuntime::ForceGearState(
 FVector2D FPinkCabVehicleControlRuntime::GetGearLeverCursor() const
 {
     return FVector2D(GearboxController.GetLeverX(), GearboxController.GetLeverY());
+}
+
+
+void FPinkCabVehicleControlRuntime::ResetEngineTransition()
+{
+    SmoothedThrottle = 0.0f;
+    bThrottleHeldLastFrame = false;
+    bCausalPreparedFramePending = false;
+    LaunchController.ResetThrottleDemand();
+    ControlState.SetThrottle(0.0f);
+    ControlState.SetExternalRearDriveTorquePerWheel(0.0f);
+    ControlState.SetResolvedEngineActuation(false, 0.0f, 0.0f, 0.0f, 0.0f);
 }
