@@ -5,7 +5,7 @@
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
 **Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **PHY-003 · Causal drivetrain telemetry**.  
+**Current execution point:** **PHY-004 · Repeatable calibration fixtures**.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -82,9 +82,10 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ### PHY-003 — Causal drivetrain telemetry
 
-**Change:** Add bounded timestamped trace of raw+semantic input, ignition, final throttle, combustion/partial-clutch torque, gear, coupling, wheel torque/contact/slip, speed, slope, profile id/hash.  
-**Acceptance:** Engine-off incident can be reconstructed frame by frame; trace does not lose first fault frames.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE · exact-main verified 2026-09-26**.  
+**Change:** Added bounded append-only trace of raw/prepared/post-drivetrain/health+limiter input, ignition permission, engine torque, clutch/driveline, requested/engaged/Chaos gear, partial-clutch vs Chaos torque path, wheel state, speed/energy, profile id/hash and steering stages. Diagnostic runtime capture is gated by `-PinkCabCausalTelemetry` and flushes frame/wheel CSV plus metadata to `Saved/GitHubGate`.  
+**Acceptance:** **PASS.** Earliest frames are never overwritten; overflow is counted. Engine-off/non-causal incidents can distinguish combustion permission from requested torque and locate control→actuation→wheel state. UE 5.8 public channels that do not expose exact tire normal load/slip ratio/longitudinal/lateral force are explicitly marked unavailable rather than fabricated.  
+**Evidence:** runtime PR #33 merged as `07b5726ecd352c742875966fb19598577ce2d826`; verification-lane PR #34 merged as `5ab428724e5fa0bdedf471312d40f774beb809d4`. Exact-main run **36233455129**: 32/32 repo/code-health PASS, zero-debt 0, writer guard PASS, `PinkCab.Vehicle.Physics` **9/9 PASS**, Editor/Game builds PASS, baseline validation PASS. No owner feel gate required because the task is observational.
 
 ### PHY-004 — Repeatable calibration fixtures
 
