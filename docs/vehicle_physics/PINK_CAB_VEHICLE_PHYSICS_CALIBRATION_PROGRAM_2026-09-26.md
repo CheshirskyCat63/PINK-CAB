@@ -5,7 +5,7 @@
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
 **Current canonical main / PHY-001 frozen baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **PHY-005 · Single combustion permission**.  
+**Current execution point:** **P01 technical acceptance GREEN / HUMAN GATE PENDING**. Do not begin P02 until the owner accepts the launched P01 candidate.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
