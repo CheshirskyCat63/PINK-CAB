@@ -79,6 +79,14 @@ public:
         const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
         if (!bKeyedOff)
         {
+            FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+            if (!FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, Provider))
+            {
+                Test->AddError(TEXT("running launch actuation refresh failed"));
+                return true;
+            }
+
             const float SpeedCmPerSec =
                 Mesh->GetPhysicsLinearVelocity().Size2D();
             const float LaunchTravelCm =
@@ -115,6 +123,14 @@ public:
             PhaseStartSeconds = FPlatformTime::Seconds();
             bKeyedOff = true;
             return false;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider OffProvider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, *Movement, Controls, OffProvider))
+        {
+            Test->AddError(TEXT("engine-off actuation refresh failed"));
+            return true;
         }
 
         if (Elapsed < 0.75)
