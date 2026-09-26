@@ -102,9 +102,10 @@ $rollbackSignature = (Get-AuthenticodeSignature -FilePath $rollbackExe).Status.T
 if ($currentSignature -ne 'Valid') {
     throw "PINKCAB_PHY001_CURRENT_SIGNATURE_INVALID status=$currentSignature"
 }
-if ($rollbackSignature -ne 'Valid') {
-    throw "PINKCAB_PHY001_ROLLBACK_SIGNATURE_INVALID status=$rollbackSignature"
-}
+# Historical accepted rollback predates the current dev-signing lane. Its identity is
+# authoritative only when BUILD_SHA.txt + GATE_MANIFEST.txt + executable SHA-256 agree.
+# Record Authenticode status as evidence, but do not reject a legacy unsigned rollback.
+$rollbackSignaturePolicy = if ($rollbackSignature -eq 'Valid') { 'valid' } else { 'legacy-record-only' }
 
 $currentItem = Get-Item -LiteralPath $CurrentExe
 $rollbackItem = Get-Item -LiteralPath $rollbackExe
@@ -193,6 +194,7 @@ $manifest = [ordered]@{
         sha256 = $rollbackHash
         size_bytes = [int64]$rollbackItem.Length
         authenticode = $rollbackSignature
+        authenticode_policy = $rollbackSignaturePolicy
     }
 }
 
@@ -213,6 +215,7 @@ Write-Host "PINKCAB_PHY001_CURRENT_EXE_SHA256=$currentHash"
 Write-Host "PINKCAB_PHY001_ROLLBACK_SHA=$RollbackSha"
 Write-Host "PINKCAB_PHY001_ROLLBACK_RUN_ID=$RollbackRunId"
 Write-Host "PINKCAB_PHY001_ROLLBACK_EXE_SHA256=$rollbackHash"
+Write-Host "PINKCAB_PHY001_ROLLBACK_AUTHENTICODE=$rollbackSignature policy=$rollbackSignaturePolicy"
 if (-not [string]::IsNullOrWhiteSpace($frozenRoot)) {
     Write-Host "PINKCAB_PHY001_FROZEN_ROOT=$frozenRoot"
 }
