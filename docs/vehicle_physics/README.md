@@ -20,7 +20,7 @@ Current planning/admin mirror for the vehicle-physics refinement program request
 
 Do not begin with “feel tuning.” Execute:
 
-`P00 observability → P01 engine-off/idle correctness → P02 clutch/RPM continuity → P03 steering/input feel → P04 acceleration/gearing → P05 mass/wheels/inertia → P06 suspension → P07 tires/brakes/heat → P08 persistence/soak → P09 613/603-I/77 profiles → P10 cabin extension seam → P11 evidence/human/admin convergence`.
+`P00-S minimal versioned profile envelope → P00 observability → P01 engine-off/idle correctness → P02 clutch/RPM continuity → P03 steering/input feel → P04 acceleration/gearing → P05 mass/wheels/inertia → P06 suspension → P07 tires/brakes/heat → P08 persistence/soak → P09 complete 613/603-I/77 profiles + migrations → P10 cabin extension seam → P11 evidence/human/admin convergence`.\n\n**Review correction:** the schema skeleton cannot wait until P09 because P00/P01 evidence already requires profile id/version/hash and P08 persists profile identity. Before PHY-001, establish only the minimum stable profile envelope: model/profile ID, schema/calibration version, units/provenance metadata and compatibility/migration identity. P09 still owns the full per-model parameter population, geometry calibration and migration completion.
 
 The engine-off symptom is not yet assigned to a root cause. Current code already gates the partial-clutch external torque path on Running ignition, while final provider throttle/torque paths and Chaos mechanical-sim state have separate responsibilities. P00 instrumentation is therefore mandatory before any fix.
 
