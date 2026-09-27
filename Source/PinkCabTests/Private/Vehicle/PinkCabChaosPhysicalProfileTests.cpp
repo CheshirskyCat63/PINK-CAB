@@ -41,8 +41,8 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestTrue(TEXT("rear drive axle has lower grip than front for power oversteer"),
         Profile.RearWheel.FrictionForceMultiplier.Value
             < Profile.FrontWheel.FrictionForceMultiplier.Value);
-    TestEqual(TEXT("nominal rear grip targets progressive throttle wheelspin"),
-        Profile.RearWheel.FrictionForceMultiplier.Value, 0.50f);
+    TestEqual(TEXT("R6 nominal rear grip removes the manufactured wheelspin shortcut"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.95f);
     // Use a conservative rear-heavy 60% static load budget. The actual Tatra
     // is rear-engined, so a 50/50 estimate would understate rear grip and make
     // the 50% wheelspin threshold look easier than it is in runtime.
@@ -59,14 +59,14 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
         FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
     const float HalfPedalEngineThrottle =
         FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
-    // Static-load math is only a conservative sanity band. Runtime wheel/contact
-    // tests are authoritative for the desired 25% clean / 50% wheelspin split.
-    TestTrue(TEXT("25 percent pedal stays near the rear static grip budget after linkage response"),
-        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 1.20f);
-    TestTrue(TEXT("50 percent pedal can cross rear static grip budget after linkage response"),
-        AxleDriveForceAt2000N * HalfPedalEngineThrottle > RearGripBudgetN);
-    TestTrue(TEXT("full throttle substantially exceeds rear grip for burnout"),
-        AxleDriveForceAt2000N > RearGripBudgetN * 1.8f);
+    // Static-load math is a conservative R6 sanity band. Runtime contact and
+    // HUMAN feel remain authoritative for actual breakaway/recovery behavior.
+    TestTrue(TEXT("25 percent pedal stays comfortably below rear dry grip budget"),
+        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 0.75f);
+    TestTrue(TEXT("50 percent pedal remains dosable instead of forced wheelspin"),
+        AxleDriveForceAt2000N * HalfPedalEngineThrottle < RearGripBudgetN * 0.95f);
+    TestTrue(TEXT("full throttle can still exceed rear dry grip for natural wheelspin"),
+        AxleDriveForceAt2000N > RearGripBudgetN * 1.15f);
     TestEqual(TEXT("front steering lock target"), Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
     TestFalse(TEXT("front ABS disabled"), Profile.FrontWheel.bABSEnabled.Value);
     TestFalse(TEXT("rear ABS disabled"), Profile.RearWheel.bABSEnabled.Value);
@@ -114,6 +114,10 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
         Low.FrontWheel.FrictionForceMultiplier.Value < Nominal.FrontWheel.FrictionForceMultiplier.Value);
     TestTrue(TEXT("friction calibration rises nominal to high"),
         Nominal.FrontWheel.FrictionForceMultiplier.Value < High.FrontWheel.FrictionForceMultiplier.Value);
+    TestTrue(TEXT("rear friction calibration rises low to nominal"),
+        Low.RearWheel.FrictionForceMultiplier.Value < Nominal.RearWheel.FrictionForceMultiplier.Value);
+    TestTrue(TEXT("rear friction calibration rises nominal to high"),
+        Nominal.RearWheel.FrictionForceMultiplier.Value < High.RearWheel.FrictionForceMultiplier.Value);
     TestTrue(TEXT("spring calibration rises low to nominal"),
         Low.FrontWheel.SpringRate.Value < Nominal.FrontWheel.SpringRate.Value);
     TestTrue(TEXT("spring calibration rises nominal to high"),
@@ -212,7 +216,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("P01 idle/rev-down calibration advances profile to v3"), Profile.CalibrationVersion, 3);
+    TestEqual(TEXT("R6 dry-tire calibration advances profile to v4"), Profile.CalibrationVersion, 4);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
