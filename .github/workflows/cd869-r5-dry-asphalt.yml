@@ -1,10 +1,6 @@
 name: CD-869 R5 Dry Asphalt Surface
 
 on:
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
