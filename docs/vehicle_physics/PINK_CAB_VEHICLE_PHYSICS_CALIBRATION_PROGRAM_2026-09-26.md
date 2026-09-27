@@ -3,10 +3,10 @@
 **Program mirror:** 2026-09-26  
 **Scope:** canonical program + execution evidence; accepted control grammar and world remain frozen unless a stage explicitly says otherwise.  
 **Original audit baseline:** `main@55ee8173af3c627cf26a06b95ec8628f5077179c`.  
-**Current canonical runtime main:** `eae3907ca4287a94abf9c205a8f4c89d2c99ef5a`.  
+**P01 accepted runtime baseline:** `269d8b4b5b79f33eb2160d177a282c3cec965772` (corrective stall + clean-delivery integration).  
 **PHY-001 frozen rollback baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`, run **36213319172**.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **P01 technical acceptance GREEN / HUMAN GATE PENDING**. Do not begin P02 until the owner accepts the launched P01 candidate.  
+**Current execution point:** **P01 HUMAN ACCEPTED / FROZEN**. P02 is the next vehicle-physics stage, but remains NOT STARTED until explicitly executed; current road work may proceed independently under its own R-gates.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -97,11 +97,11 @@ One stage at a time. Every runtime-changing stage uses: RED/reproduction → min
 
 ## P01 — Engine state, idle and no self-propulsion
 
-**Status:** **TECHNICAL GREEN · HUMAN GATE PENDING**.  
+**Status:** **HUMAN ACCEPTED · INTEGRATED · FROZEN**.  
 **Reuse owners:** CD-612 / CD-644 / CD-659.  
-**Canonical runtime:** `main@eae3907ca4287a94abf9c205a8f4c89d2c99ef5a`, exact-main run **36264255545**, **23/23** focused physics tests PASS, writer guard **72 groups / 84 occurrences**, zero-debt **0**.  
+**Canonical P01 runtime:** `main@269d8b4b5b79f33eb2160d177a282c3cec965772`. Original P01 exact-main run **36264255545** proved **23/23** focused physics tests PASS, writer guard **72 groups / 84 occurrences**, zero-debt **0**; corrective exact-main run **36271258874** passed after the stop-in-gear stall repair.  
 **Profile:** `TATRA_613 / PINKCAB_TATRA613_CHAOS`, schema/calibration **1/3**, hash `7A90D02ED12B1E93`.  
-**Human package:** run **36266076177**; fresh package/sign/smoke/install/launch PASS; owner verdict is not recorded yet.
+**Accepted HUMAN package:** `E:\\CHESHIRE_DIVISION\\Builds\\PINKCAB\\FINAL_CLEAN_269d8b4b_RUN36271368931`, run **36271368931**. Owner accepted P01 after corrective stop-in-gear stall verification. The later road-visual repair/R4 work is a separate world-visual gate and does not reopen P01 engine-state acceptance.
 
 ### PHY-005 — Single combustion permission — DONE
 
