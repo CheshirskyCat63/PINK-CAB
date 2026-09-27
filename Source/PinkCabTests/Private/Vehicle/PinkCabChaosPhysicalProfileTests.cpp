@@ -123,6 +123,81 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabR6DryTireCausalityTest,
+    "PinkCab.Vehicle.Physics.R6.DryTireCausality",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabR6DryTireCausalityTest::RunTest(const FString& Parameters)
+{
+    const auto Low =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Low);
+    const auto Nominal =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const auto High =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::High);
+
+    TestEqual(TEXT("R6 advances the calibration identity"),
+        Nominal.CalibrationVersion, 4);
+
+    TestEqual(TEXT("R6 front load sensitivity uses the physical reference"),
+        Nominal.FrontWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("R6 rear load sensitivity uses the physical reference"),
+        Nominal.RearWheel.WheelLoadRatio.Value, 1.0f);
+
+    TestEqual(TEXT("R6 nominal dry front grip is near the dry-road reference"),
+        Nominal.FrontWheel.FrictionForceMultiplier.Value, 1.05f);
+    TestEqual(TEXT("R6 nominal dry rear grip remains close to front"),
+        Nominal.RearWheel.FrictionForceMultiplier.Value, 0.95f);
+    TestTrue(TEXT("R6 rear axle no longer uses the 0.50 wheelspin shortcut"),
+        Nominal.RearWheel.FrictionForceMultiplier.Value >= 0.90f);
+    TestTrue(TEXT("R6 axle balance stays progressive rather than cliff-like"),
+        Nominal.RearWheel.FrictionForceMultiplier.Value
+            / Nominal.FrontWheel.FrictionForceMultiplier.Value >= 0.85f);
+
+    TestTrue(TEXT("R6 low dry-grip variant stays below nominal on both axles"),
+        Low.FrontWheel.FrictionForceMultiplier.Value
+                < Nominal.FrontWheel.FrictionForceMultiplier.Value
+            && Low.RearWheel.FrictionForceMultiplier.Value
+                < Nominal.RearWheel.FrictionForceMultiplier.Value);
+    TestTrue(TEXT("R6 high dry-grip variant stays above nominal on both axles"),
+        High.FrontWheel.FrictionForceMultiplier.Value
+                > Nominal.FrontWheel.FrictionForceMultiplier.Value
+            && High.RearWheel.FrictionForceMultiplier.Value
+                > Nominal.RearWheel.FrictionForceMultiplier.Value);
+
+    const float RearGripBudgetN =
+        Nominal.ReferenceMassKg.Value * 9.81f * 0.60f
+        * Nominal.RearWheel.FrictionForceMultiplier.Value;
+    const float RadiusM = Nominal.RearWheel.WheelRadiusCm.Value / 100.0f;
+    const float AxleDriveForceAt2000N =
+        Nominal.MaxTorqueNm.Value * 0.95f
+        * Nominal.ForwardGearRatios.Value[0]
+        * Nominal.FinalDriveRatio.Value
+        / RadiusM;
+    const float QuarterPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float HalfPedalEngineThrottle =
+        FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+
+    TestTrue(TEXT("R6 quarter pedal remains below the dry rear static budget"),
+        AxleDriveForceAt2000N * QuarterPedalEngineThrottle
+            < RearGripBudgetN * 0.75f);
+    TestTrue(TEXT("R6 half pedal is dosable instead of guaranteed wheelspin"),
+        AxleDriveForceAt2000N * HalfPedalEngineThrottle
+            < RearGripBudgetN * 0.95f);
+    TestTrue(TEXT("R6 full throttle can still exceed the dry rear static budget"),
+        AxleDriveForceAt2000N > RearGripBudgetN * 1.15f);
+
+    TestFalse(TEXT("R6 keeps ABS disabled"),
+        Nominal.FrontWheel.bABSEnabled.Value
+            || Nominal.RearWheel.bABSEnabled.Value);
+    TestFalse(TEXT("R6 keeps traction control disabled"),
+        Nominal.FrontWheel.bTractionControlEnabled.Value
+            || Nominal.RearWheel.bTractionControlEnabled.Value);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPhysicsProfileEnvelopeIdentityTest,
     "PinkCab.Vehicle.Physics.Profile.Envelope.Identity",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
