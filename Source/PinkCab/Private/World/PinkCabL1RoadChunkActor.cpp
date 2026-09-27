@@ -8,6 +8,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "World/PinkCabL1EndlessRoadModel.h"
 #include "World/PinkCabRoadMaterialAudit.h"
+#include "World/PinkCabRoadSurfacePhysics.h"
 
 namespace
 {
@@ -83,6 +84,9 @@ APinkCabL1RoadChunkActor::APinkCabL1RoadChunkActor()
     {
         RoadMeshComponent->SetStaticMesh(RoadMeshFinder.Object);
     }
+
+    RoadPhysicalMaterial =
+        PinkCabRoadSurfacePhysics::LoadDryAsphaltPhysicalMaterial();
 
     RoadSidewalksComponent =
         CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoadSidewalks"));
@@ -214,6 +218,9 @@ bool APinkCabL1RoadChunkActor::BindChunk(
 
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
+    PinkCabRoadSurfacePhysics::ApplyDryAsphaltPhysicalMaterial(
+        RoadMeshComponent,
+        RoadPhysicalMaterial);
     RoadMeshComponent->SetCollisionEnabled(
         ECollisionEnabled::QueryAndPhysics);
     SetNativeMetaRoadConstructionCollision(
@@ -232,6 +239,9 @@ bool APinkCabL1RoadChunkActor::BindChunk(
             bAuditReported = true;
         }
     }
+    PinkCabRoadSurfacePhysics::AuditIfRequested(
+        RoadMeshComponent,
+        RoadPhysicalMaterial);
     return true;
 }
 

@@ -1,0 +1,341 @@
+name: CD-869 R5 Dry Asphalt Surface
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cd869-r5-dry-asphalt
+  cancel-in-progress: true
+
+jobs:
+  r5:
+    name: Author, verify, package, HUMAN
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869R5DryAsphalt
+      BASELINE: 05ed95f52801a09b3998583751a04ea723bd11ea
+
+    steps:
+      - name: Checkout exact R5 head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: R5 preflight and frozen-scope guard
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if(@(git status --porcelain --untracked-files=all).Count -ne 0){
+            git status --short
+            throw 'CD869_R5_DIRTY_PREFLIGHT'
+          }
+          git merge-base --is-ancestor $env:BASELINE HEAD
+          if($LASTEXITCODE -ne 0){ throw 'CD869_R5_NOT_BASED_ON_ACCEPTED_R4' }
+
+          $allowed=@(
+            '.github/workflows/cd869-native-metaroad-texture-repair.yml',
+            '.github/workflows/cd869-r5-dry-asphalt.yml',
+            'scripts/ci/packaged-os-input-gate.ps1',
+            'Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset',
+            'Source/PinkCab/Private/World/PinkCabL1RoadChunkActor.cpp',
+            'Source/PinkCab/Private/World/PinkCabRoadSurfacePhysics.cpp',
+            'Source/PinkCab/Public/World/PinkCabL1RoadChunkActor.h',
+            'Source/PinkCab/Public/World/PinkCabRoadSurfacePhysics.h',
+            'Source/PinkCabTests/Private/World/PinkCabL1RoadR5PhysicalSurfaceTests.cpp'
+          )
+          $changed=@(git diff --name-only "$env:BASELINE...HEAD")
+          $unexpected=@($changed | Where-Object { $_ -notin $allowed })
+          if($unexpected.Count -ne 0){
+            $unexpected | % { Write-Host "CD869_R5_UNEXPECTED=$_"}
+            throw 'CD869_R5_SCOPE_GUARD_FAIL'
+          }
+
+          foreach($path in $changed){
+            if($path -match '^Source/PinkCabVehicle/' -or
+               $path -match '^Source/PinkCab/Private/Vehicle/' -or
+               $path -match '^Source/PinkCab/Private/Runtime/' -or
+               $path -eq 'Config/DefaultInput.ini' -or
+               $path -eq 'PinkCab.uproject' -or
+               $path -match '^Content/World/L1/Road/Road(Surface|Sidewalks|Curbs[0-9]*|Marks[0-9]*)\.uasset$'){
+              throw "CD869_R5_FROZEN_OWNER_CHANGED=$path"
+            }
+          }
+          Write-Host "CD869_R5_PREFLIGHT=PASS head=$head changed=$($changed.Count)"
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R5_EDITOR_BUILD=PASS'
+
+      - name: Author canonical dry-asphalt physical material
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\CD869_R5_AUTHOR.log"
+          New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial" "-TestExit=Automation Test Queue Empty"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            throw 'CD869_R5_AUTHOR_TEST_FAIL'
+          }
+
+          $asset='Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset'
+          if(-not (Test-Path $asset)){ throw 'CD869_R5_ASSET_MISSING_AFTER_AUTHOR' }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- $asset
+          git diff --cached --quiet
+          $hasDelta=($LASTEXITCODE -ne 0)
+          $global:LASTEXITCODE=0
+          if($hasDelta){
+            git commit -m 'asset(CD-869): author R5 dry-asphalt physical material'
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if($env:GITHUB_HEAD_REF){
+              git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            }
+          } else {
+            Write-Host 'CD869_R5_ASSET_ALREADY_CANONICAL=1'
+          }
+          Write-Host "CD869_R5_AUTHOR=PASS sha=$((git rev-parse HEAD).Trim())"
+
+      - name: R5 focused and frozen regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.World.L1Road.R5.DryAsphaltPhysicalSurface',
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1EndlessRoad.Asset.MaterialContract',
+            'PinkCab.World.L1EndlessRoad.Physics.SeamCrossing',
+            'PinkCab.Vehicle.Physics.EngineState.LowRpmCoupledOverloadStalls'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\R5_$safe.log"
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              throw "CD869_R5_TEST_FAIL=$test"
+            }
+            if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
+              throw "CD869_R5_TEST_QUEUE_MISSING=$test"
+            }
+            Write-Host "CD869_R5_TEST_PASS=$test"
+          }
+
+      - name: Zero-debt code health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R5_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $backup="$project.r5-backup"
+          Copy-Item $project $backup -Force
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+
+          foreach($stale in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\StagedBuilds\Windows'),
+            $archive
+          )){
+            if(Test-Path $stale){ Remove-Item $stale -Recurse -Force }
+          }
+          New-Item -ItemType Directory -Force $archive | Out-Null
+
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCab Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $exe=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_R5_PACKAGE_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($exe)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $exe).Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw 'CD869_R5_SIGNATURE_INVALID'
+          }
+
+          $sha=(git rev-parse HEAD).Trim()
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $sha -NoNewline
+          Write-Host "CD869_R5_FRESH_PACKAGE=PASS sha=$sha"
+
+      - name: Packaged R4 visual plus R5 physical-surface audit
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R5_PACKAGED.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+
+          $p=Start-Process -FilePath $exe -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=1280','-ResY=720',
+            '-PinkCabGateTelemetry',
+            '-PinkCabRoadMaterialAudit',
+            '-PinkCabRoadSurfaceAudit',
+            "-abslog=$log"
+          ) -WorkingDirectory (Split-Path $exe) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            do {
+              Start-Sleep -Milliseconds 300
+              $p.Refresh()
+              if($p.HasExited){ throw "CD869_R5_SMOKE_EXITED_EARLY=$($p.ExitCode)" }
+              $visual=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS materials=PASS textures8k=PASS' -Quiet)
+              $surface=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_SURFACE_AUDIT=PASS path=/Game/World/L1/Road/Physics/PM_PC_DryAsphalt\.PM_PC_DryAsphalt friction=1\.000 restitution=0\.000' -Quiet)
+              $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while(( -not $visual -or -not $surface -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
+
+            if(-not $visual){ throw 'CD869_R5_R4_VISUAL_AUDIT_MISSING' }
+            if(-not $surface){ throw 'CD869_R5_SURFACE_AUDIT_MISSING' }
+            if(-not $wheels){ throw 'CD869_R5_WHEEL_TELEMETRY_MISSING' }
+
+            $bad=@(Select-String $log -Pattern '(?i)Failed to load.*PM_PC_DryAsphalt|Failed to load.*MetaRoad|Can.t find file.*MetaRoad|LogLinker: Error|Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception' -ErrorAction SilentlyContinue)
+            if($bad.Count -ne 0){
+              $bad | % { Write-Host $_.Line }
+              throw "CD869_R5_PACKAGED_CRITICAL=$($bad.Count)"
+            }
+            Write-Host 'CD869_R5_PACKAGED_SURFACE=PASS'
+          } finally {
+            if($p -and -not $p.HasExited){ Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+      - name: Two packaged Windows-input regression passes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          for($attempt=1;$attempt -le 2;$attempt++){
+            Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+            $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\CD869_R5_INPUT_" + $attempt)
+            try {
+              & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            } catch {
+              $inputLog=Join-Path $evidence 'PACKAGED_OS_INPUT.log'
+              if(Test-Path $inputLog){
+                Write-Host 'CD869_R5_INPUT_FAILURE_STATE_TAIL_BEGIN'
+                Get-Content $inputLog -Tail 120 | Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } | Select-Object -Last 24 | ForEach-Object { Write-Host $_ }
+                Write-Host 'CD869_R5_INPUT_FAILURE_STATE_TAIL_END'
+              }
+              throw
+            }
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            foreach($marker in @(
+              'startup_menu=PASS',
+              'ignition_space_lmb=PASS',
+              'hgate_first=PASS',
+              'mandatory_e_wheel_launch=PASS',
+              'service_brake_stop=PASS',
+              'hgate_reverse=PASS',
+              'reverse_movement_over_3m=PASS',
+              'critical=0'
+            )){
+              if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){
+                throw "CD869_R5_INPUT_MARKER_MISSING attempt=$attempt marker=$marker"
+              }
+            }
+            Write-Host "CD869_R5_PACKAGED_INPUT_PASS=$attempt"
+          }
+
+      - name: Deliver and launch R5 HUMAN candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R5_DRY_ASPHALT_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "CD869_R5_DELIVERY_COPY_FAIL=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_R5_DELIVERY_EXE_MISSING' }
+
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+          Set-Content (Join-Path $delivery 'ROAD_SURFACE.txt') 'R5 dry asphalt: PM_PC_DryAsphalt friction=1.0 restitution=0.0; R4 native MetaRoad visual frozen' -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R5 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB R5 dry-asphalt HUMAN $sha"
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $exe) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "CD869_R5_HUMAN_EXITED=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "CD869_R5_HUMAN_PROCESS_COUNT=$($all.Count)" }
+
+            Write-Host "CD869_R5_HUMAN_SHA=$sha"
+            Write-Host "CD869_R5_HUMAN_RUN=$env:GITHUB_RUN_ID"
+            Write-Host "CD869_R5_HUMAN_PID=$($p.Id)"
+            Write-Host "CD869_R5_HUMAN_PATH=$($p.Path)"
+            Write-Host "CD869_R5_HUMAN_DELIVERY=$delivery"
+            Write-Host 'HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }
