@@ -328,6 +328,22 @@ function Dose-To([string]$Field,[double]$Min,[double]$Max,[int]$PrimaryWheelDelt
 
 $proc=$null
 $VK_ESC=0x1B; $VK_SPACE=0x20; $VK_Q=0x51; $VK_W=0x57; $VK_E=0x45; $VK_3=0x33; $VK_4=0x34
+
+function Ensure-GazeInputHeld {
+    $state=Get-State
+    $osHeld=[PinkCabNativeInput]::IsKeyDown($VK_SPACE)
+    if($null -ne $state -and $osHeld -and $state.gaze -eq 1) {
+        return
+    }
+
+    Write-Host "PACKAGED_OS_INPUT_REPRIME_GAZE osheld=$osHeld gaze=$($state.gaze)"
+    [PinkCabNativeInput]::KeyUp($VK_SPACE)
+    Start-Sleep -Milliseconds 120
+    Focus-GameWindow $script:GameHwnd
+    [PinkCabNativeInput]::KeyDown($VK_SPACE)
+    Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 2500 "Space re-prime restores gaze mode" | Out-Null
+}
+
 try {
     $launchArgs=@(
         "-log","-windowed","-ResX=1280","-ResY=720","-PinkCabGateTelemetry","-abslog=$log"
@@ -390,7 +406,7 @@ try {
         # dropped mouse packet as a product regression.
         for($attempt=1; $attempt -le 4; ++$attempt) {
             Focus-GameWindow $script:GameHwnd
-            Wait-State { param($s) $s.gaze -eq 1 -and $s.aimvalid -eq 1 } 1500 "gaze remains active during aim calibration" | Out-Null
+            Ensure-GazeInputHeld
             Start-Sleep -Milliseconds (120 * $attempt)
 
             $scale=$attempt
@@ -415,6 +431,7 @@ try {
     $yawPerCount=Calibrate-AimAxis 'aimyaw' 24 0
     $pitchPerCount=Calibrate-AimAxis 'aimpitch' 0 24
     for($i=0;$i -lt 36;$i++) {
+        Ensure-GazeInputHeld
         $s=Get-State
         if($s.target -eq 'Ignition' -and [Math]::Abs($s.aimyaw) -le 4.0 -and [Math]::Abs($s.aimpitch) -le 4.0) { break }
         $dx=[int][Math]::Round((-1.0*$s.aimyaw)/$yawPerCount)
@@ -426,6 +443,7 @@ try {
         [PinkCabNativeInput]::Move($dx,$dy)
         Start-Sleep -Milliseconds 180
     }
+    Ensure-GazeInputHeld
     $aimed=Get-State
     if($aimed.target -ne 'Ignition'){
         throw "Closed-loop gaze did not select Ignition. Last=$($aimed.raw)"
