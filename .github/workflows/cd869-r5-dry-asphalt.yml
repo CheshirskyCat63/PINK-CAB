@@ -253,8 +253,18 @@ jobs:
             Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 1
             $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\CD869_R5_INPUT_" + $attempt)
-            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            try {
+              & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+              if($LASTEXITCODE -ne 0){ throw "CD869_R5_INPUT_GATE_EXIT=$LASTEXITCODE" }
+            } catch {
+              $inputLog=Join-Path $evidence 'PACKAGED_OS_INPUT.log'
+              if(Test-Path $inputLog){
+                Write-Host 'CD869_R5_INPUT_FAILURE_STATE_TAIL_BEGIN'
+                Get-Content $inputLog -Tail 120 | Where-Object { $_ -match 'PINKCAB_GATE_STATE ' } | Select-Object -Last 24 | ForEach-Object { Write-Host $_ }
+                Write-Host 'CD869_R5_INPUT_FAILURE_STATE_TAIL_END'
+              }
+              throw
+            }
             $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
             foreach($marker in @(
               'startup_menu=PASS',
