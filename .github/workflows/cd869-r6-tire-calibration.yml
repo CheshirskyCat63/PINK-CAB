@@ -96,7 +96,7 @@ jobs:
             'SuspensionDampingRatio',
             'RollbarScaling'
           )){
-            if($profileDiff -match "(?m)^[+-].*\\b$forbidden\\b"){
+            if($profileDiff -match "(?m)^[+-].*\b$forbidden\b"){
               throw "CD869_R6_NON_TIRE_PROFILE_CHANGE=$forbidden"
             }
           }
