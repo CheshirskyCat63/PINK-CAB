@@ -209,7 +209,10 @@ function Move-GameAxis([string]$Axis,[double]$Target,[double]$OsSign) {
         Start-Sleep -Milliseconds 160
     }
     $s=Get-State
-    throw "Gear axis failed"
+    $current = if($Axis -eq 'x'){$s.gearx}else{$s.geary}
+    $err=$Target-$current
+    if([Math]::Abs($err) -le 0.10){ return }
+    throw "Gear axis failed axis=$Axis target=$Target current=$current error=$err Last=$($s.raw)"
 }
 function Move-GearCursor([double]$X,[double]$Y,[double]$SignX,[double]$SignY) {
     Move-GameAxis 'y' 0.0 $SignY
