@@ -8,6 +8,7 @@ on:
     paths:
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp'
+      - 'scripts/ci/packaged-os-input-gate.ps1'
       - '.github/workflows/cd869-r6-tire-calibration.yml'
   workflow_dispatch:
 
@@ -52,6 +53,7 @@ jobs:
 
           $allowed=@(
             '.github/workflows/cd869-r6-tire-calibration.yml',
+            'scripts/ci/packaged-os-input-gate.ps1',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp'
           )
