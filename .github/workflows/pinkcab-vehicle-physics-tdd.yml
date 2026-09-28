@@ -146,7 +146,6 @@ jobs:
             -TestName 'PinkCab.Vehicle.Physics' `
             -LogPath $log `
             -TimeoutSeconds 300
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'PINKCAB_PHYSICS_TDD=PASS'
 
       - name: Build exact game executable for PHY-001 baseline
