@@ -80,22 +80,35 @@ jobs:
           git lfs checkout
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          $pointerFiles=@()
-          foreach($relative in $tracked){
+          $lfsSet=@{}
+          foreach($relative in $tracked){ $lfsSet[$relative]=$true }
+          $changed=@(git diff --name-only "origin/main...HEAD")
+          $changedLfs=@($changed | Where-Object { $lfsSet.ContainsKey($_) })
+          if($changedLfs.Count -ne 0){
+            $changedLfs | ForEach-Object { Write-Host "P02_LFS_CHANGED=$_" }
+            throw "P02_LFS_CHANGED_IN_CODE_ONLY_GATE count=$($changedLfs.Count)"
+          }
+
+          $required=@(
+            'Content/Dev/Maps/L_PinkCab_ChaosWeave.umap'
+          )
+          foreach($relative in $required){
             if(-not (Test-Path -LiteralPath $relative)){
-              $pointerFiles += $relative
-              continue
+              throw "P02_LFS_FIXTURE_MISSING=$relative"
             }
             $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction Stop)
             if($first -eq 'version https://git-lfs.github.com/spec/v1'){
-              $pointerFiles += $relative
+              throw "P02_LFS_FIXTURE_POINTER=$relative"
             }
           }
-          if($pointerFiles.Count -ne 0){
-            $pointerFiles | ForEach-Object { Write-Host "P02_LFS_CACHE_MISS=$_" }
-            throw "P02_LFS_CACHE_INCOMPLETE count=$($pointerFiles.Count)"
+
+          $unresolved=0
+          foreach($relative in $tracked){
+            if(-not (Test-Path -LiteralPath $relative)){ $unresolved++; continue }
+            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction SilentlyContinue)
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){ $unresolved++ }
           }
-          Write-Host "P02_LFS_CACHE=PASS materialized=$($tracked.Count)"
+          Write-Host "P02_LFS_FIXTURE=PASS required=$($required.Count) tracked=$($tracked.Count) unresolved_unrelated=$unresolved"
 
       - name: Exact-head preflight and scope guard
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
@@ -179,6 +192,9 @@ jobs:
             if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
             if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
               throw "P02_PHY009_TEST_FAIL=$test"
+            }
+            if(Select-String -Path $log -Pattern "Failed to load package|Can't find file '/Game|Unable to load package|Failed to load '/Game" -Quiet){
+              throw "P02_PHY009_ASSET_DEPENDENCY_FAIL=$test"
             }
             if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
               throw "P02_PHY009_QUEUE_MISSING=$test"
