@@ -58,9 +58,11 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
     // returned explicitly so the adapter can feed wheel load back to engine.
     const float SynchronizationTorqueNm =
         Config.EngineEffectiveInertia * SlipOmega / SyncHorizon;
-    Output.RequestedClutchTorqueNm =
+    const float NetEngineTorqueNm =
         FMath::Max(Input.AvailableEngineTorqueNm, 0.0f)
-        + SynchronizationTorqueNm;
+        - FMath::Max(Input.EngineDragTorqueNm, 0.0f);
+    Output.RequestedClutchTorqueNm =
+        NetEngineTorqueNm + SynchronizationTorqueNm;
 
     Output.TransmittedClutchTorqueNm = FMath::Clamp(
         Output.RequestedClutchTorqueNm,
