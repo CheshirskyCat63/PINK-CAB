@@ -47,30 +47,14 @@ bool FPinkCabChaosCockpitBridge::Apply(
         EngineTorqueCurveNm,
         Actuation.RequestedEngineTorqueAfterLimiterHealthNm);
 
-    constexpr float FullyCoupledThreshold = 1.0f;
-    const bool bFullyCoupled =
-        Controls.ClutchCoupling >= FullyCoupledThreshold
-        && Controls.EngagedGear != 0;
-    Movement.SetTargetGear(bFullyCoupled ? Controls.EngagedGear : 0, true);
+    // PHY-009 owns one driveline solver for 0..1 coupling. Chaos' simple
+    // transmission has no clutch model and must stay neutral; otherwise 1.0
+    // would silently switch back to a different RPM/torque solver.
+    Movement.SetTargetGear(0, true);
 
-    float ExternalRearDriveTorquePerWheelNm = 0.0f;
-    if (Controls.IsCombustionAllowed()
-        && Controls.EngagedGear != 0
-        && Controls.ClutchCoupling > KINDA_SMALL_NUMBER
-        && Controls.ClutchCoupling < FullyCoupledThreshold)
-    {
-        const float GearRatio =
-            Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear);
-        const float AxleTorqueNm =
-            Controls.GetAvailableEngineTorqueNm()
-            * GearRatio
-            * Movement.TransmissionSetup.TransmissionEfficiency
-            * Controls.ClutchCoupling
-            * Controls.DrivetrainTorqueCapacity;
-        ExternalRearDriveTorquePerWheelNm = AxleTorqueNm * 0.5f;
-    }
-    Controls.SetExternalRearDriveTorquePerWheel(
-        ExternalRearDriveTorquePerWheelNm);
+    // Compatibility transport only. No production torque is allowed through
+    // the legacy external-partial path after P02.
+    Controls.SetExternalRearDriveTorquePerWheel(0.0f);
 
     return Provider.ApplyControls(Controls);
 }
