@@ -144,7 +144,12 @@ public:
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
-                Controls.SetBrake(0.0f);
+                // D3 is a stationary driveline bench. Hold the ordinary
+                // service brake during the measured window so the clutch
+                // boundary is compared at one physical shaft/load state rather
+                // than after twelve diverging tire/chassis trajectories.
+                // Moving-load behavior is verified separately in D4.
+                Controls.SetBrake(1.0f);
                 Controls.SetHandbrake(0.0f);
                 Controls.SetDriveline(
                     CurrentGear(), CurrentGear(), CurrentCoupling());

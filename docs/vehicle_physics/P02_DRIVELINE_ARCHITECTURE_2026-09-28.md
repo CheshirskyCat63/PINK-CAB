@@ -113,11 +113,14 @@ Five identical-reset repeats per condition:
 - coupling 0 / 0.25 / 0.50 / 0.75 / 0.999 / 1.000;
 - 1st and R;
 - zero/25/50/100% throttle;
-- low and high wheel-speed back-drive;
+- the base 240-cell coupling matrix runs as a stationary driveline bench with the ordinary service brake physically holding the shaft/load state, so 0.999→1.000 compares the clutch solver rather than diverging tire/chassis trajectories;
+- low and high wheel-speed back-drive is a separate moving-shaft comparison against an open-clutch control;
 - limiter approach;
 - engine-off coast;
 - low-RPM overload/stall;
 - hot/worn capacity input.
+
+D3 does not use body-force, velocity, snapshot-loop or threshold handoff helpers. Moving load behavior belongs to D4.
 
 ### D4 — load fixtures
 - flat launch;
