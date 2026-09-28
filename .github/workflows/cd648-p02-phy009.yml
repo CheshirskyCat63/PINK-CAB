@@ -35,6 +35,7 @@ on:
       - 'docs/ENGINEERING_START_HERE.md'
       - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
       - 'scripts/ci/verify_vehicle_physics_writers.py'
+      - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - '.github/workflows/cd648-p02-phy009.yml'
   workflow_dispatch:
 
@@ -109,6 +110,7 @@ jobs:
           if($LASTEXITCODE -ne 0){ throw 'P02_PHY009_BASELINE_MISMATCH' }
 
           $allowed=@(
+            '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
             '.github/workflows/cd648-p02-phy009.yml',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
