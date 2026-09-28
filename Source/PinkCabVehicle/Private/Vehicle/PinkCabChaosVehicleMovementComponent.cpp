@@ -56,10 +56,29 @@ public:
 
         if (PVehicle->HasEngine())
         {
-            PVehicle->GetEngine().SetThrottle(
-                Command.bCombustionAllowed
-                    ? FMath::Clamp(Command.AuthoritativeEngineThrottle01, 0.0f, 1.0f)
-                    : 0.0f);
+            FSimpleEngineSim& Engine = PVehicle->GetEngine();
+            if (Command.bCombustionAllowed)
+            {
+                if (!bEngineStarted)
+                {
+                    Engine.StartEngine();
+                    bEngineStarted = true;
+                }
+                Engine.SetThrottle(
+                    FMath::Clamp(
+                        Command.AuthoritativeEngineThrottle01,
+                        0.0f,
+                        1.0f));
+            }
+            else
+            {
+                if (bEngineStarted)
+                {
+                    Engine.StopEngine();
+                    bEngineStarted = false;
+                }
+                Engine.SetThrottle(0.0f);
+            }
         }
 
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
@@ -167,6 +186,7 @@ public:
 private:
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabClutchDrivelineModel ClutchModel;
+    bool bEngineStarted = false;
 };
 
 UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
