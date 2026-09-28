@@ -162,11 +162,16 @@ def materialize_cached_lfs_object(
         check=False,
     )
     if refresh.returncode != 0:
-        raise RuntimeError(
-            f"git update-index --refresh failed for {relative}: "
-            f"{refresh.stderr.strip()}"
+        print(
+            f"PINKCAB_LOCAL_LFS_INDEX_REFRESH_NONZERO={relative} "
+            f"code={refresh.returncode} "
+            f"stdout={refresh.stdout.strip()} stderr={refresh.stderr.strip()}"
         )
 
+    # The semantic diff above is the content-equivalence authority because it
+    # invokes the configured LFS clean filter. Index refresh is only a stat-cache
+    # optimization and may report needs-update for a newly smudged LFS path.
+    # Final porcelain status below remains a hard cleanliness gate.
     status = subprocess.run(
         ["git", "status", "--porcelain", "--", relative.as_posix()],
         cwd=workspace,
