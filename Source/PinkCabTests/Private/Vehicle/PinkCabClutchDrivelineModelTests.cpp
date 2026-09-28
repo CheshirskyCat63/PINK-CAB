@@ -198,4 +198,126 @@ bool FPinkCabClutchDrivelineEngineBrakingTest::RunTest(const FString&)
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchDrivelineTimestepConsistencyTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchModel.TimestepConsistency",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchDrivelineTimestepConsistencyTest::RunTest(const FString&)
+{
+    FPinkCabClutchDrivelineConfig Config;
+    Config.EngineEffectiveInertia = 0.17f;
+    Config.MaxClutchTorqueNm = 390.0f;
+    Config.SynchronizationTimeSeconds = 0.20f;
+    Config.LockedSlipRpm = 25.0f;
+    FPinkCabClutchDrivelineModel Model(Config);
+
+    struct FResult
+    {
+        float FinalEngineRpm = 0.0f;
+        float MeanClutchTorqueNm = 0.0f;
+    };
+
+    const auto Simulate = [&Model, &Config](
+        const float OuterDeltaSeconds) -> FResult
+    {
+        constexpr float DurationSeconds = 0.24f;
+        constexpr float AvailableTorqueNm = 180.0f;
+        constexpr float EngineDragTorqueNm = 50.0f;
+        constexpr float ShaftEquivalentRpm = 0.0f;
+        constexpr float Coupling01 = 0.75f;
+        constexpr float EffectiveRatio = 14.72f;
+        constexpr float Efficiency = 0.90f;
+        constexpr float RadPerSecondToRpm =
+            60.0f / (2.0f * PI);
+
+        float EngineRpm = 925.0f;
+        float ElapsedSeconds = 0.0f;
+        double ClutchImpulseNmSeconds = 0.0;
+
+        while (ElapsedSeconds
+            < DurationSeconds - KINDA_SMALL_NUMBER)
+        {
+            const float Dt = FMath::Min(
+                OuterDeltaSeconds,
+                DurationSeconds - ElapsedSeconds);
+
+            FPinkCabClutchDrivelineInput Input;
+            Input.DeltaSeconds = Dt;
+            Input.EngineRpm = EngineRpm;
+            Input.ShaftEquivalentEngineRpm =
+                ShaftEquivalentRpm;
+            Input.AvailableEngineTorqueNm =
+                AvailableTorqueNm;
+            Input.EngineDragTorqueNm =
+                EngineDragTorqueNm;
+            Input.ClutchCoupling01 = Coupling01;
+            Input.DrivetrainTorqueCapacity01 = 1.0f;
+            Input.EffectiveGearRatio = EffectiveRatio;
+            Input.TransmissionEfficiency = Efficiency;
+
+            const FPinkCabClutchDrivelineOutput Out =
+                Model.Step(Input);
+
+            const float FreeEngineDeltaRpm =
+                ((AvailableTorqueNm
+                    - EngineDragTorqueNm)
+                    / Config.EngineEffectiveInertia)
+                * Dt
+                * RadPerSecondToRpm;
+            EngineRpm +=
+                FreeEngineDeltaRpm
+                + Out.EngineReactionDeltaRpm;
+            ClutchImpulseNmSeconds +=
+                static_cast<double>(
+                    Out.TransmittedClutchTorqueNm)
+                * static_cast<double>(Dt);
+            ElapsedSeconds += Dt;
+        }
+
+        FResult Result;
+        Result.FinalEngineRpm = EngineRpm;
+        Result.MeanClutchTorqueNm =
+            static_cast<float>(
+                ClutchImpulseNmSeconds
+                / static_cast<double>(
+                    DurationSeconds));
+        return Result;
+    };
+
+    const FResult At30 = Simulate(1.0f / 30.0f);
+    const FResult At60 = Simulate(1.0f / 60.0f);
+    const FResult At120 = Simulate(1.0f / 120.0f);
+
+    const auto RelativeDelta = [](const float A, const float B)
+    {
+        return FMath::Abs(A - B)
+            / FMath::Max3(
+                FMath::Abs(A),
+                FMath::Abs(B),
+                1.0f);
+    };
+
+    TestTrue(
+        TEXT("clutch engine reaction is timestep-consistent 30 vs 120"),
+        RelativeDelta(
+            At30.FinalEngineRpm,
+            At120.FinalEngineRpm)
+            <= 0.01f);
+    TestTrue(
+        TEXT("clutch engine reaction is timestep-consistent 60 vs 120"),
+        RelativeDelta(
+            At60.FinalEngineRpm,
+            At120.FinalEngineRpm)
+            <= 0.01f);
+    TestTrue(
+        TEXT("time-weighted clutch torque is timestep-consistent 30 vs 120"),
+        RelativeDelta(
+            At30.MeanClutchTorqueNm,
+            At120.MeanClutchTorqueNm)
+            <= 0.01f);
+    return true;
+}
+
 #endif

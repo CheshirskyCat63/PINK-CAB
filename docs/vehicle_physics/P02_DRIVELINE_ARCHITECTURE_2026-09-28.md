@@ -63,7 +63,7 @@ The clutch reaction is equal/opposite on the engine side. A faster wheel/shaft c
 - signed axle torque after ratio/efficiency;
 - equal/opposite engine reaction impulse.
 
-No world access, no UObject, no hidden assist.
+No world access, no UObject, no hidden assist. The clutch domain uses local numerical substeps derived from the authored synchronization horizon; this does not change the project or Chaos timestep.
 
 ### UE adapter layer
 
@@ -98,7 +98,7 @@ Must pass deterministic unit tests:
 - capacity/wear limiting;
 - continuous 0.999→1.000;
 - reverse sign;
-- timestep consistency.
+- timestep consistency, including composed engine-demand + clutch-reaction integration across 30/60/120 numerical step sizes.
 
 ### D2 — engine / Chaos adapter
 Must prove:

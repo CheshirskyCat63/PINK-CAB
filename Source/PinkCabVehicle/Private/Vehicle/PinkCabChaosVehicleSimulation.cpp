@@ -164,10 +164,14 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
     FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
     Transmission.SetGear(0, true);
 
+    const float EngineRpmBeforeNative =
+        Engine.GetEngineRPM();
     AdvanceAcceptedNativeEngine(Transmission, DeltaTime);
 
     const FPinkCabClutchDrivelineOutput Output =
-        SolveDrivelineStep(Engine, DeltaTime);
+        SolveDrivelineStep(
+            EngineRpmBeforeNative,
+            DeltaTime);
     ApplyEngineReaction(Engine, Output);
 
     const FDrivenWheelTorqueStats WheelStats =
@@ -195,7 +199,7 @@ void FPinkCabChaosWheeledVehicleSimulation::AdvanceAcceptedNativeEngine(
 
 FPinkCabClutchDrivelineOutput
 FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
-    Chaos::FSimpleEngineSim& Engine,
+    const float EngineRpmBeforeNative,
     const float DeltaTime)
 {
     const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
@@ -206,7 +210,8 @@ FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
 
     FPinkCabClutchDrivelineInput Input;
     Input.DeltaSeconds = DeltaTime;
-    Input.EngineRpm = FMath::Max(Engine.GetEngineRPM(), 0.0f);
+    Input.EngineRpm =
+        FMath::Max(EngineRpmBeforeNative, 0.0f);
     Input.ShaftEquivalentEngineRpm = ShaftEquivalentEngineRpm;
     Input.AvailableEngineTorqueNm =
         Command.bCombustionAllowed
@@ -216,7 +221,10 @@ FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
                 0.0f)
             : 0.0f;
     Input.EngineDragTorqueNm =
-        FMath::Max(Input.EngineRpm * Command.EngineBrakeEffect, 0.0f);
+        FMath::Max(
+            EngineRpmBeforeNative
+                * Command.EngineBrakeEffect,
+            0.0f);
     Input.ClutchCoupling01 = Command.ClutchCoupling01;
     Input.DrivetrainTorqueCapacity01 =
         Command.DrivetrainTorqueCapacity01;

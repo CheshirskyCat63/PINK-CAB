@@ -38,7 +38,7 @@ private:
         Chaos::FSimpleTransmissionSim& Transmission,
         float DeltaTime);
     FPinkCabClutchDrivelineOutput SolveDrivelineStep(
-        Chaos::FSimpleEngineSim& Engine,
+        float EngineRpmBeforeNative,
         float DeltaTime);
     void ApplyEngineReaction(
         Chaos::FSimpleEngineSim& Engine,
