@@ -18,6 +18,7 @@ struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
     float EffectiveGearRatio = 0.0f;
     float TransmissionEfficiency = 1.0f;
     float EngineBrakeEffect = 0.0f;
+    float Handbrake01 = 0.0f;
     FPinkCabClutchDrivelineConfig ClutchConfig;
 };
 
@@ -31,6 +32,13 @@ public:
     explicit UPinkCabChaosVehicleMovementComponent(
         const FObjectInitializer& ObjectInitializer);
 
+    void ConfigurePinkCabClutch(
+        const FPinkCabClutchDrivelineConfig& InConfig);
+    const FPinkCabClutchDrivelineConfig& GetPinkCabClutchConfig() const
+    {
+        return ClutchConfig;
+    }
+
     bool SetPinkCabDrivelineCommand(
         const FPinkCabChaosDrivelineCommand& InCommand);
 
@@ -43,6 +51,7 @@ protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
 
 private:
+    FPinkCabClutchDrivelineConfig ClutchConfig;
     FPinkCabChaosDrivelineCommand PendingDrivelineCommand;
     FPinkCabChaosWheeledVehicleSimulation* PinkCabSimulationPT = nullptr;
 };
