@@ -55,6 +55,7 @@ FPinkCabCausalWheelTelemetry MakeCausalWheelTelemetry(
             Wheel.bABSConfigured = ChaosWheel->bABSEnabled;
             Wheel.bTractionControlConfigured =
                 ChaosWheel->bTractionControlEnabled;
+            Wheel.bEngineDriven = ChaosWheel->bAffectedByEngine;
         }
     }
 
