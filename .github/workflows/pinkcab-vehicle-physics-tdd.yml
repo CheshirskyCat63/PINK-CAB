@@ -74,9 +74,9 @@ jobs:
           python scripts/ci/materialize_local_lfs.py `
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
-            --required Content/Dev/Maps/L_PinkCab_ChaosWeave.umap `
-            --search-root E:\Development `
-            --search-root E:\CHESHIRE_DIVISION
+            --all-tracked `
+            --search-root E:\CHESHIRE_DIVISION\Games\PINK-CAB `
+            --search-root E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host "PINKCAB_PHYSICS_LOCAL_LFS_MATERIALIZATION=PASS"
 
@@ -201,9 +201,12 @@ jobs:
             Write-Host 'PINKCAB_PHYSICS_EVIDENCE_NO_PAYLOAD=1'
           }
           $manifestPath=Join-Path $root 'manifest.json'
-          $manifest |
-            ConvertTo-Json -Depth 4 |
-            Set-Content -LiteralPath $manifestPath -Encoding UTF8
+          $manifestJson = if($manifest.Count -eq 0){
+            '[]'
+          } else {
+            $manifest | ConvertTo-Json -Depth 4
+          }
+          Set-Content -LiteralPath $manifestPath -Value $manifestJson -Encoding UTF8
           $manifestHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
           Write-Host "PINKCAB_PHYSICS_EVIDENCE_ROOT=$root"
           Write-Host "PINKCAB_PHYSICS_EVIDENCE_MANIFEST=$manifestPath sha256=$manifestHash"
