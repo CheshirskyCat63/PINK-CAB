@@ -51,7 +51,7 @@ WRITER_PATTERNS = {
     "CHAOS_TORQUE_ASSIST_ENABLE": r"\bMovement\.TorqueControl\.Enabled\s*=",
     "CHAOS_TARGET_ROTATION_ASSIST_ENABLE": r"\bMovement\.TargetRotationControl\.Enabled\s*=",
     "CHAOS_STABILIZE_ASSIST_ENABLE": r"\bMovement\.StabilizeControl\.Enabled\s*=",
-    "CHAOS_ENGINE_THROTTLE_PT": r"\bEngine\.SetThrottle\s*\(",
+    "CHAOS_ENGINE_THROTTLE_PT": r"\b(?:Engine|PVehicle->GetEngine\(\))\.SetThrottle\s*\(",
     "CHAOS_ENGINE_RPM_PT": r"\bEngine\.SetEngineRPM\s*\(",
     "CHAOS_ENGINE_OMEGA_PT": r"\bEngine\.SetEngineOmega\s*\(",
     "CHAOS_TRANSMISSION_GEAR_PT": r"\bTransmission\.SetGear\s*\(",
