@@ -6,6 +6,8 @@ on:
     paths:
       - 'Source/PinkCabVehicle/**'
       - 'Source/PinkCabTests/Private/Vehicle/**'
+      - 'scripts/ci/materialize_local_lfs.py'
+      - 'scripts/tests/test_materialize_local_lfs.py'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
       - 'scripts/ci/verify_vehicle_physics_writers.py'
@@ -63,48 +65,21 @@ jobs:
           lfs: false
           clean: false
 
-      - name: Materialize cached LFS objects
+      - name: Materialize verified local LFS fixtures
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          git lfs install --local
+          python -m unittest scripts.tests.test_materialize_local_lfs -v
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-
-          $tracked=@(git lfs ls-files -n)
+          python scripts/ci/materialize_local_lfs.py `
+            --workspace "$env:GITHUB_WORKSPACE" `
+            --base-ref origin/main `
+            --required Content/Dev/Maps/L_PinkCab_ChaosWeave.umap `
+            --search-root E:\Development `
+            --search-root E:\CHESHIRE_DIVISION
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host "PINKCAB_PHYSICS_LOCAL_LFS_MATERIALIZATION=PASS"
 
-          git lfs checkout
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-
-          $lfsSet=@{}
-          foreach($relative in $tracked){ $lfsSet[$relative]=$true }
-          $changed=@(git diff --name-only "origin/main...HEAD")
-          $changedLfs=@($changed | Where-Object { $lfsSet.ContainsKey($_) })
-          if($changedLfs.Count -ne 0){
-            $changedLfs | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LFS_CHANGED=$_" }
-            throw "PINKCAB_PHYSICS_LFS_CHANGED_IN_CODE_ONLY_GATE count=$($changedLfs.Count)"
-          }
-
-          $required=@(
-            'Content/Dev/Maps/L_PinkCab_ChaosWeave.umap'
-          )
-          foreach($relative in $required){
-            if(-not (Test-Path -LiteralPath $relative)){
-              throw "PINKCAB_PHYSICS_LFS_FIXTURE_MISSING=$relative"
-            }
-            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction Stop)
-            if($first -eq 'version https://git-lfs.github.com/spec/v1'){
-              throw "PINKCAB_PHYSICS_LFS_FIXTURE_POINTER=$relative"
-            }
-          }
-
-          $unresolved=0
-          foreach($relative in $tracked){
-            if(-not (Test-Path -LiteralPath $relative)){ $unresolved++; continue }
-            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction SilentlyContinue)
-            if($first -eq 'version https://git-lfs.github.com/spec/v1'){ $unresolved++ }
-          }
-          Write-Host "PINKCAB_PHYSICS_LFS_FIXTURE=PASS required=$($required.Count) tracked=$($tracked.Count) unresolved_unrelated=$unresolved"
       - name: Exact-head and hygiene preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
