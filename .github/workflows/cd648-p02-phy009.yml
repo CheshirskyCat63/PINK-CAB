@@ -7,9 +7,12 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
       - '.github/workflows/cd648-p02-phy009.yml'
   workflow_dispatch:
@@ -54,9 +57,12 @@ jobs:
           $allowed=@(
             '.github/workflows/cd648-p02-phy009.yml',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
           )
           $changed=@(git diff --name-only "$env:BASELINE...HEAD")
