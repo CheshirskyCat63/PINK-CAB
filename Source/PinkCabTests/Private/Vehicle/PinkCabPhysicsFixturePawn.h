@@ -25,4 +25,5 @@ namespace PinkCabPhysicsFixture
     APinkCabPhysicsFixturePawn* FindOrSpawnPawn(UWorld& World);
     AActor* FindOrSpawnFlatFloor(UWorld& World);
     void KeepAwake(APinkCabPhysicsFixturePawn& Pawn);
+    void DestroyPawns(UWorld& World);
 }
