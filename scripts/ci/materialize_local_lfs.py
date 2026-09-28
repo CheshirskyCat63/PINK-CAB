@@ -149,6 +149,24 @@ def materialize_cached_lfs_object(
             f"Materialized fixture differs from Git index after LFS clean filter: {relative}"
         )
 
+    # Content equivalence is already proven above through Git's configured LFS
+    # clean filter. Refresh only the index stat cache so status does not report
+    # a false modification solely because we atomically replaced the pointer
+    # with its canonical smudged bytes.
+    refresh = subprocess.run(
+        ["git", "update-index", "--refresh", "--", relative.as_posix()],
+        cwd=workspace,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if refresh.returncode != 0:
+        raise RuntimeError(
+            f"git update-index --refresh failed for {relative}: "
+            f"{refresh.stderr.strip()}"
+        )
+
     status = subprocess.run(
         ["git", "status", "--porcelain", "--", relative.as_posix()],
         cwd=workspace,
