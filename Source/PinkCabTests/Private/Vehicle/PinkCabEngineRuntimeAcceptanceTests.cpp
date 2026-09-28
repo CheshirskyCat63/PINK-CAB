@@ -126,7 +126,7 @@ public:
                 Controls.GetResolvedEngineThrottle01(), 0.0f);
             Test->TestEqual(TEXT("off slope external drive torque is zero"),
                 Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
-            Test->TestFalse(TEXT("off slope mechanical engine sim disabled"),
+            Test->TestTrue(TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
             PhaseStartSeconds = FPlatformTime::Seconds();

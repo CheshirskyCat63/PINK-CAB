@@ -77,8 +77,8 @@ public:
                 const FPinkCabChaosDrivelineCommand& Command =
                     PinkCabMovement->GetPendingPinkCabDrivelineCommand();
                 Test->TestTrue(
-                    TEXT("partial-clutch launch has positive authoritative engine torque"),
-                    Command.AvailableEngineTorqueNm > 0.0f);
+                    TEXT("partial-clutch launch carries positive driver/health torque demand"),
+                    Command.HealthClampedControlThrottle01 > 0.0f);
                 Test->TestEqual(
                     TEXT("partial-clutch launch keeps authored coupling"),
                     Command.ClutchCoupling01,
@@ -128,7 +128,7 @@ public:
             Test->TestTrue(TEXT("key-off controls apply"),
                 FPinkCabChaosCockpitBridge::Apply(
                     Cockpit, *Movement, Controls, KeyOffProvider));
-            Test->TestFalse(TEXT("key-off disables mechanical engine sim"),
+            Test->TestTrue(TEXT("key-off keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
             Test->TestFalse(TEXT("key-off denies combustion"),
                 Controls.IsCombustionAllowed());

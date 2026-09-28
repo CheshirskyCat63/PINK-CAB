@@ -14,8 +14,10 @@ struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
     int32 EngagedGear = 0;
     float ClutchCoupling01 = 0.0f;
     float DrivetrainTorqueCapacity01 = 1.0f;
-    float AuthoritativeEngineThrottle01 = 0.0f;
-    float AvailableEngineTorqueNm = 0.0f;
+    // Game-thread command carries only driver/health demand. RPM-sensitive
+    // limiter and torque-curve resolution happen on the physics thread against
+    // the exact engine state consumed by the same mechanical step.
+    float HealthClampedControlThrottle01 = 0.0f;
     float EffectiveGearRatio = 0.0f;
     float TransmissionEfficiency = 1.0f;
     float EngineBrakeEffect = 0.0f;

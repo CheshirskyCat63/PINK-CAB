@@ -6,6 +6,7 @@
 #include "SimpleVehicle.h"
 #include "VehicleUtility.h"
 #include "WheelSystem.h"
+#include "Vehicle/PinkCabEngineActuationResolver.h"
 
 namespace
 {
@@ -60,21 +61,27 @@ public:
             return;
         }
 
+        PhysicsThreadActuation = {};
         if (PVehicle->HasEngine())
         {
             FSimpleEngineSim& Engine = PVehicle->GetEngine();
-            const float PhysicsThreadThrottle01 =
-                Command.bCombustionAllowed
-                    ? FMath::Clamp(
-                        Command.AuthoritativeEngineThrottle01,
-                        0.0f,
-                        1.0f)
-                    : 0.0f;
+            const float EngineRpm = Engine.GetEngineRPM();
 
-            // Ignition lifecycle remains owned by the accepted P01 semantic
-            // bridge through bMechanicalSimEnabled. Do not introduce a second
-            // engine-start state inside the physics adapter.
-            Engine.SetThrottle(PhysicsThreadThrottle01);
+            FPinkCabEngineActuationInput ActuationInput;
+            ActuationInput.bCombustionAllowed =
+                Command.bCombustionAllowed;
+            ActuationInput.HealthClampedControlThrottle01 =
+                Command.HealthClampedControlThrottle01;
+            ActuationInput.EngineRpm = EngineRpm;
+            ActuationInput.MaxRpm = Engine.Setup().MaxRPM;
+            ActuationInput.EngineTorqueCurveNm =
+                Engine.GetTorqueFromRPM(EngineRpm, false);
+            PhysicsThreadActuation =
+                FPinkCabEngineActuationResolver::Resolve(
+                    ActuationInput);
+
+            Engine.SetThrottle(
+                PhysicsThreadActuation.EngineThrottleFinal01);
         }
 
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
@@ -144,7 +151,10 @@ public:
         Input.ShaftEquivalentEngineRpm = ShaftEquivalentEngineRpm;
         Input.AvailableEngineTorqueNm =
             Command.bCombustionAllowed
-                ? FMath::Max(Command.AvailableEngineTorqueNm, 0.0f)
+                ? FMath::Max(
+                    PhysicsThreadActuation
+                        .RequestedEngineTorqueAfterLimiterHealthNm,
+                    0.0f)
                 : 0.0f;
         Input.EngineDragTorqueNm =
             FMath::Max(Input.EngineRpm * Command.EngineBrakeEffect, 0.0f);
@@ -184,6 +194,7 @@ public:
 private:
     FThreadSafeCounter64* MechanicalIntegrationStepCounter = nullptr;
     FPinkCabChaosDrivelineCommand Command;
+    FPinkCabEngineActuationResult PhysicsThreadActuation;
     FPinkCabClutchDrivelineModel ClutchModel;
 };
 

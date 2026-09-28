@@ -78,10 +78,8 @@ FPinkCabChaosDrivelineCommand BuildDrivelineCommand(
     Command.ClutchCoupling01 = Controls.ClutchCoupling;
     Command.DrivetrainTorqueCapacity01 =
         Controls.DrivetrainTorqueCapacity;
-    Command.AuthoritativeEngineThrottle01 =
-        Controls.GetResolvedEngineThrottle01();
-    Command.AvailableEngineTorqueNm =
-        Controls.GetAvailableEngineTorqueNm();
+    Command.HealthClampedControlThrottle01 =
+        FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
     Command.EffectiveGearRatio =
         Controls.EngagedGear != 0
             ? Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear)

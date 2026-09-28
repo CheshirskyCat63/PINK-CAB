@@ -26,7 +26,11 @@ bool FPinkCabChaosCockpitBridge::Apply(
 {
     const bool bCombustionAllowed =
         Cockpit.GetIgnitionState() == EPinkCabIgnitionState::Running;
-    Movement.EnableMechanicalSim(bCombustionAllowed);
+    // Mechanical simulation is the physical driveline path and must remain
+    // alive while ignition is Off/Stalled. Combustion permission is carried
+    // independently so key-off can coast and mechanically back-drive without
+    // producing fuel torque.
+    Movement.EnableMechanicalSim(true);
     Movement.SetUseAutomaticGears(false);
 
     const float EngineRpm = Movement.GetEngineRotationSpeed();
