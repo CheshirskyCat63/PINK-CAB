@@ -47,6 +47,12 @@ APinkCabPhysicsFixturePawn::APinkCabPhysicsFixturePawn(
     UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
     check(Movement);
 
+    // The sterile automation pawn is intentionally not possessed. UE Chaos
+    // defaults to a controller-gated input path for player pawns, so direct
+    // authoritative test commands must explicitly opt into controllerless
+    // input. This changes only fixture lifecycle, not vehicle physics.
+    Movement->SetRequiresControllerForInputs(false);
+
     const FPinkCabChaosPhysicalProfile Profile =
         FPinkCabChaosPhysicalProfile::ForVariant(
             EPinkCabCalibrationVariant::Nominal);
