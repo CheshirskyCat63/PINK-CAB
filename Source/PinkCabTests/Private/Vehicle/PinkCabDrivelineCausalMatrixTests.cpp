@@ -80,6 +80,7 @@ public:
             Test->AddError(TEXT("sterile physics fixture failed to spawn"));
             return true;
         }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
 
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
