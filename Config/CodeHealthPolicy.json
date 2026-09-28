@@ -60,7 +60,8 @@
       "Engine.SetThrottle(",
       "Engine.SetEngineRPM(",
       "Engine.SetEngineOmega(",
-      "Transmission.SetGear("
+      "Transmission.SetGear(",
+      "PVehicle->GetEngine().SetThrottle("
     ]
   },
   "forbidden_dependencies": [
