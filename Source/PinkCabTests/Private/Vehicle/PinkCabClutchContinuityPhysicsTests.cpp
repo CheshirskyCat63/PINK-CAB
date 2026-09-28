@@ -9,7 +9,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "SnapshotData.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
@@ -81,15 +81,14 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        AActor* FixtureFloor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!FixtureFloor || !Pawn)
         {
-            Pawn = *It;
-            break;
-        }
-        if (!Pawn)
-        {
-            return false;
+            Test->AddError(TEXT("sterile physics fixture failed to spawn"));
+            return true;
         }
 
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
@@ -103,8 +102,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Mesh->WakeAllRigidBodies();
 
@@ -346,7 +344,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabClutchBoundaryContinuityRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        PinkCabPhysicsFixture::MapPath,
         true);
     TestTrue(TEXT("P02 vehicle runtime map opens"), bOpened);
     if (!bOpened)
@@ -385,8 +383,8 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        APinkCabPhysicsFixturePawn* Pawn = nullptr;
+        for (TActorIterator<APinkCabPhysicsFixturePawn> It(World); It; ++It)
         {
             Pawn = *It;
             break;
@@ -407,8 +405,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Mesh->WakeAllRigidBodies();
 
@@ -525,7 +522,7 @@ private:
     }
 
     void BeginRun(
-        APinkCabChaosTatraPawn& Pawn,
+        APinkCabPhysicsFixturePawn& Pawn,
         UChaosWheeledVehicleMovementComponent& Movement,
         USkeletalMeshComponent& Mesh)
     {
@@ -700,7 +697,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabPartialClutchWheelReactionRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        PinkCabPhysicsFixture::MapPath,
         true);
     TestTrue(TEXT("P02 partial reaction runtime map opens"), bOpened);
     if (!bOpened)
