@@ -100,7 +100,12 @@ def materialize_required(
         return
 
     matches: list[Path] = []
-    for candidate in iter_named_candidates(search_roots, target.name, workspace):
+
+    # Fast path: canonical mirrors preserve repository-relative paths.
+    for root in search_roots:
+        candidate = root / relative
+        if not candidate.exists():
+            continue
         if candidate.resolve() == target.resolve():
             continue
         if parse_lfs_pointer(candidate) is not None:
@@ -110,11 +115,30 @@ def materialize_required(
         except OSError:
             continue
         print(
-            f"PINKCAB_LOCAL_LFS_CANDIDATE={candidate} "
+            f"PINKCAB_LOCAL_LFS_DIRECT_CANDIDATE={candidate} "
             f"sha256={actual} expected={oid}"
         )
         if actual == oid:
             matches.append(candidate)
+
+    # Fallback is only needed for legacy mirrors whose root does not preserve
+    # the current repository-relative layout.
+    if not matches:
+        for candidate in iter_named_candidates(search_roots, target.name, workspace):
+            if candidate.resolve() == target.resolve():
+                continue
+            if parse_lfs_pointer(candidate) is not None:
+                continue
+            try:
+                actual = sha256_file(candidate)
+            except OSError:
+                continue
+            print(
+                f"PINKCAB_LOCAL_LFS_CANDIDATE={candidate} "
+                f"sha256={actual} expected={oid}"
+            )
+            if actual == oid:
+                matches.append(candidate)
 
     if not matches:
         raise RuntimeError(
@@ -159,11 +183,12 @@ def main() -> int:
     parser.add_argument("--workspace", type=Path, default=Path.cwd())
     parser.add_argument("--base-ref", default="origin/main")
     parser.add_argument("--required", action="append", default=[])
+    parser.add_argument("--all-tracked", action="store_true")
     parser.add_argument("--search-root", action="append", default=[])
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
-    required = [Path(value) for value in args.required]
+    requested = [Path(value) for value in args.required]
     roots = [Path(value) for value in args.search_root]
 
     subprocess.run(
@@ -187,6 +212,11 @@ def main() -> int:
             f"Code-only gate contains {len(changed_lfs)} changed LFS file(s)"
         )
 
+    required = (
+        [Path(value) for value in sorted(tracked)]
+        if args.all_tracked
+        else requested
+    )
     for relative in required:
         materialize_required(workspace, relative, roots)
 
@@ -201,10 +231,15 @@ def main() -> int:
         if not path.exists() or parse_lfs_pointer(path) is not None:
             raise RuntimeError(f"Required fixture remains unresolved: {relative}")
 
+    if args.all_tracked and unresolved:
+        raise RuntimeError(
+            f"Full LFS materialization incomplete: {len(unresolved)} unresolved"
+        )
+
     print(
         "PINKCAB_LOCAL_LFS=PASS "
         f"required={len(required)} tracked={len(tracked)} "
-        f"unresolved_unrelated={len(unresolved)}"
+        f"unresolved_unrelated={len(unresolved)} all_tracked={int(args.all_tracked)}"
     )
     return 0
 
