@@ -32,6 +32,11 @@
       "path": "Content/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes/Matte__FF000000__spec__material_001.uasset",
       "oid_sha256": "12f65394d62da284755cf819ed726818da7d670b4654a9438a3b2aec84ed96ab",
       "role": "Tatra runtime material-instance/static-mesh material dependency proven by UE load error"
+    },
+    {
+      "path": "Content/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes/Matte__FF000000__spec__material_002.uasset",
+      "oid_sha256": "66f027d4e2405979f127bb92eee34e00d60d29641900635f23e9ccc1ca90cfa2",
+      "role": "Tatra runtime static-mesh material dependency proven by UE package load error"
     }
   ]
 }
