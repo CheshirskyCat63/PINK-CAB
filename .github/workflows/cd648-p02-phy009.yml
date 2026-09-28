@@ -77,7 +77,8 @@ jobs:
             --base-ref origin/main `
             --all-tracked `
             --search-root E:\CHESHIRE_DIVISION\Games\PINK-CAB `
-            --search-root E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB
+            --search-root E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB `
+            --search-root E:\Development
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host "P02_LOCAL_LFS_MATERIALIZATION=PASS"
 
