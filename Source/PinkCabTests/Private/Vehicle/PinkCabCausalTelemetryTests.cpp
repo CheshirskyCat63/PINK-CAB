@@ -208,6 +208,7 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     Input.Vehicle.CausalWheels.Add(Wheel);
     FPinkCabCausalWheelTelemetry OtherDrivenWheel = Wheel;
     OtherDrivenWheel.WheelIndex = 3;
+    OtherDrivenWheel.WheelRpm = -300.0f; // mirrored/sign-opposed wheel must not cancel shaft speed evidence
     Input.Vehicle.CausalWheels.Add(OtherDrivenWheel);
     Input.EngineHealthFactor01 = 0.75f;
     Input.WorldSpeedMps = 10.0f;
@@ -227,7 +228,7 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("permission-gated torque remains visible while running"),
         Frame.PermissionGatedAvailableEngineTorqueNm, 90.0f);
     TestTrue(TEXT("driven-wheel rpm availability is explicit"), Frame.bHasDrivenWheelRpm);
-    TestEqual(TEXT("driven-wheel rpm mean comes from live wheel telemetry"),
+    TestEqual(TEXT("driven-wheel rpm mean uses magnitudes so mirrored wheel signs cannot cancel"),
         Frame.DrivenWheelRpmMean, 300.0f);
     TestEqual(TEXT("wheel-derived engine rpm uses effective transmission ratio"),
         Frame.WheelDerivedEngineRpm, 900.0f);
