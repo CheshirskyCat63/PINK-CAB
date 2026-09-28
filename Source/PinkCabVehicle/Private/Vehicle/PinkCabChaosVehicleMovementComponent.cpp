@@ -33,6 +33,12 @@ class FPinkCabChaosWheeledVehicleSimulation final
     : public UChaosWheeledVehicleSimulation
 {
 public:
+    explicit FPinkCabChaosWheeledVehicleSimulation(
+        FThreadSafeCounter64* InMechanicalIntegrationStepCounter)
+        : MechanicalIntegrationStepCounter(InMechanicalIntegrationStepCounter)
+    {
+    }
+
     void SetDrivelineCommand(const FPinkCabChaosDrivelineCommand& InCommand)
     {
         Command = InCommand;
@@ -109,6 +115,11 @@ public:
             return;
         }
 
+        if (MechanicalIntegrationStepCounter)
+        {
+            MechanicalIntegrationStepCounter->Increment();
+        }
+
         FSimpleEngineSim& Engine = PVehicle->GetEngine();
         FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
 
@@ -169,6 +180,7 @@ public:
     }
 
 private:
+    FThreadSafeCounter64* MechanicalIntegrationStepCounter = nullptr;
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabClutchDrivelineModel ClutchModel;
 };
@@ -206,7 +218,8 @@ TUniquePtr<Chaos::FSimpleWheeledVehicle>
 UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {
     TUniquePtr<FPinkCabChaosWheeledVehicleSimulation> Simulation =
-        MakeUnique<FPinkCabChaosWheeledVehicleSimulation>();
+        MakeUnique<FPinkCabChaosWheeledVehicleSimulation>(
+            &MechanicalIntegrationStepCounter);
     PinkCabSimulationPT = Simulation.Get();
     PinkCabSimulationPT->SetDrivelineCommand(PendingDrivelineCommand);
     VehicleSimulationPT = MoveTemp(Simulation);

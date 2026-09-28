@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/ThreadSafeCounter64.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabClutchDrivelineModel.h"
 #include "PinkCabChaosVehicleMovementComponent.generated.h"
@@ -47,10 +48,16 @@ public:
         return PendingDrivelineCommand;
     }
 
+    int64 GetPinkCabMechanicalIntegrationStepCount() const
+    {
+        return MechanicalIntegrationStepCounter.GetValue();
+    }
+
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
 
 private:
+    FThreadSafeCounter64 MechanicalIntegrationStepCounter;
     FPinkCabClutchDrivelineConfig ClutchConfig;
     FPinkCabChaosDrivelineCommand PendingDrivelineCommand;
     FPinkCabChaosWheeledVehicleSimulation* PinkCabSimulationPT = nullptr;

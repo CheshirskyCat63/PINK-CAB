@@ -84,10 +84,12 @@ public:
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
         Test->TestNotNull(TEXT("D3 movement exists"), Movement);
         Test->TestNotNull(TEXT("D3 physics mesh exists"), Mesh);
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
         Test->TestNotNull(
             TEXT("D3 runtime uses authoritative PinkCab custom movement"),
-            Cast<UPinkCabChaosVehicleMovementComponent>(Movement));
-        if (!Movement || !Mesh)
+            PinkCabMovement);
+        if (!Movement || !Mesh || !PinkCabMovement)
         {
             return true;
         }
@@ -115,6 +117,15 @@ public:
 
         if (bResetting)
         {
+            const int64 MechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            if (!bResetStepAnchorSet)
+            {
+                ResetStartMechanicalStep = MechanicalStep;
+                bResetStepAnchorSet = true;
+            }
+            ++ResetPollCount;
+
             float MaxDrivenWheelRpm = 0.0f;
             for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
             {
@@ -145,6 +156,7 @@ public:
             {
                 CurrentResetEngineRpm = EngineRpm;
                 CurrentResetMaxDrivenWheelRpm = MaxDrivenWheelRpm;
+                LastMechanicalStep = MechanicalStep;
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
@@ -169,19 +181,21 @@ public:
                     ConditionProvider.GetLastCausalActuationTelemetry()
                         .EffectiveGearRatio;
                 SampleCount = 0;
-                SettleFramesRemaining = SettleFrames;
+                SettleMechanicalStepsRemaining = SettleMechanicalSteps;
                 bResetting = false;
                 return false;
             }
 
-            ++ResetFramesWaited;
-            if (ResetFramesWaited < ResetTimeoutFrames)
+            const int64 ResetMechanicalSteps =
+                MechanicalStep - ResetStartMechanicalStep;
+            if (ResetMechanicalSteps < ResetTimeoutMechanicalSteps
+                && ResetPollCount < ResetPollLimit)
             {
                 return false;
             }
 
             Test->AddError(FString::Printf(
-                TEXT("D3 fixture reset not observed coupling=%.3f gear=%d throttle=%.2f repeat=%d engine_rpm=%.3f max_driven_wheel_rpm=%.3f chaos_current=%d chaos_target=%d"),
+                TEXT("D3 fixture reset not observed coupling=%.3f gear=%d throttle=%.2f repeat=%d engine_rpm=%.3f max_driven_wheel_rpm=%.3f chaos_current=%d chaos_target=%d mechanical_steps=%lld polls=%d"),
                 CurrentCoupling(),
                 CurrentGear(),
                 CurrentThrottle(),
@@ -189,22 +203,46 @@ public:
                 EngineRpm,
                 MaxDrivenWheelRpm,
                 Movement->GetCurrentGear(),
-                Movement->GetTargetGear()));
+                Movement->GetTargetGear(),
+                static_cast<long long>(ResetMechanicalSteps),
+                ResetPollCount));
             return true;
         }
+
+        const int64 MechanicalStep =
+            PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+        if (MechanicalStep == LastMechanicalStep)
+        {
+            return false;
+        }
+
+        const int64 MechanicalStepDelta = MechanicalStep - LastMechanicalStep;
+        if (MechanicalStepDelta != 1)
+        {
+            Test->AddError(FString::Printf(
+                TEXT("D3 lost mechanical-step alignment coupling=%.3f gear=%d throttle=%.2f repeat=%d previous_step=%lld current_step=%lld delta=%lld"),
+                CurrentCoupling(),
+                CurrentGear(),
+                CurrentThrottle(),
+                RepeatIndex + 1,
+                static_cast<long long>(LastMechanicalStep),
+                static_cast<long long>(MechanicalStep),
+                static_cast<long long>(MechanicalStepDelta)));
+            return true;
+        }
+        LastMechanicalStep = MechanicalStep;
 
         const FPinkCabCausalActuationTelemetry& Actuation =
             Provider.GetLastCausalActuationTelemetry();
         LastEffectiveGearRatio = Actuation.EffectiveGearRatio;
 
-        // D3 is a causal matrix, not a wall-clock benchmark. Sampling by
-        // elapsed real time made identical cells observe different counts of
-        // Chaos steps on a busy self-hosted runner. Use a fixed number of
-        // automation/physics observations instead so every cell has identical
-        // measurement cardinality; D5 separately validates 30/60/120 FPS.
-        if (SettleFramesRemaining > 0)
+        // D3 is a causal matrix, not a wall-clock benchmark. A sample is
+        // admitted only after exactly one real ProcessMechanicalSimulation()
+        // integration. Scheduler delay can therefore make the test fail loud,
+        // but can never silently change the physical-step cardinality.
+        if (SettleMechanicalStepsRemaining > 0)
         {
-            --SettleFramesRemaining;
+            --SettleMechanicalStepsRemaining;
             return false;
         }
 
@@ -320,8 +358,11 @@ private:
         CurrentResetEngineRpm = 0.0f;
         CurrentResetMaxDrivenWheelRpm = 0.0f;
         SampleCount = 0;
-        SettleFramesRemaining = 0;
-        ResetFramesWaited = 0;
+        SettleMechanicalStepsRemaining = 0;
+        LastMechanicalStep = -1;
+        ResetStartMechanicalStep = -1;
+        ResetPollCount = 0;
+        bResetStepAnchorSet = false;
         bResetting = true;
     }
 
@@ -432,7 +473,7 @@ private:
 
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 925.0f;
-    static constexpr int32 SettleFrames = 3;
+    static constexpr int32 SettleMechanicalSteps = 3;
     static constexpr int32 SampleFrames = 12;
     static constexpr float OpenTorqueToleranceNm = 1.0f;
     static constexpr float MonotonicToleranceNm = 50.0f;
@@ -440,7 +481,8 @@ private:
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
-    static constexpr int32 ResetTimeoutFrames = 240;
+    static constexpr int64 ResetTimeoutMechanicalSteps = 240;
+    static constexpr int32 ResetPollLimit = 2400;
 
     int32 CouplingIndex = 0;
     int32 GearIndex = 0;
@@ -449,8 +491,11 @@ private:
     bool bInitialized = false;
     bool bResetting = false;
     int32 SampleCount = 0;
-    int32 SettleFramesRemaining = 0;
-    int32 ResetFramesWaited = 0;
+    int32 SettleMechanicalStepsRemaining = 0;
+    int64 LastMechanicalStep = -1;
+    int64 ResetStartMechanicalStep = -1;
+    int32 ResetPollCount = 0;
+    bool bResetStepAnchorSet = false;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
