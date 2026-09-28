@@ -94,12 +94,26 @@ APinkCabPhysicsFixturePawn* PinkCabPhysicsFixture::FindOrSpawnPawn(
             Params);
     if (Pawn)
     {
-        if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
-        {
-            Mesh->WakeAllRigidBodies();
-        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
     }
     return Pawn;
+}
+
+void PinkCabPhysicsFixture::KeepAwake(
+    APinkCabPhysicsFixturePawn& Pawn)
+{
+    if (UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn.GetChaosMovement())
+    {
+        // Direct automation commands bypass the normal player-input loop that
+        // wakes a sleeping Chaos vehicle. Keep the sterile fixture simulated
+        // without altering forces, velocities, engine state or production code.
+        Movement->SetSleeping(false);
+    }
+    if (USkeletalMeshComponent* Mesh = Pawn.GetMesh())
+    {
+        Mesh->WakeAllRigidBodies();
+    }
 }
 
 AActor* PinkCabPhysicsFixture::FindOrSpawnFlatFloor(UWorld& World)
