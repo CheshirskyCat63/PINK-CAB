@@ -38,7 +38,7 @@ void FPinkCabCausalTelemetryFrame::RefreshDerivedFields()
         {
             continue;
         }
-        DrivenRpmSum += Wheel.WheelRpm;
+        DrivenRpmSum += FMath::Abs(Wheel.WheelRpm);
         ++DrivenWheelCount;
     }
 
