@@ -48,3 +48,32 @@ The package was fully reviewed against current Git/Jira/Confluence. Its useful c
 ## World freeze
 
 The current city, MetaRoad and accepted R1/R2/R3 world behavior are frozen outside this workstream. No vehicle-physics task may modify world geometry, road mechanics or city-generation behavior unless the owner explicitly reopens that scope.
+
+
+## Gate 1 Road Handling package convergence · 2026-09-28
+
+- Uploaded package: `PINK-CAB_Gate-1_Road_Handling_v1.0.zip`
+- SHA-256: `3eed0b832eedc7411971c0010c75ce2d5c9bfc9bc453d84fc9037dbf41c20f43`
+- Structural validation: **PASS** — 20 G1 tasks, 14 acceptance criteria, 12 protocols, acyclic dependencies, CSV/JSON/links/hashes valid.
+- Package role after convergence: **INPUT / PLANNING & ACCEPTANCE EVIDENCE**, not independent live authority.
+
+Disposition by package area:
+
+| Package area | Canonical disposition |
+|---|---|
+| README / scope / execution plan | absorbed into `GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md` |
+| G1-001..G1-020 task files + task registries | mapped without duplicates in `GATE1_OWNER_MAPPING_2026-09-28.csv` |
+| A01–A14 acceptance catalog | imported as PROPOSED/NOT RUN in `GATE1_ACCEPTANCE_PROTOCOLS_2026-09-28.md` |
+| T00–T11 protocols | imported as PROPOSED/NOT RUN in the same acceptance overlay |
+| tuning guide / parameter candidates | reconciled into the integration document + parameter ledger; seeds remain seeds |
+| telemetry dictionary | reconciled with PHY-003/CD-657; unavailable public UE channels remain unavailable/BLOCKED rather than fabricated |
+| migration/dedup | enforced: no new G1 Jira issues; existing CD/PHY owners win |
+| evidence/sources | package provenance retained by exact SHA-256 and canonical source links |
+| risks | promoted into dependency rulings: R6 unaccepted baseline risk, slip-unit risk, seam-vs-tire masking risk, suspension saturation risk |
+| templates | execution aids only; not competing project authority |
+| checks / manifest / validation report | package-integrity evidence only; not runtime PASS |
+| backlog | only items outside the accepted Gate-1 scope remain backlog; no duplicate project tickets created automatically |
+
+Conflict ruling: package G1-015 permits a conditional assist; current PINK CAB no-assist canon is stricter, so G1-015 is NOT_NEEDED / PROHIBITED_BY_CURRENT_CANON.
+
+Confluence durable mirror: page `24707073`, child of `22413538`.
