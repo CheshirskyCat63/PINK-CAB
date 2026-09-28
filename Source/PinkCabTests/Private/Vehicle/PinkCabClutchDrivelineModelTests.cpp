@@ -22,6 +22,7 @@ FPinkCabClutchDrivelineInput BaseInput()
     Input.EngineRpm = 3000.0f;
     Input.ShaftEquivalentEngineRpm = 3000.0f;
     Input.AvailableEngineTorqueNm = 180.0f;
+    Input.EngineDragTorqueNm = 0.0f;
     Input.ClutchCoupling01 = 1.0f;
     Input.DrivetrainTorqueCapacity01 = 1.0f;
     Input.EffectiveGearRatio = 14.72f;
@@ -164,6 +165,36 @@ bool FPinkCabClutchDrivelineReverseTest::RunTest(const FString&)
         Out.RearAxleTorqueNm < 0.0f);
     TestTrue(TEXT("engine-side clutch torque remains positive in reverse"),
         Out.TransmittedClutchTorqueNm > 0.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchDrivelineEngineBrakingTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchModel.EngineBrakingUsesClutch",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchDrivelineEngineBrakingTest::RunTest(const FString&)
+{
+    FPinkCabClutchDrivelineModel Model(AdultClutchConfig());
+
+    FPinkCabClutchDrivelineInput Open = BaseInput();
+    Open.AvailableEngineTorqueNm = 0.0f;
+    Open.EngineDragTorqueNm = 45.0f;
+    Open.ClutchCoupling01 = 0.0f;
+    const auto OpenOut = Model.Step(Open);
+    TestEqual(TEXT("open clutch cannot send engine drag to wheels"),
+        OpenOut.RearAxleTorqueNm, 0.0f);
+
+    FPinkCabClutchDrivelineInput Closed = Open;
+    Closed.ClutchCoupling01 = 1.0f;
+    const auto ClosedOut = Model.Step(Closed);
+    TestTrue(TEXT("closed clutch sends negative engine drag through driveline"),
+        ClosedOut.TransmittedClutchTorqueNm < 0.0f);
+    TestTrue(TEXT("engine braking produces negative forward axle torque"),
+        ClosedOut.RearAxleTorqueNm < 0.0f);
+    TestTrue(TEXT("wheel reaction offsets engine drag rather than hidden wheel brake"),
+        ClosedOut.EngineReactionDeltaRpm > 0.0f);
     return true;
 }
 
