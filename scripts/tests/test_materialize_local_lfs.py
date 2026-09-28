@@ -6,6 +6,7 @@ import unittest
 from scripts.ci.materialize_local_lfs import (
     POINTER_VERSION,
     lfs_object_path,
+    materialize_required,
     parse_lfs_pointer,
     sha256_file,
 )
@@ -45,6 +46,32 @@ class LocalLfsMaterializationTests(unittest.TestCase):
             lfs_object_path(root, oid),
             root / ".git" / "lfs" / "objects" / "01" / "23" / oid,
         )
+
+
+    def test_materialize_required_recovers_exact_relative_oid(self):
+        payload = b"exact-pink-cab-lfs-fixture"
+        oid = hashlib.sha256(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as workspace_tmp, tempfile.TemporaryDirectory() as mirror_tmp:
+            workspace = Path(workspace_tmp)
+            mirror = Path(mirror_tmp)
+            relative = Path("Content/Dev/Maps/Fixture.umap")
+            target = workspace / relative
+            source = mirror / relative
+            target.parent.mkdir(parents=True)
+            source.parent.mkdir(parents=True)
+            target.write_text(
+                f"{POINTER_VERSION}\noid sha256:{oid}\nsize {len(payload)}\n",
+                encoding="utf-8",
+            )
+            source.write_bytes(payload)
+
+            materialize_required(workspace, relative, [mirror])
+
+            self.assertEqual(target.read_bytes(), payload)
+            self.assertEqual(
+                lfs_object_path(workspace, oid).read_bytes(),
+                payload,
+            )
 
 
 if __name__ == "__main__":
