@@ -13,7 +13,8 @@ enum class EPinkCabCausalDriveTorquePath : uint8
 {
     None,
     ExternalPartialClutch,
-    ChaosMechanical
+    ChaosMechanical,
+    PinkCabClutchDriveline
 };
 
 struct PINKCABVEHICLE_API FPinkCabCausalControlTelemetry
