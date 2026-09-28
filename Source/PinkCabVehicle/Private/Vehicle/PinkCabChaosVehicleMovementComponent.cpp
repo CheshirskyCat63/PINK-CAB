@@ -57,31 +57,6 @@ public:
         if (PVehicle->HasEngine())
         {
             FSimpleEngineSim& Engine = PVehicle->GetEngine();
-            if (Command.bCombustionAllowed)
-            {
-                if (!bEngineStarted)
-                {
-                    Engine.StartEngine();
-
-                    // UE's simple engine lifecycle enables the engine but does
-                    // not guarantee a non-zero initial angular state. Seed only
-                    // a stopped engine at the accepted profile idle; preserve
-                    // any non-zero runtime/snapshot RPM.
-                    if (Engine.GetEngineRPM() <= KINDA_SMALL_NUMBER)
-                    {
-                        Engine.SetEngineOmega(
-                            static_cast<float>(Engine.Setup().EngineIdleRPM)
-                            * PinkCabChaosRpmToRadPerSecond);
-                    }
-                    bEngineStarted = true;
-                }
-            }
-            else if (bEngineStarted)
-            {
-                Engine.StopEngine();
-                bEngineStarted = false;
-            }
-
             const float PhysicsThreadThrottle01 =
                 Command.bCombustionAllowed
                     ? FMath::Clamp(
@@ -89,6 +64,10 @@ public:
                         0.0f,
                         1.0f)
                     : 0.0f;
+
+            // Ignition lifecycle remains owned by the accepted P01 semantic
+            // bridge through bMechanicalSimEnabled. Do not introduce a second
+            // engine-start state inside the physics adapter.
             Engine.SetThrottle(PhysicsThreadThrottle01);
         }
 
@@ -140,11 +119,10 @@ public:
 
         if (Command.bCombustionAllowed)
         {
-            // PINK CAB owns clutch coupling, so Chaos' simple engine must always
-            // integrate as a free engine. Passing bInGear=true would hard-lock
-            // engine RPM to the supplied wheel RPM and recreate the exact
-            // coupling discontinuity PHY-009 removes.
-            Engine.SetEngineRPM(false, 0.0f);
+            // Match the accepted/native free-running engine path. The first
+            // argument is FreeRunningIn: true keeps engine RPM independent of
+            // wheel RPM. PINK CAB then applies clutch load explicitly below.
+            Engine.SetEngineRPM(true, 0.0f);
             Engine.Simulate(DeltaTime);
         }
 
@@ -193,7 +171,6 @@ public:
 private:
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabClutchDrivelineModel ClutchModel;
-    bool bEngineStarted = false;
 };
 
 UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
