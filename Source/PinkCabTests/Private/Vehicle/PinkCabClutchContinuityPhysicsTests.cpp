@@ -525,8 +525,31 @@ private:
         UChaosWheeledVehicleMovementComponent& Movement,
         USkeletalMeshComponent& Mesh)
     {
-        Movement.SetSnapshot(Baseline);
-        const float SpeedCmPerSec = CurrentSpeedKmh() / 0.036f;
+        FWheeledSnaphotData RunSnapshot = Baseline;
+        const float SpeedMps = CurrentSpeedKmh() / 3.6f;
+        const float SpeedCmPerSec = SpeedMps * 100.0f;
+
+        // Build a physically consistent rolling state instead of injecting only
+        // chassis velocity and waiting for Chaos to invent wheel speed. The
+        // snapshot seeds every wheel from the authored runtime radius so the
+        // low/high conditions begin with a real, deterministic shaft stimulus.
+        for (int32 WheelIndex = 0;
+             WheelIndex < RunSnapshot.WheelSnapshots.Num()
+                 && WheelIndex < Movement.Wheels.Num();
+             ++WheelIndex)
+        {
+            const UChaosVehicleWheel* Wheel = Movement.Wheels[WheelIndex];
+            if (!Wheel)
+            {
+                continue;
+            }
+            const float RadiusM =
+                FMath::Max(Wheel->WheelRadius * 0.01f, KINDA_SMALL_NUMBER);
+            RunSnapshot.WheelSnapshots[WheelIndex].WheelAngularVelocity =
+                SpeedMps / RadiusM;
+        }
+
+        Movement.SetSnapshot(RunSnapshot);
         Mesh.SetPhysicsLinearVelocity(
             Pawn.GetActorForwardVector() * SpeedCmPerSec);
         Mesh.SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
@@ -617,8 +640,8 @@ private:
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 3000.0f;
     static constexpr float PartialCoupling = 0.50f;
-    static constexpr double SettleSeconds = 0.20;
-    static constexpr double RunSeconds = 0.55;
+    static constexpr double SettleSeconds = 0.03;
+    static constexpr double RunSeconds = 0.18;
     static constexpr float MinShaftStimulusRpm = 1500.0f;
     static constexpr float MinEngineReactionRpm = 300.0f;
     static constexpr float MinReactionFraction = 0.10f;
