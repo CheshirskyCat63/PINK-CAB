@@ -75,9 +75,9 @@ jobs:
           python scripts/ci/materialize_local_lfs.py `
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
-            --required Content/Dev/Maps/L_PinkCab_ChaosWeave.umap `
-            --search-root E:\Development `
-            --search-root E:\CHESHIRE_DIVISION
+            --all-tracked `
+            --search-root E:\CHESHIRE_DIVISION\Games\PINK-CAB `
+            --search-root E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host "P02_LOCAL_LFS_MATERIALIZATION=PASS"
 
