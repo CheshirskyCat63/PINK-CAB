@@ -14,6 +14,9 @@ on:
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp'
       - '.github/workflows/cd648-p02-phy009.yml'
   workflow_dispatch:
 
@@ -63,7 +66,13 @@ jobs:
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
-            'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
+            'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h'
           )
           $changed=@(git diff --name-only "$env:BASELINE...HEAD")
           $unexpected=@($changed | Where-Object { $_ -notin $allowed })
