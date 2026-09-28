@@ -8,7 +8,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "SnapshotData.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
@@ -71,15 +71,14 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        AActor* FixtureFloor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!FixtureFloor || !Pawn)
         {
-            Pawn = *It;
-            break;
-        }
-        if (!Pawn)
-        {
-            return false;
+            Test->AddError(TEXT("sterile physics fixture failed to spawn"));
+            return true;
         }
 
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
@@ -96,8 +95,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Mesh->WakeAllRigidBodies();
 
@@ -453,16 +451,16 @@ private:
     const TArray<float> Throttles{0.0f, 0.25f, 0.50f, 1.0f};
 
     static constexpr int32 RepeatsPerCondition = 5;
-    static constexpr float InitialEngineRpm = 3000.0f;
+    static constexpr float InitialEngineRpm = 925.0f;
     static constexpr double SettleSeconds = 0.02;
     static constexpr double RunSeconds = 0.10;
     static constexpr float OpenTorqueToleranceNm = 1.0f;
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
-    static constexpr float ResetEngineRpmTolerance = 200.0f;
+    static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
-    static constexpr double ResetTimeoutSeconds = 0.50;
+    static constexpr double ResetTimeoutSeconds = 6.00;
 
     int32 CouplingIndex = 0;
     int32 GearIndex = 0;
@@ -488,7 +486,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabD3CausalMatrixRuntimeTest::RunTest(const FString&)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        PinkCabPhysicsFixture::MapPath,
         true);
     TestTrue(TEXT("D3 runtime map opens"), bOpened);
     if (!bOpened)
