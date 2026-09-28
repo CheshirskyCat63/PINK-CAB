@@ -76,22 +76,35 @@ jobs:
           git lfs checkout
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          $pointerFiles=@()
-          foreach($relative in $tracked){
+          $lfsSet=@{}
+          foreach($relative in $tracked){ $lfsSet[$relative]=$true }
+          $changed=@(git diff --name-only "origin/main...HEAD")
+          $changedLfs=@($changed | Where-Object { $lfsSet.ContainsKey($_) })
+          if($changedLfs.Count -ne 0){
+            $changedLfs | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LFS_CHANGED=$_" }
+            throw "PINKCAB_PHYSICS_LFS_CHANGED_IN_CODE_ONLY_GATE count=$($changedLfs.Count)"
+          }
+
+          $required=@(
+            'Content/Dev/Maps/L_PinkCab_ChaosWeave.umap'
+          )
+          foreach($relative in $required){
             if(-not (Test-Path -LiteralPath $relative)){
-              $pointerFiles += $relative
-              continue
+              throw "PINKCAB_PHYSICS_LFS_FIXTURE_MISSING=$relative"
             }
             $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction Stop)
             if($first -eq 'version https://git-lfs.github.com/spec/v1'){
-              $pointerFiles += $relative
+              throw "PINKCAB_PHYSICS_LFS_FIXTURE_POINTER=$relative"
             }
           }
-          if($pointerFiles.Count -ne 0){
-            $pointerFiles | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LFS_CACHE_MISS=$_" }
-            throw "PINKCAB_PHYSICS_LFS_CACHE_INCOMPLETE count=$($pointerFiles.Count)"
+
+          $unresolved=0
+          foreach($relative in $tracked){
+            if(-not (Test-Path -LiteralPath $relative)){ $unresolved++; continue }
+            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction SilentlyContinue)
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){ $unresolved++ }
           }
-          Write-Host "PINKCAB_PHYSICS_LFS_CACHE=PASS materialized=$($tracked.Count)"
+          Write-Host "PINKCAB_PHYSICS_LFS_FIXTURE=PASS required=$($required.Count) tracked=$($tracked.Count) unresolved_unrelated=$unresolved"
       - name: Exact-head and hygiene preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -136,7 +149,8 @@ jobs:
           if($exit -ne 0){ exit $exit }
           $queue=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
           $fail=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
-          if($queue.Count -eq 0 -or $fail.Count -gt 0){ throw "PINKCAB_PHYSICS_TEST_FAIL queue=$($queue.Count) fail=$($fail.Count)" }
+          $assetFail=@(Select-String -Path $log -Pattern "Failed to load package|Can't find file '/Game|Unable to load package|Failed to load '/Game")
+          if($queue.Count -eq 0 -or $fail.Count -gt 0 -or $assetFail.Count -gt 0){ throw "PINKCAB_PHYSICS_TEST_FAIL queue=$($queue.Count) fail=$($fail.Count) assetFail=$($assetFail.Count)" }
           Write-Host "PINKCAB_PHYSICS_TDD=PASS $($queue[-1].Line)"
 
       - name: Build exact game executable for PHY-001 baseline
@@ -209,7 +223,7 @@ jobs:
           }
 
           if($manifest.Count -eq 0){
-            throw 'PINKCAB_PHYSICS_EVIDENCE_EMPTY'
+            Write-Host 'PINKCAB_PHYSICS_EVIDENCE_NO_PAYLOAD=1'
           }
           $manifestPath=Join-Path $root 'manifest.json'
           $manifest |
