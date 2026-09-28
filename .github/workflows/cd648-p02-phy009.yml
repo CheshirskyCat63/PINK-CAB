@@ -192,7 +192,7 @@ jobs:
             $safe=$test.Replace('.','_')
             $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
             Remove-Item $log -Force -ErrorAction SilentlyContinue
-            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            & $editor $project /Engine/Maps/Entry -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
             if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
             if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
               throw "P02_PHY009_TEST_FAIL=$test"
