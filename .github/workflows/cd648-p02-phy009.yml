@@ -17,6 +17,9 @@ on:
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.h'
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp'
       - 'Source/PinkCabVehicle/PinkCabVehicle.Build.cs'
@@ -131,6 +134,9 @@ jobs:
             'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.h',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
