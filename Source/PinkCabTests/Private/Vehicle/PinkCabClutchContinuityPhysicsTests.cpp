@@ -459,7 +459,7 @@ bool FPinkCabClutchBoundaryContinuityRuntimeTest::RunTest(const FString& Paramet
 
 struct FPinkCabPartialClutchReactionRun
 {
-    float InitialSpeedKmh = 0.0f;
+    float Coupling01 = 0.0f;
     float SeedWheelDerivedEngineRpm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
@@ -539,8 +539,8 @@ public:
                     return false;
                 }
                 Test->AddError(FString::Printf(
-                    TEXT("P02 reaction fresh fixture did not settle speed_kmh=%.1f repeat=%d engine_rpm=%.3f wheel_rpm=%.3f body_linear_cm_s=%.3f body_angular_deg_s=%.3f mechanical_steps=%lld stable_steps=%d"),
-                    CurrentSpeedKmh(),
+                    TEXT("P02 reaction fresh fixture did not settle coupling=%.3f repeat=%d engine_rpm=%.3f wheel_rpm=%.3f body_linear_cm_s=%.3f body_angular_deg_s=%.3f mechanical_steps=%lld stable_steps=%d"),
+                    CurrentCoupling(),
                     RepeatIndex + 1,
                     Rest.EngineRpm,
                     Rest.MaxDrivenWheelRpm,
@@ -552,7 +552,7 @@ public:
             }
 
             FWheeledSnaphotData RunSnapshot = Movement->GetSnapshot();
-            const float SpeedMps = CurrentSpeedKmh() / 3.6f;
+            const float SpeedMps = HighSpeedKmh / 3.6f;
             const float SpeedCmPerSec = SpeedMps * 100.0f;
             RunSnapshot.LinearVelocity =
                 Pawn->GetActorForwardVector() * SpeedCmPerSec;
@@ -612,7 +612,7 @@ public:
             Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
             Controls.SetHandbrake(0.0f);
-            Controls.SetDriveline(1, 1, PartialCoupling);
+            Controls.SetDriveline(1, 1, CurrentCoupling());
             Controls.SetDrivetrainTorqueCapacity(1.0f);
 
             FPinkCabChaosVehicleDynamicsProvider ConditionProvider(Movement);
@@ -646,8 +646,8 @@ public:
         if (Delta != 1)
         {
             Test->AddError(FString::Printf(
-                TEXT("P02 reaction lost mechanical-step alignment speed_kmh=%.1f repeat=%d previous=%lld current=%lld delta=%lld"),
-                CurrentSpeedKmh(),
+                TEXT("P02 reaction lost mechanical-step alignment coupling=%.3f repeat=%d previous=%lld current=%lld delta=%lld"),
+                CurrentCoupling(),
                 RepeatIndex + 1,
                 static_cast<long long>(LastMechanicalStep),
                 static_cast<long long>(MechanicalStep),
@@ -701,7 +701,7 @@ public:
         }
 
         FPinkCabPartialClutchReactionRun Result;
-        Result.InitialSpeedKmh = CurrentSpeedKmh();
+        Result.Coupling01 = CurrentCoupling();
         Result.SeedWheelDerivedEngineRpm =
             CurrentSeedWheelDerivedEngineRpm;
         Result.MeanEngineRpm =
@@ -715,8 +715,9 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_REACTION speed_kmh=%.1f repeat=%d seed_wheel_derived_engine_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f measured_wheel_derived_engine_rpm=%.3f"),
-            Result.InitialSpeedKmh,
+            TEXT("P02_PHY009_REACTION coupling=%.3f speed_kmh=%.1f repeat=%d seed_wheel_derived_engine_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f measured_wheel_derived_engine_rpm=%.3f"),
+            Result.Coupling01,
+            HighSpeedKmh,
             RepeatIndex + 1,
             Result.SeedWheelDerivedEngineRpm,
             Result.MeanEngineRpm,
@@ -730,7 +731,7 @@ public:
             ++ConditionIndex;
         }
 
-        if (ConditionIndex < SpeedsKmh.Num())
+        if (ConditionIndex < Couplings.Num())
         {
             BeginFreshRun(*World);
             return false;
@@ -740,10 +741,10 @@ public:
     }
 
 private:
-    float CurrentSpeedKmh() const
+    float CurrentCoupling() const
     {
-        return SpeedsKmh[FMath::Clamp(
-            ConditionIndex, 0, SpeedsKmh.Num() - 1)];
+        return Couplings[FMath::Clamp(
+            ConditionIndex, 0, Couplings.Num() - 1)];
     }
 
     void BeginFreshRun(UWorld& World)
@@ -771,64 +772,74 @@ private:
 
     bool EvaluateReaction()
     {
-        TArray<float> LowEngineRpm;
-        TArray<float> HighEngineRpm;
-        TArray<float> LowSeedWheelDerivedRpm;
-        TArray<float> HighSeedWheelDerivedRpm;
-        TArray<float> LowMeasuredWheelDerivedRpm;
-        TArray<float> HighMeasuredWheelDerivedRpm;
+        TArray<float> OpenEngineRpm;
+        TArray<float> PartialEngineRpm;
+        TArray<float> OpenSeedWheelDerivedRpm;
+        TArray<float> PartialSeedWheelDerivedRpm;
+        TArray<float> OpenMeasuredWheelDerivedRpm;
+        TArray<float> PartialMeasuredWheelDerivedRpm;
 
         for (const FPinkCabPartialClutchReactionRun& Run : Runs)
         {
-            const bool bLow = FMath::IsNearlyEqual(
-                Run.InitialSpeedKmh,
-                SpeedsKmh[0],
+            const bool bOpen = FMath::IsNearlyZero(
+                Run.Coupling01,
                 KINDA_SMALL_NUMBER);
-            (bLow ? LowEngineRpm : HighEngineRpm).Add(
+            (bOpen ? OpenEngineRpm : PartialEngineRpm).Add(
                 Run.MeanEngineRpm);
-            (bLow ? LowSeedWheelDerivedRpm : HighSeedWheelDerivedRpm)
+            (bOpen
+                ? OpenSeedWheelDerivedRpm
+                : PartialSeedWheelDerivedRpm)
                 .Add(Run.SeedWheelDerivedEngineRpm);
-            (bLow
-                ? LowMeasuredWheelDerivedRpm
-                : HighMeasuredWheelDerivedRpm)
+            (bOpen
+                ? OpenMeasuredWheelDerivedRpm
+                : PartialMeasuredWheelDerivedRpm)
                 .Add(Run.MeanWheelDerivedEngineRpm);
         }
 
-        const float LowEngineMedian = Median(LowEngineRpm);
-        const float HighEngineMedian = Median(HighEngineRpm);
-        const float LowSeedWheelMedian =
-            Median(LowSeedWheelDerivedRpm);
-        const float HighSeedWheelMedian =
-            Median(HighSeedWheelDerivedRpm);
-        const float LowMeasuredWheelMedian =
-            Median(LowMeasuredWheelDerivedRpm);
-        const float HighMeasuredWheelMedian =
-            Median(HighMeasuredWheelDerivedRpm);
+        const float OpenEngineMedian = Median(OpenEngineRpm);
+        const float PartialEngineMedian = Median(PartialEngineRpm);
+        const float OpenSeedWheelMedian =
+            Median(OpenSeedWheelDerivedRpm);
+        const float PartialSeedWheelMedian =
+            Median(PartialSeedWheelDerivedRpm);
+        const float OpenMeasuredWheelMedian =
+            Median(OpenMeasuredWheelDerivedRpm);
+        const float PartialMeasuredWheelMedian =
+            Median(PartialMeasuredWheelDerivedRpm);
+        const float MeanSeedWheelRpm =
+            0.5f * (OpenSeedWheelMedian + PartialSeedWheelMedian);
         const float ShaftStimulusRpm =
-            HighSeedWheelMedian - LowSeedWheelMedian;
+            MeanSeedWheelRpm - InitialEngineRpm;
         const float EngineReactionRpm =
-            HighEngineMedian - LowEngineMedian;
+            PartialEngineMedian - OpenEngineMedian;
         const float ReactionFraction =
             ShaftStimulusRpm > KINDA_SMALL_NUMBER
                 ? EngineReactionRpm / ShaftStimulusRpm
                 : 0.0f;
+        const float SeedMismatchRpm =
+            FMath::Abs(
+                OpenSeedWheelMedian - PartialSeedWheelMedian);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_REACTION_MEDIAN low_engine_rpm=%.3f high_engine_rpm=%.3f low_seed_shaft_rpm=%.3f high_seed_shaft_rpm=%.3f low_measured_shaft_rpm=%.3f high_measured_shaft_rpm=%.3f shaft_stimulus_rpm=%.3f engine_reaction_rpm=%.3f reaction_fraction=%.6f"),
-            LowEngineMedian,
-            HighEngineMedian,
-            LowSeedWheelMedian,
-            HighSeedWheelMedian,
-            LowMeasuredWheelMedian,
-            HighMeasuredWheelMedian,
+            TEXT("P02_PHY009_REACTION_MEDIAN open_engine_rpm=%.3f partial_engine_rpm=%.3f open_seed_shaft_rpm=%.3f partial_seed_shaft_rpm=%.3f open_measured_shaft_rpm=%.3f partial_measured_shaft_rpm=%.3f shaft_stimulus_rpm=%.3f engine_reaction_rpm=%.3f reaction_fraction=%.6f seed_mismatch_rpm=%.3f"),
+            OpenEngineMedian,
+            PartialEngineMedian,
+            OpenSeedWheelMedian,
+            PartialSeedWheelMedian,
+            OpenMeasuredWheelMedian,
+            PartialMeasuredWheelMedian,
             ShaftStimulusRpm,
             EngineReactionRpm,
-            ReactionFraction));
+            ReactionFraction,
+            SeedMismatchRpm));
 
-        Test->TestEqual(TEXT("P02 reaction has five low-speed repeats"),
-            LowEngineRpm.Num(), RepeatsPerCondition);
-        Test->TestEqual(TEXT("P02 reaction has five high-speed repeats"),
-            HighEngineRpm.Num(), RepeatsPerCondition);
+        Test->TestEqual(TEXT("P02 reaction has five open-clutch repeats"),
+            OpenEngineRpm.Num(), RepeatsPerCondition);
+        Test->TestEqual(TEXT("P02 reaction has five partial-clutch repeats"),
+            PartialEngineRpm.Num(), RepeatsPerCondition);
+        Test->TestTrue(
+            TEXT("P02 reaction compares the same high-speed shaft stimulus"),
+            SeedMismatchRpm <= MaxSeedMismatchRpm);
         Test->TestTrue(
             TEXT("P02 reaction fixture creates a meaningful shaft-speed stimulus"),
             ShaftStimulusRpm >= MinShaftStimulusRpm);
@@ -845,14 +856,16 @@ private:
     FPinkCabPhysicsFixtureRestGate RestGate;
     TArray<FPinkCabPartialClutchReactionRun> Runs;
 
-    const TArray<float> SpeedsKmh{10.0f, 50.0f};
+    const TArray<float> Couplings{0.0f, PartialCoupling};
     static constexpr int32 RepeatsPerCondition = 5;
+    static constexpr float HighSpeedKmh = 50.0f;
     static constexpr float InitialEngineRpm = 3000.0f;
     static constexpr float PartialCoupling = 0.50f;
     static constexpr int32 MeasurementSettleMechanicalSteps = 3;
     static constexpr int32 MeasurementSampleMechanicalSteps = 12;
     static constexpr int64 RestTimeoutMechanicalSteps = 240;
     static constexpr int32 RestPollLimit = 2400;
+    static constexpr float MaxSeedMismatchRpm = 5.0f;
     static constexpr float MinShaftStimulusRpm = 1500.0f;
     static constexpr float MinEngineReactionRpm = 300.0f;
     static constexpr float MinReactionFraction = 0.10f;
