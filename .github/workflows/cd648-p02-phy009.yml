@@ -185,7 +185,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
-          foreach($test in @(
+          $tests=@(
             'PinkCab.Vehicle.Physics.Telemetry',
             'PinkCab.Vehicle.Physics.EngineState',
             'PinkCab.Vehicle.Physics.P02.ClutchModel',
@@ -193,7 +193,9 @@ jobs:
             'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity',
             'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',
             'PinkCab.Vehicle.Physics'
-          )){
+          )
+          $completedTests=0
+          foreach($test in $tests){
             $safe=$test.Replace('.','_')
             $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
             & .\scripts\ci\run-unreal-automation.ps1 `
@@ -202,9 +204,13 @@ jobs:
               -TestName $test `
               -LogPath $log `
               -TimeoutSeconds 180
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            ++$completedTests
             Write-Host "P02_PHY009_TEST_PASS=$test"
           }
+          if($completedTests -ne $tests.Count){
+            throw "P02_PHY009_INCOMPLETE_TEST_LOOP completed=$completedTests expected=$($tests.Count)"
+          }
+          Write-Host "P02_PHY009_TEST_LOOP=PASS count=$completedTests"
 
       - name: Zero-debt and writer guard
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
