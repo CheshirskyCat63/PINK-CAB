@@ -97,7 +97,7 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
         "sequence,timestamp_s,dt_s,ignition,combustion_permission,model_id,profile_id,"
         "profile_schema,calibration,profile_hash,raw_throttle,prepared_throttle,"
         "post_drivetrain_throttle,health_clamped_throttle,engine_throttle_pre_limiter,"
-        "engine_throttle_final,engine_rpm,expected_coupled_rpm,clutch_coupling,clutch_slip_rpm,"
+        "engine_throttle_final,chaos_throttle_input,engine_rpm,expected_coupled_rpm,clutch_coupling,clutch_slip_rpm,"
         "drivetrain_capacity,engine_health,requested_engine_torque_nm,permission_gated_engine_torque_nm,"
         "driven_wheel_rpm_available,driven_wheel_rpm_mean,wheel_derived_engine_rpm,engine_wheel_rpm_delta,"
         "requested_gear,engaged_gear,chaos_current_gear,chaos_target_gear,effective_gear_ratio,"
@@ -110,7 +110,7 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
     {
         Csv += FString::Printf(
             TEXT("%llu,%.9f,%.6f,%s,%d,%s,%s,%d,%d,%016llX,")
-            TEXT("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f,%.3f,%.6f,%.3f,")
+            TEXT("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f,%.3f,%.6f,%.3f,")
             TEXT("%.6f,%.6f,%.3f,%.3f,%d,%.6f,%.3f,%.3f,%d,%d,%d,%d,%.6f,%.6f,%.3f,%s,")
             TEXT("%.6f,%.6f,%.3f,%.3f,%.6f,%.6f,%.6f,%.6f,%d,%d,%d,%d,%d,%.6f,%d\n"),
             static_cast<unsigned long long>(F.Sequence),
@@ -129,6 +129,7 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
             F.Actuation.HealthClampedControlThrottle01,
             F.Actuation.EngineThrottlePreLimiter01,
             F.Actuation.EngineThrottleFinal01,
+            F.Actuation.ChaosThrottleInput01,
             F.EngineRpm,
             F.ExpectedCoupledRpm,
             F.ClutchCoupling01,
