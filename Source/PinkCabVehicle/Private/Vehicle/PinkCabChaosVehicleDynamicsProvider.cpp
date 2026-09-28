@@ -1,4 +1,5 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
@@ -16,6 +17,9 @@ void PopulateActuationTelemetry(
         Controls.GetResolvedEngineThrottlePreLimiter01();
     Out.EngineThrottleFinal01 =
         Controls.GetResolvedEngineThrottle01();
+    Out.ChaosThrottleInput01 =
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Out.EngineThrottleFinal01);
     Out.EngineTorqueCurveNm =
         Controls.GetResolvedEngineTorqueCurveNm();
     Out.RequestedEngineTorqueAfterLimiterHealthNm =
@@ -106,7 +110,7 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
         LastCausalActuation);
 
     Movement->SetThrottleInput(
-        Controls.GetResolvedEngineThrottle01());
+        LastCausalActuation.ChaosThrottleInput01);
     Movement->SetBrakeInput(Controls.Brake);
     ApplyRearWheelTorques(*Movement, Controls);
     PopulateConfiguredAssistFlags(*Movement, LastCausalActuation);
