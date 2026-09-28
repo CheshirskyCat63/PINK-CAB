@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "ChaosVehicleWheel.h"
 #include "ChaosVehicleManagerAsyncCallback.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
@@ -355,6 +356,301 @@ bool FPinkCabClutchBoundaryContinuityRuntimeTest::RunTest(const FString& Paramet
 
     ADD_LATENT_AUTOMATION_COMMAND(
         FPinkCabClutchBoundaryContinuityCommand(this));
+    return true;
+}
+
+
+struct FPinkCabPartialClutchReactionRun
+{
+    float InitialSpeedKmh = 0.0f;
+    float MeanEngineRpm = 0.0f;
+    float MeanDrivenWheelRpm = 0.0f;
+    float MeanWheelDerivedEngineRpm = 0.0f;
+};
+
+class FPinkCabPartialClutchWheelReactionCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabPartialClutchWheelReactionCommand(FAutomationTestBase* InTest)
+        : Test(InTest)
+    {
+    }
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        APinkCabChaosTatraPawn* Pawn = nullptr;
+        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        {
+            Pawn = *It;
+            break;
+        }
+        if (!Pawn)
+        {
+            return false;
+        }
+
+        UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        Test->TestNotNull(TEXT("P02 reaction movement exists"), Movement);
+        Test->TestNotNull(TEXT("P02 reaction mesh exists"), Mesh);
+        if (!Movement || !Mesh)
+        {
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
+            Mesh->WakeAllRigidBodies();
+
+            Baseline = Movement->GetSnapshot();
+            Baseline.LinearVelocity = FVector::ZeroVector;
+            Baseline.AngularVelocity = FVector::ZeroVector;
+            Baseline.EngineRPM = InitialEngineRpm;
+            Baseline.SelectedGear = 0;
+            for (FWheelSnapshot& Wheel : Baseline.WheelSnapshots)
+            {
+                Wheel.WheelAngularVelocity = 0.0f;
+            }
+
+            Test->TestEqual(TEXT("P02 reaction fixture has four wheel snapshots"),
+                Baseline.WheelSnapshots.Num(), 4);
+            Test->TestTrue(TEXT("P02 reaction fixture starts local engine"),
+                Cockpit.StartEngine());
+
+            bInitialized = true;
+            BeginRun(*Pawn, *Movement, *Mesh);
+            return false;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, *Movement, Controls, Provider))
+        {
+            Test->AddError(TEXT("P02 partial-clutch reaction actuation refresh failed"));
+            return true;
+        }
+
+        const double Elapsed = FPlatformTime::Seconds() - RunStartSeconds;
+        if (Elapsed < SettleSeconds)
+        {
+            return false;
+        }
+
+        float DrivenWheelRpmSum = 0.0f;
+        int32 DrivenWheelCount = 0;
+        for (int32 WheelIndex = 0; WheelIndex < Movement->Wheels.Num(); ++WheelIndex)
+        {
+            const UChaosVehicleWheel* Wheel = Movement->Wheels[WheelIndex];
+            if (!Wheel || !Wheel->bAffectedByEngine)
+            {
+                continue;
+            }
+            DrivenWheelRpmSum += FMath::Abs(
+                Wheel->GetWheelAngularVelocity() * (60.0f / (2.0f * PI)));
+            ++DrivenWheelCount;
+        }
+
+        if (DrivenWheelCount > 0)
+        {
+            const float MeanWheelRpm =
+                DrivenWheelRpmSum / static_cast<float>(DrivenWheelCount);
+            DrivenWheelRpmSumSamples += MeanWheelRpm;
+            const float EffectiveRatio = FMath::Abs(
+                Movement->TransmissionSetup.GetGearRatio(1));
+            WheelDerivedEngineRpmSum += MeanWheelRpm * EffectiveRatio;
+        }
+        EngineRpmSum += Movement->GetEngineRotationSpeed();
+        ++SampleCount;
+
+        if (Elapsed < RunSeconds)
+        {
+            return false;
+        }
+
+        FPinkCabPartialClutchReactionRun Result;
+        Result.InitialSpeedKmh = CurrentSpeedKmh();
+        Result.MeanEngineRpm =
+            SampleCount > 0 ? EngineRpmSum / static_cast<float>(SampleCount) : 0.0f;
+        Result.MeanDrivenWheelRpm =
+            SampleCount > 0
+                ? DrivenWheelRpmSumSamples / static_cast<float>(SampleCount)
+                : 0.0f;
+        Result.MeanWheelDerivedEngineRpm =
+            SampleCount > 0
+                ? WheelDerivedEngineRpmSum / static_cast<float>(SampleCount)
+                : 0.0f;
+        Runs.Add(Result);
+
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_PHY009_REACTION speed_kmh=%.1f repeat=%d engine_rpm=%.3f driven_wheel_rpm=%.3f wheel_derived_engine_rpm=%.3f"),
+            Result.InitialSpeedKmh,
+            RepeatIndex + 1,
+            Result.MeanEngineRpm,
+            Result.MeanDrivenWheelRpm,
+            Result.MeanWheelDerivedEngineRpm));
+
+        ++RepeatIndex;
+        if (RepeatIndex >= RepeatsPerCondition)
+        {
+            RepeatIndex = 0;
+            ++ConditionIndex;
+        }
+
+        if (ConditionIndex < SpeedsKmh.Num())
+        {
+            BeginRun(*Pawn, *Movement, *Mesh);
+            return false;
+        }
+
+        return EvaluateReaction();
+    }
+
+private:
+    float CurrentSpeedKmh() const
+    {
+        return SpeedsKmh[FMath::Clamp(ConditionIndex, 0, SpeedsKmh.Num() - 1)];
+    }
+
+    void BeginRun(
+        APinkCabChaosTatraPawn& Pawn,
+        UChaosWheeledVehicleMovementComponent& Movement,
+        USkeletalMeshComponent& Mesh)
+    {
+        Movement.SetSnapshot(Baseline);
+        const float SpeedCmPerSec = CurrentSpeedKmh() / 0.036f;
+        Mesh.SetPhysicsLinearVelocity(
+            Pawn.GetActorForwardVector() * SpeedCmPerSec);
+        Mesh.SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+        Mesh.WakeAllRigidBodies();
+
+        Controls = {};
+        Controls.SetThrottle(0.0f);
+        Controls.SetBrake(0.0f);
+        Controls.SetHandbrake(0.0f);
+        Controls.SetDriveline(1, 1, PartialCoupling);
+        Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(&Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, Movement, Controls, Provider))
+        {
+            Test->AddError(TEXT("P02 partial-clutch reaction initial actuation failed"));
+        }
+
+        EngineRpmSum = 0.0f;
+        DrivenWheelRpmSumSamples = 0.0f;
+        WheelDerivedEngineRpmSum = 0.0f;
+        SampleCount = 0;
+        RunStartSeconds = FPlatformTime::Seconds();
+    }
+
+    bool EvaluateReaction()
+    {
+        TArray<float> LowEngineRpm;
+        TArray<float> HighEngineRpm;
+        TArray<float> LowWheelDerivedRpm;
+        TArray<float> HighWheelDerivedRpm;
+
+        for (const FPinkCabPartialClutchReactionRun& Run : Runs)
+        {
+            const bool bLow = FMath::IsNearlyEqual(
+                Run.InitialSpeedKmh, SpeedsKmh[0], KINDA_SMALL_NUMBER);
+            (bLow ? LowEngineRpm : HighEngineRpm).Add(Run.MeanEngineRpm);
+            (bLow ? LowWheelDerivedRpm : HighWheelDerivedRpm).Add(
+                Run.MeanWheelDerivedEngineRpm);
+        }
+
+        const float LowEngineMedian = Median(LowEngineRpm);
+        const float HighEngineMedian = Median(HighEngineRpm);
+        const float LowWheelMedian = Median(LowWheelDerivedRpm);
+        const float HighWheelMedian = Median(HighWheelDerivedRpm);
+        const float ShaftStimulusRpm = HighWheelMedian - LowWheelMedian;
+        const float EngineReactionRpm = HighEngineMedian - LowEngineMedian;
+        const float ReactionFraction = ShaftStimulusRpm > KINDA_SMALL_NUMBER
+            ? EngineReactionRpm / ShaftStimulusRpm
+            : 0.0f;
+
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_PHY009_REACTION_MEDIAN low_engine_rpm=%.3f high_engine_rpm=%.3f low_wheel_derived_rpm=%.3f high_wheel_derived_rpm=%.3f shaft_stimulus_rpm=%.3f engine_reaction_rpm=%.3f reaction_fraction=%.6f"),
+            LowEngineMedian,
+            HighEngineMedian,
+            LowWheelMedian,
+            HighWheelMedian,
+            ShaftStimulusRpm,
+            EngineReactionRpm,
+            ReactionFraction));
+
+        Test->TestEqual(TEXT("P02 reaction has five low-speed repeats"),
+            LowEngineRpm.Num(), RepeatsPerCondition);
+        Test->TestEqual(TEXT("P02 reaction has five high-speed repeats"),
+            HighEngineRpm.Num(), RepeatsPerCondition);
+        Test->TestTrue(TEXT("P02 reaction fixture creates a meaningful shaft-speed stimulus"),
+            ShaftStimulusRpm >= MinShaftStimulusRpm);
+
+        // PHY-009 requires actual wheel->engine reaction at partial coupling.
+        // With identical 3000-rpm engine state and zero throttle, a high-speed
+        // driven axle must back-drive the engine measurably more than a low-speed
+        // axle. 10% of the shaft stimulus is the predeclared diagnostic minimum;
+        // this is a causality gate, not final clutch calibration.
+        Test->TestTrue(TEXT("PHY-009 partial clutch transmits wheel-to-engine RPM reaction"),
+            EngineReactionRpm >= MinEngineReactionRpm
+                && ReactionFraction >= MinReactionFraction);
+        return true;
+    }
+
+    FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    FWheeledSnaphotData Baseline;
+    TArray<FPinkCabPartialClutchReactionRun> Runs;
+
+    const TArray<float> SpeedsKmh{10.0f, 50.0f};
+    static constexpr int32 RepeatsPerCondition = 5;
+    static constexpr float InitialEngineRpm = 3000.0f;
+    static constexpr float PartialCoupling = 0.50f;
+    static constexpr double SettleSeconds = 0.20;
+    static constexpr double RunSeconds = 0.55;
+    static constexpr float MinShaftStimulusRpm = 1500.0f;
+    static constexpr float MinEngineReactionRpm = 300.0f;
+    static constexpr float MinReactionFraction = 0.10f;
+
+    bool bInitialized = false;
+    int32 ConditionIndex = 0;
+    int32 RepeatIndex = 0;
+    int32 SampleCount = 0;
+    float EngineRpmSum = 0.0f;
+    float DrivenWheelRpmSumSamples = 0.0f;
+    float WheelDerivedEngineRpmSum = 0.0f;
+    double RunStartSeconds = 0.0;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabPartialClutchWheelReactionRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabPartialClutchWheelReactionRuntimeTest::RunTest(const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(
+        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        true);
+    TestTrue(TEXT("P02 partial reaction runtime map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+
+    ADD_LATENT_AUTOMATION_COMMAND(
+        FPinkCabPartialClutchWheelReactionCommand(this));
     return true;
 }
 
