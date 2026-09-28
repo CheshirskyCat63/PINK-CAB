@@ -56,7 +56,7 @@ Hard rules:
 
 - raw keyboard/mouse/device interpretation belongs in Interaction;
 - player-space `+X` means right; gearbox `+Y` means top/forward row 1/3/5;
-- game-thread semantic control writes belong in `PinkCabChaosVehicleDynamicsProvider`; physics-thread engine/wheel torque writes belong only in `PinkCabChaosVehicleMovementComponent`; no third Chaos actuation writer is allowed;
+- game-thread semantic control writes belong in `PinkCabChaosVehicleDynamicsProvider`; physics-thread engine/wheel torque writes belong only in `PinkCabChaosVehicleSimulation`; `PinkCabChaosVehicleMovementComponent` is the command/evidence bridge; no third Chaos actuation writer is allowed;
 - gameplay domains do not depend on Persistence implementation internals;
 - presentation consumes authoritative state and does not create a second source of truth;
 - no new dependency cycle or larger code-health violation may be added over the committed baseline.
