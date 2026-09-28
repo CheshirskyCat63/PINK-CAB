@@ -41,6 +41,7 @@ on:
       - 'scripts/ci/verify_vehicle_physics_writers.py'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/materialize_local_lfs.py'
+      - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
       - '.github/workflows/cd648-p02-phy009.yml'
   workflow_dispatch:
@@ -80,6 +81,7 @@ jobs:
           $fixtureManifest=Get-Content -LiteralPath $fixtureManifestPath -Raw | ConvertFrom-Json
           $materializeArgs=@(
             'scripts/ci/materialize_local_lfs.py',
+            'scripts/ci/run-unreal-automation.ps1',
             '--workspace', $env:GITHUB_WORKSPACE,
             '--base-ref', 'origin/main',
             '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
@@ -182,7 +184,6 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
           $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
           foreach($test in @(
             'PinkCab.Vehicle.Physics.Telemetry',
@@ -191,18 +192,13 @@ jobs:
           )){
             $safe=$test.Replace('.','_')
             $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
-            Remove-Item $log -Force -ErrorAction SilentlyContinue
-            & $editor $project /Engine/Maps/Entry -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath $log `
+              -TimeoutSeconds 180
             if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-            if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
-              throw "P02_PHY009_TEST_FAIL=$test"
-            }
-            if(Select-String -Path $log -Pattern "Failed to load package|Can't find file '/Game|Unable to load package|Failed to load '/Game" -Quiet){
-              throw "P02_PHY009_ASSET_DEPENDENCY_FAIL=$test"
-            }
-            if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
-              throw "P02_PHY009_QUEUE_MISSING=$test"
-            }
             Write-Host "P02_PHY009_TEST_PASS=$test"
           }
 
