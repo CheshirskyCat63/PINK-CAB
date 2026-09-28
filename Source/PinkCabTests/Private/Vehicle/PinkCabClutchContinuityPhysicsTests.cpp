@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "ChaosVehicleManagerAsyncCallback.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
@@ -21,6 +22,9 @@ struct FPinkCabClutchBoundaryRun
     float Coupling = 0.0f;
     float MeanRearDriveTorqueNm = 0.0f;
     float MeanEngineRpm = 0.0f;
+    float MeanChaosEngineTorqueNm = 0.0f;
+    float MeanChaosTransmissionTorqueNm = 0.0f;
+    float MeanChaosTransmissionRpm = 0.0f;
     double EndTranslationalKineticEnergyJ = 0.0;
     float EndSpeedCmPerSec = 0.0f;
 };
@@ -139,6 +143,15 @@ public:
         RearTorqueSum += 0.5f
             * (FMath::Abs(RearLeft.DriveTorque) + FMath::Abs(RearRight.DriveTorque));
         EngineRpmSum += Movement->GetEngineRotationSpeed();
+        if (const TUniquePtr<FPhysicsVehicleOutput>& PhysicsOutput = Movement->PhysicsVehicleOutput())
+        {
+            if (PhysicsOutput.IsValid())
+            {
+                ChaosEngineTorqueSum += PhysicsOutput->EngineTorque;
+                ChaosTransmissionTorqueSum += PhysicsOutput->TransmissionTorque;
+                ChaosTransmissionRpmSum += PhysicsOutput->TransmissionRPM;
+            }
+        }
         ++SampleCount;
 
         if (Elapsed < RunSeconds)
@@ -152,6 +165,12 @@ public:
             SampleCount > 0 ? RearTorqueSum / static_cast<float>(SampleCount) : 0.0f;
         Result.MeanEngineRpm =
             SampleCount > 0 ? EngineRpmSum / static_cast<float>(SampleCount) : 0.0f;
+        Result.MeanChaosEngineTorqueNm =
+            SampleCount > 0 ? ChaosEngineTorqueSum / static_cast<float>(SampleCount) : 0.0f;
+        Result.MeanChaosTransmissionTorqueNm =
+            SampleCount > 0 ? ChaosTransmissionTorqueSum / static_cast<float>(SampleCount) : 0.0f;
+        Result.MeanChaosTransmissionRpm =
+            SampleCount > 0 ? ChaosTransmissionRpmSum / static_cast<float>(SampleCount) : 0.0f;
         Result.EndSpeedCmPerSec = Mesh->GetPhysicsLinearVelocity().Size2D();
         const double SpeedMps = Result.EndSpeedCmPerSec * 0.01;
         Result.EndTranslationalKineticEnergyJ =
@@ -159,11 +178,14 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f"),
             Result.Coupling,
             RepeatIndex + 1,
             Result.MeanRearDriveTorqueNm,
             Result.MeanEngineRpm,
+            Result.MeanChaosEngineTorqueNm,
+            Result.MeanChaosTransmissionTorqueNm,
+            Result.MeanChaosTransmissionRpm,
             Result.EndSpeedCmPerSec,
             Result.EndTranslationalKineticEnergyJ));
 
@@ -212,6 +234,9 @@ private:
 
         RearTorqueSum = 0.0f;
         EngineRpmSum = 0.0f;
+        ChaosEngineTorqueSum = 0.0f;
+        ChaosTransmissionTorqueSum = 0.0f;
+        ChaosTransmissionRpmSum = 0.0f;
         SampleCount = 0;
         RunStartSeconds = FPlatformTime::Seconds();
     }
@@ -300,6 +325,9 @@ private:
     int32 SampleCount = 0;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
+    float ChaosEngineTorqueSum = 0.0f;
+    float ChaosTransmissionTorqueSum = 0.0f;
+    float ChaosTransmissionRpmSum = 0.0f;
     double RunStartSeconds = 0.0;
 };
 
