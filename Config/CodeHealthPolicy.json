@@ -46,7 +46,8 @@
   },
   "chaos_writes": {
     "allowed_files": [
-      "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp"
+      "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
+      "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp"
     ],
     "patterns": [
       "SetSteeringInput(",
@@ -55,7 +56,11 @@
       "SetHandbrakeInput(",
       "SetDriveTorque(",
       "SetBrakeTorque(",
-      "SetTorqueCombineMethod("
+      "SetTorqueCombineMethod(",
+      "Engine.SetThrottle(",
+      "Engine.SetEngineRPM(",
+      "Engine.SetEngineOmega(",
+      "Transmission.SetGear("
     ]
   },
   "forbidden_dependencies": [
