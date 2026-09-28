@@ -35,8 +35,11 @@ class FPinkCabChaosWheeledVehicleSimulation final
 {
 public:
     explicit FPinkCabChaosWheeledVehicleSimulation(
-        FThreadSafeCounter64* InMechanicalIntegrationStepCounter)
+        FThreadSafeCounter64* InMechanicalIntegrationStepCounter,
+        FThreadSafeCounter64* InMechanicalIntegrationDeltaMicros)
         : MechanicalIntegrationStepCounter(InMechanicalIntegrationStepCounter)
+        , MechanicalIntegrationDeltaMicros(
+            InMechanicalIntegrationDeltaMicros)
     {
     }
 
@@ -183,8 +186,16 @@ public:
             Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
         }
 
-        // Publish the step only after all engine/clutch/wheel work for this
-        // ProcessMechanicalSimulation() invocation has completed.
+        // Publish timing/state only after all engine/clutch/wheel work for this
+        // ProcessMechanicalSimulation() invocation has completed. D3/D5 use
+        // this read-only telemetry to prove the actual physics cadence rather
+        // than assuming one automation callback equals one fixed simulation dt.
+        if (MechanicalIntegrationDeltaMicros)
+        {
+            MechanicalIntegrationDeltaMicros->Set(
+                FMath::RoundToInt64(
+                    FMath::Max(DeltaTime, 0.0f) * 1000000.0));
+        }
         if (MechanicalIntegrationStepCounter)
         {
             MechanicalIntegrationStepCounter->Increment();
@@ -193,6 +204,7 @@ public:
 
 private:
     FThreadSafeCounter64* MechanicalIntegrationStepCounter = nullptr;
+    FThreadSafeCounter64* MechanicalIntegrationDeltaMicros = nullptr;
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabEngineActuationResult PhysicsThreadActuation;
     FPinkCabClutchDrivelineModel ClutchModel;
@@ -232,7 +244,8 @@ UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {
     TUniquePtr<FPinkCabChaosWheeledVehicleSimulation> Simulation =
         MakeUnique<FPinkCabChaosWheeledVehicleSimulation>(
-            &MechanicalIntegrationStepCounter);
+            &MechanicalIntegrationStepCounter,
+            &MechanicalIntegrationDeltaMicros);
     PinkCabSimulationPT = Simulation.Get();
     PinkCabSimulationPT->SetDrivelineCommand(PendingDrivelineCommand);
     VehicleSimulationPT = MoveTemp(Simulation);

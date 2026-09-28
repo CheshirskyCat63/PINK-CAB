@@ -35,6 +35,7 @@ struct FPinkCabD3Run
     float ResetBodyAngularSpeedDegPerSec = 0.0f;
     int64 ResetMechanicalSteps = 0;
     int32 ResetStableMechanicalSteps = 0;
+    float MeanMechanicalDeltaMs = 0.0f;
 };
 
 float MedianD3(TArray<float> Values)
@@ -243,6 +244,9 @@ public:
         RearTorqueSum += 0.5f
             * (FMath::Abs(RearLeft.DriveTorque) + FMath::Abs(RearRight.DriveTorque));
         EngineRpmSum += Movement->GetEngineRotationSpeed();
+        MechanicalDeltaSecondsSum +=
+            PinkCabMovement
+                ->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
         ++SampleCount;
 
         if (SampleCount < SampleFrames)
@@ -273,10 +277,15 @@ public:
         Run.ResetMechanicalSteps = CurrentResetMechanicalSteps;
         Run.ResetStableMechanicalSteps =
             CurrentResetStableMechanicalSteps;
+        Run.MeanMechanicalDeltaMs =
+            SampleCount > 0
+                ? (MechanicalDeltaSecondsSum
+                    / static_cast<float>(SampleCount)) * 1000.0f
+                : 0.0f;
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
@@ -289,6 +298,7 @@ public:
             Run.ResetStableMechanicalSteps,
             Run.MeanRearDriveTorqueNm,
             Run.MeanEngineRpm,
+            Run.MeanMechanicalDeltaMs,
             Run.EffectiveGearRatio,
             Run.ResolvedEngineThrottle01,
             Run.AvailableEngineTorqueNm,
@@ -362,6 +372,7 @@ private:
 
         RearTorqueSum = 0.0f;
         EngineRpmSum = 0.0f;
+        MechanicalDeltaSecondsSum = 0.0f;
         LastEffectiveGearRatio = 0.0f;
         CurrentResetEngineRpm = 0.0f;
         CurrentResetMaxDrivenWheelRpm = 0.0f;
@@ -519,6 +530,7 @@ private:
     FPinkCabPhysicsFixtureRestGate RestGate;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
+    float MechanicalDeltaSecondsSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
     float CurrentResetEngineRpm = 0.0f;
     float CurrentResetMaxDrivenWheelRpm = 0.0f;

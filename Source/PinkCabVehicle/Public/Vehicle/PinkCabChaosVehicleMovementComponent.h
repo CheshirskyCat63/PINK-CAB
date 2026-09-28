@@ -55,11 +55,19 @@ public:
         return MechanicalIntegrationStepCounter.GetValue();
     }
 
+    float GetPinkCabLastMechanicalIntegrationDeltaSeconds() const
+    {
+        return static_cast<float>(
+            MechanicalIntegrationDeltaMicros.GetValue())
+            / 1000000.0f;
+    }
+
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
 
 private:
     FThreadSafeCounter64 MechanicalIntegrationStepCounter;
+    FThreadSafeCounter64 MechanicalIntegrationDeltaMicros;
     FPinkCabClutchDrivelineConfig ClutchConfig;
     FPinkCabChaosDrivelineCommand PendingDrivelineCommand;
     FPinkCabChaosWheeledVehicleSimulation* PinkCabSimulationPT = nullptr;
