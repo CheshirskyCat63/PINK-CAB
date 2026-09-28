@@ -6,7 +6,6 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "ChaosVehicleWheel.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 #include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
@@ -170,13 +169,13 @@ public:
                     ConditionProvider.GetLastCausalActuationTelemetry()
                         .EffectiveGearRatio;
                 SampleCount = 0;
-                RunStartSeconds = FPlatformTime::Seconds();
+                SettleFramesRemaining = SettleFrames;
                 bResetting = false;
                 return false;
             }
 
-            if (FPlatformTime::Seconds() - ResetStartSeconds
-                < ResetTimeoutSeconds)
+            ++ResetFramesWaited;
+            if (ResetFramesWaited < ResetTimeoutFrames)
             {
                 return false;
             }
@@ -198,9 +197,14 @@ public:
             Provider.GetLastCausalActuationTelemetry();
         LastEffectiveGearRatio = Actuation.EffectiveGearRatio;
 
-        const double Elapsed = FPlatformTime::Seconds() - RunStartSeconds;
-        if (Elapsed < SettleSeconds)
+        // D3 is a causal matrix, not a wall-clock benchmark. Sampling by
+        // elapsed real time made identical cells observe different counts of
+        // Chaos steps on a busy self-hosted runner. Use a fixed number of
+        // automation/physics observations instead so every cell has identical
+        // measurement cardinality; D5 separately validates 30/60/120 FPS.
+        if (SettleFramesRemaining > 0)
         {
+            --SettleFramesRemaining;
             return false;
         }
 
@@ -211,7 +215,7 @@ public:
         EngineRpmSum += Movement->GetEngineRotationSpeed();
         ++SampleCount;
 
-        if (Elapsed < RunSeconds)
+        if (SampleCount < SampleFrames)
         {
             return false;
         }
@@ -316,9 +320,9 @@ private:
         CurrentResetEngineRpm = 0.0f;
         CurrentResetMaxDrivenWheelRpm = 0.0f;
         SampleCount = 0;
+        SettleFramesRemaining = 0;
+        ResetFramesWaited = 0;
         bResetting = true;
-        ResetStartSeconds = FPlatformTime::Seconds();
-        RunStartSeconds = 0.0;
     }
 
     TArray<float> ValuesFor(
@@ -428,15 +432,15 @@ private:
 
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 925.0f;
-    static constexpr double SettleSeconds = 0.02;
-    static constexpr double RunSeconds = 0.10;
+    static constexpr int32 SettleFrames = 3;
+    static constexpr int32 SampleFrames = 12;
     static constexpr float OpenTorqueToleranceNm = 1.0f;
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
-    static constexpr double ResetTimeoutSeconds = 6.00;
+    static constexpr int32 ResetTimeoutFrames = 240;
 
     int32 CouplingIndex = 0;
     int32 GearIndex = 0;
@@ -445,13 +449,13 @@ private:
     bool bInitialized = false;
     bool bResetting = false;
     int32 SampleCount = 0;
+    int32 SettleFramesRemaining = 0;
+    int32 ResetFramesWaited = 0;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
     float CurrentResetEngineRpm = 0.0f;
     float CurrentResetMaxDrivenWheelRpm = 0.0f;
-    double ResetStartSeconds = 0.0;
-    double RunStartSeconds = 0.0;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
