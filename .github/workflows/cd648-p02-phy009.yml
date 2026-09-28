@@ -59,9 +59,42 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: true
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Materialize cached LFS objects
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git lfs install --local
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $tracked=@(git lfs ls-files -n)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          # Self-hosted PINK CAB runner keeps the repository/LFS object cache
+          # between exact-head jobs. Materialization is intentionally offline:
+          # code-only P02 verification must not consume GitHub LFS bandwidth.
+          git lfs checkout
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $pointerFiles=@()
+          foreach($relative in $tracked){
+            if(-not (Test-Path -LiteralPath $relative)){
+              $pointerFiles += $relative
+              continue
+            }
+            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction Stop)
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+              $pointerFiles += $relative
+            }
+          }
+          if($pointerFiles.Count -ne 0){
+            $pointerFiles | ForEach-Object { Write-Host "P02_LFS_CACHE_MISS=$_" }
+            throw "P02_LFS_CACHE_INCOMPLETE count=$($pointerFiles.Count)"
+          }
+          Write-Host "P02_LFS_CACHE=PASS materialized=$($tracked.Count)"
 
       - name: Exact-head preflight and scope guard
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
