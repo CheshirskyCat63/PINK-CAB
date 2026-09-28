@@ -409,3 +409,54 @@ Warm neutral idle is **925 RPM**. A 55% neutral throttle blip reached **4429.622
 ## Definition of program completion
 
 The program is done only when the selected vehicle profile has no positive propulsion with combustion disabled, warm idle is owner-accepted inside 900–950 RPM, RPM thresholds come from one versioned profile, acceleration/steering/suspension/brakes pass repeatable fixtures and owner feel, all three model profiles are isolated, future cabin systems have stable semantic/telemetry ports, full project regression is green on exact HEAD, and Git/Jira/Confluence point to the same accepted SHA/profile/evidence. Compilation alone is never acceptance.
+
+
+## Gate 1 Road Handling integration amendment · 2026-09-28
+
+The expanded source package `PINK-CAB_Gate-1_Road_Handling_v1.0.zip` (SHA-256 `3eed0b832eedc7411971c0010c75ce2d5c9bfc9bc453d84fc9037dbf41c20f43`) is integrated as an **acceptance/calibration overlay** on this program. It does not create a second P00–P11 sequence, duplicate Jira cards or a second physics solver.
+
+Canonical detail:
+- `GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md`;
+- `GATE1_OWNER_MAPPING_2026-09-28.csv`;
+- `GATE1_ACCEPTANCE_PROTOCOLS_2026-09-28.md`;
+- Confluence child page `24707073`.
+
+### New prerequisite ordering inside the handling slice
+
+Before final P07 tire acceptance, evidence must establish:
+
+`road/contact → PHY-021 wheel/body geometry → PHY-022/023 mass/CoM/inertia → PHY-025..028 suspension/load transfer → PHY-029 combined grip/slip`.
+
+This is a dependency constraint, not a global reorder of P02/P03/P04/P05/P06/P07. P02 drivetrain continuity remains required before interpreting torque-driven handling behavior.
+
+### R6 candidate status
+
+Draft PR #47 / R6 remains **HUMAN_PENDING / diagnostic**. Automated green evidence and candidate values (front/rear 1.05/0.95; WheelLoadRatio 1.0) do not establish final tire/handling acceptance and do not bypass P05/P06 evidence. R1–R5 remain the accepted/frozen road baseline.
+
+### Contact model
+
+For a demonstrated curb/contact defect, compare Chaos Raycast/Spherecast/Shapecast one variable at a time. Do not change sweep mode merely because another mode sounds more realistic. Record contact state/normal, suspension travel/velocity, chassis contact, speed loss and cost. The smooth T06 bump remains the standard suspension fixture; representative curb testing is a separate contact fixture where current Level-1 geometry requires it.
+
+### CoM / inertia
+
+Runtime CoM, static axle/corner loads and inertia source must be reproducible evidence. Do not lower CoM or inflate yaw inertia to suppress symptoms. Small-steer, braking and lane-change traces must distinguish yaw/roll/pitch response.
+
+### Suspension
+
+Derive the initial working point from measured/verified sprung load, then prove static sag, bump/droop reserve, single-bump decay, repeated-bump stability and load variants. Front/rear spring/damping values may differ. Presentation motion cannot hide physical contact loss. The 1.1–1.3 Hz package value is a seed only.
+
+### Tire and drift doctrine
+
+Normal driving and drift use one continuous combined-grip model. High base grip is desired; power-oversteer occurs when torque/load demand consumes the rear tire's available combined grip. Driver throttle and countersteer remain live through progressive breakaway; committed bad input may still spin the car. Permanent low rear grip, tire-profile swapping and Drift Mode remain forbidden.
+
+WheelLoadRatio=1.0 remains a physical-reference A/B rather than an automatic final value. If a custom lateral-slip curve is required, exact UE 5.8.3 Chaos axis/units/evaluation semantics must be verified before importing any angle references as curve keys.
+
+### Steering / throttle
+
+Speed-sensitive input shaping may change device travel/sensitivity but may not shrink an already-authored held steering target. Current `pow(driver,0.55)` remains a dosability A/B after drivetrain continuity; tire grip must not compensate for pedal-transfer aggressiveness.
+
+### Gate-1 local task mapping
+
+G1-001..020 are aliases only; existing CD/PHY owners remain authoritative. G1-015 is **NOT_NEEDED / PROHIBITED_BY_CURRENT_CANON** because this program's no-assist rule is stricter than the source package's conditional-assist option.
+
+A01–A14 and T00–T11 are imported as **PROPOSED / NOT RUN** candidate-gate conditions. ADMIN_CLOSED for this import does not imply GATE1_ACCEPTED.
