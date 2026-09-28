@@ -1,0 +1,392 @@
+#if WITH_DEV_AUTOMATION_TESTS
+
+#include "Misc/AutomationTest.h"
+#include "Tests/AutomationCommon.h"
+#include "EngineUtils.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "SnapshotData.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabCockpitState.h"
+#include "Vehicle/PinkCabVehicleControlState.h"
+
+namespace
+{
+struct FPinkCabD3Run
+{
+    float Coupling = 0.0f;
+    int32 Gear = 0;
+    float DriverThrottle01 = 0.0f;
+    int32 Repeat = 0;
+    float MeanRearDriveTorqueNm = 0.0f;
+    float MeanEngineRpm = 0.0f;
+    float EffectiveGearRatio = 0.0f;
+    float ResolvedEngineThrottle01 = 0.0f;
+    float AvailableEngineTorqueNm = 0.0f;
+    int32 ChaosCurrentGear = 0;
+    int32 ChaosTargetGear = 0;
+};
+
+float MedianD3(TArray<float> Values)
+{
+    Values.Sort();
+    if (Values.Num() == 0)
+    {
+        return 0.0f;
+    }
+    const int32 Middle = Values.Num() / 2;
+    return Values.Num() % 2 == 0
+        ? 0.5f * (Values[Middle - 1] + Values[Middle])
+        : Values[Middle];
+}
+
+float RelativeStepD3(const float A, const float B, const float Floor)
+{
+    const float Denominator = FMath::Max3(FMath::Abs(A), FMath::Abs(B), Floor);
+    return FMath::Abs(A - B) / Denominator;
+}
+}
+
+class FPinkCabD3CausalMatrixCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabD3CausalMatrixCommand(FAutomationTestBase* InTest)
+        : Test(InTest)
+    {
+    }
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        APinkCabChaosTatraPawn* Pawn = nullptr;
+        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        {
+            Pawn = *It;
+            break;
+        }
+        if (!Pawn)
+        {
+            return false;
+        }
+
+        UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        Test->TestNotNull(TEXT("D3 movement exists"), Movement);
+        Test->TestNotNull(TEXT("D3 physics mesh exists"), Mesh);
+        if (!Movement || !Mesh)
+        {
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            Pawn->SetSystemMenuOpen(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            Pawn->SetActorTickEnabled(false);
+            Mesh->WakeAllRigidBodies();
+
+            Baseline = Movement->GetSnapshot();
+            Baseline.LinearVelocity = FVector::ZeroVector;
+            Baseline.AngularVelocity = FVector::ZeroVector;
+            Baseline.EngineRPM = InitialEngineRpm;
+            Baseline.SelectedGear = 0;
+            for (FWheelSnapshot& Wheel : Baseline.WheelSnapshots)
+            {
+                Wheel.WheelAngularVelocity = 0.0f;
+            }
+
+            Test->TestEqual(TEXT("D3 fixture has four wheel snapshots"),
+                Baseline.WheelSnapshots.Num(), 4);
+            Test->TestTrue(TEXT("D3 starts semantic engine"), Cockpit.StartEngine());
+
+            bInitialized = true;
+            BeginRun(*Movement, *Mesh);
+            return false;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, *Movement, Controls, Provider))
+        {
+            Test->AddError(TEXT("D3 authoritative actuation refresh failed"));
+            return true;
+        }
+
+        const FPinkCabCausalActuationTelemetry& Actuation =
+            Provider.GetLastCausalActuationTelemetry();
+        LastEffectiveGearRatio = Actuation.EffectiveGearRatio;
+
+        const double Elapsed = FPlatformTime::Seconds() - RunStartSeconds;
+        if (Elapsed < SettleSeconds)
+        {
+            return false;
+        }
+
+        const FWheelStatus RearLeft = Movement->GetWheelState(2);
+        const FWheelStatus RearRight = Movement->GetWheelState(3);
+        RearTorqueSum += 0.5f
+            * (FMath::Abs(RearLeft.DriveTorque) + FMath::Abs(RearRight.DriveTorque));
+        EngineRpmSum += Movement->GetEngineRotationSpeed();
+        ++SampleCount;
+
+        if (Elapsed < RunSeconds)
+        {
+            return false;
+        }
+
+        FPinkCabD3Run Run;
+        Run.Coupling = CurrentCoupling();
+        Run.Gear = CurrentGear();
+        Run.DriverThrottle01 = CurrentThrottle();
+        Run.Repeat = RepeatIndex;
+        Run.MeanRearDriveTorqueNm =
+            SampleCount > 0 ? RearTorqueSum / static_cast<float>(SampleCount) : 0.0f;
+        Run.MeanEngineRpm =
+            SampleCount > 0 ? EngineRpmSum / static_cast<float>(SampleCount) : 0.0f;
+        Run.EffectiveGearRatio = LastEffectiveGearRatio;
+        Run.ResolvedEngineThrottle01 = Controls.GetResolvedEngineThrottle01();
+        Run.AvailableEngineTorqueNm = Controls.GetAvailableEngineTorqueNm();
+        Run.ChaosCurrentGear = Movement->GetCurrentGear();
+        Run.ChaosTargetGear = Movement->GetTargetGear();
+        Runs.Add(Run);
+
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
+            Run.Coupling,
+            Run.Gear,
+            Run.DriverThrottle01,
+            Run.Repeat + 1,
+            Run.MeanRearDriveTorqueNm,
+            Run.MeanEngineRpm,
+            Run.EffectiveGearRatio,
+            Run.ResolvedEngineThrottle01,
+            Run.AvailableEngineTorqueNm,
+            Run.ChaosCurrentGear,
+            Run.ChaosTargetGear));
+
+        AdvanceCondition();
+        if (!IsFinished())
+        {
+            BeginRun(*Movement, *Mesh);
+            return false;
+        }
+
+        return Evaluate();
+    }
+
+private:
+    float CurrentCoupling() const { return Couplings[CouplingIndex]; }
+    int32 CurrentGear() const { return Gears[GearIndex]; }
+    float CurrentThrottle() const { return Throttles[ThrottleIndex]; }
+
+    bool IsFinished() const
+    {
+        return CouplingIndex >= Couplings.Num();
+    }
+
+    void AdvanceCondition()
+    {
+        ++RepeatIndex;
+        if (RepeatIndex < RepeatsPerCondition)
+        {
+            return;
+        }
+
+        RepeatIndex = 0;
+        ++ThrottleIndex;
+        if (ThrottleIndex < Throttles.Num())
+        {
+            return;
+        }
+
+        ThrottleIndex = 0;
+        ++GearIndex;
+        if (GearIndex < Gears.Num())
+        {
+            return;
+        }
+
+        GearIndex = 0;
+        ++CouplingIndex;
+    }
+
+    void BeginRun(
+        UChaosWheeledVehicleMovementComponent& Movement,
+        USkeletalMeshComponent& Mesh)
+    {
+        Movement.SetSnapshot(Baseline);
+        Mesh.WakeAllRigidBodies();
+
+        Controls = {};
+        Controls.SetThrottle(CurrentThrottle());
+        Controls.SetBrake(0.0f);
+        Controls.SetHandbrake(0.0f);
+        Controls.SetDriveline(CurrentGear(), CurrentGear(), CurrentCoupling());
+        Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(&Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, Movement, Controls, Provider))
+        {
+            Test->AddError(TEXT("D3 initial authoritative actuation failed"));
+        }
+
+        RearTorqueSum = 0.0f;
+        EngineRpmSum = 0.0f;
+        LastEffectiveGearRatio = 0.0f;
+        SampleCount = 0;
+        RunStartSeconds = FPlatformTime::Seconds();
+    }
+
+    TArray<float> ValuesFor(
+        const int32 Gear,
+        const float Throttle,
+        const float Coupling) const
+    {
+        TArray<float> Values;
+        for (const FPinkCabD3Run& Run : Runs)
+        {
+            if (Run.Gear == Gear
+                && FMath::IsNearlyEqual(Run.DriverThrottle01, Throttle, 1.0e-4f)
+                && FMath::IsNearlyEqual(Run.Coupling, Coupling, 1.0e-4f))
+            {
+                Values.Add(Run.MeanRearDriveTorqueNm);
+            }
+        }
+        return Values;
+    }
+
+    bool Evaluate()
+    {
+        Test->TestEqual(TEXT("D3 executes complete 240-run matrix"),
+            Runs.Num(),
+            Couplings.Num() * Gears.Num() * Throttles.Num() * RepeatsPerCondition);
+
+        for (const FPinkCabD3Run& Run : Runs)
+        {
+            Test->TestEqual(TEXT("native Chaos current gear stays neutral"), Run.ChaosCurrentGear, 0);
+            Test->TestEqual(TEXT("native Chaos target gear stays neutral"), Run.ChaosTargetGear, 0);
+            Test->TestTrue(TEXT("first gear exposes positive PINK CAB effective ratio"),
+                Run.Gear != 1 || Run.EffectiveGearRatio > KINDA_SMALL_NUMBER);
+            Test->TestTrue(TEXT("reverse exposes negative PINK CAB effective ratio"),
+                Run.Gear != -1 || Run.EffectiveGearRatio < -KINDA_SMALL_NUMBER);
+            Test->TestTrue(TEXT("resolved throttle is bounded"),
+                Run.ResolvedEngineThrottle01 >= 0.0f
+                    && Run.ResolvedEngineThrottle01 <= 1.0f + KINDA_SMALL_NUMBER);
+            Test->TestTrue(TEXT("available engine torque is non-negative"),
+                Run.AvailableEngineTorqueNm >= 0.0f);
+        }
+
+        for (const int32 Gear : Gears)
+        {
+            for (const float Throttle : Throttles)
+            {
+                const float OpenMedian = MedianD3(
+                    ValuesFor(Gear, Throttle, 0.0f));
+                Test->TestTrue(TEXT("open clutch transfers no rear drive torque"),
+                    OpenMedian <= OpenTorqueToleranceNm);
+
+                TArray<float> PositiveCouplingMedians;
+                for (int32 Index = 1; Index < Couplings.Num(); ++Index)
+                {
+                    const TArray<float> Values =
+                        ValuesFor(Gear, Throttle, Couplings[Index]);
+                    Test->TestEqual(TEXT("every D3 cell has five repeats"),
+                        Values.Num(), RepeatsPerCondition);
+                    PositiveCouplingMedians.Add(MedianD3(Values));
+                }
+
+                for (int32 Index = 1; Index < PositiveCouplingMedians.Num(); ++Index)
+                {
+                    Test->TestTrue(
+                        TEXT("rear torque magnitude does not collapse as clutch coupling increases"),
+                        PositiveCouplingMedians[Index] + MonotonicToleranceNm
+                            >= PositiveCouplingMedians[Index - 1]);
+                }
+
+                const float NearFull = PositiveCouplingMedians[
+                    PositiveCouplingMedians.Num() - 2];
+                const float Full = PositiveCouplingMedians.Last();
+                Test->TestTrue(TEXT("D3 0.999 to 1.000 torque remains continuous"),
+                    RelativeStepD3(NearFull, Full, 25.0f) <= FullBoundaryRelativeTolerance);
+            }
+        }
+
+        // 1st and R use mirrored ratios in the accepted profile. Their torque
+        // magnitudes therefore should match closely for identical reset state.
+        for (const float Coupling : Couplings)
+        {
+            for (const float Throttle : Throttles)
+            {
+                const float FirstMedian = MedianD3(ValuesFor(1, Throttle, Coupling));
+                const float ReverseMedian = MedianD3(ValuesFor(-1, Throttle, Coupling));
+                Test->TestTrue(TEXT("1st and reverse preserve mirrored torque magnitude"),
+                    RelativeStepD3(FirstMedian, ReverseMedian, 25.0f)
+                        <= FirstReverseRelativeTolerance);
+            }
+        }
+
+        return true;
+    }
+
+    FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    FWheeledSnaphotData Baseline;
+    TArray<FPinkCabD3Run> Runs;
+
+    const TArray<float> Couplings{0.0f, 0.25f, 0.50f, 0.75f, 0.999f, 1.0f};
+    const TArray<int32> Gears{1, -1};
+    const TArray<float> Throttles{0.0f, 0.25f, 0.50f, 1.0f};
+
+    static constexpr int32 RepeatsPerCondition = 5;
+    static constexpr float InitialEngineRpm = 3000.0f;
+    static constexpr double SettleSeconds = 0.02;
+    static constexpr double RunSeconds = 0.10;
+    static constexpr float OpenTorqueToleranceNm = 1.0f;
+    static constexpr float MonotonicToleranceNm = 50.0f;
+    static constexpr float FullBoundaryRelativeTolerance = 0.05f;
+    static constexpr float FirstReverseRelativeTolerance = 0.08f;
+
+    int32 CouplingIndex = 0;
+    int32 GearIndex = 0;
+    int32 ThrottleIndex = 0;
+    int32 RepeatIndex = 0;
+    bool bInitialized = false;
+    int32 SampleCount = 0;
+    float RearTorqueSum = 0.0f;
+    float EngineRpmSum = 0.0f;
+    float LastEffectiveGearRatio = 0.0f;
+    double RunStartSeconds = 0.0;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabD3CausalMatrixRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.D3.CausalMatrix",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabD3CausalMatrixRuntimeTest::RunTest(const FString&)
+{
+    const bool bOpened = AutomationOpenMap(
+        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        true);
+    TestTrue(TEXT("D3 runtime map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabD3CausalMatrixCommand(this));
+    return true;
+}
+
+#endif
