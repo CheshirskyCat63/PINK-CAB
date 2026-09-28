@@ -301,7 +301,10 @@ private:
         PinkCabPhysicsFixture::DestroyPawns(World);
         Controls = {};
         Controls.SetThrottle(0.0f);
-        Controls.SetBrake(0.0f);
+        // Use the real service brake only while establishing the sterile
+        // stationary initial condition. Every measured condition explicitly
+        // releases it before the next mechanical integration.
+        Controls.SetBrake(1.0f);
         Controls.SetHandbrake(0.0f);
         Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);
@@ -748,7 +751,10 @@ private:
         PinkCabPhysicsFixture::DestroyPawns(World);
         Controls = {};
         Controls.SetThrottle(0.0f);
-        Controls.SetBrake(0.0f);
+        // Use the real service brake only while establishing the sterile
+        // stationary initial condition. Every measured condition explicitly
+        // releases it before the next mechanical integration.
+        Controls.SetBrake(1.0f);
         Controls.SetHandbrake(0.0f);
         Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);

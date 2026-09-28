@@ -345,7 +345,12 @@ private:
 
         Controls = {};
         Controls.SetThrottle(0.0f);
-        Controls.SetBrake(0.0f);
+        // The fixture spawns above the floor. Hold the ordinary service brake
+        // during the reset/landing phase so the chassis can reach a real,
+        // repeatable stationary state instead of rolling indefinitely from
+        // suspension/contact transients. The brake is released when the test
+        // condition is applied; no hidden force is injected.
+        Controls.SetBrake(1.0f);
         Controls.SetHandbrake(0.0f);
         Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);
