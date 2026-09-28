@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "ChaosVehicleWheel.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
@@ -30,6 +31,8 @@ struct FPinkCabD3Run
     float AvailableEngineTorqueNm = 0.0f;
     int32 ChaosCurrentGear = 0;
     int32 ChaosTargetGear = 0;
+    float ResetEngineRpm = 0.0f;
+    float ResetMaxDrivenWheelRpm = 0.0f;
 };
 
 float MedianD3(TArray<float> Values)
@@ -125,6 +128,86 @@ public:
             return true;
         }
 
+        if (bResetting)
+        {
+            float MaxDrivenWheelRpm = 0.0f;
+            for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+            {
+                if (!Wheel || !Wheel->bAffectedByEngine)
+                {
+                    continue;
+                }
+                MaxDrivenWheelRpm = FMath::Max(
+                    MaxDrivenWheelRpm,
+                    FMath::Abs(
+                        Wheel->GetWheelAngularVelocity()
+                        * (60.0f / (2.0f * PI))));
+            }
+
+            const float EngineRpm = Movement->GetEngineRotationSpeed();
+            const bool bEngineResetObserved =
+                FMath::Abs(EngineRpm - InitialEngineRpm)
+                    <= ResetEngineRpmTolerance;
+            const bool bWheelsResetObserved =
+                MaxDrivenWheelRpm <= ResetWheelRpmTolerance;
+            const bool bNativeGearNeutral =
+                Movement->GetCurrentGear() == 0
+                && Movement->GetTargetGear() == 0;
+
+            if (bEngineResetObserved
+                && bWheelsResetObserved
+                && bNativeGearNeutral)
+            {
+                CurrentResetEngineRpm = EngineRpm;
+                CurrentResetMaxDrivenWheelRpm = MaxDrivenWheelRpm;
+
+                Controls = {};
+                Controls.SetThrottle(CurrentThrottle());
+                Controls.SetBrake(0.0f);
+                Controls.SetHandbrake(0.0f);
+                Controls.SetDriveline(
+                    CurrentGear(), CurrentGear(), CurrentCoupling());
+                Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+                FPinkCabChaosVehicleDynamicsProvider ConditionProvider(Movement);
+                if (!FPinkCabChaosCockpitBridge::Apply(
+                        Cockpit, *Movement, Controls, ConditionProvider))
+                {
+                    Test->AddError(
+                        TEXT("D3 condition actuation after reset failed"));
+                    return true;
+                }
+
+                RearTorqueSum = 0.0f;
+                EngineRpmSum = 0.0f;
+                LastEffectiveGearRatio =
+                    ConditionProvider.GetLastCausalActuationTelemetry()
+                        .EffectiveGearRatio;
+                SampleCount = 0;
+                RunStartSeconds = FPlatformTime::Seconds();
+                bResetting = false;
+                return false;
+            }
+
+            if (FPlatformTime::Seconds() - ResetStartSeconds
+                < ResetTimeoutSeconds)
+            {
+                return false;
+            }
+
+            Test->AddError(FString::Printf(
+                TEXT("D3 fixture reset not observed coupling=%.3f gear=%d throttle=%.2f repeat=%d engine_rpm=%.3f max_driven_wheel_rpm=%.3f chaos_current=%d chaos_target=%d"),
+                CurrentCoupling(),
+                CurrentGear(),
+                CurrentThrottle(),
+                RepeatIndex + 1,
+                EngineRpm,
+                MaxDrivenWheelRpm,
+                Movement->GetCurrentGear(),
+                Movement->GetTargetGear()));
+            return true;
+        }
+
         const FPinkCabCausalActuationTelemetry& Actuation =
             Provider.GetLastCausalActuationTelemetry();
         LastEffectiveGearRatio = Actuation.EffectiveGearRatio;
@@ -161,14 +244,18 @@ public:
         Run.AvailableEngineTorqueNm = Controls.GetAvailableEngineTorqueNm();
         Run.ChaosCurrentGear = Movement->GetCurrentGear();
         Run.ChaosTargetGear = Movement->GetTargetGear();
+        Run.ResetEngineRpm = CurrentResetEngineRpm;
+        Run.ResetMaxDrivenWheelRpm = CurrentResetMaxDrivenWheelRpm;
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
             Run.Repeat + 1,
+            Run.ResetEngineRpm,
+            Run.ResetMaxDrivenWheelRpm,
             Run.MeanRearDriveTorqueNm,
             Run.MeanEngineRpm,
             Run.EffectiveGearRatio,
@@ -227,28 +314,36 @@ private:
         UChaosWheeledVehicleMovementComponent& Movement,
         USkeletalMeshComponent& Mesh)
     {
-        Movement.SetSnapshot(Baseline);
-        Mesh.WakeAllRigidBodies();
-
+        // First remove all driveline demand. Then request the exact baseline
+        // snapshot and do not start the matrix cell until live physics proves
+        // that engine/wheel/gear reset state is actually observable.
         Controls = {};
-        Controls.SetThrottle(CurrentThrottle());
+        Controls.SetThrottle(0.0f);
         Controls.SetBrake(0.0f);
         Controls.SetHandbrake(0.0f);
-        Controls.SetDriveline(CurrentGear(), CurrentGear(), CurrentCoupling());
+        Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);
 
-        FPinkCabChaosVehicleDynamicsProvider Provider(&Movement);
+        FPinkCabChaosVehicleDynamicsProvider ResetProvider(&Movement);
         if (!FPinkCabChaosCockpitBridge::Apply(
-                Cockpit, Movement, Controls, Provider))
+                Cockpit, Movement, Controls, ResetProvider))
         {
-            Test->AddError(TEXT("D3 initial authoritative actuation failed"));
+            Test->AddError(TEXT("D3 reset actuation failed"));
+            return;
         }
+
+        Movement.SetSnapshot(Baseline);
+        Mesh.WakeAllRigidBodies();
 
         RearTorqueSum = 0.0f;
         EngineRpmSum = 0.0f;
         LastEffectiveGearRatio = 0.0f;
+        CurrentResetEngineRpm = 0.0f;
+        CurrentResetMaxDrivenWheelRpm = 0.0f;
         SampleCount = 0;
-        RunStartSeconds = FPlatformTime::Seconds();
+        bResetting = true;
+        ResetStartSeconds = FPlatformTime::Seconds();
+        RunStartSeconds = 0.0;
     }
 
     TArray<float> ValuesFor(
@@ -288,6 +383,11 @@ private:
                     && Run.ResolvedEngineThrottle01 <= 1.0f + KINDA_SMALL_NUMBER);
             Test->TestTrue(TEXT("available engine torque is non-negative"),
                 Run.AvailableEngineTorqueNm >= 0.0f);
+            Test->TestTrue(TEXT("every D3 repeat starts from proven engine RPM reset"),
+                FMath::Abs(Run.ResetEngineRpm - InitialEngineRpm)
+                    <= ResetEngineRpmTolerance);
+            Test->TestTrue(TEXT("every D3 repeat starts from stopped driven wheels"),
+                Run.ResetMaxDrivenWheelRpm <= ResetWheelRpmTolerance);
         }
 
         for (const int32 Gear : Gears)
@@ -360,16 +460,23 @@ private:
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
+    static constexpr float ResetEngineRpmTolerance = 200.0f;
+    static constexpr float ResetWheelRpmTolerance = 2.0f;
+    static constexpr double ResetTimeoutSeconds = 0.50;
 
     int32 CouplingIndex = 0;
     int32 GearIndex = 0;
     int32 ThrottleIndex = 0;
     int32 RepeatIndex = 0;
     bool bInitialized = false;
+    bool bResetting = false;
     int32 SampleCount = 0;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
+    float CurrentResetEngineRpm = 0.0f;
+    float CurrentResetMaxDrivenWheelRpm = 0.0f;
+    double ResetStartSeconds = 0.0;
     double RunStartSeconds = 0.0;
 };
 
