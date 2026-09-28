@@ -184,7 +184,7 @@ FString FPinkCabCausalTelemetryTrace::ToWheelCsv() const
         {
             Csv += FString::Printf(
                 TEXT("%llu,%.9f,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,")
-                TEXT("%d,%d,%d,%d,%.6f,%d,%.6f,%d,%.6f,%d,%.6f\n"),
+                TEXT("%d,%d,%d,%d,%d,%.6f,%d,%.6f,%d,%.6f,%d,%.6f\n"),
                 static_cast<unsigned long long>(Frame.Sequence),
                 Frame.TimestampSeconds,
                 Wheel.WheelIndex,
