@@ -43,37 +43,48 @@ void FPinkCabChaosWheeledVehicleSimulation::SetDrivelineCommand(
 }
 
 void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
-    const int32 InSettleSteps,
-    const int32 InSampleSteps)
+    const float InSettleSeconds,
+    const float InSampleSeconds)
 {
-    EvidenceSettleStepsRemaining = FMath::Max(InSettleSteps, 0);
-    EvidenceTargetSteps = FMath::Max(InSampleSteps, 1);
+    EvidenceSettleSecondsRemaining =
+        FMath::Max(static_cast<double>(InSettleSeconds), 0.0);
+    EvidenceTargetSampleSeconds =
+        FMath::Max(static_cast<double>(InSampleSeconds), 1.0e-4);
+    EvidenceCompletedSampleSeconds = 0.0;
     EvidenceCompletedSteps = 0;
-    EvidenceDrivenWheelTorqueSumNm = 0.0;
-    EvidenceEngineRpmSum = 0.0;
-    EvidenceDeltaSecondsSum = 0.0;
+    EvidenceDrivenWheelTorqueTimeIntegral = 0.0;
+    EvidenceEngineRpmTimeIntegral = 0.0;
+    EvidenceObservedDeltaSecondsSum = 0.0;
 }
 
 FPinkCabMechanicalEvidenceSnapshot
 FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
 {
     FPinkCabMechanicalEvidenceSnapshot Result;
-    Result.TargetSampleSteps = EvidenceTargetSteps;
     Result.CompletedSampleSteps = EvidenceCompletedSteps;
+    Result.TargetSampleSeconds =
+        static_cast<float>(EvidenceTargetSampleSeconds);
+    Result.CompletedSampleSeconds =
+        static_cast<float>(EvidenceCompletedSampleSeconds);
+    if (EvidenceCompletedSampleSeconds > 0.0)
+    {
+        Result.MeanDrivenWheelTorqueNm = static_cast<float>(
+            EvidenceDrivenWheelTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+        Result.MeanEngineRpm = static_cast<float>(
+            EvidenceEngineRpmTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+    }
     if (EvidenceCompletedSteps > 0)
     {
-        const double Denominator =
-            static_cast<double>(EvidenceCompletedSteps);
-        Result.MeanDrivenWheelTorqueNm = static_cast<float>(
-            EvidenceDrivenWheelTorqueSumNm / Denominator);
-        Result.MeanEngineRpm = static_cast<float>(
-            EvidenceEngineRpmSum / Denominator);
         Result.MeanDeltaSeconds = static_cast<float>(
-            EvidenceDeltaSecondsSum / Denominator);
+            EvidenceObservedDeltaSecondsSum
+            / static_cast<double>(EvidenceCompletedSteps));
     }
     Result.bComplete =
-        EvidenceTargetSteps > 0
-        && EvidenceCompletedSteps >= EvidenceTargetSteps;
+        EvidenceTargetSampleSeconds > 0.0
+        && EvidenceCompletedSampleSeconds
+            + 1.0e-9 >= EvidenceTargetSampleSeconds;
     return Result;
 }
 
@@ -258,14 +269,35 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
     const FDrivenWheelTorqueStats& WheelStats,
     const float DeltaTime)
 {
-    if (EvidenceTargetSteps <= 0
-        || EvidenceCompletedSteps >= EvidenceTargetSteps)
+    if (EvidenceTargetSampleSeconds <= 0.0
+        || EvidenceCompletedSampleSeconds
+            + 1.0e-9 >= EvidenceTargetSampleSeconds
+        || DeltaTime <= KINDA_SMALL_NUMBER)
     {
         return;
     }
-    if (EvidenceSettleStepsRemaining > 0)
+
+    double RemainingSeconds = static_cast<double>(DeltaTime);
+    if (EvidenceSettleSecondsRemaining > 0.0)
     {
-        --EvidenceSettleStepsRemaining;
+        const double SettleConsumed = FMath::Min(
+            RemainingSeconds,
+            EvidenceSettleSecondsRemaining);
+        EvidenceSettleSecondsRemaining -= SettleConsumed;
+        RemainingSeconds -= SettleConsumed;
+        if (RemainingSeconds <= 1.0e-9)
+        {
+            return;
+        }
+    }
+
+    const double SampleRemaining =
+        EvidenceTargetSampleSeconds
+        - EvidenceCompletedSampleSeconds;
+    const double SampleWeightSeconds =
+        FMath::Min(RemainingSeconds, SampleRemaining);
+    if (SampleWeightSeconds <= 1.0e-9)
+    {
         return;
     }
 
@@ -274,11 +306,14 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
             ? WheelStats.AbsTorqueSumNm
                 / static_cast<float>(WheelStats.DrivenWheelCount)
             : 0.0f;
-    EvidenceDrivenWheelTorqueSumNm +=
-        static_cast<double>(MeanDrivenWheelTorqueNm);
-    EvidenceEngineRpmSum +=
-        static_cast<double>(Engine.GetEngineRPM());
-    EvidenceDeltaSecondsSum +=
+    EvidenceDrivenWheelTorqueTimeIntegral +=
+        static_cast<double>(MeanDrivenWheelTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceEngineRpmTimeIntegral +=
+        static_cast<double>(Engine.GetEngineRPM())
+        * SampleWeightSeconds;
+    EvidenceCompletedSampleSeconds += SampleWeightSeconds;
+    EvidenceObservedDeltaSecondsSum +=
         static_cast<double>(DeltaTime);
     ++EvidenceCompletedSteps;
 }

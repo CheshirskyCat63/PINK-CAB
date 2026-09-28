@@ -10,8 +10,9 @@ class FPinkCabChaosWheeledVehicleSimulation;
 
 struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
 {
-    int32 TargetSampleSteps = 0;
     int32 CompletedSampleSteps = 0;
+    float TargetSampleSeconds = 0.0f;
+    float CompletedSampleSeconds = 0.0f;
     float MeanDrivenWheelTorqueNm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanDeltaSeconds = 0.0f;
@@ -73,8 +74,8 @@ public:
     }
 
     bool BeginPinkCabMechanicalEvidenceWindow(
-        int32 SettleSteps,
-        int32 SampleSteps);
+        float SettleSeconds,
+        float SampleSeconds);
     bool ReadPinkCabMechanicalEvidenceWindow(
         FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
 

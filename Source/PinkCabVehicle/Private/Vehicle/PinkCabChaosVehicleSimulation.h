@@ -19,7 +19,7 @@ public:
 
     void SetDrivelineCommand(
         const FPinkCabChaosDrivelineCommand& InCommand);
-    void BeginEvidenceWindow(int32 InSettleSteps, int32 InSampleSteps);
+    void BeginEvidenceWindow(float InSettleSeconds, float InSampleSeconds);
     FPinkCabMechanicalEvidenceSnapshot ReadEvidenceWindow() const;
 
     virtual void ApplyInput(
@@ -56,10 +56,11 @@ private:
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabEngineActuationResult PhysicsThreadActuation;
     FPinkCabClutchDrivelineModel ClutchModel;
-    int32 EvidenceSettleStepsRemaining = 0;
-    int32 EvidenceTargetSteps = 0;
+    double EvidenceSettleSecondsRemaining = 0.0;
+    double EvidenceTargetSampleSeconds = 0.0;
+    double EvidenceCompletedSampleSeconds = 0.0;
     int32 EvidenceCompletedSteps = 0;
-    double EvidenceDrivenWheelTorqueSumNm = 0.0;
-    double EvidenceEngineRpmSum = 0.0;
-    double EvidenceDeltaSecondsSum = 0.0;
+    double EvidenceDrivenWheelTorqueTimeIntegral = 0.0;
+    double EvidenceEngineRpmTimeIntegral = 0.0;
+    double EvidenceObservedDeltaSecondsSum = 0.0;
 };

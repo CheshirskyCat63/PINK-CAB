@@ -169,8 +169,8 @@ public:
                         .EffectiveGearRatio;
                 if (!PinkCabMovement
                         ->BeginPinkCabMechanicalEvidenceWindow(
-                            SettleMechanicalSteps,
-                            SampleFrames))
+                            SettleSeconds,
+                            SampleSeconds))
                 {
                     Test->AddError(
                         TEXT("D3 failed to start exact physics evidence window"));
@@ -222,10 +222,15 @@ public:
         {
             return false;
         }
-        Test->TestEqual(
-            TEXT("D3 evidence window contains exact physical sample count"),
-            Evidence.CompletedSampleSteps,
-            SampleFrames);
+        Test->TestTrue(
+            TEXT("D3 evidence window covers exact simulated sample duration"),
+            FMath::IsNearlyEqual(
+                Evidence.CompletedSampleSeconds,
+                SampleSeconds,
+                1.0e-4f));
+        Test->TestTrue(
+            TEXT("D3 evidence window contains physical samples"),
+            Evidence.CompletedSampleSteps > 0);
 
         FPinkCabD3Run Run;
         Run.Coupling = CurrentCoupling();
@@ -471,8 +476,8 @@ private:
 
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 925.0f;
-    static constexpr int32 SettleMechanicalSteps = 3;
-    static constexpr int32 SampleFrames = 12;
+    static constexpr float SettleSeconds = 0.05f;
+    static constexpr float SampleSeconds = 0.20f;
     static constexpr float OpenTorqueToleranceNm = 1.0f;
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;

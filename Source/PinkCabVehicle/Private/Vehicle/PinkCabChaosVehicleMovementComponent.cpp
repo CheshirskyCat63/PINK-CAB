@@ -33,8 +33,8 @@ void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabClutch(
 }
 
 bool UPinkCabChaosVehicleMovementComponent::BeginPinkCabMechanicalEvidenceWindow(
-    const int32 SettleSteps,
-    const int32 SampleSteps)
+    const float SettleSeconds,
+    const float SampleSeconds)
 {
     FBodyInstance* Body = GetBodyInstance();
     if (!Body || !PinkCabSimulationPT)
@@ -44,13 +44,13 @@ bool UPinkCabChaosVehicleMovementComponent::BeginPinkCabMechanicalEvidenceWindow
 
     return FPhysicsCommand::ExecuteWrite(
         Body->ActorHandle,
-        [this, SettleSteps, SampleSteps](const FPhysicsActorHandle&)
+        [this, SettleSeconds, SampleSeconds](const FPhysicsActorHandle&)
         {
             if (PinkCabSimulationPT)
             {
                 PinkCabSimulationPT->BeginEvidenceWindow(
-                    SettleSteps,
-                    SampleSteps);
+                    SettleSeconds,
+                    SampleSeconds);
             }
         });
 }

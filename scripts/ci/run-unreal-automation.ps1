@@ -69,7 +69,7 @@ if(-not $completed){
 $exitCode=$process.ExitCode
 if(Test-Path -LiteralPath $LogPath){
     Get-Content -LiteralPath $LogPath |
-        Select-String -Pattern 'Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:|P01_IDLE|P02_D3_MATRIX|P02_PHY009_' |
+        Select-String -Pattern 'Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:|P01_IDLE|P01_SLOPE|P01_FLAT_COAST|P02_D3_MATRIX|P02_PHY009_' |
         Select-Object -Last $TailLines |
         ForEach-Object { Write-Host $_.Line }
 }
