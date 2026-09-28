@@ -8,7 +8,7 @@
 #include "Components/BoxComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabCockpitState.h"
@@ -16,17 +16,14 @@
 
 namespace
 {
-APinkCabChaosTatraPawn* FindTatra(UWorld& World)
+APinkCabPhysicsFixturePawn* FindTatra(UWorld& World)
 {
-    for (TActorIterator<APinkCabChaosTatraPawn> It(&World); It; ++It)
-    {
-        return *It;
-    }
-    return nullptr;
+    PinkCabPhysicsFixture::FindOrSpawnFlatFloor(World);
+    return PinkCabPhysicsFixture::FindOrSpawnPawn(World);
 }
 
 bool ApplyEngineState(
-    APinkCabChaosTatraPawn& Pawn,
+    APinkCabPhysicsFixturePawn& Pawn,
     FPinkCabCockpitState& Cockpit,
     FPinkCabVehicleControlState& Controls)
 {
@@ -55,7 +52,7 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
+        APinkCabPhysicsFixturePawn* Pawn = FindTatra(*World);
         if (!Pawn)
         {
             return false;
@@ -72,8 +69,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
@@ -224,7 +220,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabEngineOffNeutralSlopeRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+        PinkCabPhysicsFixture::MapPath, true);
     TestTrue(TEXT("slope runtime map opens"), bOpened);
     if (!bOpened)
     {
@@ -248,7 +244,7 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
+        APinkCabPhysicsFixturePawn* Pawn = FindTatra(*World);
         if (!Pawn)
         {
             return false;
@@ -263,8 +259,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
             {
@@ -380,7 +375,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabWarmIdleBlipRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+        PinkCabPhysicsFixture::MapPath, true);
     TestTrue(TEXT("idle runtime map opens"), bOpened);
     if (!bOpened)
     {
