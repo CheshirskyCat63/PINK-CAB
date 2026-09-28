@@ -65,8 +65,8 @@ public:
 
                     // UE's simple engine lifecycle enables the engine but does
                     // not guarantee a non-zero initial angular state. Seed only
-                    // a stopped engine at the already accepted profile idle;
-                    // preserve non-zero snapshot/runtime RPM when present.
+                    // a stopped engine at the accepted profile idle; preserve
+                    // any non-zero runtime/snapshot RPM.
                     if (Engine.GetEngineRPM() <= KINDA_SMALL_NUMBER)
                     {
                         Engine.SetEngineOmega(
@@ -75,21 +75,21 @@ public:
                     }
                     bEngineStarted = true;
                 }
-                Engine.SetThrottle(
-                    FMath::Clamp(
+            }
+            else if (bEngineStarted)
+            {
+                Engine.StopEngine();
+                bEngineStarted = false;
+            }
+
+            const float PhysicsThreadThrottle01 =
+                Command.bCombustionAllowed
+                    ? FMath::Clamp(
                         Command.AuthoritativeEngineThrottle01,
                         0.0f,
-                        1.0f));
-            }
-            else
-            {
-                if (bEngineStarted)
-                {
-                    Engine.StopEngine();
-                    bEngineStarted = false;
-                }
-                Engine.SetThrottle(0.0f);
-            }
+                        1.0f)
+                    : 0.0f;
+            Engine.SetThrottle(PhysicsThreadThrottle01);
         }
 
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
@@ -140,9 +140,12 @@ public:
 
         if (Command.bCombustionAllowed)
         {
-            // Preserve the accepted P01 free-running engine dynamics. The clutch
-            // reaction is applied afterwards on the same physics step.
-            Engine.SetEngineRPM(true, 0.0f);
+            // PINK CAB owns clutch coupling, so Chaos' simple engine must always
+            // integrate as a free engine. Passing bInGear=true would hard-lock
+            // engine RPM to the supplied wheel RPM and recreate the exact
+            // coupling discontinuity PHY-009 removes.
+            Engine.SetEngineRPM(false, 0.0f);
+            Engine.Simulate(DeltaTime);
         }
 
         const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
