@@ -363,6 +363,7 @@ bool FPinkCabClutchBoundaryContinuityRuntimeTest::RunTest(const FString& Paramet
 struct FPinkCabPartialClutchReactionRun
 {
     float InitialSpeedKmh = 0.0f;
+    float SeedWheelDerivedEngineRpm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
     float MeanWheelDerivedEngineRpm = 0.0f;
@@ -478,6 +479,8 @@ public:
 
         FPinkCabPartialClutchReactionRun Result;
         Result.InitialSpeedKmh = CurrentSpeedKmh();
+        Result.SeedWheelDerivedEngineRpm =
+            CurrentSeedWheelDerivedEngineRpm;
         Result.MeanEngineRpm =
             SampleCount > 0 ? EngineRpmSum / static_cast<float>(SampleCount) : 0.0f;
         Result.MeanDrivenWheelRpm =
@@ -491,9 +494,10 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_REACTION speed_kmh=%.1f repeat=%d engine_rpm=%.3f driven_wheel_rpm=%.3f wheel_derived_engine_rpm=%.3f"),
+            TEXT("P02_PHY009_REACTION speed_kmh=%.1f repeat=%d seed_wheel_derived_engine_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f measured_wheel_derived_engine_rpm=%.3f"),
             Result.InitialSpeedKmh,
             RepeatIndex + 1,
+            Result.SeedWheelDerivedEngineRpm,
             Result.MeanEngineRpm,
             Result.MeanDrivenWheelRpm,
             Result.MeanWheelDerivedEngineRpm));
@@ -533,6 +537,8 @@ private:
         // chassis velocity and waiting for Chaos to invent wheel speed. The
         // snapshot seeds every wheel from the authored runtime radius so the
         // low/high conditions begin with a real, deterministic shaft stimulus.
+        float SeedDrivenWheelRpmSum = 0.0f;
+        int32 SeedDrivenWheelCount = 0;
         for (int32 WheelIndex = 0;
              WheelIndex < RunSnapshot.WheelSnapshots.Num()
                  && WheelIndex < Movement.Wheels.Num();
@@ -545,9 +551,29 @@ private:
             }
             const float RadiusM =
                 FMath::Max(Wheel->WheelRadius * 0.01f, KINDA_SMALL_NUMBER);
-            RunSnapshot.WheelSnapshots[WheelIndex].WheelAngularVelocity =
+            const float SeedAngularVelocityRadPerSec =
                 SpeedMps / RadiusM;
+            RunSnapshot.WheelSnapshots[WheelIndex].WheelAngularVelocity =
+                SeedAngularVelocityRadPerSec;
+
+            if (Wheel->bAffectedByEngine)
+            {
+                SeedDrivenWheelRpmSum +=
+                    FMath::Abs(SeedAngularVelocityRadPerSec)
+                    * (60.0f / (2.0f * PI));
+                ++SeedDrivenWheelCount;
+            }
         }
+
+        const float SeedDrivenWheelRpm =
+            SeedDrivenWheelCount > 0
+                ? SeedDrivenWheelRpmSum
+                    / static_cast<float>(SeedDrivenWheelCount)
+                : 0.0f;
+        const float EffectiveRatio = FMath::Abs(
+            Movement.TransmissionSetup.GetGearRatio(1));
+        CurrentSeedWheelDerivedEngineRpm =
+            SeedDrivenWheelRpm * EffectiveRatio;
 
         Movement.SetSnapshot(RunSnapshot);
         Mesh.SetPhysicsLinearVelocity(
@@ -580,34 +606,43 @@ private:
     {
         TArray<float> LowEngineRpm;
         TArray<float> HighEngineRpm;
-        TArray<float> LowWheelDerivedRpm;
-        TArray<float> HighWheelDerivedRpm;
+        TArray<float> LowSeedWheelDerivedRpm;
+        TArray<float> HighSeedWheelDerivedRpm;
+        TArray<float> LowMeasuredWheelDerivedRpm;
+        TArray<float> HighMeasuredWheelDerivedRpm;
 
         for (const FPinkCabPartialClutchReactionRun& Run : Runs)
         {
             const bool bLow = FMath::IsNearlyEqual(
                 Run.InitialSpeedKmh, SpeedsKmh[0], KINDA_SMALL_NUMBER);
             (bLow ? LowEngineRpm : HighEngineRpm).Add(Run.MeanEngineRpm);
-            (bLow ? LowWheelDerivedRpm : HighWheelDerivedRpm).Add(
+            (bLow ? LowSeedWheelDerivedRpm : HighSeedWheelDerivedRpm).Add(
+                Run.SeedWheelDerivedEngineRpm);
+            (bLow ? LowMeasuredWheelDerivedRpm : HighMeasuredWheelDerivedRpm).Add(
                 Run.MeanWheelDerivedEngineRpm);
         }
 
         const float LowEngineMedian = Median(LowEngineRpm);
         const float HighEngineMedian = Median(HighEngineRpm);
-        const float LowWheelMedian = Median(LowWheelDerivedRpm);
-        const float HighWheelMedian = Median(HighWheelDerivedRpm);
-        const float ShaftStimulusRpm = HighWheelMedian - LowWheelMedian;
+        const float LowSeedWheelMedian = Median(LowSeedWheelDerivedRpm);
+        const float HighSeedWheelMedian = Median(HighSeedWheelDerivedRpm);
+        const float LowMeasuredWheelMedian = Median(LowMeasuredWheelDerivedRpm);
+        const float HighMeasuredWheelMedian = Median(HighMeasuredWheelDerivedRpm);
+        const float ShaftStimulusRpm =
+            HighSeedWheelMedian - LowSeedWheelMedian;
         const float EngineReactionRpm = HighEngineMedian - LowEngineMedian;
         const float ReactionFraction = ShaftStimulusRpm > KINDA_SMALL_NUMBER
             ? EngineReactionRpm / ShaftStimulusRpm
             : 0.0f;
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_REACTION_MEDIAN low_engine_rpm=%.3f high_engine_rpm=%.3f low_wheel_derived_rpm=%.3f high_wheel_derived_rpm=%.3f shaft_stimulus_rpm=%.3f engine_reaction_rpm=%.3f reaction_fraction=%.6f"),
+            TEXT("P02_PHY009_REACTION_MEDIAN low_engine_rpm=%.3f high_engine_rpm=%.3f low_seed_shaft_rpm=%.3f high_seed_shaft_rpm=%.3f low_measured_shaft_rpm=%.3f high_measured_shaft_rpm=%.3f shaft_stimulus_rpm=%.3f engine_reaction_rpm=%.3f reaction_fraction=%.6f"),
             LowEngineMedian,
             HighEngineMedian,
-            LowWheelMedian,
-            HighWheelMedian,
+            LowSeedWheelMedian,
+            HighSeedWheelMedian,
+            LowMeasuredWheelMedian,
+            HighMeasuredWheelMedian,
             ShaftStimulusRpm,
             EngineReactionRpm,
             ReactionFraction));
@@ -653,6 +688,7 @@ private:
     float EngineRpmSum = 0.0f;
     float DrivenWheelRpmSumSamples = 0.0f;
     float WheelDerivedEngineRpmSum = 0.0f;
+    float CurrentSeedWheelDerivedEngineRpm = 0.0f;
     double RunStartSeconds = 0.0;
 };
 
