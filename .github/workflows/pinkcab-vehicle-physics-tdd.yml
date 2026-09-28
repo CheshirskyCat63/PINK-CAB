@@ -88,7 +88,19 @@ jobs:
               throw "PINKCAB_PHYSICS_FIXTURE_POINTER_MISSING=$($fixture.path)"
             }
             $pointer=Get-Content -LiteralPath $absolute -Raw
-            $match=[regex]::Match($pointer,'(?m)^oid sha256:([0-9a-f]{64})\s*
+            $match=[regex]::Match($pointer,"(?m)^oid sha256:([0-9a-f]{64})\s*$")
+            if(-not $match.Success){
+              $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $absolute).Hash.ToLowerInvariant()
+              if($actual -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+                throw "PINKCAB_PHYSICS_FIXTURE_HASH_MISMATCH=$($fixture.path) actual=$actual expected=$($fixture.oid_sha256)"
+              }
+            } elseif($match.Groups[1].Value -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+              throw "PINKCAB_PHYSICS_FIXTURE_OID_MISMATCH=$($fixture.path) actual=$($match.Groups[1].Value) expected=$($fixture.oid_sha256)"
+            }
+            $materializeArgs += '--required'
+            $materializeArgs += [string]$fixture.path
+          }
+          python @materializeArgs
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host "PINKCAB_PHYSICS_LOCAL_LFS_MATERIALIZATION=PASS"
 
