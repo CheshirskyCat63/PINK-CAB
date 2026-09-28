@@ -56,7 +56,7 @@ Hard rules:
 
 - raw keyboard/mouse/device interpretation belongs in Interaction;
 - player-space `+X` means right; gearbox `+Y` means top/forward row 1/3/5;
-- Chaos control writes belong in the Chaos vehicle dynamics adapter;
+- game-thread semantic control writes belong in `PinkCabChaosVehicleDynamicsProvider`; physics-thread engine/wheel torque writes belong only in `PinkCabChaosVehicleMovementComponent`; no third Chaos actuation writer is allowed;
 - gameplay domains do not depend on Persistence implementation internals;
 - presentation consumes authoritative state and does not create a second source of truth;
 - no new dependency cycle or larger code-health violation may be added over the committed baseline.
@@ -75,13 +75,14 @@ Hard rules:
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
 | `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
-| `clutch` | clutch coupling, heat/wear, stall coupling | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h` | `PinkCab.Vehicle.ControlRuntime` |
+| `clutch` | clutch torque transfer, slip, lock and bidirectional engine↔shaft reaction | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h` | `PinkCab.Vehicle.Physics.P02.ClutchModel` |
 | `throttle` | launch redose/target behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `brake` | brake dosing target | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |
 | `device_input_sign` | OS/UE mouse axis -> driver-space sign | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPhysicalInputConvention.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `player_input_capture` | PlayerController/raw device capture -> semantic sample | Interaction | `Source/PinkCabInteraction/Public/Interaction/PinkCabPlayerInputAdapter.h` | `PinkCab.Interaction.PlayerInput` |
-| `chaos_translation` | semantic controls -> Chaos API | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
+| `chaos_translation` | semantic controls -> authoritative Chaos command | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.ChaosBaseline` |
+| `chaos_physics_actuation` | physics-thread engine/clutch/wheel torque integration | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h` | `PinkCab.Vehicle.Physics.P02` |
 | `fare` | fare loop/taximeter lifecycle | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabFareLoopCoordinator.h` | `PinkCab.Taxi` |
 | `passenger` | persistent passenger record behavior | Taxi | `Source/PinkCabTaxi/Public/Taxi/PinkCabPassengerRecord.h` | `PinkCab.Taxi.Passenger` |
 | `economy` | balance/transactions/exactly-once ledger | Economy | `Source/PinkCabEconomy/Public/Economy/PinkCabEconomyLedger.h` | `PinkCab.Economy` |
