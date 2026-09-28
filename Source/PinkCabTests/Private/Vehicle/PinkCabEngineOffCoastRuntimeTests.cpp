@@ -7,7 +7,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
@@ -28,15 +28,14 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        AActor* FixtureFloor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!FixtureFloor || !Pawn)
         {
-            Pawn = *It;
-            break;
-        }
-        if (!Pawn)
-        {
-            return false;
+            Test->AddError(TEXT("sterile physics fixture failed to spawn"));
+            return true;
         }
 
         UChaosWheeledVehicleMovementComponent* Movement =
@@ -51,8 +50,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Mesh->WakeAllRigidBodies();
 
@@ -198,7 +196,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabVehicleEngineOffCoastRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        PinkCabPhysicsFixture::MapPath,
         true);
     TestTrue(TEXT("vehicle runtime map opens"), bOpened);
     if (!bOpened)
