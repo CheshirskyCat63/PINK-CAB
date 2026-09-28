@@ -79,51 +79,76 @@ def lfs_object_path(repo: Path, oid: str) -> Path:
     return repo / ".git" / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
 
 
-def checkout_cached_lfs_object(
-    workspace: Path,
-    relative: Path,
-    oid: str,
-) -> None:
-    target = workspace / relative
+def is_git_worktree(workspace: Path) -> bool:
     proc = subprocess.run(
-        ["git", "lfs", "checkout", "--", relative.as_posix()],
+        ["git", "rev-parse", "--is-inside-work-tree"],
         cwd=workspace,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
     )
-    if proc.returncode != 0:
+    return proc.returncode == 0 and proc.stdout.strip().lower() == "true"
+
+
+def materialize_cached_lfs_object(
+    workspace: Path,
+    relative: Path,
+    oid: str,
+) -> None:
+    """Copy a verified LFS object into the worktree and prove integrity.
+
+    Materialization itself must not depend on git lfs checkout: the verified
+    object cache is already the content authority. In a real Git worktree we
+    additionally prove that the configured LFS clean filter maps the bytes back
+    to the tracked pointer, so the checkout stays clean. In isolated unit-test
+    workspaces there may be no Git repository at all, and byte identity is the
+    complete contract.
+    """
+    target = workspace / relative
+    cached = lfs_object_path(workspace, oid)
+    if not cached.exists():
+        raise RuntimeError(f"LFS object cache missing for {relative}: {cached}")
+
+    cached_hash = sha256_file(cached)
+    if cached_hash != oid:
         raise RuntimeError(
-            f"git lfs checkout failed for {relative} ({proc.returncode}): "
-            f"{proc.stderr.strip()}"
+            f"LFS object cache hash mismatch for {relative}: "
+            f"actual={cached_hash} expected={oid}"
         )
-    if not target.exists() or parse_lfs_pointer(target) is not None:
-        raise RuntimeError(f"Git LFS checkout left fixture unresolved: {relative}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp_target = target.with_name(target.name + ".pinkcab-lfs-tmp")
+    shutil.copy2(cached, temp_target)
+    if sha256_file(temp_target) != oid:
+        temp_target.unlink(missing_ok=True)
+        raise RuntimeError(f"Temporary materialization hash mismatch for {relative}")
+    os.replace(temp_target, target)
+
     actual = sha256_file(target)
     if actual != oid:
         raise RuntimeError(
-            f"Git LFS checkout hash mismatch for {relative}: "
+            f"Materialized fixture hash mismatch for {relative}: "
             f"actual={actual} expected={oid}"
         )
+
+    if not is_git_worktree(workspace):
+        return
 
     diff = subprocess.run(
         ["git", "diff", "--quiet", "--", relative.as_posix()],
         cwd=workspace,
         check=False,
     )
+    if diff.returncode not in (0, 1):
+        raise RuntimeError(
+            f"git diff failed while verifying materialized fixture: {relative}"
+        )
     if diff.returncode != 0:
         raise RuntimeError(
-            f"Materialized fixture differs from Git index after LFS checkout: {relative}"
+            f"Materialized fixture differs from Git index after LFS clean filter: {relative}"
         )
 
-    subprocess.run(
-        ["git", "update-index", "--refresh", "--", relative.as_posix()],
-        cwd=workspace,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
     status = subprocess.run(
         ["git", "status", "--porcelain", "--", relative.as_posix()],
         cwd=workspace,
@@ -154,7 +179,7 @@ def materialize_required(
 
     cached = lfs_object_path(workspace, oid)
     if cached.exists() and sha256_file(cached) == oid:
-        checkout_cached_lfs_object(workspace, relative, oid)
+        materialize_cached_lfs_object(workspace, relative, oid)
         print(f"PINKCAB_LOCAL_LFS_FROM_OBJECT_CACHE={relative} oid={oid}")
         return
 
@@ -210,7 +235,7 @@ def materialize_required(
     if sha256_file(cached) != oid:
         raise RuntimeError(f"Local LFS cache verification failed for {relative}")
 
-    checkout_cached_lfs_object(workspace, relative, oid)
+    materialize_cached_lfs_object(workspace, relative, oid)
 
     print(
         f"PINKCAB_LOCAL_LFS_RECOVERED={relative} "
