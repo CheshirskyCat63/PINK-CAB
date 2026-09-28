@@ -75,14 +75,14 @@ public:
                     * FMath::Clamp(ControlInputs.BrakeInput, 0.0f, 1.0f);
             }
 
-            if ((ControlInputs.HandbrakeInput && Setup.HandbrakeEnabled)
+            if ((Command.Handbrake01 > KINDA_SMALL_NUMBER && Setup.HandbrakeEnabled)
                 || ControlInputs.ParkingEnabled)
             {
                 const float HandbrakeTorqueNm =
                     ControlInputs.ParkingEnabled
                         ? Setup.HandbrakeTorque
                         : Setup.HandbrakeTorque
-                            * FMath::Clamp(ControlInputs.HandbrakeInput, 0.0f, 1.0f);
+                            * FMath::Clamp(Command.Handbrake01, 0.0f, 1.0f);
                 BrakeTorqueNm = FMath::Max(BrakeTorqueNm, HandbrakeTorqueNm);
             }
 
@@ -182,6 +182,29 @@ UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
 {
 }
 
+void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabClutch(
+    const FPinkCabClutchDrivelineConfig& InConfig)
+{
+    ClutchConfig = InConfig;
+    PendingDrivelineCommand.ClutchConfig = ClutchConfig;
+
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return;
+    }
+
+    FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                PinkCabSimulationPT->SetDrivelineCommand(PendingDrivelineCommand);
+            }
+        });
+}
+
 TUniquePtr<Chaos::FSimpleWheeledVehicle>
 UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {
@@ -198,11 +221,14 @@ bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDrivelineCommand(
     const FPinkCabChaosDrivelineCommand& InCommand)
 {
     PendingDrivelineCommand = InCommand;
+    PendingDrivelineCommand.ClutchConfig = ClutchConfig;
 
     FBodyInstance* Body = GetBodyInstance();
     if (!Body || !PinkCabSimulationPT)
     {
-        return false;
+        // The command remains authoritative and will be installed when the
+        // physics representation is created. Pre-physics calls are valid.
+        return true;
     }
 
     return FPhysicsCommand::ExecuteWrite(
