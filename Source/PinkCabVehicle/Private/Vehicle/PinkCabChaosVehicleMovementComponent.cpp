@@ -62,6 +62,17 @@ public:
                 if (!bEngineStarted)
                 {
                     Engine.StartEngine();
+
+                    // UE's simple engine lifecycle enables the engine but does
+                    // not guarantee a non-zero initial angular state. Seed only
+                    // a stopped engine at the already accepted profile idle;
+                    // preserve non-zero snapshot/runtime RPM when present.
+                    if (Engine.GetEngineRPM() <= KINDA_SMALL_NUMBER)
+                    {
+                        Engine.SetEngineOmega(
+                            static_cast<float>(Engine.Setup().EngineIdleRPM)
+                            * PinkCabChaosRpmToRadPerSecond);
+                    }
                     bEngineStarted = true;
                 }
                 Engine.SetThrottle(
@@ -132,13 +143,6 @@ public:
             // Preserve the accepted P01 free-running engine dynamics. The clutch
             // reaction is applied afterwards on the same physics step.
             Engine.SetEngineRPM(true, 0.0f);
-        }
-        else if (Command.EngagedGear == 0
-            || Command.ClutchCoupling01 <= KINDA_SMALL_NUMBER)
-        {
-            // Ignition off/stalled with an open driveline has no combustion
-            // source and therefore no synthetic idle.
-            Engine.SetEngineOmega(0.0f);
         }
 
         const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
