@@ -1,0 +1,71 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+enum class EPinkCabClutchDrivelineState : uint8
+{
+    Open,
+    Slipping,
+    Locked
+};
+
+struct PINKCABVEHICLE_API FPinkCabClutchDrivelineConfig
+{
+    // Effective engine rotational inertia used only for the equal/opposite
+    // clutch reaction impulse. Runtime wiring must source this explicitly
+    // from the accepted engine profile; it is never hidden inside the solver.
+    float EngineEffectiveInertia = 0.0f;
+
+    // Maximum clutch torque at full engagement and healthy capacity.
+    // This is an authored/calibrated physical parameter, not a launch helper.
+    float MaxClutchTorqueNm = 0.0f;
+
+    // Time horizon over which an unconstrained clutch attempts to remove slip.
+    // Capacity still limits the actual torque, so this does not force a lock.
+    float SynchronizationTimeSeconds = 0.0f;
+
+    // Diagnostic/state threshold only. It never changes torque authority.
+    float LockedSlipRpm = 0.0f;
+
+    bool IsValid() const;
+};
+
+struct PINKCABVEHICLE_API FPinkCabClutchDrivelineInput
+{
+    float DeltaSeconds = 0.0f;
+    float EngineRpm = 0.0f;
+    float ShaftEquivalentEngineRpm = 0.0f;
+    float AvailableEngineTorqueNm = 0.0f;
+    float ClutchCoupling01 = 0.0f;
+    float DrivetrainTorqueCapacity01 = 1.0f;
+    float EffectiveGearRatio = 0.0f;
+    float TransmissionEfficiency = 1.0f;
+};
+
+struct PINKCABVEHICLE_API FPinkCabClutchDrivelineOutput
+{
+    EPinkCabClutchDrivelineState State = EPinkCabClutchDrivelineState::Open;
+    float SlipRpm = 0.0f;
+    float TorqueCapacityNm = 0.0f;
+    float RequestedClutchTorqueNm = 0.0f;
+    float TransmittedClutchTorqueNm = 0.0f;
+    float RearAxleTorqueNm = 0.0f;
+    float EngineReactionDeltaRpm = 0.0f;
+    bool bTorqueLimited = false;
+};
+
+class PINKCABVEHICLE_API FPinkCabClutchDrivelineModel
+{
+public:
+    explicit FPinkCabClutchDrivelineModel(
+        const FPinkCabClutchDrivelineConfig& InConfig = {});
+
+    void SetConfig(const FPinkCabClutchDrivelineConfig& InConfig);
+    const FPinkCabClutchDrivelineConfig& GetConfig() const { return Config; }
+
+    FPinkCabClutchDrivelineOutput Step(
+        const FPinkCabClutchDrivelineInput& Input) const;
+
+private:
+    FPinkCabClutchDrivelineConfig Config;
+};
