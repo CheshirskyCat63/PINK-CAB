@@ -1,6 +1,7 @@
 #include "Vehicle/PinkCabPhysicsFixturePawn.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "ChaosVehicleWheel.h"
 #include "Components/BoxComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -79,6 +80,112 @@ APinkCabPhysicsFixturePawn::GetChaosMovement() const
 {
     return Cast<UChaosWheeledVehicleMovementComponent>(
         GetVehicleMovementComponent());
+}
+
+void FPinkCabPhysicsFixtureRestGate::Reset()
+{
+    Observation = {};
+    StartMechanicalStep = -1;
+    LastMechanicalStep = -1;
+    StableMechanicalSteps = 0;
+}
+
+bool FPinkCabPhysicsFixtureRestGate::Update(
+    APinkCabPhysicsFixturePawn& Pawn)
+{
+    UChaosWheeledVehicleMovementComponent* Movement =
+        Pawn.GetChaosMovement();
+    UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    USkeletalMeshComponent* Mesh = Pawn.GetMesh();
+    if (!Movement || !PinkCabMovement || !Mesh)
+    {
+        StableMechanicalSteps = 0;
+        return false;
+    }
+
+    const int64 MechanicalStep =
+        PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+    if (StartMechanicalStep < 0)
+    {
+        StartMechanicalStep = MechanicalStep;
+        LastMechanicalStep = MechanicalStep;
+        return false;
+    }
+    if (MechanicalStep == LastMechanicalStep)
+    {
+        return false;
+    }
+
+    const bool bConsecutiveMechanicalStep =
+        MechanicalStep == LastMechanicalStep + 1;
+    LastMechanicalStep = MechanicalStep;
+
+    Observation = {};
+    Observation.MechanicalStep = MechanicalStep;
+    Observation.ElapsedMechanicalSteps =
+        MechanicalStep - StartMechanicalStep;
+    Observation.EngineRpm = Movement->GetEngineRotationSpeed();
+    Observation.TargetIdleRpm = Movement->EngineSetup.EngineIdleRPM;
+    Observation.BodyLinearSpeedCmPerSec =
+        Mesh->GetPhysicsLinearVelocity().Size();
+    Observation.BodyAngularSpeedDegPerSec =
+        Mesh->GetPhysicsAngularVelocityInDegrees().Size();
+    Observation.NativeCurrentGear = Movement->GetCurrentGear();
+    Observation.NativeTargetGear = Movement->GetTargetGear();
+
+    for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+    {
+        if (!Wheel || !Wheel->bAffectedByEngine)
+        {
+            continue;
+        }
+        Observation.MaxDrivenWheelRpm = FMath::Max(
+            Observation.MaxDrivenWheelRpm,
+            FMath::Abs(
+                Wheel->GetWheelAngularVelocity()
+                * (60.0f / (2.0f * PI))));
+    }
+
+    // A fresh vehicle is spawned above the floor. Engine RPM + wheel RPM alone
+    // are therefore not a valid reset proof: those values are already quiet
+    // while the chassis is still in free fall. Require enough completed
+    // mechanical integrations for the fall/contact transient to occur, then
+    // require five consecutive fully observed rest steps.
+    static constexpr int64 MinimumMechanicalStepsBeforeRest = 20;
+    static constexpr int32 RequiredStableMechanicalSteps = 5;
+    static constexpr float EngineIdleToleranceRpm = 30.0f;
+    static constexpr float DrivenWheelToleranceRpm = 2.0f;
+    static constexpr float BodyLinearToleranceCmPerSec = 5.0f;
+    static constexpr float BodyAngularToleranceDegPerSec = 2.0f;
+
+    const bool bRestCandidate =
+        Observation.ElapsedMechanicalSteps
+            >= MinimumMechanicalStepsBeforeRest
+        && FMath::Abs(
+            Observation.EngineRpm - Observation.TargetIdleRpm)
+            <= EngineIdleToleranceRpm
+        && Observation.MaxDrivenWheelRpm <= DrivenWheelToleranceRpm
+        && Observation.BodyLinearSpeedCmPerSec
+            <= BodyLinearToleranceCmPerSec
+        && Observation.BodyAngularSpeedDegPerSec
+            <= BodyAngularToleranceDegPerSec
+        && Observation.NativeCurrentGear == 0
+        && Observation.NativeTargetGear == 0;
+
+    if (bRestCandidate)
+    {
+        StableMechanicalSteps =
+            bConsecutiveMechanicalStep
+                ? StableMechanicalSteps + 1
+                : 1;
+    }
+    else
+    {
+        StableMechanicalSteps = 0;
+    }
+
+    return StableMechanicalSteps >= RequiredStableMechanicalSteps;
 }
 
 APinkCabPhysicsFixturePawn* PinkCabPhysicsFixture::FindOrSpawnPawn(

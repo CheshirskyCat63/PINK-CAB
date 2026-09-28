@@ -31,6 +31,10 @@ struct FPinkCabD3Run
     int32 ChaosTargetGear = 0;
     float ResetEngineRpm = 0.0f;
     float ResetMaxDrivenWheelRpm = 0.0f;
+    float ResetBodyLinearSpeedCmPerSec = 0.0f;
+    float ResetBodyAngularSpeedDegPerSec = 0.0f;
+    int64 ResetMechanicalSteps = 0;
+    int32 ResetStableMechanicalSteps = 0;
 };
 
 float MedianD3(TArray<float> Values)
@@ -117,46 +121,26 @@ public:
 
         if (bResetting)
         {
-            const int64 MechanicalStep =
-                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
-            if (!bResetStepAnchorSet)
-            {
-                ResetStartMechanicalStep = MechanicalStep;
-                bResetStepAnchorSet = true;
-            }
             ++ResetPollCount;
+            const bool bPhysicallySettled =
+                RestGate.Update(*Pawn);
+            const FPinkCabPhysicsFixtureRestObservation& Rest =
+                RestGate.GetObservation();
 
-            float MaxDrivenWheelRpm = 0.0f;
-            for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+            if (bPhysicallySettled)
             {
-                if (!Wheel || !Wheel->bAffectedByEngine)
-                {
-                    continue;
-                }
-                MaxDrivenWheelRpm = FMath::Max(
-                    MaxDrivenWheelRpm,
-                    FMath::Abs(
-                        Wheel->GetWheelAngularVelocity()
-                        * (60.0f / (2.0f * PI))));
-            }
-
-            const float EngineRpm = Movement->GetEngineRotationSpeed();
-            const bool bEngineResetObserved =
-                FMath::Abs(EngineRpm - InitialEngineRpm)
-                    <= ResetEngineRpmTolerance;
-            const bool bWheelsResetObserved =
-                MaxDrivenWheelRpm <= ResetWheelRpmTolerance;
-            const bool bNativeGearNeutral =
-                Movement->GetCurrentGear() == 0
-                && Movement->GetTargetGear() == 0;
-
-            if (bEngineResetObserved
-                && bWheelsResetObserved
-                && bNativeGearNeutral)
-            {
-                CurrentResetEngineRpm = EngineRpm;
-                CurrentResetMaxDrivenWheelRpm = MaxDrivenWheelRpm;
-                LastMechanicalStep = MechanicalStep;
+                CurrentResetEngineRpm = Rest.EngineRpm;
+                CurrentResetMaxDrivenWheelRpm =
+                    Rest.MaxDrivenWheelRpm;
+                CurrentResetBodyLinearSpeedCmPerSec =
+                    Rest.BodyLinearSpeedCmPerSec;
+                CurrentResetBodyAngularSpeedDegPerSec =
+                    Rest.BodyAngularSpeedDegPerSec;
+                CurrentResetMechanicalSteps =
+                    Rest.ElapsedMechanicalSteps;
+                CurrentResetStableMechanicalSteps =
+                    RestGate.GetStableMechanicalSteps();
+                LastMechanicalStep = Rest.MechanicalStep;
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
@@ -186,25 +170,28 @@ public:
                 return false;
             }
 
-            const int64 ResetMechanicalSteps =
-                MechanicalStep - ResetStartMechanicalStep;
-            if (ResetMechanicalSteps < ResetTimeoutMechanicalSteps
+            if (Rest.ElapsedMechanicalSteps
+                    < ResetTimeoutMechanicalSteps
                 && ResetPollCount < ResetPollLimit)
             {
                 return false;
             }
 
             Test->AddError(FString::Printf(
-                TEXT("D3 fixture reset not observed coupling=%.3f gear=%d throttle=%.2f repeat=%d engine_rpm=%.3f max_driven_wheel_rpm=%.3f chaos_current=%d chaos_target=%d mechanical_steps=%lld polls=%d"),
+                TEXT("D3 fixture physical rest not observed coupling=%.3f gear=%d throttle=%.2f repeat=%d engine_rpm=%.3f target_idle_rpm=%.3f max_driven_wheel_rpm=%.3f body_linear_cm_s=%.3f body_angular_deg_s=%.3f chaos_current=%d chaos_target=%d mechanical_steps=%lld stable_steps=%d polls=%d"),
                 CurrentCoupling(),
                 CurrentGear(),
                 CurrentThrottle(),
                 RepeatIndex + 1,
-                EngineRpm,
-                MaxDrivenWheelRpm,
-                Movement->GetCurrentGear(),
-                Movement->GetTargetGear(),
-                static_cast<long long>(ResetMechanicalSteps),
+                Rest.EngineRpm,
+                Rest.TargetIdleRpm,
+                Rest.MaxDrivenWheelRpm,
+                Rest.BodyLinearSpeedCmPerSec,
+                Rest.BodyAngularSpeedDegPerSec,
+                Rest.NativeCurrentGear,
+                Rest.NativeTargetGear,
+                static_cast<long long>(Rest.ElapsedMechanicalSteps),
+                RestGate.GetStableMechanicalSteps(),
                 ResetPollCount));
             return true;
         }
@@ -274,16 +261,27 @@ public:
         Run.ChaosTargetGear = Movement->GetTargetGear();
         Run.ResetEngineRpm = CurrentResetEngineRpm;
         Run.ResetMaxDrivenWheelRpm = CurrentResetMaxDrivenWheelRpm;
+        Run.ResetBodyLinearSpeedCmPerSec =
+            CurrentResetBodyLinearSpeedCmPerSec;
+        Run.ResetBodyAngularSpeedDegPerSec =
+            CurrentResetBodyAngularSpeedDegPerSec;
+        Run.ResetMechanicalSteps = CurrentResetMechanicalSteps;
+        Run.ResetStableMechanicalSteps =
+            CurrentResetStableMechanicalSteps;
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
             Run.Repeat + 1,
             Run.ResetEngineRpm,
             Run.ResetMaxDrivenWheelRpm,
+            Run.ResetBodyLinearSpeedCmPerSec,
+            Run.ResetBodyAngularSpeedDegPerSec,
+            static_cast<long long>(Run.ResetMechanicalSteps),
+            Run.ResetStableMechanicalSteps,
             Run.MeanRearDriveTorqueNm,
             Run.MeanEngineRpm,
             Run.EffectiveGearRatio,
@@ -357,12 +355,15 @@ private:
         LastEffectiveGearRatio = 0.0f;
         CurrentResetEngineRpm = 0.0f;
         CurrentResetMaxDrivenWheelRpm = 0.0f;
+        CurrentResetBodyLinearSpeedCmPerSec = 0.0f;
+        CurrentResetBodyAngularSpeedDegPerSec = 0.0f;
+        CurrentResetMechanicalSteps = 0;
+        CurrentResetStableMechanicalSteps = 0;
         SampleCount = 0;
         SettleMechanicalStepsRemaining = 0;
         LastMechanicalStep = -1;
-        ResetStartMechanicalStep = -1;
         ResetPollCount = 0;
-        bResetStepAnchorSet = false;
+        RestGate.Reset();
         bResetting = true;
     }
 
@@ -408,6 +409,13 @@ private:
                     <= ResetEngineRpmTolerance);
             Test->TestTrue(TEXT("every D3 repeat starts from stopped driven wheels"),
                 Run.ResetMaxDrivenWheelRpm <= ResetWheelRpmTolerance);
+            Test->TestTrue(TEXT("every D3 repeat starts from settled chassis linear state"),
+                Run.ResetBodyLinearSpeedCmPerSec <= ResetBodyLinearToleranceCmPerSec);
+            Test->TestTrue(TEXT("every D3 repeat starts from settled chassis angular state"),
+                Run.ResetBodyAngularSpeedDegPerSec <= ResetBodyAngularToleranceDegPerSec);
+            Test->TestTrue(TEXT("every D3 repeat proves a physical settle window"),
+                Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
+                    && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
         }
 
         for (const int32 Gear : Gears)
@@ -481,6 +489,10 @@ private:
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
+    static constexpr float ResetBodyLinearToleranceCmPerSec = 5.0f;
+    static constexpr float ResetBodyAngularToleranceDegPerSec = 2.0f;
+    static constexpr int64 MinimumResetMechanicalSteps = 20;
+    static constexpr int32 MinimumStableResetMechanicalSteps = 5;
     static constexpr int64 ResetTimeoutMechanicalSteps = 240;
     static constexpr int32 ResetPollLimit = 2400;
 
@@ -493,14 +505,17 @@ private:
     int32 SampleCount = 0;
     int32 SettleMechanicalStepsRemaining = 0;
     int64 LastMechanicalStep = -1;
-    int64 ResetStartMechanicalStep = -1;
     int32 ResetPollCount = 0;
-    bool bResetStepAnchorSet = false;
+    FPinkCabPhysicsFixtureRestGate RestGate;
     float RearTorqueSum = 0.0f;
     float EngineRpmSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
     float CurrentResetEngineRpm = 0.0f;
     float CurrentResetMaxDrivenWheelRpm = 0.0f;
+    float CurrentResetBodyLinearSpeedCmPerSec = 0.0f;
+    float CurrentResetBodyAngularSpeedDegPerSec = 0.0f;
+    int64 CurrentResetMechanicalSteps = 0;
+    int32 CurrentResetStableMechanicalSteps = 0;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

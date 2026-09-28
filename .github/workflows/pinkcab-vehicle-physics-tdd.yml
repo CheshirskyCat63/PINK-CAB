@@ -145,7 +145,7 @@ jobs:
             -ProjectPath $project `
             -TestName 'PinkCab.Vehicle.Physics' `
             -LogPath $log `
-            -TimeoutSeconds 300
+            -TimeoutSeconds 900
           Write-Host 'PINKCAB_PHYSICS_TDD=PASS'
 
       - name: Build exact game executable for PHY-001 baseline

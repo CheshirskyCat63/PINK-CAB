@@ -6,6 +6,42 @@
 
 class UChaosWheeledVehicleMovementComponent;
 
+struct FPinkCabPhysicsFixtureRestObservation
+{
+    int64 MechanicalStep = 0;
+    int64 ElapsedMechanicalSteps = 0;
+    float EngineRpm = 0.0f;
+    float TargetIdleRpm = 0.0f;
+    float MaxDrivenWheelRpm = 0.0f;
+    float BodyLinearSpeedCmPerSec = 0.0f;
+    float BodyAngularSpeedDegPerSec = 0.0f;
+    int32 NativeCurrentGear = 0;
+    int32 NativeTargetGear = 0;
+};
+
+class FPinkCabPhysicsFixtureRestGate
+{
+public:
+    void Reset();
+    bool Update(APinkCabPhysicsFixturePawn& Pawn);
+
+    const FPinkCabPhysicsFixtureRestObservation& GetObservation() const
+    {
+        return Observation;
+    }
+
+    int32 GetStableMechanicalSteps() const
+    {
+        return StableMechanicalSteps;
+    }
+
+private:
+    FPinkCabPhysicsFixtureRestObservation Observation;
+    int64 StartMechanicalStep = -1;
+    int64 LastMechanicalStep = -1;
+    int32 StableMechanicalSteps = 0;
+};
+
 UCLASS()
 class APinkCabPhysicsFixturePawn final : public AWheeledVehiclePawn
 {
