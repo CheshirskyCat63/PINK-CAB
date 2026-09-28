@@ -1,0 +1,331 @@
+name: CD-869 R6 Dry Tire Calibration
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp'
+      - 'scripts/ci/packaged-os-input-gate.ps1'
+      - '.github/workflows/cd869-r6-tire-calibration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd869-r6-tire-calibration
+  cancel-in-progress: true
+
+jobs:
+  r6:
+    name: Verify, package, HUMAN
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 120
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
+      ARCHIVE: Artifacts\CD869R6DryTire
+      BASELINE: b3768e3ca0c03a89a83bddd38944ec3ca66ee128
+
+    steps:
+      - name: Checkout exact R6 head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          clean: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: R6 preflight and frozen-scope guard
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if(@(git status --porcelain --untracked-files=all).Count -ne 0){
+            git status --short
+            throw 'CD869_R6_DIRTY_PREFLIGHT'
+          }
+          git merge-base --is-ancestor $env:BASELINE HEAD
+          if($LASTEXITCODE -ne 0){ throw 'CD869_R6_NOT_BASED_ON_ACCEPTED_R5_ADMIN_MAIN' }
+
+          $allowed=@(
+            '.github/workflows/cd869-r6-tire-calibration.yml',
+            'scripts/ci/packaged-os-input-gate.ps1',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp'
+          )
+          $changed=@(git diff --name-only "$env:BASELINE...HEAD")
+          $unexpected=@($changed | Where-Object { $_ -notin $allowed })
+          if($unexpected.Count -ne 0){
+            $unexpected | ForEach-Object { Write-Host "CD869_R6_UNEXPECTED=$_" }
+            throw 'CD869_R6_SCOPE_GUARD_FAIL'
+          }
+
+          foreach($path in $changed){
+            if($path -match '^Content/' -or
+               $path -match '^Config/' -or
+               $path -match '^Source/PinkCab/Private/Vehicle/' -or
+               $path -match '^Source/PinkCab/Private/Runtime/' -or
+               $path -eq 'PinkCab.uproject'){
+              throw "CD869_R6_FROZEN_OWNER_CHANGED=$path"
+            }
+          }
+
+          $profileDiff=(git diff "$env:BASELINE...HEAD" -- 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp') -join "`n"
+          foreach($forbidden in @(
+            'MaxPowerHp',
+            'MaxTorqueNm',
+            'EngineMaxRpm',
+            'EngineIdleRpm',
+            'EngineBrakeEffect',
+            'EngineRevUpMOI',
+            'EngineRevDownRate',
+            'NormalizedTorqueCurve',
+            'FinalDriveRatio',
+            'ForwardGearRatios',
+            'ReverseGearRatios',
+            'SteeringAngleRatio',
+            'MaxSteerAngleDeg',
+            'MaxBrakeTorqueNm',
+            'MaxHandBrakeTorqueNm',
+            'SpringRate',
+            'SpringPreload',
+            'SuspensionMaxRaiseCm',
+            'SuspensionMaxDropCm',
+            'SuspensionDampingRatio',
+            'RollbarScaling'
+          )){
+            if($profileDiff -match "(?m)^[+-].*\b$forbidden\b"){
+              throw "CD869_R6_NON_TIRE_PROFILE_CHANGE=$forbidden"
+            }
+          }
+
+          Write-Host "CD869_R6_PREFLIGHT=PASS head=$head changed=$($changed.Count)"
+
+      - name: Build PinkCabEditor
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R6_EDITOR_BUILD=PASS'
+
+      - name: R6 focused and frozen regressions
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $editor="$env:UE_ROOT\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.Vehicle.Physics.R6.DryTireCausality',
+            'PinkCab.Vehicle.Physics',
+            'PinkCab.World.L1Road.R5.DryAsphaltPhysicalSurface',
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1EndlessRoad.Asset.MaterialContract',
+            'PinkCab.World.L1EndlessRoad.Physics.SeamCrossing',
+            'PinkCab.Vehicle.Physics.EngineState.LowRpmCoupledOverloadStalls'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\R6_$safe.log"
+            Remove-Item $log -Force -ErrorAction SilentlyContinue
+            & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests $test" "-TestExit=Automation Test Queue Empty"
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              throw "CD869_R6_TEST_FAIL=$test"
+            }
+            if(-not (Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
+              throw "CD869_R6_TEST_QUEUE_MISSING=$test"
+            }
+            Write-Host "CD869_R6_TEST_PASS=$test"
+          }
+
+      - name: Zero-debt code health
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/CD869_R6_WRITERS.json
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'CD869_R6_ZERO_DEBT=PASS'
+
+      - name: Fresh Win64 package
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $backup="$project.r6-backup"
+          Copy-Item $project $backup -Force
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+
+          foreach($stale in @(
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Saved\StagedBuilds\Windows'),
+            $archive
+          )){
+            if(Test-Path $stale){ Remove-Item $stale -Recurse -Force }
+          }
+          New-Item -ItemType Directory -Force $archive | Out-Null
+
+          $exit=1
+          try {
+            $descriptor=Get-Content -Raw $project | ConvertFrom-Json
+            $descriptor.Modules=@($descriptor.Modules | Where-Object { $_.Name -ne 'PinkCabTests' })
+            $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCab Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            & "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat" -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $exit=$LASTEXITCODE
+          } finally {
+            Move-Item $backup $project -Force
+          }
+          if($exit -ne 0){ exit $exit }
+
+          $exe=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_R6_PACKAGE_EXE_MISSING' }
+          & .\scripts\ci\ensure-dev-signing.ps1 -Path @($exe)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if((Get-AuthenticodeSignature $exe).Status -ne [System.Management.Automation.SignatureStatus]::Valid){
+            throw 'CD869_R6_SIGNATURE_INVALID'
+          }
+
+          $sha=(git rev-parse HEAD).Trim()
+          Set-Content (Join-Path $archive 'SOURCE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $archive 'R6_TIRE_PROFILE.txt') 'R6 dry tire: front=1.05 rear=0.95 WheelLoadRatio=1.0 calibration=v4; R5 surface friction=1.0 frozen' -NoNewline
+          Write-Host "CD869_R6_FRESH_PACKAGE=PASS sha=$sha"
+
+      - name: Packaged R4 visual plus R5 surface audit
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          $log=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_R6_PACKAGED.log'
+          Remove-Item $log -Force -ErrorAction SilentlyContinue
+
+          $p=Start-Process -FilePath $exe -ArgumentList @(
+            '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
+            '-log','-windowed','-ResX=1280','-ResY=720',
+            '-PinkCabGateTelemetry',
+            '-PinkCabRoadMaterialAudit',
+            '-PinkCabRoadSurfaceAudit',
+            "-abslog=$log"
+          ) -WorkingDirectory (Split-Path $exe) -PassThru
+          try {
+            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            do {
+              Start-Sleep -Milliseconds 300
+              $p.Refresh()
+              if($p.HasExited){ throw "CD869_R6_SMOKE_EXITED_EARLY=$($p.ExitCode)" }
+              $visual=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS materials=PASS textures8k=PASS' -Quiet)
+              $surface=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_ROAD_SURFACE_AUDIT=PASS path=/Game/World/L1/Road/Physics/PM_PC_DryAsphalt\.PM_PC_DryAsphalt friction=1\.000 restitution=0\.000' -Quiet)
+              $wheels=(Test-Path $log) -and [bool](Select-String $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+            } while(( -not $visual -or -not $surface -or -not $wheels) -and [DateTime]::UtcNow -lt $deadline)
+
+            if(-not $visual){ throw 'CD869_R6_R4_VISUAL_AUDIT_MISSING' }
+            if(-not $surface){ throw 'CD869_R6_R5_SURFACE_AUDIT_MISSING' }
+            if(-not $wheels){ throw 'CD869_R6_WHEEL_TELEMETRY_MISSING' }
+
+            $bad=@(Select-String $log -Pattern '(?i)Failed to load.*PM_PC_DryAsphalt|Failed to load.*MetaRoad|Can.t find file.*MetaRoad|LogLinker: Error|Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception' -ErrorAction SilentlyContinue)
+            if($bad.Count -ne 0){
+              $bad | ForEach-Object { Write-Host $_.Line }
+              throw "CD869_R6_PACKAGED_CRITICAL=$($bad.Count)"
+            }
+            Write-Host 'CD869_R6_PACKAGED_ROAD_FREEZE=PASS'
+          } finally {
+            if($p -and -not $p.HasExited){ Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          }
+
+      - name: Two packaged Windows-input regression passes
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows\PinkCab\Binaries\Win64\PinkCab.exe"
+          for($attempt=1;$attempt -le 2;$attempt++){
+            Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+            $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\CD869_R6_INPUT_" + $attempt)
+            & .\scripts\ci\packaged-os-input-gate.ps1 -Exe $exe -EvidenceDir $evidence -Map '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $summary=Join-Path $evidence 'PACKAGED_OS_INPUT_SUMMARY.txt'
+            foreach($marker in @(
+              'startup_menu=PASS',
+              'ignition_space_lmb=PASS',
+              'hgate_first=PASS',
+              'mandatory_e_wheel_launch=PASS',
+              'service_brake_stop=PASS',
+              'hgate_reverse=PASS',
+              'reverse_movement_over_3m=PASS',
+              'critical=0'
+            )){
+              if(-not (Select-String -Path $summary -SimpleMatch -Pattern $marker -Quiet)){
+                throw "CD869_R6_INPUT_MARKER_MISSING attempt=$attempt marker=$marker"
+              }
+            }
+            Write-Host "CD869_R6_PACKAGED_INPUT_PASS=$attempt"
+          }
+
+      - name: Deliver and launch R6 HUMAN candidate
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-Process PinkCab -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+
+          $sha=(git rev-parse HEAD).Trim()
+          $short=$sha.Substring(0,8)
+          $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_R6_TIRE_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
+          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
+          New-Item -ItemType Directory -Force $delivery | Out-Null
+          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+          if($LASTEXITCODE -ge 8){ throw "CD869_R6_DELIVERY_COPY_FAIL=$LASTEXITCODE" }
+          $global:LASTEXITCODE=0
+
+          $exe=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path $exe)){ throw 'CD869_R6_DELIVERY_EXE_MISSING' }
+
+          Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
+          Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
+          Set-Content (Join-Path $delivery 'R6_TIRE_PROFILE.txt') 'front=1.05 rear=0.95 WheelLoadRatio=1.0 calibration=v4; R5 surface frozen' -NoNewline
+
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $ws=New-Object -ComObject WScript.Shell
+          foreach($name in @('PINKCAB R6 HUMAN.lnk','PINKCAB Latest.lnk')){
+            $lnk=Join-Path $desktop $name
+            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
+            $s=$ws.CreateShortcut($lnk)
+            $s.TargetPath=$exe
+            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
+            $s.WorkingDirectory=(Split-Path $exe)
+            $s.Description="PINK CAB R6 tire HUMAN $sha"
+            $s.Save()
+          }
+
+          $saved=$env:RUNNER_TRACKING_ID
+          $env:RUNNER_TRACKING_ID=''
+          try {
+            $p=Start-Process -FilePath $exe -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900') -WorkingDirectory (Split-Path $exe) -PassThru
+            Start-Sleep -Seconds 5
+            $p.Refresh()
+            if($p.HasExited){ throw "CD869_R6_HUMAN_EXITED=$($p.ExitCode)" }
+            $all=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+            if($all.Count -ne 1){ throw "CD869_R6_HUMAN_PROCESS_COUNT=$($all.Count)" }
+
+            Write-Host "CD869_R6_HUMAN_SHA=$sha"
+            Write-Host "CD869_R6_HUMAN_RUN=$env:GITHUB_RUN_ID"
+            Write-Host "CD869_R6_HUMAN_PID=$($p.Id)"
+            Write-Host "CD869_R6_HUMAN_PATH=$($p.Path)"
+            Write-Host "CD869_R6_HUMAN_DELIVERY=$delivery"
+            Write-Host 'HUMAN_PENDING'
+          } finally {
+            $env:RUNNER_TRACKING_ID=$saved
+          }

@@ -74,16 +74,17 @@ float VariantFriction(
     const EPinkCabCalibrationVariant Variant,
     const bool bFront)
 {
-    // Front axle stays planted/readable. Rear axle intentionally has a much
-    // smaller friction budget so RWD torque can produce progressive wheelspin
-    // instead of converting every extra Nm into rocket-like linear launch.
+    // R6 keeps both dry-road axles near the physical surface reference and
+    // uses only a small rear bias for readable rear-heavy RWD breakaway.
+    // Wheelspin must emerge from tire load + engine/differential demand,
+    // not from the retired 2.00 front / 0.50 rear grip shortcut.
     if (bFront)
     {
-        return Variant == EPinkCabCalibrationVariant::Low ? 1.80f
-            : Variant == EPinkCabCalibrationVariant::High ? 2.20f : 2.00f;
+        return Variant == EPinkCabCalibrationVariant::Low ? 0.95f
+            : Variant == EPinkCabCalibrationVariant::High ? 1.15f : 1.05f;
     }
-    return Variant == EPinkCabCalibrationVariant::Low ? 0.44f
-        : Variant == EPinkCabCalibrationVariant::High ? 0.56f : 0.50f;
+    return Variant == EPinkCabCalibrationVariant::Low ? 0.85f
+        : Variant == EPinkCabCalibrationVariant::High ? 1.05f : 0.95f;
 }
 
 float VariantSpring(const EPinkCabCalibrationVariant Variant)
@@ -115,7 +116,7 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.SuspensionMaxRaiseCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
     W.SuspensionMaxDropCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
     W.SuspensionDampingRatio = P(0.38f, A::Calibration);
-    W.WheelLoadRatio = P(0.38f, A::Calibration);
+    W.WheelLoadRatio = P(1.0f, A::Calibration);
     W.RollbarScaling = P(0.08f, A::Calibration);
     W.bABSEnabled = P(false, A::DesignTarget);
     W.bTractionControlEnabled = P(false, A::DesignTarget);
@@ -135,7 +136,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 3;
+    R.CalibrationVersion = 4;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
