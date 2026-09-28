@@ -197,12 +197,18 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     Input.Vehicle.CurrentGear = 1;
     Input.Vehicle.TargetGear = 0;
     Input.Vehicle.CausalActuation.RequestedEngineTorqueAfterLimiterHealthNm = 90.0f;
+    Input.Vehicle.CausalActuation.EffectiveGearRatio = 3.0f;
     Input.Vehicle.CausalActuation.DriveTorquePath =
         EPinkCabCausalDriveTorquePath::ExternalPartialClutch;
     FPinkCabCausalWheelTelemetry Wheel;
     Wheel.WheelIndex = 2;
+    Wheel.WheelRpm = 300.0f;
     Wheel.DriveTorqueNm = 120.0f;
+    Wheel.bEngineDriven = true;
     Input.Vehicle.CausalWheels.Add(Wheel);
+    FPinkCabCausalWheelTelemetry OtherDrivenWheel = Wheel;
+    OtherDrivenWheel.WheelIndex = 3;
+    Input.Vehicle.CausalWheels.Add(OtherDrivenWheel);
     Input.EngineHealthFactor01 = 0.75f;
     Input.WorldSpeedMps = 10.0f;
     Input.VehicleMassKg = 1600.0f;
@@ -220,6 +226,13 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("health factor copied"), Frame.EngineHealthFactor01, 0.75f);
     TestEqual(TEXT("permission-gated torque remains visible while running"),
         Frame.PermissionGatedAvailableEngineTorqueNm, 90.0f);
+    TestTrue(TEXT("driven-wheel rpm availability is explicit"), Frame.bHasDrivenWheelRpm);
+    TestEqual(TEXT("driven-wheel rpm mean comes from live wheel telemetry"),
+        Frame.DrivenWheelRpmMean, 300.0f);
+    TestEqual(TEXT("wheel-derived engine rpm uses effective transmission ratio"),
+        Frame.WheelDerivedEngineRpm, 900.0f);
+    TestEqual(TEXT("engine-vs-wheel rpm delta is signed and observable"),
+        Frame.EngineWheelRpmDelta, 300.0f);
     TestEqual(TEXT("world speed copied"), Frame.WorldSpeedMps, 10.0f);
     TestTrue(TEXT("translational energy is physically derived"),
         FMath::IsNearlyEqual(Frame.TranslationalKineticEnergyJ, 80000.0, 0.01));
@@ -246,12 +259,15 @@ bool FPinkCabCausalWheelCsvTest::RunTest(const FString& Parameters)
     Wheel.SlipMagnitude = 4.0f;
     Wheel.DriveTorqueNm = 200.0f;
     Wheel.BrakeTorqueNm = 30.0f;
+    Wheel.bEngineDriven = true;
     Frame.Wheels.Add(Wheel);
     TestTrue(TEXT("wheel fixture records"), Trace.Record(Frame));
 
     const FString Csv = Trace.ToWheelCsv();
     TestTrue(TEXT("wheel csv includes wheel index"), Csv.Contains(TEXT("wheel_index")));
     TestTrue(TEXT("wheel csv includes drive torque"), Csv.Contains(TEXT("drive_torque_nm")));
+    TestTrue(TEXT("wheel csv includes driven-wheel identity"),
+        Csv.Contains(TEXT("engine_driven")));
     TestTrue(TEXT("wheel csv includes explicit normal-load availability"),
         Csv.Contains(TEXT("normal_load_available")));
     TestTrue(TEXT("wheel csv includes explicit longitudinal-force availability"),
