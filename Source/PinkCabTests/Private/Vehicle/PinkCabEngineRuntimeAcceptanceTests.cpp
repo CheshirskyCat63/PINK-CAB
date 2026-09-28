@@ -6,11 +6,11 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/BoxComponent.h"
-#include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 #include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
@@ -36,6 +36,38 @@ bool ApplyEngineState(
     return FPinkCabChaosCockpitBridge::Apply(
         Cockpit, *Movement, Controls, Provider);
 }
+
+bool AdvanceMechanicalTime(
+    UPinkCabChaosVehicleMovementComponent& Movement,
+    int64& LastStep,
+    double& ElapsedSimSeconds)
+{
+    const int64 CurrentStep =
+        Movement.GetPinkCabMechanicalIntegrationStepCount();
+    if (LastStep < 0)
+    {
+        LastStep = CurrentStep;
+        return false;
+    }
+    if (CurrentStep <= LastStep)
+    {
+        return false;
+    }
+
+    const int64 StepDelta = CurrentStep - LastStep;
+    const float DeltaSeconds =
+        Movement.GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+    LastStep = CurrentStep;
+    if (DeltaSeconds <= 0.0f)
+    {
+        return false;
+    }
+
+    ElapsedSimSeconds +=
+        static_cast<double>(StepDelta)
+        * static_cast<double>(DeltaSeconds);
+    return true;
+}
 }
 
 class FPinkCabEngineOffSlopeCommand final : public IAutomationLatentCommand
@@ -60,10 +92,15 @@ public:
         PinkCabPhysicsFixture::KeepAwake(*Pawn);
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
         Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
+        Test->TestNotNull(
+            TEXT("slope fixture has exact mechanical clock"),
+            PinkCabMovement);
         Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
-        if (!Movement || !Mesh)
+        if (!Movement || !PinkCabMovement || !Mesh)
         {
             return true;
         }
@@ -129,26 +166,35 @@ public:
             Test->TestTrue(TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            LastMechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            PhaseSimSeconds = 0.0;
             bInitialized = true;
             return false;
         }
 
-        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (!AdvanceMechanicalTime(
+                *PinkCabMovement,
+                LastMechanicalStep,
+                PhaseSimSeconds))
+        {
+            return false;
+        }
+
         if (!bSettled)
         {
-            if (Elapsed < 0.90)
+            if (PhaseSimSeconds < 0.90)
             {
                 return false;
             }
             StartLocation = Pawn->GetActorLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
             bSettled = true;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
-        if (FPlatformTime::Seconds() - PhaseStartSeconds < 1.20)
+        if (PhaseSimSeconds < 1.20)
         {
             return false;
         }
@@ -208,7 +254,8 @@ private:
     FPinkCabVehicleControlState Controls;
     bool bInitialized = false;
     bool bSettled = false;
-    double PhaseStartSeconds = 0.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
 };
@@ -253,8 +300,13 @@ public:
         PinkCabPhysicsFixture::KeepAwake(*Pawn);
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
         Test->TestNotNull(TEXT("idle fixture has movement"), Movement);
-        if (!Movement)
+        Test->TestNotNull(
+            TEXT("idle fixture has exact mechanical clock"),
+            PinkCabMovement);
+        if (!Movement || !PinkCabMovement)
         {
             return true;
         }
@@ -277,15 +329,24 @@ public:
             Test->TestTrue(TEXT("warm idle enables mechanical sim"),
                 Movement->bMechanicalSimEnabled);
             Phase = EPhase::SettlingIdle;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            LastMechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            PhaseSimSeconds = 0.0;
             bInitialized = true;
             return false;
         }
 
-        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (!AdvanceMechanicalTime(
+                *PinkCabMovement,
+                LastMechanicalStep,
+                PhaseSimSeconds))
+        {
+            return false;
+        }
+
         if (Phase == EPhase::SettlingIdle)
         {
-            if (Elapsed < 1.50)
+            if (PhaseSimSeconds < 1.50)
             {
                 return false;
             }
@@ -301,13 +362,13 @@ public:
             Test->TestTrue(TEXT("throttle blip applies through authoritative bridge"),
                 ApplyEngineState(*Pawn, Cockpit, Controls));
             Phase = EPhase::Blipping;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
         if (Phase == EPhase::Blipping)
         {
-            if (Elapsed < 0.70)
+            if (PhaseSimSeconds < 0.70)
             {
                 return false;
             }
@@ -320,7 +381,7 @@ public:
             Test->TestTrue(TEXT("blip release applies zero driver throttle"),
                 ApplyEngineState(*Pawn, Cockpit, Controls));
             Phase = EPhase::ReturningIdle;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
@@ -330,13 +391,13 @@ public:
             Test->AddInfo(FString::Printf(
                 TEXT("P01_IDLE returned_rpm=%.3f return_seconds=%.3f"),
                 ReturnedIdleRpm,
-                Elapsed));
+                PhaseSimSeconds));
             Test->TestEqual(TEXT("released blip has zero final throttle"),
                 Controls.GetResolvedEngineThrottle01(), 0.0f);
             return true;
         }
 
-        if (Elapsed < 8.00)
+        if (PhaseSimSeconds < 8.00)
         {
             return false;
         }
@@ -344,7 +405,7 @@ public:
         Test->AddInfo(FString::Printf(
             TEXT("P01_IDLE return_timeout_rpm=%.3f return_seconds=%.3f"),
             ReturnedIdleRpm,
-            Elapsed));
+            PhaseSimSeconds));
         Test->TestTrue(TEXT("engine returns to warm carb idle band after blip"),
             ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f);
         Test->TestEqual(TEXT("released blip has zero final throttle"),
@@ -365,7 +426,8 @@ private:
     FPinkCabVehicleControlState Controls;
     bool bInitialized = false;
     EPhase Phase = EPhase::SettlingIdle;
-    double PhaseStartSeconds = 0.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
     float IdleBeforeBlip = 0.0f;
 };
 
