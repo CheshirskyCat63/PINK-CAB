@@ -60,9 +60,38 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: false
 
+      - name: Materialize cached LFS objects
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          git lfs install --local
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $tracked=@(git lfs ls-files -n)
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          git lfs checkout
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $pointerFiles=@()
+          foreach($relative in $tracked){
+            if(-not (Test-Path -LiteralPath $relative)){
+              $pointerFiles += $relative
+              continue
+            }
+            $first=(Get-Content -LiteralPath $relative -TotalCount 1 -ErrorAction Stop)
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+              $pointerFiles += $relative
+            }
+          }
+          if($pointerFiles.Count -ne 0){
+            $pointerFiles | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LFS_CACHE_MISS=$_" }
+            throw "PINKCAB_PHYSICS_LFS_CACHE_INCOMPLETE count=$($pointerFiles.Count)"
+          }
+          Write-Host "PINKCAB_PHYSICS_LFS_CACHE=PASS materialized=$($tracked.Count)"
       - name: Exact-head and hygiene preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
@@ -145,15 +174,47 @@ jobs:
             -OutputPath (Join-Path $env:GITHUB_WORKSPACE $env:BASELINE_JSON)
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-      - name: Upload focused evidence
+      - name: Persist focused evidence on canonical runner
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: PINKCAB-vehicle-physics-tdd-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
-          path: |
-            Saved/GitHubGate/VEHICLE_PHYSICS_TDD.log
-            Saved/GitHubGate/VEHICLE_PHYSICS_BASELINE.json
-            Saved/GitHubGate/VEHICLE_PHYSICS_WRITERS.json
-            Saved/Reports/code-health.json
-          if-no-files-found: warn
-          retention-days: 30
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $sha='${{ github.event.pull_request.head.sha || github.sha }}'
+          $root=Join-Path $env:BASELINE_ROOT_BASE "Evidence\VehiclePhysics\$sha\${{ github.run_id }}"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+
+          $sources=@(
+            'Saved\GitHubGate\VEHICLE_PHYSICS_TDD.log',
+            'Saved\GitHubGate\VEHICLE_PHYSICS_BASELINE.json',
+            'Saved\GitHubGate\VEHICLE_PHYSICS_WRITERS.json',
+            'Saved\Reports\code-health.json'
+          )
+          $manifest=@()
+          foreach($relative in $sources){
+            $source=Join-Path $env:GITHUB_WORKSPACE $relative
+            if(-not (Test-Path -LiteralPath $source)){
+              Write-Host "PINKCAB_PHYSICS_EVIDENCE_MISSING=$relative"
+              continue
+            }
+            $name=[IO.Path]::GetFileName($source)
+            $dest=Join-Path $root $name
+            Copy-Item -LiteralPath $source -Destination $dest -Force
+            $hash=(Get-FileHash -Algorithm SHA256 -LiteralPath $dest).Hash.ToLowerInvariant()
+            $manifest += [pscustomobject]@{
+              file=$name
+              sha256=$hash
+              bytes=(Get-Item -LiteralPath $dest).Length
+            }
+            Write-Host "PINKCAB_PHYSICS_EVIDENCE_FILE=$dest sha256=$hash"
+          }
+
+          if($manifest.Count -eq 0){
+            throw 'PINKCAB_PHYSICS_EVIDENCE_EMPTY'
+          }
+          $manifestPath=Join-Path $root 'manifest.json'
+          $manifest |
+            ConvertTo-Json -Depth 4 |
+            Set-Content -LiteralPath $manifestPath -Encoding UTF8
+          $manifestHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
+          Write-Host "PINKCAB_PHYSICS_EVIDENCE_ROOT=$root"
+          Write-Host "PINKCAB_PHYSICS_EVIDENCE_MANIFEST=$manifestPath sha256=$manifestHash"
