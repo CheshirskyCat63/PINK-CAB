@@ -11,6 +11,7 @@
 #include "SnapshotData.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
@@ -82,6 +83,9 @@ public:
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
         Test->TestNotNull(TEXT("D3 movement exists"), Movement);
         Test->TestNotNull(TEXT("D3 physics mesh exists"), Mesh);
+        Test->TestNotNull(
+            TEXT("D3 runtime uses authoritative PinkCab custom movement"),
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement));
         if (!Movement || !Mesh)
         {
             return true;
