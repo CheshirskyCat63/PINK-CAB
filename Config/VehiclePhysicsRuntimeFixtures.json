@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "fixture_id": "pinkcab-vehicle-physics-runtime-v1",
+  "map": "/Game/Dev/Maps/L_PinkCab_ChaosWeave",
+  "lfs": [
+    {
+      "path": "Content/Dev/Maps/L_PinkCab_ChaosWeave.umap",
+      "oid_sha256": "751521a41b112331fffe20830f910c86b1c9341c66d26f3adeb78f1000a6b61e",
+      "role": "canonical physics runtime map"
+    },
+    {
+      "path": "Content/Vehicles/SportsCar/SKM_SportsCar.uasset",
+      "oid_sha256": "8b744436944a752078761a41da3417750bbfd690a23a3d952a455e5a86f655a0",
+      "role": "Chaos vehicle skeletal mesh dependency loaded by runtime fixture"
+    },
+    {
+      "path": "Content/Vehicles/SportsCar/PA_SportsCar.uasset",
+      "oid_sha256": "961dc40ef1df7affbc40e5b0ead66016d2e0e79fe481057712d370d0ae380ce0",
+      "role": "Chaos vehicle physics asset dependency loaded by runtime fixture"
+    },
+    {
+      "path": "Content/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes/Matte__FF000000__spec__material.uasset",
+      "oid_sha256": "4546b5832cff60b3516cbbc10992a5731d7f532d1f9468f1534c567fda0b3a9d",
+      "role": "Tatra runtime fixture material dependency proven by UE load error"
+    }
+  ]
+}
