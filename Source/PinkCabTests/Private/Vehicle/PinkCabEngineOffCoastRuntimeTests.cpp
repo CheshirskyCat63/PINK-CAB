@@ -10,6 +10,7 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
@@ -67,8 +68,27 @@ public:
                     Cockpit, *Movement, Controls, Provider));
             Test->TestTrue(TEXT("launch has combustion permission"),
                 Controls.IsCombustionAllowed());
-            Test->TestTrue(TEXT("partial-clutch launch requests positive torque"),
-                Controls.ExternalRearDriveTorquePerWheelNm > 0.0f);
+            const UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+            Test->TestNotNull(
+                TEXT("production launch uses PinkCab custom movement"),
+                PinkCabMovement);
+            if (PinkCabMovement)
+            {
+                const FPinkCabChaosDrivelineCommand& Command =
+                    PinkCabMovement->GetPendingPinkCabDrivelineCommand();
+                Test->TestTrue(
+                    TEXT("partial-clutch launch has positive authoritative engine torque"),
+                    Command.AvailableEngineTorqueNm > 0.0f);
+                Test->TestEqual(
+                    TEXT("partial-clutch launch keeps authored coupling"),
+                    Command.ClutchCoupling01,
+                    0.50f);
+            }
+            Test->TestEqual(
+                TEXT("legacy external partial torque stays disabled"),
+                Controls.ExternalRearDriveTorquePerWheelNm,
+                0.0f);
 
             LaunchStartLocation = Mesh->GetComponentLocation();
             PhaseStartSeconds = FPlatformTime::Seconds();
