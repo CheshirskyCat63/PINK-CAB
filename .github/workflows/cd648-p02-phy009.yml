@@ -81,7 +81,6 @@ jobs:
           $fixtureManifest=Get-Content -LiteralPath $fixtureManifestPath -Raw | ConvertFrom-Json
           $materializeArgs=@(
             'scripts/ci/materialize_local_lfs.py',
-            'scripts/ci/run-unreal-automation.ps1',
             '--workspace', $env:GITHUB_WORKSPACE,
             '--base-ref', 'origin/main',
             '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
@@ -162,6 +161,7 @@ jobs:
             'scripts/ci/verify_vehicle_physics_writers.py',
             'scripts/tests/test_materialize_local_lfs.py',
             'scripts/ci/materialize_local_lfs.py',
+            'scripts/ci/run-unreal-automation.ps1',
             'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
           )
           $changed=@(git diff --name-only "$env:BASELINE...HEAD")
