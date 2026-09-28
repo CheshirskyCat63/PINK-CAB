@@ -40,6 +40,7 @@ struct PINKCABVEHICLE_API FPinkCabCausalActuationTelemetry
     float HealthClampedControlThrottle01 = 0.0f;
     float EngineThrottlePreLimiter01 = 0.0f;
     float EngineThrottleFinal01 = 0.0f;
+    float ChaosThrottleInput01 = 0.0f;
     float EngineTorqueCurveNm = 0.0f;
     float RequestedEngineTorqueAfterLimiterHealthNm = 0.0f;
     float EffectiveGearRatio = 0.0f;
