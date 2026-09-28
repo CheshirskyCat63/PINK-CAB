@@ -25,6 +25,8 @@ struct FPinkCabClutchBoundaryRun
     float MeanChaosEngineTorqueNm = 0.0f;
     float MeanChaosTransmissionTorqueNm = 0.0f;
     float MeanChaosTransmissionRpm = 0.0f;
+    float ResolvedEngineThrottle01 = 0.0f;
+    float AuthoritativeAvailableEngineTorqueNm = 0.0f;
     double EndTranslationalKineticEnergyJ = 0.0;
     float EndSpeedCmPerSec = 0.0f;
 };
@@ -171,6 +173,8 @@ public:
             SampleCount > 0 ? ChaosTransmissionTorqueSum / static_cast<float>(SampleCount) : 0.0f;
         Result.MeanChaosTransmissionRpm =
             SampleCount > 0 ? ChaosTransmissionRpmSum / static_cast<float>(SampleCount) : 0.0f;
+        Result.ResolvedEngineThrottle01 = Controls.GetResolvedEngineThrottle01();
+        Result.AuthoritativeAvailableEngineTorqueNm = Controls.GetAvailableEngineTorqueNm();
         Result.EndSpeedCmPerSec = Mesh->GetPhysicsLinearVelocity().Size2D();
         const double SpeedMps = Result.EndSpeedCmPerSec * 0.01;
         Result.EndTranslationalKineticEnergyJ =
@@ -178,11 +182,13 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f resolved_throttle=%.6f authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f"),
             Result.Coupling,
             RepeatIndex + 1,
             Result.MeanRearDriveTorqueNm,
             Result.MeanEngineRpm,
+            Result.ResolvedEngineThrottle01,
+            Result.AuthoritativeAvailableEngineTorqueNm,
             Result.MeanChaosEngineTorqueNm,
             Result.MeanChaosTransmissionTorqueNm,
             Result.MeanChaosTransmissionRpm,
