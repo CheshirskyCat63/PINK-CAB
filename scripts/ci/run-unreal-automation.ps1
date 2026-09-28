@@ -36,6 +36,7 @@ $argumentLine=@(
     '-nosplash',
     '-nopause',
     '-NoSound',
+    '-SkipAssetScan',
     '-stdout',
     '-FullStdOutLogOutput',
     (Quote-Arg "-abslog=$LogPath"),

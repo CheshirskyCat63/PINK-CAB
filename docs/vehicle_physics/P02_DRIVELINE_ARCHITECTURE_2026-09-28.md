@@ -133,6 +133,7 @@ D3 does not use body-force, velocity, snapshot-loop or threshold handoff helpers
 ### D5 — determinism / delivery
 - the accepted P01 project physics configuration remains frozen; P02 must not force a new global async/fixed timestep to make its tests pass;
 - D3/D5 evidence is accumulated inside the physics simulation over exact simulated-time windows and time-weighted, so render/game cadence cannot silently change the compared physical duration;
+- D3 records the observed mechanical timestep as evidence but does not require one hard-coded global timestep; the accepted P01 project physics configuration remains the authority;
 - supported 30/60/120 render/game FPS with the same frozen project physics configuration;
 - exact-head build + full `PinkCab.Vehicle.Physics`;
 - zero-debt/writer guard;

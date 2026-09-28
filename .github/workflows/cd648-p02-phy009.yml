@@ -204,12 +204,21 @@ jobs:
           foreach($test in $tests){
             $safe=$test.Replace('.','_')
             $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
+            $timeoutSeconds=180
+            if($test -eq 'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix'){
+              # 240 fresh-reset runs require >=140 s of physical integration
+              # before spawn/reset/automation overhead at the accepted cadence.
+              $timeoutSeconds=420
+            } elseif($test -eq 'PinkCab.Vehicle.Physics'){
+              # Full regression includes the complete D3 matrix plus P01/D1/D2.
+              $timeoutSeconds=900
+            }
             & .\scripts\ci\run-unreal-automation.ps1 `
               -EngineRoot $env:UE_ROOT `
               -ProjectPath $project `
               -TestName $test `
               -LogPath $log `
-              -TimeoutSeconds 180
+              -TimeoutSeconds $timeoutSeconds
             ++$completedTests
             Write-Host "P02_PHY009_TEST_PASS=$test"
           }
