@@ -4,6 +4,87 @@ namespace
 {
 constexpr float PinkCabClutchRpmToRadPerSecond = 2.0f * PI / 60.0f;
 constexpr float PinkCabClutchRadPerSecondToRpm = 60.0f / (2.0f * PI);
+constexpr float PinkCabIntegrationSlicesPerSyncHorizon = 32.0f;
+
+struct FPinkCabClutchIntegrationResult
+{
+    float InitialRequestedTorqueNm = 0.0f;
+    float AverageTransmittedTorqueNm = 0.0f;
+    float EngineReactionDeltaRpm = 0.0f;
+    float FinalRequestedTorqueNm = 0.0f;
+    float FinalSlipRpm = 0.0f;
+    bool bAnyTorqueLimited = false;
+};
+
+FPinkCabClutchIntegrationResult IntegrateClutchReaction(
+    const FPinkCabClutchDrivelineConfig& Config,
+    const FPinkCabClutchDrivelineInput& Input,
+    const float TorqueCapacityNm,
+    const float NetEngineTorqueNm)
+{
+    FPinkCabClutchIntegrationResult Result;
+    const float ShaftOmega =
+        Input.ShaftEquivalentEngineRpm * PinkCabClutchRpmToRadPerSecond;
+    float VirtualEngineOmega =
+        Input.EngineRpm * PinkCabClutchRpmToRadPerSecond;
+
+    const float MaxStep =
+        Config.SynchronizationTimeSeconds
+        / PinkCabIntegrationSlicesPerSyncHorizon;
+    const int32 Steps = FMath::Max(
+        1,
+        FMath::CeilToInt(
+            Input.DeltaSeconds
+            / FMath::Max(MaxStep, KINDA_SMALL_NUMBER)));
+    const float StepSeconds =
+        Input.DeltaSeconds / static_cast<float>(Steps);
+
+    double ClutchImpulse = 0.0;
+    for (int32 Index = 0; Index < Steps; ++Index)
+    {
+        const float SlipOmega = VirtualEngineOmega - ShaftOmega;
+        const float RequestedTorque =
+            NetEngineTorqueNm
+            + Config.EngineEffectiveInertia
+                * SlipOmega
+                / Config.SynchronizationTimeSeconds;
+        const float TransmittedTorque = FMath::Clamp(
+            RequestedTorque,
+            -TorqueCapacityNm,
+            TorqueCapacityNm);
+
+        if (Index == 0)
+        {
+            Result.InitialRequestedTorqueNm = RequestedTorque;
+        }
+        Result.FinalRequestedTorqueNm = RequestedTorque;
+        Result.bAnyTorqueLimited |= !FMath::IsNearlyEqual(
+            TransmittedTorque,
+            RequestedTorque,
+            1.0e-3f);
+        ClutchImpulse +=
+            static_cast<double>(TransmittedTorque)
+            * static_cast<double>(StepSeconds);
+
+        const float VirtualNetTorque =
+            NetEngineTorqueNm - TransmittedTorque;
+        VirtualEngineOmega +=
+            VirtualNetTorque
+            / Config.EngineEffectiveInertia
+            * StepSeconds;
+    }
+
+    Result.AverageTransmittedTorqueNm = static_cast<float>(
+        ClutchImpulse / static_cast<double>(Input.DeltaSeconds));
+    Result.EngineReactionDeltaRpm = static_cast<float>(
+        -ClutchImpulse
+        / static_cast<double>(Config.EngineEffectiveInertia))
+        * PinkCabClutchRadPerSecondToRpm;
+    Result.FinalSlipRpm =
+        (VirtualEngineOmega - ShaftOmega)
+        * PinkCabClutchRadPerSecondToRpm;
+    return Result;
+}
 }
 
 bool FPinkCabClutchDrivelineConfig::IsValid() const
@@ -30,7 +111,8 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
     const FPinkCabClutchDrivelineInput& Input) const
 {
     FPinkCabClutchDrivelineOutput Output;
-    Output.SlipRpm = Input.EngineRpm - Input.ShaftEquivalentEngineRpm;
+    Output.SlipRpm =
+        Input.EngineRpm - Input.ShaftEquivalentEngineRpm;
 
     if (!Config.IsValid()
         || Input.DeltaSeconds <= KINDA_SMALL_NUMBER
@@ -51,86 +133,21 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
     const float NetEngineTorqueNm =
         FMath::Max(Input.AvailableEngineTorqueNm, 0.0f)
         - FMath::Max(Input.EngineDragTorqueNm, 0.0f);
-    const float ShaftOmega =
-        Input.ShaftEquivalentEngineRpm
-        * PinkCabClutchRpmToRadPerSecond;
-    float VirtualEngineOmega =
-        Input.EngineRpm * PinkCabClutchRpmToRadPerSecond;
+    const FPinkCabClutchIntegrationResult Integrated =
+        IntegrateClutchReaction(
+            Config,
+            Input,
+            Output.TorqueCapacityNm,
+            NetEngineTorqueNm);
 
-    // Numerical integration is local to the clutch domain. It does not alter
-    // the project/Chaos timestep and is derived from the authored physical
-    // synchronization horizon rather than from render cadence.
-    constexpr float IntegrationSlicesPerSynchronizationHorizon = 32.0f;
-    const float MaxIntegrationStepSeconds =
-        Config.SynchronizationTimeSeconds
-        / IntegrationSlicesPerSynchronizationHorizon;
-    const int32 IntegrationSteps = FMath::Max(
-        1,
-        FMath::CeilToInt(
-            Input.DeltaSeconds
-            / FMath::Max(
-                MaxIntegrationStepSeconds,
-                KINDA_SMALL_NUMBER)));
-    const float IntegrationDeltaSeconds =
-        Input.DeltaSeconds
-        / static_cast<float>(IntegrationSteps);
-
-    const float InitialSlipOmega =
-        VirtualEngineOmega - ShaftOmega;
     Output.RequestedClutchTorqueNm =
-        NetEngineTorqueNm
-        + Config.EngineEffectiveInertia
-            * InitialSlipOmega
-            / Config.SynchronizationTimeSeconds;
-
-    double TransmittedTorqueImpulseNmSeconds = 0.0;
-    bool bAnyTorqueLimited = false;
-    float FinalRequestedTorqueNm =
-        Output.RequestedClutchTorqueNm;
-
-    for (int32 StepIndex = 0;
-         StepIndex < IntegrationSteps;
-         ++StepIndex)
-    {
-        const float SlipOmega =
-            VirtualEngineOmega - ShaftOmega;
-        const float SynchronizationTorqueNm =
-            Config.EngineEffectiveInertia
-            * SlipOmega
-            / Config.SynchronizationTimeSeconds;
-        const float RequestedTorqueNm =
-            NetEngineTorqueNm + SynchronizationTorqueNm;
-        const float TransmittedTorqueNm = FMath::Clamp(
-            RequestedTorqueNm,
-            -Output.TorqueCapacityNm,
-            Output.TorqueCapacityNm);
-
-        bAnyTorqueLimited |= !FMath::IsNearlyEqual(
-            TransmittedTorqueNm,
-            RequestedTorqueNm,
-            1.0e-3f);
-        TransmittedTorqueImpulseNmSeconds +=
-            static_cast<double>(TransmittedTorqueNm)
-            * static_cast<double>(IntegrationDeltaSeconds);
-
-        // The virtual state evolves with engine demand and clutch load
-        // simultaneously. Runtime applies only the equal/opposite clutch
-        // impulse to Chaos; accepted P01 native engine evolution remains the
-        // actual combustion/free-engine authority.
-        const float VirtualNetTorqueNm =
-            NetEngineTorqueNm - TransmittedTorqueNm;
-        VirtualEngineOmega +=
-            (VirtualNetTorqueNm
-                / Config.EngineEffectiveInertia)
-            * IntegrationDeltaSeconds;
-        FinalRequestedTorqueNm = RequestedTorqueNm;
-    }
-
+        Integrated.InitialRequestedTorqueNm;
     Output.TransmittedClutchTorqueNm =
-        static_cast<float>(
-            TransmittedTorqueImpulseNmSeconds
-            / static_cast<double>(Input.DeltaSeconds));
-    Output.bTorqueLimited = bAnyTorqueLimited;
+        Integrated.AverageTransmittedTorqueNm;
+    Output.EngineReactionDeltaRpm =
+        Integrated.EngineReactionDeltaRpm;
+    Output.bTorqueLimited =
+        Integrated.bAnyTorqueLimited;
 
     const float Efficiency =
         FMath::Clamp(Input.TransmissionEfficiency, 0.0f, 1.0f);
@@ -139,23 +156,11 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
         * Input.EffectiveGearRatio
         * Efficiency;
 
-    const float EngineReactionDeltaOmega =
-        static_cast<float>(
-            -TransmittedTorqueImpulseNmSeconds
-            / static_cast<double>(
-                Config.EngineEffectiveInertia));
-    Output.EngineReactionDeltaRpm =
-        EngineReactionDeltaOmega
-        * PinkCabClutchRadPerSecondToRpm;
-
-    const float FinalSlipRpm =
-        (VirtualEngineOmega - ShaftOmega)
-        * PinkCabClutchRadPerSecondToRpm;
     const bool bNearLockedSpeed =
-        FMath::Abs(FinalSlipRpm)
+        FMath::Abs(Integrated.FinalSlipRpm)
             <= Config.LockedSlipRpm;
     const bool bHasStaticCapacity =
-        FMath::Abs(FinalRequestedTorqueNm)
+        FMath::Abs(Integrated.FinalRequestedTorqueNm)
             <= Output.TorqueCapacityNm + 1.0e-3f;
     Output.State =
         (bNearLockedSpeed && bHasStaticCapacity)
