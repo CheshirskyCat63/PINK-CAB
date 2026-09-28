@@ -8,6 +8,16 @@
 
 class FPinkCabChaosWheeledVehicleSimulation;
 
+struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
+{
+    int32 TargetSampleSteps = 0;
+    int32 CompletedSampleSteps = 0;
+    float MeanDrivenWheelTorqueNm = 0.0f;
+    float MeanEngineRpm = 0.0f;
+    float MeanDeltaSeconds = 0.0f;
+    bool bComplete = false;
+};
+
 struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
 {
     bool bCombustionAllowed = false;
@@ -61,6 +71,12 @@ public:
             MechanicalIntegrationDeltaMicros.GetValue())
             / 1000000.0f;
     }
+
+    bool BeginPinkCabMechanicalEvidenceWindow(
+        int32 SettleSteps,
+        int32 SampleSteps);
+    bool ReadPinkCabMechanicalEvidenceWindow(
+        FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
 
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;

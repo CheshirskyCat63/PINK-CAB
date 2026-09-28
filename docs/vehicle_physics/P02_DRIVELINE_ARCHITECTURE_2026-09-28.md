@@ -131,7 +131,9 @@ D3 does not use body-force, velocity, snapshot-loop or threshold handoff helpers
 - no synthetic movement with engine off.
 
 ### D5 — determinism / delivery
-- supported 30/60/120 FPS with frozen physics config;
+- Chaos vehicle physics runs on the async fixed timestep at 120 Hz (`AsyncFixedTimeStepSize=1/120`); render/game-thread 30/60/120 FPS must not change the mechanical integration dt;
+- D3/D5 evidence is accumulated inside the physics simulation over an exact number of mechanical steps, so a slower game thread cannot silently drop or duplicate samples;
+- supported 30/60/120 render/game FPS with the frozen 120 Hz physics config;
 - exact-head build + full `PinkCab.Vehicle.Physics`;
 - zero-debt/writer guard;
 - packaged runtime;

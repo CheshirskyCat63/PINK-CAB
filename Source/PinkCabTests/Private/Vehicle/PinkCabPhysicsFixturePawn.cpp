@@ -117,8 +117,6 @@ bool FPinkCabPhysicsFixtureRestGate::Update(
         return false;
     }
 
-    const bool bConsecutiveMechanicalStep =
-        MechanicalStep == LastMechanicalStep + 1;
     LastMechanicalStep = MechanicalStep;
 
     Observation = {};
@@ -151,7 +149,7 @@ bool FPinkCabPhysicsFixtureRestGate::Update(
     // are therefore not a valid reset proof: those values are already quiet
     // while the chassis is still in free fall. Require enough completed
     // mechanical integrations for the fall/contact transient to occur, then
-    // require five consecutive fully observed rest steps.
+    // require five consecutive fully observed stable snapshots.
     static constexpr int64 MinimumMechanicalStepsBeforeRest = 20;
     static constexpr int32 RequiredStableMechanicalSteps = 5;
     static constexpr float EngineIdleToleranceRpm = 30.0f;
@@ -175,10 +173,11 @@ bool FPinkCabPhysicsFixtureRestGate::Update(
 
     if (bRestCandidate)
     {
-        StableMechanicalSteps =
-            bConsecutiveMechanicalStep
-                ? StableMechanicalSteps + 1
-                : 1;
+        // With fixed async physics the game thread can legitimately observe
+        // several completed physics steps at once. Require five consecutive
+        // stable observations rather than pretending every physics step was
+        // individually visible to the automation thread.
+        ++StableMechanicalSteps;
     }
     else
     {

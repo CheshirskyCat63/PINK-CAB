@@ -141,7 +141,6 @@ public:
                     Rest.ElapsedMechanicalSteps;
                 CurrentResetStableMechanicalSteps =
                     RestGate.GetStableMechanicalSteps();
-                LastMechanicalStep = Rest.MechanicalStep;
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
@@ -165,13 +164,18 @@ public:
                     return true;
                 }
 
-                RearTorqueSum = 0.0f;
-                EngineRpmSum = 0.0f;
                 LastEffectiveGearRatio =
                     ConditionProvider.GetLastCausalActuationTelemetry()
                         .EffectiveGearRatio;
-                SampleCount = 0;
-                SettleMechanicalStepsRemaining = SettleMechanicalSteps;
+                if (!PinkCabMovement
+                        ->BeginPinkCabMechanicalEvidenceWindow(
+                            SettleMechanicalSteps,
+                            SampleFrames))
+                {
+                    Test->AddError(
+                        TEXT("D3 failed to start exact physics evidence window"));
+                    return true;
+                }
                 bResetting = false;
                 return false;
             }
@@ -202,57 +206,26 @@ public:
             return true;
         }
 
-        const int64 MechanicalStep =
-            PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
-        if (MechanicalStep == LastMechanicalStep)
-        {
-            return false;
-        }
-
-        const int64 MechanicalStepDelta = MechanicalStep - LastMechanicalStep;
-        if (MechanicalStepDelta != 1)
-        {
-            Test->AddError(FString::Printf(
-                TEXT("D3 lost mechanical-step alignment coupling=%.3f gear=%d throttle=%.2f repeat=%d previous_step=%lld current_step=%lld delta=%lld"),
-                CurrentCoupling(),
-                CurrentGear(),
-                CurrentThrottle(),
-                RepeatIndex + 1,
-                static_cast<long long>(LastMechanicalStep),
-                static_cast<long long>(MechanicalStep),
-                static_cast<long long>(MechanicalStepDelta)));
-            return true;
-        }
-        LastMechanicalStep = MechanicalStep;
-
         const FPinkCabCausalActuationTelemetry& Actuation =
             Provider.GetLastCausalActuationTelemetry();
         LastEffectiveGearRatio = Actuation.EffectiveGearRatio;
 
-        // D3 is a causal matrix, not a wall-clock benchmark. A sample is
-        // admitted only after exactly one real ProcessMechanicalSimulation()
-        // integration. Scheduler delay can therefore make the test fail loud,
-        // but can never silently change the physical-step cardinality.
-        if (SettleMechanicalStepsRemaining > 0)
+        FPinkCabMechanicalEvidenceSnapshot Evidence;
+        if (!PinkCabMovement
+                ->ReadPinkCabMechanicalEvidenceWindow(Evidence))
         {
-            --SettleMechanicalStepsRemaining;
-            return false;
+            Test->AddError(
+                TEXT("D3 failed to read exact physics evidence window"));
+            return true;
         }
-
-        const FWheelStatus RearLeft = Movement->GetWheelState(2);
-        const FWheelStatus RearRight = Movement->GetWheelState(3);
-        RearTorqueSum += 0.5f
-            * (FMath::Abs(RearLeft.DriveTorque) + FMath::Abs(RearRight.DriveTorque));
-        EngineRpmSum += Movement->GetEngineRotationSpeed();
-        MechanicalDeltaSecondsSum +=
-            PinkCabMovement
-                ->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
-        ++SampleCount;
-
-        if (SampleCount < SampleFrames)
+        if (!Evidence.bComplete)
         {
             return false;
         }
+        Test->TestEqual(
+            TEXT("D3 evidence window contains exact physical sample count"),
+            Evidence.CompletedSampleSteps,
+            SampleFrames);
 
         FPinkCabD3Run Run;
         Run.Coupling = CurrentCoupling();
@@ -260,9 +233,9 @@ public:
         Run.DriverThrottle01 = CurrentThrottle();
         Run.Repeat = RepeatIndex;
         Run.MeanRearDriveTorqueNm =
-            SampleCount > 0 ? RearTorqueSum / static_cast<float>(SampleCount) : 0.0f;
+            Evidence.MeanDrivenWheelTorqueNm;
         Run.MeanEngineRpm =
-            SampleCount > 0 ? EngineRpmSum / static_cast<float>(SampleCount) : 0.0f;
+            Evidence.MeanEngineRpm;
         Run.EffectiveGearRatio = LastEffectiveGearRatio;
         Run.ResolvedEngineThrottle01 = Controls.GetResolvedEngineThrottle01();
         Run.AvailableEngineTorqueNm = Controls.GetAvailableEngineTorqueNm();
@@ -278,10 +251,7 @@ public:
         Run.ResetStableMechanicalSteps =
             CurrentResetStableMechanicalSteps;
         Run.MeanMechanicalDeltaMs =
-            SampleCount > 0
-                ? (MechanicalDeltaSecondsSum
-                    / static_cast<float>(SampleCount)) * 1000.0f
-                : 0.0f;
+            Evidence.MeanDeltaSeconds * 1000.0f;
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
@@ -370,9 +340,6 @@ private:
         Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);
 
-        RearTorqueSum = 0.0f;
-        EngineRpmSum = 0.0f;
-        MechanicalDeltaSecondsSum = 0.0f;
         LastEffectiveGearRatio = 0.0f;
         CurrentResetEngineRpm = 0.0f;
         CurrentResetMaxDrivenWheelRpm = 0.0f;
@@ -380,9 +347,6 @@ private:
         CurrentResetBodyAngularSpeedDegPerSec = 0.0f;
         CurrentResetMechanicalSteps = 0;
         CurrentResetStableMechanicalSteps = 0;
-        SampleCount = 0;
-        SettleMechanicalStepsRemaining = 0;
-        LastMechanicalStep = -1;
         ResetPollCount = 0;
         RestGate.Reset();
         bResetting = true;
@@ -437,6 +401,11 @@ private:
             Test->TestTrue(TEXT("every D3 repeat proves a physical settle window"),
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
+            Test->TestTrue(TEXT("every D3 sample uses fixed 120 Hz Chaos cadence"),
+                FMath::Abs(
+                    Run.MeanMechanicalDeltaMs
+                        - FixedMechanicalDeltaMs)
+                    <= FixedMechanicalDeltaToleranceMs);
         }
 
         for (const int32 Gear : Gears)
@@ -512,6 +481,8 @@ private:
     static constexpr float ResetWheelRpmTolerance = 2.0f;
     static constexpr float ResetBodyLinearToleranceCmPerSec = 5.0f;
     static constexpr float ResetBodyAngularToleranceDegPerSec = 2.0f;
+    static constexpr float FixedMechanicalDeltaMs = 1000.0f / 120.0f;
+    static constexpr float FixedMechanicalDeltaToleranceMs = 0.02f;
     static constexpr int64 MinimumResetMechanicalSteps = 20;
     static constexpr int32 MinimumStableResetMechanicalSteps = 5;
     static constexpr int64 ResetTimeoutMechanicalSteps = 240;
@@ -523,14 +494,8 @@ private:
     int32 RepeatIndex = 0;
     bool bInitialized = false;
     bool bResetting = false;
-    int32 SampleCount = 0;
-    int32 SettleMechanicalStepsRemaining = 0;
-    int64 LastMechanicalStep = -1;
     int32 ResetPollCount = 0;
     FPinkCabPhysicsFixtureRestGate RestGate;
-    float RearTorqueSum = 0.0f;
-    float EngineRpmSum = 0.0f;
-    float MechanicalDeltaSecondsSum = 0.0f;
     float LastEffectiveGearRatio = 0.0f;
     float CurrentResetEngineRpm = 0.0f;
     float CurrentResetMaxDrivenWheelRpm = 0.0f;

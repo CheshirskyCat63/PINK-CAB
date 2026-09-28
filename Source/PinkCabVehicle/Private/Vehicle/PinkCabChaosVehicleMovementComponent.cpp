@@ -49,6 +49,40 @@ public:
         ClutchModel.SetConfig(Command.ClutchConfig);
     }
 
+    void BeginEvidenceWindow(
+        const int32 InSettleSteps,
+        const int32 InSampleSteps)
+    {
+        EvidenceSettleStepsRemaining = FMath::Max(InSettleSteps, 0);
+        EvidenceTargetSteps = FMath::Max(InSampleSteps, 1);
+        EvidenceCompletedSteps = 0;
+        EvidenceDrivenWheelTorqueSumNm = 0.0;
+        EvidenceEngineRpmSum = 0.0;
+        EvidenceDeltaSecondsSum = 0.0;
+    }
+
+    FPinkCabMechanicalEvidenceSnapshot ReadEvidenceWindow() const
+    {
+        FPinkCabMechanicalEvidenceSnapshot Result;
+        Result.TargetSampleSteps = EvidenceTargetSteps;
+        Result.CompletedSampleSteps = EvidenceCompletedSteps;
+        if (EvidenceCompletedSteps > 0)
+        {
+            const double Denominator =
+                static_cast<double>(EvidenceCompletedSteps);
+            Result.MeanDrivenWheelTorqueNm = static_cast<float>(
+                EvidenceDrivenWheelTorqueSumNm / Denominator);
+            Result.MeanEngineRpm = static_cast<float>(
+                EvidenceEngineRpmSum / Denominator);
+            Result.MeanDeltaSeconds = static_cast<float>(
+                EvidenceDeltaSecondsSum / Denominator);
+        }
+        Result.bComplete =
+            EvidenceTargetSteps > 0
+            && EvidenceCompletedSteps >= EvidenceTargetSteps;
+        return Result;
+    }
+
     virtual void ApplyInput(
         const FControlInputs& ControlInputs,
         const float DeltaTime) override
@@ -176,14 +210,47 @@ public:
                 + Output.EngineReactionDeltaRpm * PinkCabChaosRpmToRadPerSecond);
         Engine.SetEngineOmega(EngineOmegaAfterReaction);
 
+        float DrivenWheelTorqueAbsSumNm = 0.0f;
+        int32 DrivenWheelCount = 0;
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
         {
             FSimpleWheelSim& Wheel = PVehicle->Wheels[WheelIndex];
+            const bool bDriven = Wheel.Setup().EngineEnabled;
             const float WheelDriveTorqueNm =
-                Wheel.Setup().EngineEnabled
+                bDriven
                     ? Output.RearAxleTorqueNm * Wheel.Setup().TorqueRatio
                     : 0.0f;
             Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
+            if (bDriven)
+            {
+                DrivenWheelTorqueAbsSumNm +=
+                    FMath::Abs(WheelDriveTorqueNm);
+                ++DrivenWheelCount;
+            }
+        }
+
+        if (EvidenceTargetSteps > 0
+            && EvidenceCompletedSteps < EvidenceTargetSteps)
+        {
+            if (EvidenceSettleStepsRemaining > 0)
+            {
+                --EvidenceSettleStepsRemaining;
+            }
+            else
+            {
+                const float MeanDrivenWheelTorqueNm =
+                    DrivenWheelCount > 0
+                        ? DrivenWheelTorqueAbsSumNm
+                            / static_cast<float>(DrivenWheelCount)
+                        : 0.0f;
+                EvidenceDrivenWheelTorqueSumNm +=
+                    static_cast<double>(MeanDrivenWheelTorqueNm);
+                EvidenceEngineRpmSum +=
+                    static_cast<double>(Engine.GetEngineRPM());
+                EvidenceDeltaSecondsSum +=
+                    static_cast<double>(DeltaTime);
+                ++EvidenceCompletedSteps;
+            }
         }
 
         // Publish timing/state only after all engine/clutch/wheel work for this
@@ -208,6 +275,12 @@ private:
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabEngineActuationResult PhysicsThreadActuation;
     FPinkCabClutchDrivelineModel ClutchModel;
+    int32 EvidenceSettleStepsRemaining = 0;
+    int32 EvidenceTargetSteps = 0;
+    int32 EvidenceCompletedSteps = 0;
+    double EvidenceDrivenWheelTorqueSumNm = 0.0;
+    double EvidenceEngineRpmSum = 0.0;
+    double EvidenceDeltaSecondsSum = 0.0;
 };
 
 UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
@@ -235,6 +308,50 @@ void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabClutch(
             if (PinkCabSimulationPT)
             {
                 PinkCabSimulationPT->SetDrivelineCommand(PendingDrivelineCommand);
+            }
+        });
+}
+
+bool UPinkCabChaosVehicleMovementComponent::BeginPinkCabMechanicalEvidenceWindow(
+    const int32 SettleSteps,
+    const int32 SampleSteps)
+{
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return false;
+    }
+
+    return FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this, SettleSteps, SampleSteps](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                PinkCabSimulationPT->BeginEvidenceWindow(
+                    SettleSteps,
+                    SampleSteps);
+            }
+        });
+}
+
+bool UPinkCabChaosVehicleMovementComponent::ReadPinkCabMechanicalEvidenceWindow(
+    FPinkCabMechanicalEvidenceSnapshot& OutSnapshot)
+{
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return false;
+    }
+
+    return FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this, &OutSnapshot](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                OutSnapshot =
+                    PinkCabSimulationPT->ReadEvidenceWindow();
             }
         });
 }
