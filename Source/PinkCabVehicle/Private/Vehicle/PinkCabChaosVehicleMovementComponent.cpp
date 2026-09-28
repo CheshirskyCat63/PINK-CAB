@@ -163,7 +163,7 @@ public:
         FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
         Transmission.SetGear(0, true);
 
-        AdvanceFreeRunningEngine(Engine, DeltaTime);
+        AdvanceAcceptedNativeEngine(Transmission, DeltaTime);
 
         const FPinkCabClutchDrivelineOutput Output =
             SolveDrivelineStep(Engine, DeltaTime);
@@ -182,8 +182,8 @@ private:
         int32 DrivenWheelCount = 0;
     };
 
-    void AdvanceFreeRunningEngine(
-        Chaos::FSimpleEngineSim& Engine,
+    void AdvanceAcceptedNativeEngine(
+        Chaos::FSimpleTransmissionSim& Transmission,
         const float DeltaTime)
     {
         if (!Command.bCombustionAllowed)
@@ -191,9 +191,13 @@ private:
             return;
         }
 
-        // Native free-running engine response remains P01 authority.
-        Engine.SetEngineRPM(true, 0.0f);
-        Engine.Simulate(DeltaTime);
+        // P01 accepted the stock Chaos engine transient. Preserve that exact
+        // engine authority instead of duplicating FSimpleEngineSim integration
+        // here. The native transmission is forced neutral before and after the
+        // stock mechanical step, so it cannot become a second propulsion path.
+        Transmission.SetGear(0, true);
+        UChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(DeltaTime);
+        Transmission.SetGear(0, true);
     }
 
     FPinkCabClutchDrivelineOutput SolveDrivelineStep(
