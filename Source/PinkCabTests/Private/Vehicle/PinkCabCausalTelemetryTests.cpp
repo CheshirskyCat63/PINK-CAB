@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabCausalTelemetry.h"
 #include "Vehicle/PinkCabCausalTelemetryFrameBuilder.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
 #include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 
@@ -126,6 +127,29 @@ bool FPinkCabCausalFrameAvailabilityContractTest::RunTest(const FString& Paramet
 
     TestEqual(TEXT("permission-gated available torque is zero while engine permission is false"),
         Frame.PermissionGatedAvailableEngineTorqueNm, 0.0f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosThrottleAdapterTest,
+    "PinkCab.Vehicle.Physics.Telemetry.ChaosThrottleAdapter",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosThrottleAdapterTest::RunTest(const FString& Parameters)
+{
+    for (const float Authoritative : {0.0f, 0.10f, 0.25f, 0.683020f, 1.0f})
+    {
+        const float ChaosInput =
+            FPinkCabChaosEngineAdapter::ToChaosThrottleInput(Authoritative);
+        TestTrue(TEXT("Chaos adapter is bounded"),
+            ChaosInput >= 0.0f && ChaosInput <= 1.0f);
+        TestTrue(TEXT("Chaos square law reconstructs authoritative throttle"),
+            FMath::IsNearlyEqual(
+                ChaosInput * ChaosInput,
+                Authoritative,
+                1.0e-5f));
+    }
     return true;
 }
 
