@@ -236,7 +236,7 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("world speed copied"), Frame.WorldSpeedMps, 10.0f);
     TestTrue(TEXT("translational energy is physically derived"),
         FMath::IsNearlyEqual(Frame.TranslationalKineticEnergyJ, 80000.0, 0.01));
-    TestEqual(TEXT("per-wheel causal payload copied"), Frame.Wheels.Num(), 1);
+    TestEqual(TEXT("per-wheel causal payload copied"), Frame.Wheels.Num(), 2);
     return true;
 }
 
