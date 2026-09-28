@@ -57,6 +57,7 @@ public:
         {
             return false;
         }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
@@ -249,6 +250,7 @@ public:
         {
             return false;
         }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
         Test->TestNotNull(TEXT("idle fixture has movement"), Movement);
