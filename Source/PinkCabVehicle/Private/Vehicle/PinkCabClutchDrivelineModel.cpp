@@ -2,8 +2,8 @@
 
 namespace
 {
-constexpr float RpmToRadPerSecond = 2.0f * PI / 60.0f;
-constexpr float RadPerSecondToRpm = 60.0f / (2.0f * PI);
+constexpr float PinkCabClutchRpmToRadPerSecond = 2.0f * PI / 60.0f;
+constexpr float PinkCabClutchRadPerSecondToRpm = 60.0f / (2.0f * PI);
 }
 
 bool FPinkCabClutchDrivelineConfig::IsValid() const
@@ -48,7 +48,7 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
         Config.MaxClutchTorqueNm * Coupling * ConditionCapacity;
 
     const float SlipOmega =
-        Output.SlipRpm * RpmToRadPerSecond;
+        Output.SlipRpm * PinkCabClutchRpmToRadPerSecond;
     const float SyncHorizon =
         FMath::Max(Config.SynchronizationTimeSeconds, Input.DeltaSeconds);
 
@@ -85,7 +85,7 @@ FPinkCabClutchDrivelineOutput FPinkCabClutchDrivelineModel::Step(
             / Config.EngineEffectiveInertia)
         * Input.DeltaSeconds;
     Output.EngineReactionDeltaRpm =
-        EngineReactionDeltaOmega * RadPerSecondToRpm;
+        EngineReactionDeltaOmega * PinkCabClutchRadPerSecondToRpm;
 
     const bool bNearLockedSpeed =
         FMath::Abs(Output.SlipRpm) <= Config.LockedSlipRpm;
