@@ -124,7 +124,7 @@
       "id": "chaos_physics_actuation",
       "owner_domain": "Vehicle",
       "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h",
-      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.cpp",
       "test_prefix": "PinkCab.Vehicle.Physics.P02"
     },
     {
