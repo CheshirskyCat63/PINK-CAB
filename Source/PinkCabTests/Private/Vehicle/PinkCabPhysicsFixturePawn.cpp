@@ -86,7 +86,10 @@ APinkCabPhysicsFixturePawn* PinkCabPhysicsFixture::FindOrSpawnPawn(
 {
     for (TActorIterator<APinkCabPhysicsFixturePawn> It(&World); It; ++It)
     {
-        return *It;
+        if (!It->IsActorBeingDestroyed())
+        {
+            return *It;
+        }
     }
 
     FActorSpawnParameters Params;
@@ -119,6 +122,22 @@ void PinkCabPhysicsFixture::KeepAwake(
     if (USkeletalMeshComponent* Mesh = Pawn.GetMesh())
     {
         Mesh->WakeAllRigidBodies();
+    }
+}
+
+void PinkCabPhysicsFixture::DestroyPawns(UWorld& World)
+{
+    TArray<APinkCabPhysicsFixturePawn*> Existing;
+    for (TActorIterator<APinkCabPhysicsFixturePawn> It(&World); It; ++It)
+    {
+        if (!It->IsActorBeingDestroyed())
+        {
+            Existing.Add(*It);
+        }
+    }
+    for (APinkCabPhysicsFixturePawn* Pawn : Existing)
+    {
+        Pawn->Destroy();
     }
 }
 
