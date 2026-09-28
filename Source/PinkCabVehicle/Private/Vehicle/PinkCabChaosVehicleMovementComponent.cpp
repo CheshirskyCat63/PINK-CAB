@@ -9,15 +9,15 @@
 
 namespace
 {
-constexpr float RpmToRadPerSecond = 2.0f * PI / 60.0f;
+constexpr float PinkCabChaosRpmToRadPerSecond = 2.0f * PI / 60.0f;
 
-float MeanDrivenWheelRpm(const Chaos::FSimpleWheeledVehicle& Vehicle)
+float MeanDrivenWheelRpm(Chaos::FSimpleWheeledVehicle& Vehicle)
 {
     float Sum = 0.0f;
     int32 Count = 0;
     for (int32 Index = 0; Index < Vehicle.Wheels.Num(); ++Index)
     {
-        const Chaos::FSimpleWheelSim& Wheel = Vehicle.Wheels[Index];
+        Chaos::FSimpleWheelSim& Wheel = Vehicle.Wheels[Index];
         if (!Wheel.Setup().EngineEnabled)
         {
             continue;
@@ -150,7 +150,7 @@ public:
         const float EngineOmegaAfterReaction = FMath::Max(
             0.0f,
             Engine.GetEngineOmega()
-                + Output.EngineReactionDeltaRpm * RpmToRadPerSecond);
+                + Output.EngineReactionDeltaRpm * PinkCabChaosRpmToRadPerSecond);
         Engine.SetEngineOmega(EngineOmegaAfterReaction);
 
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
