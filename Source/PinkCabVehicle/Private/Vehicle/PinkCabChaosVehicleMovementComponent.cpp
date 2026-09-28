@@ -115,11 +115,6 @@ public:
             return;
         }
 
-        if (MechanicalIntegrationStepCounter)
-        {
-            MechanicalIntegrationStepCounter->Increment();
-        }
-
         FSimpleEngineSim& Engine = PVehicle->GetEngine();
         FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
 
@@ -176,6 +171,13 @@ public:
                     ? Output.RearAxleTorqueNm * Wheel.Setup().TorqueRatio
                     : 0.0f;
             Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
+        }
+
+        // Publish the step only after all engine/clutch/wheel work for this
+        // ProcessMechanicalSimulation() invocation has completed.
+        if (MechanicalIntegrationStepCounter)
+        {
+            MechanicalIntegrationStepCounter->Increment();
         }
     }
 
