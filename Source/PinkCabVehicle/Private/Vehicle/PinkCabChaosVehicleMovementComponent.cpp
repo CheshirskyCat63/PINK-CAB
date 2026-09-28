@@ -45,11 +45,10 @@ public:
     {
         using namespace Chaos;
 
-        // Preserve generic input bookkeeping/steering rates, but deliberately
-        // bypass UChaosWheeledVehicleSimulation::ApplyInput because that path
-        // injects engine braking directly at engine-enabled wheels. In PINK CAB
-        // every engine/wheel torque exchange must pass through the clutch model.
-        UChaosVehicleSimulation::ApplyInput(ControlInputs, DeltaTime);
+        // Preserve stock wheeled input semantics (including Ackermann steering
+        // and input-rate bookkeeping), then overwrite only the torque channels
+        // that P02 owns. This avoids rebuilding unrelated Chaos behavior.
+        UChaosWheeledVehicleSimulation::ApplyInput(ControlInputs, DeltaTime);
         if (!PVehicle)
         {
             return;
@@ -114,7 +113,6 @@ public:
             // Preserve the accepted P01 free-running engine dynamics. The clutch
             // reaction is applied afterwards on the same physics step.
             Engine.SetEngineRPM(true, 0.0f);
-            Engine.Simulate(DeltaTime);
         }
         else if (Command.EngagedGear == 0
             || Command.ClutchCoupling01 <= KINDA_SMALL_NUMBER)
@@ -158,16 +156,11 @@ public:
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
         {
             FSimpleWheelSim& Wheel = PVehicle->Wheels[WheelIndex];
-            if (Wheel.Setup().EngineEnabled)
-            {
-                Wheel.SetDriveTorque(
-                    TorqueMToCm(Output.RearAxleTorqueNm)
-                    * Wheel.Setup().TorqueRatio);
-            }
-            else
-            {
-                Wheel.SetDriveTorque(0.0f);
-            }
+            const float WheelDriveTorqueNm =
+                Wheel.Setup().EngineEnabled
+                    ? Output.RearAxleTorqueNm * Wheel.Setup().TorqueRatio
+                    : 0.0f;
+            Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
         }
     }
 
@@ -222,6 +215,8 @@ bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDrivelineCommand(
 {
     PendingDrivelineCommand = InCommand;
     PendingDrivelineCommand.ClutchConfig = ClutchConfig;
+    const FPinkCabChaosDrivelineCommand Command =
+        PendingDrivelineCommand;
 
     FBodyInstance* Body = GetBodyInstance();
     if (!Body || !PinkCabSimulationPT)
@@ -233,11 +228,11 @@ bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDrivelineCommand(
 
     return FPhysicsCommand::ExecuteWrite(
         Body->ActorHandle,
-        [this, InCommand](const FPhysicsActorHandle&)
+        [this, Command](const FPhysicsActorHandle&)
         {
             if (PinkCabSimulationPT)
             {
-                PinkCabSimulationPT->SetDrivelineCommand(InCommand);
+                PinkCabSimulationPT->SetDrivelineCommand(Command);
             }
         });
 }
