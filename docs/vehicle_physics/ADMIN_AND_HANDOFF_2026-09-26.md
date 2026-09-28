@@ -58,3 +58,22 @@ Vehicle Physics work may consume the current city only as a human/soak test envi
 ## Stop conditions
 
 Do not start feel tuning before P00 observability. Do not “fix” engine-off movement by zeroing chassis velocity. Do not create a second vehicle solver or duplicate Pawn family. Do not reopen city/world scope during this physics workstream.
+
+
+## Gate 1 Road Handling administrative convergence · 2026-09-28
+
+**Administrative result:** the expanded road-handling audit is integrated into the existing control plane without runtime changes or duplicate backlog.
+
+- Source package SHA-256: `3eed0b832eedc7411971c0010c75ce2d5c9bfc9bc453d84fc9037dbf41c20f43`.
+- Canonical Git integration: `GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md`.
+- G1 owner map: `GATE1_OWNER_MAPPING_2026-09-28.csv`.
+- Proposed acceptance/test overlay: `GATE1_ACCEPTANCE_PROTOCOLS_2026-09-28.md`.
+- Confluence Gate-1 page: `24707073`, parent `22413538`.
+- Jira: CD-648 remains the single execution umbrella; CD-921 terminal integration only; existing domain cards remain owners.
+- No new G1 Jira cards are created.
+- R1–R5 are accepted/frozen.
+- PR #47/R6 stays draft HUMAN_PENDING and diagnostic; it is not promoted by this docs import.
+- G1-015 conditional assistance is closed as NOT_NEEDED / PROHIBITED_BY_CURRENT_CANON.
+- Runtime next work remains evidence-driven; fine tire acceptance cannot bypass contact/CoM/inertia/suspension prerequisites.
+
+**ADMIN_CLOSED** for this package means source disposition, mapping and authority convergence are complete. It does not claim any not-yet-executed A01–A14/T00–T11 result or HUMAN handling acceptance.

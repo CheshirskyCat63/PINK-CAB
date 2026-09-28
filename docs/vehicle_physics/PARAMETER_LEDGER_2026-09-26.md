@@ -41,3 +41,27 @@ A value is not “correct” merely because it appears in Jira, Confluence or a 
 ## 2026-09-26 causality acceptance note
 
 Parameter tuning is subordinate to the no-assist contract. Assetto Corsa is only a reference for connected causality/readability, not a numeric donor. Any candidate that improves lap/acceleration feel by hidden steering-angle reduction, yaw rescue, artificial axle grip asymmetry, direct-force boost or non-causal heat/wear fails even if it feels easier.
+
+
+## Gate 1 Road Handling audit candidates · 2026-09-28
+
+These rows are **diagnostic/candidate state**, not accepted final calibration.
+
+| Surface / parameter | Current / observed state | Gate-1 disposition |
+|---|---|---|
+| Accepted road substrate | R5 `PM_PC_DryAsphalt`, friction 1.0, restitution 0.0 | FROZEN baseline; do not retune road to hide vehicle defects |
+| R6 tire friction candidate | front 1.05 / rear 0.95 | HUMAN_PENDING diagnostic A/B only; not final |
+| WheelLoadRatio | R6 candidate 1.0; older profile 0.38 | 1.0 remains physical-reference A/B; final value evidence-dependent |
+| Older F/R friction shortcut | 2.00 / 0.50 | non-canonical as a drift/wheelspin shortcut unless causal evidence justifies it |
+| Runtime CoM | not yet accepted as explicit per-profile evidence | P05/G1-007 prerequisite; measure static loads and source |
+| Inertia tensor | not yet accepted/calibrated as per-profile handling evidence | P05/G1-007 prerequisite; tune from measured response, never yaw rescue |
+| Contact sweep mode | do not assume Ray/Sphere/Shape from audit prose | G1-006: prove defect first; one-variable A/B with contact/perf evidence |
+| Suspension seed | spring 170, damping ratio 0.38, 160/180 mm travel | seed only; derive working point from corner/axle load and prove sag/reserve/decay |
+| 1.1–1.3 Hz suspension reference | source-package seed | not a historical Tatra truth and not mandatory final value |
+| Lateral slip curve | exact final authored curve not accepted | verify UE 5.8.3 Chaos semantics before curve keys; 7–10° is not a ready UE key set |
+| Steering high-speed target gain | observed 0.55 at 120 km/h applied to held target | blocker: speed may shape device integration but may not shrink held target |
+| Throttle transfer | `pow(driver,0.55)` | explicit dosability A/B after drivetrain continuity |
+| Drift | no separate mode accepted | must emerge from high base grip + combined-grip saturation + load/torque; manual recovery only |
+| Hidden assists | prohibited | G1-015 resolved NOT_NEEDED / PROHIBITED_BY_CURRENT_CANON |
+
+The full provenance/mapping lives in `GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md`.

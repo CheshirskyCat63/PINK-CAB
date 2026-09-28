@@ -38,3 +38,20 @@ No one of those conflicts is “fixed” by this docs branch. They are explicitl
 ## Current focus lock
 
 The current city/MetaRoad/world state is frozen. Development focus is Vehicle Physics V2 only until the owner explicitly reopens world work. Execute from CD-648 and the canonical documents in this folder; use CD-921 only for terminal integration/evidence.
+
+
+## Gate 1 Road Handling integration · 2026-09-28
+
+The expanded `PINK-CAB_Gate-1_Road_Handling_v1.0.zip` audit is administratively integrated without creating a second backlog or solver.
+
+- Source SHA-256: `3eed0b832eedc7411971c0010c75ce2d5c9bfc9bc453d84fc9037dbf41c20f43`.
+- Canonical integration: [GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md](GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md).
+- G1→PHY/Jira map: [GATE1_OWNER_MAPPING_2026-09-28.csv](GATE1_OWNER_MAPPING_2026-09-28.csv).
+- Imported proposed A01–A14 / T00–T11: [GATE1_ACCEPTANCE_PROTOCOLS_2026-09-28.md](GATE1_ACCEPTANCE_PROTOCOLS_2026-09-28.md).
+- Durable Confluence child: page `24707073`, under canonical physics page `22413538`.
+- R1–R5 remain HUMAN ACCEPTED / INTEGRATED / FROZEN.
+- Draft PR #47 / R6 remains HUMAN_PENDING and is treated as a diagnostic tire A/B candidate, not as final handling acceptance.
+- Fine tire acceptance now explicitly depends on contact/wheel geometry, CoM/inertia and suspension/load-transfer evidence.
+- Source-package G1-015 conditional assistance is resolved as NOT_NEEDED / PROHIBITED_BY_CURRENT_CANON because the current PINK CAB no-assist contract is stricter.
+
+This integration is administrative only: no runtime, content, road geometry, controls or vehicle calibration are changed.
