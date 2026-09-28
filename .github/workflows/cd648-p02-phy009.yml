@@ -17,6 +17,7 @@ on:
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp'
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp'
+      - 'Source/PinkCabVehicle/PinkCabVehicle.Build.cs'
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp'
       - 'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
@@ -76,6 +77,7 @@ jobs:
             'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
+            'Source/PinkCabVehicle/PinkCabVehicle.Build.cs',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp',
             'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
