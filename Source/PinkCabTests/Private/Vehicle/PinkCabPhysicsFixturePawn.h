@@ -5,6 +5,7 @@
 #include "PinkCabPhysicsFixturePawn.generated.h"
 
 class UChaosWheeledVehicleMovementComponent;
+class APinkCabPhysicsFixturePawn;
 
 struct FPinkCabPhysicsFixtureRestObservation
 {
