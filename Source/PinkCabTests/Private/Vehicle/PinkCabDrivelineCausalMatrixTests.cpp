@@ -9,7 +9,6 @@
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 #include "Vehicle/PinkCabPhysicsFixturePawn.h"
-#include "SnapshotData.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
@@ -96,26 +95,14 @@ public:
 
         if (!bInitialized)
         {
-                        UGameplayStatics::SetGamePaused(World, false);
-            Pawn->SetActorTickEnabled(false);
-            Mesh->WakeAllRigidBodies();
-
-            Baseline = Movement->GetSnapshot();
-            Baseline.LinearVelocity = FVector::ZeroVector;
-            Baseline.AngularVelocity = FVector::ZeroVector;
-            Baseline.EngineRPM = InitialEngineRpm;
-            Baseline.SelectedGear = 0;
-            for (FWheelSnapshot& Wheel : Baseline.WheelSnapshots)
-            {
-                Wheel.WheelAngularVelocity = 0.0f;
-            }
-
-            Test->TestEqual(TEXT("D3 fixture has four wheel snapshots"),
-                Baseline.WheelSnapshots.Num(), 4);
+            UGameplayStatics::SetGamePaused(World, false);
             Test->TestTrue(TEXT("D3 starts semantic engine"), Cockpit.StartEngine());
 
+            // Each matrix sample owns a fresh Chaos vehicle instance. Reusing a
+            // live engine and trying to rewind it with SetSnapshot does not
+            // reset all internal free-engine state and contaminated later cells.
             bInitialized = true;
-            BeginRun(*Movement, *Mesh);
+            BeginFreshRun(*World);
             return false;
         }
 
@@ -266,7 +253,7 @@ public:
         AdvanceCondition();
         if (!IsFinished())
         {
-            BeginRun(*Movement, *Mesh);
+            BeginFreshRun(*World);
             return false;
         }
 
@@ -309,30 +296,19 @@ private:
         ++CouplingIndex;
     }
 
-    void BeginRun(
-        UChaosWheeledVehicleMovementComponent& Movement,
-        USkeletalMeshComponent& Mesh)
+    void BeginFreshRun(UWorld& World)
     {
-        // First remove all driveline demand. Then request the exact baseline
-        // snapshot and do not start the matrix cell until live physics proves
-        // that engine/wheel/gear reset state is actually observable.
+        // Destroy the previous physics vehicle instead of attempting to rewind
+        // hidden Chaos engine state. The next latent tick spawns a completely
+        // new production movement/profile/wheel stack for this matrix sample.
+        PinkCabPhysicsFixture::DestroyPawns(World);
+
         Controls = {};
         Controls.SetThrottle(0.0f);
         Controls.SetBrake(0.0f);
         Controls.SetHandbrake(0.0f);
         Controls.SetDriveline(0, 0, 0.0f);
         Controls.SetDrivetrainTorqueCapacity(1.0f);
-
-        FPinkCabChaosVehicleDynamicsProvider ResetProvider(&Movement);
-        if (!FPinkCabChaosCockpitBridge::Apply(
-                Cockpit, Movement, Controls, ResetProvider))
-        {
-            Test->AddError(TEXT("D3 reset actuation failed"));
-            return;
-        }
-
-        Movement.SetSnapshot(Baseline);
-        Mesh.WakeAllRigidBodies();
 
         RearTorqueSum = 0.0f;
         EngineRpmSum = 0.0f;
@@ -444,7 +420,6 @@ private:
     FAutomationTestBase* Test = nullptr;
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
-    FWheeledSnaphotData Baseline;
     TArray<FPinkCabD3Run> Runs;
 
     const TArray<float> Couplings{0.0f, 0.25f, 0.50f, 0.75f, 0.999f, 1.0f};
