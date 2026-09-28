@@ -161,21 +161,45 @@ public:
 
         FSimpleEngineSim& Engine = PVehicle->GetEngine();
         FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
-
-        // The native simple transmission is kept neutral permanently. It remains
-        // present for profile/output compatibility but never becomes a second
-        // propulsion solver.
         Transmission.SetGear(0, true);
 
-        if (Command.bCombustionAllowed)
+        AdvanceFreeRunningEngine(Engine, DeltaTime);
+
+        const FPinkCabClutchDrivelineOutput Output =
+            SolveDrivelineStep(Engine, DeltaTime);
+        ApplyEngineReaction(Engine, Output);
+
+        const FDrivenWheelTorqueStats WheelStats =
+            ApplyDrivenWheelTorque(Output);
+        AccumulateEvidenceStep(Engine, WheelStats, DeltaTime);
+        PublishMechanicalStep(DeltaTime);
+    }
+
+private:
+    struct FDrivenWheelTorqueStats
+    {
+        float AbsTorqueSumNm = 0.0f;
+        int32 DrivenWheelCount = 0;
+    };
+
+    void AdvanceFreeRunningEngine(
+        Chaos::FSimpleEngineSim& Engine,
+        const float DeltaTime)
+    {
+        if (!Command.bCombustionAllowed)
         {
-            // Match the accepted/native free-running engine path. The first
-            // argument is FreeRunningIn: true keeps engine RPM independent of
-            // wheel RPM. PINK CAB then applies clutch load explicitly below.
-            Engine.SetEngineRPM(true, 0.0f);
-            Engine.Simulate(DeltaTime);
+            return;
         }
 
+        // Native free-running engine response remains P01 authority.
+        Engine.SetEngineRPM(true, 0.0f);
+        Engine.Simulate(DeltaTime);
+    }
+
+    FPinkCabClutchDrivelineOutput SolveDrivelineStep(
+        Chaos::FSimpleEngineSim& Engine,
+        const float DeltaTime)
+    {
         const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
         const float ShaftEquivalentEngineRpm =
             FMath::Abs(Command.EffectiveGearRatio) > KINDA_SMALL_NUMBER
@@ -201,17 +225,27 @@ public:
         Input.EffectiveGearRatio = Command.EffectiveGearRatio;
         Input.TransmissionEfficiency = Command.TransmissionEfficiency;
 
-        const FPinkCabClutchDrivelineOutput Output =
-            ClutchModel.Step(Input);
+        return ClutchModel.Step(Input);
+    }
 
+    void ApplyEngineReaction(
+        Chaos::FSimpleEngineSim& Engine,
+        const FPinkCabClutchDrivelineOutput& Output)
+    {
         const float EngineOmegaAfterReaction = FMath::Max(
             0.0f,
             Engine.GetEngineOmega()
-                + Output.EngineReactionDeltaRpm * PinkCabChaosRpmToRadPerSecond);
+                + Output.EngineReactionDeltaRpm
+                    * PinkCabChaosRpmToRadPerSecond);
         Engine.SetEngineOmega(EngineOmegaAfterReaction);
+    }
 
-        float DrivenWheelTorqueAbsSumNm = 0.0f;
-        int32 DrivenWheelCount = 0;
+    FDrivenWheelTorqueStats ApplyDrivenWheelTorque(
+        const FPinkCabClutchDrivelineOutput& Output)
+    {
+        using namespace Chaos;
+
+        FDrivenWheelTorqueStats Stats;
         for (int32 WheelIndex = 0; WheelIndex < PVehicle->Wheels.Num(); ++WheelIndex)
         {
             FSimpleWheelSim& Wheel = PVehicle->Wheels[WheelIndex];
@@ -223,40 +257,47 @@ public:
             Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
             if (bDriven)
             {
-                DrivenWheelTorqueAbsSumNm +=
-                    FMath::Abs(WheelDriveTorqueNm);
-                ++DrivenWheelCount;
+                Stats.AbsTorqueSumNm += FMath::Abs(WheelDriveTorqueNm);
+                ++Stats.DrivenWheelCount;
             }
         }
+        return Stats;
+    }
 
-        if (EvidenceTargetSteps > 0
-            && EvidenceCompletedSteps < EvidenceTargetSteps)
+    void AccumulateEvidenceStep(
+        const Chaos::FSimpleEngineSim& Engine,
+        const FDrivenWheelTorqueStats& WheelStats,
+        const float DeltaTime)
+    {
+        if (EvidenceTargetSteps <= 0
+            || EvidenceCompletedSteps >= EvidenceTargetSteps)
         {
-            if (EvidenceSettleStepsRemaining > 0)
-            {
-                --EvidenceSettleStepsRemaining;
-            }
-            else
-            {
-                const float MeanDrivenWheelTorqueNm =
-                    DrivenWheelCount > 0
-                        ? DrivenWheelTorqueAbsSumNm
-                            / static_cast<float>(DrivenWheelCount)
-                        : 0.0f;
-                EvidenceDrivenWheelTorqueSumNm +=
-                    static_cast<double>(MeanDrivenWheelTorqueNm);
-                EvidenceEngineRpmSum +=
-                    static_cast<double>(Engine.GetEngineRPM());
-                EvidenceDeltaSecondsSum +=
-                    static_cast<double>(DeltaTime);
-                ++EvidenceCompletedSteps;
-            }
+            return;
         }
 
-        // Publish timing/state only after all engine/clutch/wheel work for this
-        // ProcessMechanicalSimulation() invocation has completed. D3/D5 use
-        // this read-only telemetry to prove the actual physics cadence rather
-        // than assuming one automation callback equals one fixed simulation dt.
+        if (EvidenceSettleStepsRemaining > 0)
+        {
+            --EvidenceSettleStepsRemaining;
+            return;
+        }
+
+        const float MeanDrivenWheelTorqueNm =
+            WheelStats.DrivenWheelCount > 0
+                ? WheelStats.AbsTorqueSumNm
+                    / static_cast<float>(WheelStats.DrivenWheelCount)
+                : 0.0f;
+        EvidenceDrivenWheelTorqueSumNm +=
+            static_cast<double>(MeanDrivenWheelTorqueNm);
+        EvidenceEngineRpmSum +=
+            static_cast<double>(Engine.GetEngineRPM());
+        EvidenceDeltaSecondsSum +=
+            static_cast<double>(DeltaTime);
+        ++EvidenceCompletedSteps;
+    }
+
+    void PublishMechanicalStep(const float DeltaTime)
+    {
+        // Publish only after engine/clutch/wheel work is complete.
         if (MechanicalIntegrationDeltaMicros)
         {
             MechanicalIntegrationDeltaMicros->Set(
@@ -268,8 +309,6 @@ public:
             MechanicalIntegrationStepCounter->Increment();
         }
     }
-
-private:
     FThreadSafeCounter64* MechanicalIntegrationStepCounter = nullptr;
     FThreadSafeCounter64* MechanicalIntegrationDeltaMicros = nullptr;
     FPinkCabChaosDrivelineCommand Command;
