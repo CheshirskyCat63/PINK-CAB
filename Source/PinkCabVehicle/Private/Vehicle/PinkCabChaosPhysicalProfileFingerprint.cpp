@@ -139,6 +139,10 @@ FString BuildProfileFingerprint(const FPinkCabChaosPhysicalProfile& P)
     AppendFloatParameter(Out, TEXT("EngineBrakeEffect"), P.EngineBrakeEffect);
     AppendFloatParameter(Out, TEXT("EngineRevUpMOI"), P.EngineRevUpMOI);
     AppendFloatParameter(Out, TEXT("EngineRevDownRate"), P.EngineRevDownRate);
+    AppendFloatParameter(Out, TEXT("ClutchMaxTorqueNm"), P.ClutchMaxTorqueNm);
+    AppendFloatParameter(Out, TEXT("ClutchEffectiveEngineInertia"), P.ClutchEffectiveEngineInertia);
+    AppendFloatParameter(Out, TEXT("ClutchSynchronizationTimeSeconds"), P.ClutchSynchronizationTimeSeconds);
+    AppendFloatParameter(Out, TEXT("ClutchLockedSlipRpm"), P.ClutchLockedSlipRpm);
     AppendVectorArrayParameter(Out, TEXT("NormalizedTorqueCurve"), P.NormalizedTorqueCurve);
     AppendBoolParameter(Out, TEXT("bUseAutomaticGears"), P.bUseAutomaticGears);
     AppendBoolParameter(Out, TEXT("bUseAutoReverse"), P.bUseAutoReverse);
