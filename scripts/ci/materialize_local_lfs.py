@@ -79,6 +79,66 @@ def lfs_object_path(repo: Path, oid: str) -> Path:
     return repo / ".git" / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
 
 
+def checkout_cached_lfs_object(
+    workspace: Path,
+    relative: Path,
+    oid: str,
+) -> None:
+    target = workspace / relative
+    proc = subprocess.run(
+        ["git", "lfs", "checkout", "--", relative.as_posix()],
+        cwd=workspace,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"git lfs checkout failed for {relative} ({proc.returncode}): "
+            f"{proc.stderr.strip()}"
+        )
+    if not target.exists() or parse_lfs_pointer(target) is not None:
+        raise RuntimeError(f"Git LFS checkout left fixture unresolved: {relative}")
+    actual = sha256_file(target)
+    if actual != oid:
+        raise RuntimeError(
+            f"Git LFS checkout hash mismatch for {relative}: "
+            f"actual={actual} expected={oid}"
+        )
+
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", "--", relative.as_posix()],
+        cwd=workspace,
+        check=False,
+    )
+    if diff.returncode != 0:
+        raise RuntimeError(
+            f"Materialized fixture differs from Git index after LFS checkout: {relative}"
+        )
+
+    subprocess.run(
+        ["git", "update-index", "--refresh", "--", relative.as_posix()],
+        cwd=workspace,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--", relative.as_posix()],
+        cwd=workspace,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if status.returncode != 0 or status.stdout.strip():
+        raise RuntimeError(
+            f"Materialized fixture dirties Git worktree: {relative} "
+            f"status={status.stdout.strip()}"
+        )
+
+
 def materialize_required(
     workspace: Path,
     relative: Path,
@@ -94,8 +154,7 @@ def materialize_required(
 
     cached = lfs_object_path(workspace, oid)
     if cached.exists() and sha256_file(cached) == oid:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(cached, target)
+        checkout_cached_lfs_object(workspace, relative, oid)
         print(f"PINKCAB_LOCAL_LFS_FROM_OBJECT_CACHE={relative} oid={oid}")
         return
 
@@ -151,10 +210,7 @@ def materialize_required(
     if sha256_file(cached) != oid:
         raise RuntimeError(f"Local LFS cache verification failed for {relative}")
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(cached, target)
-    if sha256_file(target) != oid:
-        raise RuntimeError(f"Materialized fixture verification failed for {relative}")
+    checkout_cached_lfs_object(workspace, relative, oid)
 
     print(
         f"PINKCAB_LOCAL_LFS_RECOVERED={relative} "
