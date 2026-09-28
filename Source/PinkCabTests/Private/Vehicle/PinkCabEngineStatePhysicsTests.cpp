@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabCockpitState.h"
@@ -181,8 +182,10 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         Partial.GetAvailableEngineTorqueNm() > 0.0f);
     TestTrue(TEXT("partial clutch consumes shared available torque"),
         FMath::Abs(Partial.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER);
-    TestEqual(TEXT("provider applies the exact resolved throttle"),
-        Movement->GetThrottleInput(), Partial.GetResolvedEngineThrottle01());
+    TestEqual(TEXT("provider adapts authoritative throttle to Chaos square-law input"),
+        Movement->GetThrottleInput(),
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Partial.GetResolvedEngineThrottle01()));
 
     FPinkCabVehicleControlState Full;
     Full.SetThrottle(0.50f);
@@ -194,8 +197,10 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         Full.GetAvailableEngineTorqueNm() > 0.0f);
     TestEqual(TEXT("full coupling does not also inject external rear torque"),
         Full.ExternalRearDriveTorquePerWheelNm, 0.0f);
-    TestEqual(TEXT("full coupling applies the same resolved throttle to Chaos"),
-        Movement->GetThrottleInput(), Full.GetResolvedEngineThrottle01());
+    TestEqual(TEXT("full coupling uses the same Chaos square-law adapter"),
+        Movement->GetThrottleInput(),
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Full.GetResolvedEngineThrottle01()));
     return true;
 }
 
