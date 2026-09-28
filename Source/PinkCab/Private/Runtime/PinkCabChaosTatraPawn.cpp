@@ -42,6 +42,7 @@
 #include "Vehicle/PinkCabChaosWheelRear.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Vehicle/PinkCabVehicleInputResponse.h"
@@ -136,7 +137,11 @@ bool BindChaosWheelsToTatraGeometry(
 
 }
 
-APinkCabChaosTatraPawn::APinkCabChaosTatraPawn()
+APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
+    const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer.SetDefaultSubobjectClass<
+        UPinkCabChaosVehicleMovementComponent>(
+            AWheeledVehiclePawn::VehicleMovementComponentName))
 {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bTickEvenWhenPaused = true;
