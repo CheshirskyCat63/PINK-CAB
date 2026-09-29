@@ -90,9 +90,19 @@ if($queue.Count -eq 0){
     throw "PINKCAB_AUTOMATION_QUEUE_MISSING=$TestName"
 }
 if($fail.Count -gt 0){
+    Write-Host "PINKCAB_AUTOMATION_FAILURE_LINES_BEGIN test=$TestName count=$($fail.Count)"
+    foreach($match in $fail){
+        Write-Host "PINKCAB_AUTOMATION_FAILURE_LINE=$($match.Line)"
+    }
+    Write-Host "PINKCAB_AUTOMATION_FAILURE_LINES_END test=$TestName"
     throw "PINKCAB_AUTOMATION_TEST_FAIL test=$TestName fail=$($fail.Count)"
 }
 if($assetFail.Count -gt 0){
+    Write-Host "PINKCAB_AUTOMATION_ASSET_FAILURE_LINES_BEGIN test=$TestName count=$($assetFail.Count)"
+    foreach($match in $assetFail){
+        Write-Host "PINKCAB_AUTOMATION_ASSET_FAILURE_LINE=$($match.Line)"
+    }
+    Write-Host "PINKCAB_AUTOMATION_ASSET_FAILURE_LINES_END test=$TestName"
     throw "PINKCAB_AUTOMATION_ASSET_FAIL test=$TestName asset_fail=$($assetFail.Count)"
 }
 
