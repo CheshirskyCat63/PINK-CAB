@@ -182,3 +182,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The 0.999→1.000 moving boundary fixture uses a fixed 0.05 s settle and 0.50 s measured simulation window, driven by observed mechanical dt rather than a fixed step count.
 - Torque/RPM/authority telemetry is time-weighted. Final translational kinetic energy is interpolated to the exact end of the 0.50 s window, so render/game cadence cannot change the physical duration being compared.
 - The existing 10% boundary tolerance is unchanged and no project physics timestep is forced.
+
+
+### D5 normalized engine-response cadence metric
+- D5 compares single-step engine response as `(RPM_after - RPM_reset) / measured mechanical dt` across 30/60/120 game caps.
+- Raw endpoint RPM is retained as telemetry but is not used as the cadence-invariance metric because the accepted project does not force one global mechanical timestep.
+- The 5% cadence-invariance tolerance is unchanged.

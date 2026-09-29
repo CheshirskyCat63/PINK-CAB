@@ -21,6 +21,8 @@ struct FPinkCabD5Run
     float MechanicalDeltaMs = 0.0f;
     float RearTorqueNm = 0.0f;
     float EngineRpm = 0.0f;
+    float EngineResponseRpmPerSec = 0.0f;
+    float ResetEngineRpm = 0.0f;
     int32 SampleSteps = 0;
 };
 
@@ -120,6 +122,8 @@ public:
 
             CurrentMeanGameDeltaMs = static_cast<float>(
                 GameDeltaSum / static_cast<double>(GameDeltaSamples) * 1000.0);
+            CurrentResetEngineRpm =
+                RestGate.GetObservation().EngineRpm;
             Controls = {};
             Controls.SetThrottle(0.50f);
             Controls.SetBrake(0.0f);
@@ -159,13 +163,20 @@ public:
         Run.MechanicalDeltaMs = Evidence.MeanDeltaSeconds * 1000.0f;
         Run.RearTorqueNm = Evidence.MeanDrivenWheelTorqueNm;
         Run.EngineRpm = Evidence.MeanEngineRpm;
+        Run.ResetEngineRpm = CurrentResetEngineRpm;
+        Run.EngineResponseRpmPerSec =
+            Evidence.MeanDeltaSeconds > KINDA_SMALL_NUMBER
+                ? (Evidence.MeanEngineRpm - CurrentResetEngineRpm)
+                    / Evidence.MeanDeltaSeconds
+                : 0.0f;
         Run.SampleSteps = Evidence.CompletedSampleSteps;
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D5_CADENCE fps_cap=%d repeat=%d game_dt_ms=%.6f mechanical_dt_ms=%.6f rear_torque_nm=%.3f engine_rpm=%.3f steps=%d"),
+            TEXT("P02_D5_CADENCE fps_cap=%d repeat=%d game_dt_ms=%.6f mechanical_dt_ms=%.6f rear_torque_nm=%.3f engine_rpm=%.3f reset_engine_rpm=%.3f engine_response_rpm_s=%.3f steps=%d"),
             Run.GameFpsCap, Run.Repeat + 1, Run.MeanGameDeltaMs,
             Run.MechanicalDeltaMs, Run.RearTorqueNm, Run.EngineRpm,
+            Run.ResetEngineRpm, Run.EngineResponseRpmPerSec,
             Run.SampleSteps));
 
         if (++RepeatIndex >= RepeatsPerCap)
@@ -216,6 +227,7 @@ private:
         GameDeltaSamples = 0;
         GameDeltaSum = 0.0;
         CurrentMeanGameDeltaMs = 0.0f;
+        CurrentResetEngineRpm = 0.0f;
         bResetting = true;
     }
 
@@ -237,7 +249,7 @@ private:
             if (Field == 0) Result.Add(Run.MeanGameDeltaMs);
             else if (Field == 1) Result.Add(Run.MechanicalDeltaMs);
             else if (Field == 2) Result.Add(Run.RearTorqueNm);
-            else Result.Add(Run.EngineRpm);
+            else Result.Add(Run.EngineResponseRpmPerSec);
         }
         return Result;
     }
@@ -255,6 +267,8 @@ private:
                 Run.MechanicalDeltaMs > 0.0f && FMath::IsFinite(Run.MechanicalDeltaMs));
             Test->TestEqual(TEXT("D5 evidence is exactly one mechanical step"),
                 Run.SampleSteps, 1);
+            Test->TestTrue(TEXT("D5 records finite normalized engine response"),
+                FMath::IsFinite(Run.EngineResponseRpmPerSec));
             Test->TestTrue(TEXT("D5 produces measurable driveline torque"),
                 FMath::Abs(Run.RearTorqueNm) > 25.0f);
         }
@@ -307,6 +321,7 @@ private:
     bool bRestored = false;
     float OriginalMaxFps = 0.0f;
     float CurrentMeanGameDeltaMs = 0.0f;
+    float CurrentResetEngineRpm = 0.0f;
     double GameDeltaSum = 0.0;
 };
 
