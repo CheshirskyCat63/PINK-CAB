@@ -243,6 +243,28 @@ public:
         Run.Repeat = RepeatIndex;
         Run.MeanRearDriveTorqueNm =
             Evidence.MeanDrivenWheelTorqueNm;
+        Test->TestTrue(
+            TEXT("D3 run captures constitutive wheel torque from physics evidence"),
+            CurrentCoupling() <= KINDA_SMALL_NUMBER
+                ? FMath::IsNearlyZero(
+                    Evidence.MeanInitialDrivenWheelTorqueNm, 1.0e-3f)
+                : FMath::IsNearlyEqual(
+                    Run.MeanInitialRearDriveTorqueNm,
+                    Evidence.MeanInitialDrivenWheelTorqueNm,
+                    1.0e-3f));
+        if (CurrentCoupling() > KINDA_SMALL_NUMBER
+            && !FMath::IsNearlyEqual(
+                Run.MeanInitialRearDriveTorqueNm,
+                Evidence.MeanInitialDrivenWheelTorqueNm,
+                1.0e-3f))
+        {
+            Test->AddError(FString::Printf(
+                TEXT("D3_EVIDENCE_WIRING_MISMATCH run_nm=%.6f evidence_nm=%.6f coupling=%.3f"),
+                Run.MeanInitialRearDriveTorqueNm,
+                Evidence.MeanInitialDrivenWheelTorqueNm,
+                CurrentCoupling()));
+            return true;
+        }
         Run.MeanEngineRpm =
             Evidence.MeanEngineRpm;
         Run.EffectiveGearRatio = LastEffectiveGearRatio;
