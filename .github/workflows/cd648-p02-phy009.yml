@@ -206,9 +206,11 @@ jobs:
             $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
             $timeoutSeconds=180
             if($test -eq 'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix'){
-              # 240 fresh-reset runs require >=140 s of physical integration
-              # before spawn/reset/automation overhead at the accepted cadence.
-              $timeoutSeconds=420
+              # 240 fresh-reset runs plus fresh pawn spawn/settle overhead exceeded the
+              # previous 420 s budget in dedicated run 36500675114. The
+              # acceptance matrix is unchanged; only the runner budget matches
+              # the already-authoritative 900 s full-suite allowance.
+              $timeoutSeconds=900
             } elseif($test -eq 'PinkCab.Vehicle.Physics'){
               # Full regression includes the complete D3 matrix plus P01/D1/D2.
               $timeoutSeconds=900
