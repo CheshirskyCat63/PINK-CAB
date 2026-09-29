@@ -267,6 +267,9 @@ private:
                 Run.MechanicalDeltaMs > 0.0f && FMath::IsFinite(Run.MechanicalDeltaMs));
             Test->TestEqual(TEXT("D5 evidence is exactly one mechanical step"),
                 Run.SampleSteps, 1);
+            Test->TestTrue(TEXT("D5 every repeat starts from warm idle"),
+                FMath::Abs(Run.ResetEngineRpm - InitialEngineRpm)
+                    <= ResetEngineRpmTolerance);
             Test->TestTrue(TEXT("D5 records finite normalized engine response"),
                 FMath::IsFinite(Run.EngineResponseRpmPerSec));
             Test->TestTrue(TEXT("D5 produces measurable driveline torque"),
@@ -282,14 +285,17 @@ private:
             Game60 > Game120);
 
         const float Torque30 = MedianD5(Values(30, 2));
-        const float Rpm30 = MedianD5(Values(30, 3));
+        const float EngineResponse30 = MedianD5(Values(30, 3));
         for (const int32 Cap : {60, 120})
         {
             Test->TestTrue(TEXT("D5 torque is cadence invariant"),
                 RelativeD5(Torque30, MedianD5(Values(Cap, 2)), 25.0f)
                     <= ResponseRelativeTolerance);
-            Test->TestTrue(TEXT("D5 engine response is cadence invariant"),
-                RelativeD5(Rpm30, MedianD5(Values(Cap, 3)), 250.0f)
+            Test->TestTrue(TEXT("D5 normalized engine response is cadence invariant"),
+                RelativeD5(
+                    EngineResponse30,
+                    MedianD5(Values(Cap, 3)),
+                    250.0f)
                     <= ResponseRelativeTolerance);
         }
         return true;
@@ -304,6 +310,8 @@ private:
     TArray<FPinkCabD5Run> Runs;
 
     static constexpr int32 RepeatsPerCap = 5;
+    static constexpr float InitialEngineRpm = 925.0f;
+    static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr int32 GameDeltaWarmupFrames = 5;
     static constexpr int32 MinimumGameDeltaSamples = 10;
     static constexpr float SingleStepSampleSeconds = 1.0e-4f;
