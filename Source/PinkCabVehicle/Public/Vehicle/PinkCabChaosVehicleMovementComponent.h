@@ -38,6 +38,10 @@ struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
     // limiter and torque-curve resolution happen on the physics thread against
     // the exact engine state consumed by the same mechanical step.
     float HealthClampedControlThrottle01 = 0.0f;
+    // Service brake is already prepared/smoothed by the PinkCab control
+    // runtime. Carry that authoritative demand to the physics thread so native
+    // Chaos input interpolation cannot become a second brake-state owner.
+    float ServiceBrake01 = 0.0f;
     float EffectiveGearRatio = 0.0f;
     float TransmissionEfficiency = 1.0f;
     float EngineBrakeEffect = 0.0f;
