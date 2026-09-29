@@ -87,7 +87,10 @@ public:
         if (!bInitialized)
         {
             UGameplayStatics::SetGamePaused(World, false);
-            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+
+            constexpr float Grade = 0.08f;
+            const float RampPitchDeg =
+                FMath::RadiansToDegrees(FMath::Atan(Grade));
 
             Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
@@ -96,10 +99,9 @@ public:
                 return true;
             }
 
-            constexpr float RampPitchDeg = 20.0f;
             UBoxComponent* RampBox = NewObject<UBoxComponent>(Ramp);
             Ramp->SetRootComponent(RampBox);
-            RampBox->SetBoxExtent(FVector(700.0f, 250.0f, 60.0f));
+            RampBox->SetBoxExtent(FVector(1200.0f, 350.0f, 60.0f));
             RampBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
             RampBox->SetCollisionObjectType(ECC_WorldStatic);
             RampBox->SetCollisionResponseToAllChannels(ECR_Block);
@@ -136,6 +138,7 @@ public:
             {
                 return true;
             }
+
             FixturePawn = SpawnedPawn;
             SpawnedPawn->SetActorTickEnabled(false);
 
@@ -154,11 +157,13 @@ public:
                 return true;
             }
 
+            // Settle on the actual wheel/suspension contacts using only the
+            // ordinary service brake. The measured coast releases it fully.
             Controls.SetThrottle(1.0f);
-            Controls.SetBrake(0.0f);
+            Controls.SetBrake(1.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
-            Test->TestTrue(TEXT("off neutral slope state applies"),
+            Test->TestTrue(TEXT("off neutral slope settle state applies"),
                 ApplyEngineState(*SpawnedPawn, Cockpit, Controls));
             Test->TestFalse(TEXT("off slope denies combustion"),
                 Controls.IsCombustionAllowed());
@@ -207,13 +212,35 @@ public:
 
         if (!bContactReady)
         {
-            const float NormalSpeedCmPerSec = FMath::Abs(
-                FVector::DotProduct(
-                    Mesh->GetPhysicsLinearVelocity(),
-                    Ramp->GetActorUpVector()));
+            int32 ContactWheels = 0;
+            float TotalSpringForce = 0.0f;
+            for (int32 WheelIndex = 0;
+                 WheelIndex < Movement->GetNumWheels();
+                 ++WheelIndex)
+            {
+                const FWheelStatus& Wheel =
+                    Movement->GetWheelState(WheelIndex);
+                if (Wheel.bInContact)
+                {
+                    ++ContactWheels;
+                    TotalSpringForce += FMath::Max(Wheel.SpringForce, 0.0f);
+                }
+            }
+
+            const float BodyLinearSpeedCmPerSec =
+                Mesh->GetPhysicsLinearVelocity().Size();
+            const float BodyAngularSpeedDegPerSec =
+                Mesh->GetPhysicsAngularVelocityInDegrees().Size();
+            const bool bStableWheelSupport =
+                ContactWheels == Movement->GetNumWheels()
+                && TotalSpringForce > KINDA_SMALL_NUMBER
+                && BodyLinearSpeedCmPerSec
+                    <= ContactBodyLinearToleranceCmPerSec
+                && BodyAngularSpeedDegPerSec
+                    <= ContactBodyAngularToleranceDegPerSec;
 
             if (PhaseSimSeconds >= MinimumContactSettleSeconds
-                && NormalSpeedCmPerSec <= ContactNormalSpeedToleranceCmPerSec)
+                && bStableWheelSupport)
             {
                 ++StableContactObservations;
             }
@@ -231,21 +258,34 @@ public:
                 }
 
                 Test->AddError(FString::Printf(
-                    TEXT("P01 slope fixture never reached stable ramp contact sim_s=%.3f normal_speed_cm_s=%.3f stable_observations=%d"),
+                    TEXT("P01 slope fixture never reached four-wheel support sim_s=%.3f contacts=%d/%d spring_force=%.3f body_linear_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
                     PhaseSimSeconds,
-                    NormalSpeedCmPerSec,
+                    ContactWheels,
+                    Movement->GetNumWheels(),
+                    TotalSpringForce,
+                    BodyLinearSpeedCmPerSec,
+                    BodyAngularSpeedDegPerSec,
                     StableContactObservations));
                 return true;
             }
 
-            StartLocation = Pawn->GetActorLocation();
+            StartLocation = Mesh->GetComponentLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f normal_speed_cm_s=%.3f stable_observations=%d start=%s"),
+                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f body_linear_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d start=%s"),
                 PhaseSimSeconds,
-                NormalSpeedCmPerSec,
+                ContactWheels,
+                Movement->GetNumWheels(),
+                TotalSpringForce,
+                BodyLinearSpeedCmPerSec,
+                BodyAngularSpeedDegPerSec,
                 StableContactObservations,
                 *StartLocation.ToString()));
+
+            Controls.SetBrake(0.0f);
+            Test->TestTrue(TEXT("off neutral slope releases service brake"),
+                ApplyEngineState(*Pawn, Cockpit, Controls));
+
             bContactReady = true;
             PhaseSimSeconds = 0.0;
             return false;
@@ -256,7 +296,7 @@ public:
             return false;
         }
 
-        const FVector EndLocation = Pawn->GetActorLocation();
+        const FVector EndLocation = Mesh->GetComponentLocation();
         const FVector EndVelocity = Mesh->GetPhysicsLinearVelocity();
         const float HorizontalTravelCm =
             FVector2D(EndLocation - StartLocation).Size();
@@ -297,6 +337,8 @@ public:
             Movement->GetThrottleInput(), 0.0f);
         Test->TestEqual(TEXT("slope coast remains zero external drive torque"),
             Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+        Test->TestEqual(TEXT("slope coast releases service brake"),
+            Movement->GetBrakeInput(), 0.0f);
 
         Ramp->Destroy();
         Ramp = nullptr;
@@ -311,9 +353,10 @@ private:
     FPinkCabVehicleControlState Controls;
 
     static constexpr double MinimumContactSettleSeconds = 0.35;
-    static constexpr double ContactReadyTimeoutSeconds = 2.50;
+    static constexpr double ContactReadyTimeoutSeconds = 3.00;
     static constexpr double MeasurementSeconds = 1.20;
-    static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
+    static constexpr float ContactBodyLinearToleranceCmPerSec = 5.0f;
+    static constexpr float ContactBodyAngularToleranceDegPerSec = 2.0f;
     static constexpr int32 RequiredStableContactObservations = 5;
 
     bool bInitialized = false;
