@@ -244,3 +244,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The solver now derives its slip-decay gain from the existing physical parameters only: clutch torque capacity `C`, effective engine inertia `I`, synchronization horizon `T`, and locked-slip angular band `ω_lock`.
 - For the largest slip that remains below clutch capacity, the gain `k` is chosen from `x·exp(x)=C·T/(I·ω_lock)` with `x=k·T`. This makes that unconstrained reference slip settle to the lock band in the authored horizon; larger slips remain honestly capacity-limited.
 - No new tuning constant, helper force, velocity write, fixed timestep, engine-brake coefficient change, clutch-capacity change, or 0.999→1.000 handoff was introduced.
+
+
+### Exact capacity-independent clutch compliance
+- The authored synchronization compliance is now derived from the full healthy clutch definition only. Pedal coupling and hot/worn condition change torque capacity, never synchronization gain.
+- The clutch step is integrated analytically as a piecewise ODE: saturated positive/negative capacity regions use exact linear slip evolution, and the unsaturated region uses exact exponential slip decay. Capacity-boundary crossing time is solved inside the step.
+- This removes dependence on arbitrary local numerical substep counts while preserving the same equal/opposite clutch impulse, physical torque clamp, full-coupling continuity and authored 0.20 s synchronization horizon.

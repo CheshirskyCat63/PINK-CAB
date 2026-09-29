@@ -4,8 +4,8 @@ namespace
 {
 constexpr float PinkCabClutchRpmToRadPerSecond = 2.0f * PI / 60.0f;
 constexpr float PinkCabClutchRadPerSecondToRpm = 60.0f / (2.0f * PI);
-constexpr float PinkCabIntegrationSlicesPerSyncHorizon = 32.0f;
-
+constexpr double PinkCabClutchTimeEpsilonSeconds = 1.0e-9;
+constexpr float PinkCabClutchTorqueRegionEpsilonNm = 1.0e-4f;
 
 float PositiveLambertW(const float Value)
 {
@@ -19,9 +19,6 @@ float PositiveLambertW(const float Value)
         : FMath::Loge(Value) - FMath::Loge(FMath::Loge(Value));
     X = FMath::Max(X, 0.0f);
 
-    // Principal real branch for Value > 0. Eight Newton iterations are
-    // deterministic and comfortably converge across the physical clutch
-    // parameter envelope used by PINK CAB.
     for (int32 Index = 0; Index < 8; ++Index)
     {
         const float ExpX = FMath::Exp(X);
@@ -44,10 +41,9 @@ float PositiveLambertW(const float Value)
 }
 
 float SynchronizationGainPerSecond(
-    const FPinkCabClutchDrivelineConfig& Config,
-    const float TorqueCapacityNm)
+    const FPinkCabClutchDrivelineConfig& Config)
 {
-    if (TorqueCapacityNm <= KINDA_SMALL_NUMBER
+    if (Config.MaxClutchTorqueNm <= KINDA_SMALL_NUMBER
         || Config.EngineEffectiveInertia <= KINDA_SMALL_NUMBER
         || Config.SynchronizationTimeSeconds <= KINDA_SMALL_NUMBER)
     {
@@ -58,24 +54,19 @@ float SynchronizationGainPerSecond(
         Config.LockedSlipRpm * PinkCabClutchRpmToRadPerSecond;
     if (LockedSlipOmega <= KINDA_SMALL_NUMBER)
     {
-        // A zero-width lock band has no finite exponential settling target.
-        // Preserve the legacy finite compliance rather than inventing an
-        // unbounded synchronization gain.
         return 1.0f / Config.SynchronizationTimeSeconds;
     }
 
-    // Let k be the slip-decay gain. The largest *unconstrained* slip is
-    // C/(I*k), because beyond that the requested synchronization torque would
-    // hit clutch capacity C. Require that reference slip to decay exactly to
-    // the authored lock band after horizon T:
+    // Synchronization compliance is a property of the authored clutch, not of
+    // pedal coupling or wear capacity. Use the full healthy clutch capacity to
+    // define the largest unsaturated reference slip. Coupling/condition then
+    // affect only the physical torque clamp below.
     //
-    //   C/(I*k) * exp(-k*T) = lockedSlip
-    //
-    // With x=k*T this becomes x*exp(x)=C*T/(I*lockedSlip), hence Lambert W.
-    // This gives the authored "synchronization horizon" literal meaning while
-    // retaining physical capacity limiting for larger slips.
+    //   s_ref = C_max / (I*k)
+    //   s_ref * exp(-k*T) = s_lock
+    //   x*exp(x) = C_max*T / (I*s_lock), x=k*T
     const float CapacityHorizonRatio =
-        TorqueCapacityNm
+        Config.MaxClutchTorqueNm
         * Config.SynchronizationTimeSeconds
         / (Config.EngineEffectiveInertia * LockedSlipOmega);
     const float HorizonExponent =
@@ -93,6 +84,16 @@ struct FPinkCabClutchIntegrationResult
     bool bAnyTorqueLimited = false;
 };
 
+float RequestedTorqueNm(
+    const float NetEngineTorqueNm,
+    const float EngineInertia,
+    const float SynchronizationGain,
+    const float SlipOmega)
+{
+    return NetEngineTorqueNm
+        + EngineInertia * SynchronizationGain * SlipOmega;
+}
+
 FPinkCabClutchIntegrationResult IntegrateClutchReaction(
     const FPinkCabClutchDrivelineConfig& Config,
     const FPinkCabClutchDrivelineInput& Input,
@@ -100,68 +101,181 @@ FPinkCabClutchIntegrationResult IntegrateClutchReaction(
     const float NetEngineTorqueNm)
 {
     FPinkCabClutchIntegrationResult Result;
+    const float Inertia = Config.EngineEffectiveInertia;
+    const float Gain = SynchronizationGainPerSecond(Config);
     const float ShaftOmega =
         Input.ShaftEquivalentEngineRpm * PinkCabClutchRpmToRadPerSecond;
-    float VirtualEngineOmega =
-        Input.EngineRpm * PinkCabClutchRpmToRadPerSecond;
+    float SlipOmega =
+        Input.EngineRpm * PinkCabClutchRpmToRadPerSecond
+        - ShaftOmega;
 
-    const float MaxStep =
-        Config.SynchronizationTimeSeconds
-        / PinkCabIntegrationSlicesPerSyncHorizon;
-    const int32 Steps = FMath::Max(
-        1,
-        FMath::CeilToInt(
-            Input.DeltaSeconds
-            / FMath::Max(MaxStep, KINDA_SMALL_NUMBER)));
-    const float StepSeconds =
-        Input.DeltaSeconds / static_cast<float>(Steps);
-
-    double ClutchImpulse = 0.0;
-    for (int32 Index = 0; Index < Steps; ++Index)
+    if (Gain <= KINDA_SMALL_NUMBER)
     {
-        const float SlipOmega = VirtualEngineOmega - ShaftOmega;
-        const float RequestedTorque =
-            NetEngineTorqueNm
-            + Config.EngineEffectiveInertia
-                * SlipOmega
-                * SynchronizationGainPerSecond(
-                    Config,
-                    TorqueCapacityNm);
-        const float TransmittedTorque = FMath::Clamp(
-            RequestedTorque,
-            -TorqueCapacityNm,
-            TorqueCapacityNm);
+        return Result;
+    }
 
-        if (Index == 0)
+    const float HighSlipBoundaryOmega =
+        (TorqueCapacityNm - NetEngineTorqueNm)
+        / (Inertia * Gain);
+    const float LowSlipBoundaryOmega =
+        (-TorqueCapacityNm - NetEngineTorqueNm)
+        / (Inertia * Gain);
+
+    Result.InitialRequestedTorqueNm = RequestedTorqueNm(
+        NetEngineTorqueNm, Inertia, Gain, SlipOmega);
+
+    double RemainingSeconds = static_cast<double>(Input.DeltaSeconds);
+    double ClutchImpulse = 0.0;
+
+    while (RemainingSeconds > PinkCabClutchTimeEpsilonSeconds)
+    {
+        const float Requested = RequestedTorqueNm(
+            NetEngineTorqueNm, Inertia, Gain, SlipOmega);
+        const bool bHighLimited =
+            Requested > TorqueCapacityNm + PinkCabClutchTorqueRegionEpsilonNm
+            || (NetEngineTorqueNm > TorqueCapacityNm
+                && Requested
+                    >= TorqueCapacityNm
+                        - PinkCabClutchTorqueRegionEpsilonNm);
+        const bool bLowLimited =
+            Requested < -TorqueCapacityNm - PinkCabClutchTorqueRegionEpsilonNm
+            || (NetEngineTorqueNm < -TorqueCapacityNm
+                && Requested
+                    <= -TorqueCapacityNm
+                        + PinkCabClutchTorqueRegionEpsilonNm);
+
+        if (bHighLimited)
         {
-            Result.InitialRequestedTorqueNm = RequestedTorque;
-        }
-        Result.FinalRequestedTorqueNm = RequestedTorque;
-        Result.bAnyTorqueLimited |= !FMath::IsNearlyEqual(
-            TransmittedTorque,
-            RequestedTorque,
-            1.0e-3f);
-        ClutchImpulse +=
-            static_cast<double>(TransmittedTorque)
-            * static_cast<double>(StepSeconds);
+            Result.bAnyTorqueLimited = true;
+            const float SlipRate =
+                (NetEngineTorqueNm - TorqueCapacityNm) / Inertia;
+            double SegmentSeconds = RemainingSeconds;
+            if (SlipRate < -KINDA_SMALL_NUMBER)
+            {
+                const double ToBoundarySeconds =
+                    static_cast<double>(
+                        HighSlipBoundaryOmega - SlipOmega)
+                    / static_cast<double>(SlipRate);
+                if (ToBoundarySeconds
+                        > PinkCabClutchTimeEpsilonSeconds
+                    && ToBoundarySeconds < SegmentSeconds)
+                {
+                    SegmentSeconds = ToBoundarySeconds;
+                }
+            }
 
-        const float VirtualNetTorque =
-            NetEngineTorqueNm - TransmittedTorque;
-        VirtualEngineOmega +=
-            VirtualNetTorque
-            / Config.EngineEffectiveInertia
-            * StepSeconds;
+            ClutchImpulse +=
+                static_cast<double>(TorqueCapacityNm) * SegmentSeconds;
+            SlipOmega += SlipRate * static_cast<float>(SegmentSeconds);
+            RemainingSeconds -= SegmentSeconds;
+            if (RemainingSeconds > PinkCabClutchTimeEpsilonSeconds)
+            {
+                SlipOmega = HighSlipBoundaryOmega;
+            }
+            continue;
+        }
+
+        if (bLowLimited)
+        {
+            Result.bAnyTorqueLimited = true;
+            const float SlipRate =
+                (NetEngineTorqueNm + TorqueCapacityNm) / Inertia;
+            double SegmentSeconds = RemainingSeconds;
+            if (SlipRate > KINDA_SMALL_NUMBER)
+            {
+                const double ToBoundarySeconds =
+                    static_cast<double>(
+                        LowSlipBoundaryOmega - SlipOmega)
+                    / static_cast<double>(SlipRate);
+                if (ToBoundarySeconds
+                        > PinkCabClutchTimeEpsilonSeconds
+                    && ToBoundarySeconds < SegmentSeconds)
+                {
+                    SegmentSeconds = ToBoundarySeconds;
+                }
+            }
+
+            ClutchImpulse -=
+                static_cast<double>(TorqueCapacityNm) * SegmentSeconds;
+            SlipOmega += SlipRate * static_cast<float>(SegmentSeconds);
+            RemainingSeconds -= SegmentSeconds;
+            if (RemainingSeconds > PinkCabClutchTimeEpsilonSeconds)
+            {
+                SlipOmega = LowSlipBoundaryOmega;
+            }
+            continue;
+        }
+
+        double SegmentSeconds = RemainingSeconds;
+        bool bExitToHighLimit = false;
+        bool bExitToLowLimit = false;
+
+        if (NetEngineTorqueNm > TorqueCapacityNm
+            && HighSlipBoundaryOmega < -KINDA_SMALL_NUMBER
+            && SlipOmega < HighSlipBoundaryOmega)
+        {
+            const double ToBoundarySeconds =
+                FMath::Loge(
+                    static_cast<double>(
+                        SlipOmega / HighSlipBoundaryOmega))
+                / static_cast<double>(Gain);
+            if (ToBoundarySeconds
+                    > PinkCabClutchTimeEpsilonSeconds
+                && ToBoundarySeconds < SegmentSeconds)
+            {
+                SegmentSeconds = ToBoundarySeconds;
+                bExitToHighLimit = true;
+            }
+        }
+        else if (NetEngineTorqueNm < -TorqueCapacityNm
+            && LowSlipBoundaryOmega > KINDA_SMALL_NUMBER
+            && SlipOmega > LowSlipBoundaryOmega)
+        {
+            const double ToBoundarySeconds =
+                FMath::Loge(
+                    static_cast<double>(
+                        SlipOmega / LowSlipBoundaryOmega))
+                / static_cast<double>(Gain);
+            if (ToBoundarySeconds
+                    > PinkCabClutchTimeEpsilonSeconds
+                && ToBoundarySeconds < SegmentSeconds)
+            {
+                SegmentSeconds = ToBoundarySeconds;
+                bExitToLowLimit = true;
+            }
+        }
+
+        const float FinalSegmentSlipOmega =
+            SlipOmega
+            * FMath::Exp(
+                -Gain * static_cast<float>(SegmentSeconds));
+        ClutchImpulse +=
+            static_cast<double>(NetEngineTorqueNm) * SegmentSeconds
+            + static_cast<double>(Inertia)
+                * static_cast<double>(
+                    SlipOmega - FinalSegmentSlipOmega);
+        SlipOmega = FinalSegmentSlipOmega;
+        RemainingSeconds -= SegmentSeconds;
+
+        if (bExitToHighLimit)
+        {
+            SlipOmega = HighSlipBoundaryOmega;
+        }
+        else if (bExitToLowLimit)
+        {
+            SlipOmega = LowSlipBoundaryOmega;
+        }
     }
 
     Result.AverageTransmittedTorqueNm = static_cast<float>(
         ClutchImpulse / static_cast<double>(Input.DeltaSeconds));
     Result.EngineReactionDeltaRpm = static_cast<float>(
-        -ClutchImpulse
-        / static_cast<double>(Config.EngineEffectiveInertia))
+        -ClutchImpulse / static_cast<double>(Inertia))
         * PinkCabClutchRadPerSecondToRpm;
+    Result.FinalRequestedTorqueNm = RequestedTorqueNm(
+        NetEngineTorqueNm, Inertia, Gain, SlipOmega);
     Result.FinalSlipRpm =
-        (VirtualEngineOmega - ShaftOmega)
-        * PinkCabClutchRadPerSecondToRpm;
+        SlipOmega * PinkCabClutchRadPerSecondToRpm;
     return Result;
 }
 }
