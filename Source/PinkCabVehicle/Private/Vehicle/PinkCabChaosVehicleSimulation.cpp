@@ -100,20 +100,6 @@ void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
                 FMath::Max(BrakeTorqueNm, HandbrakeTorqueNm);
         }
 
-#if WITH_DEV_AUTOMATION_TESTS
-        if (Setup.EngineEnabled
-            && TestDynamometerBrakeTorqueNm > KINDA_SMALL_NUMBER)
-        {
-            // D3 uses an explicit test-only physical dynamometer load to hold
-            // the driven shaft against the maximum clutch torque. This does
-            // not exist in production/shipping builds and does not alter the
-            // authored service/parking-brake profile.
-            BrakeTorqueNm = FMath::Max(
-                BrakeTorqueNm,
-                TestDynamometerBrakeTorqueNm);
-        }
-#endif
-
         Wheel.SetBrakeTorque(TorqueMToCm(BrakeTorqueNm), false);
     }
 }

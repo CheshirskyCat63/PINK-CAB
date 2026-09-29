@@ -38,7 +38,6 @@ struct FPinkCabD3Run
     float MeanMechanicalDeltaMs = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
     float EndBodyLinearSpeedCmPerSec = 0.0f;
-    float DynamometerBrakeTorqueNm = 0.0f;
 };
 
 float MedianD3(TArray<float> Values)
@@ -147,13 +146,11 @@ public:
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
-                // D3 is a stationary driveline bench. The production rear
-                // service brake is intentionally weaker than the maximum
-                // clutch/first-gear wheel torque, so it cannot define a fixed
-                // shaft state at full load. Use an explicit test-only physical
-                // dynamometer brake on the driven wheels instead; production
-                // brake calibration is untouched. Moving-load behavior remains
-                // D4's responsibility.
+                // D3 measures the first mechanical response from a proven
+                // identical reset state. That keeps the consumed shaft state
+                // identical without adding a brake/dyno authority or allowing
+                // tire/chassis trajectories to diverge. Moving-load behavior
+                // is verified separately in D4.
                 Controls.SetBrake(0.0f);
                 Controls.SetHandbrake(0.0f);
                 Controls.SetDriveline(
@@ -172,20 +169,10 @@ public:
                 LastEffectiveGearRatio =
                     ConditionProvider.GetLastCausalActuationTelemetry()
                         .EffectiveGearRatio;
-#if WITH_DEV_AUTOMATION_TESTS
-                if (!PinkCabMovement
-                        ->SetPinkCabDynamometerBrakeTorqueForTests(
-                            DynamometerBrakeTorqueNm))
-                {
-                    Test->AddError(
-                        TEXT("D3 failed to install physical dynamometer load"));
-                    return true;
-                }
-#endif
                 if (!PinkCabMovement
                         ->BeginPinkCabMechanicalEvidenceWindow(
-                            SettleSeconds,
-                            SampleSeconds))
+                            0.0f,
+                            SingleStepSampleSeconds))
                 {
                     Test->AddError(
                         TEXT("D3 failed to start exact physics evidence window"));
@@ -241,11 +228,12 @@ public:
             TEXT("D3 evidence window covers exact simulated sample duration"),
             FMath::IsNearlyEqual(
                 Evidence.CompletedSampleSeconds,
-                SampleSeconds,
+                SingleStepSampleSeconds,
                 1.0e-4f));
-        Test->TestTrue(
-            TEXT("D3 evidence window contains physical samples"),
-            Evidence.CompletedSampleSteps > 0);
+        Test->TestEqual(
+            TEXT("D3 evidence window contains exactly one mechanical sample"),
+            Evidence.CompletedSampleSteps,
+            1);
 
         FPinkCabD3Run Run;
         Run.Coupling = CurrentCoupling();
@@ -276,14 +264,10 @@ public:
             Evidence.MeanDrivenWheelRpm;
         Run.EndBodyLinearSpeedCmPerSec =
             Mesh->GetPhysicsLinearVelocity().Size();
-#if WITH_DEV_AUTOMATION_TESTS
-        Run.DynamometerBrakeTorqueNm =
-            Evidence.DynamometerBrakeTorqueNm;
-#endif
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f dyno_brake_nm=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
@@ -302,7 +286,6 @@ public:
             Run.AvailableEngineTorqueNm,
             Run.MeanDrivenWheelRpm,
             Run.EndBodyLinearSpeedCmPerSec,
-            Run.DynamometerBrakeTorqueNm,
             Run.ChaosCurrentGear,
             Run.ChaosTargetGear));
 
@@ -438,7 +421,7 @@ private:
                     && Run.MeanDrivenWheelRpm >= 0.0f
                     && FMath::IsFinite(Run.EndBodyLinearSpeedCmPerSec)
                     && Run.EndBodyLinearSpeedCmPerSec >= 0.0f
-                    && FMath::IsFinite(Run.DynamometerBrakeTorqueNm));
+);
             Test->TestTrue(
                 TEXT("every D3 sample records a positive finite mechanical timestep"),
                 FMath::IsFinite(Run.MeanMechanicalDeltaMs)
@@ -447,46 +430,20 @@ private:
 
         float MaxMeanDrivenWheelRpm = 0.0f;
         float MaxBodyLinearSpeedCmPerSec = 0.0f;
-        float MinDynamometerBrakeTorqueNm = TNumericLimits<float>::Max();
-        const FPinkCabD3Run* WorstWheelRun = nullptr;
         for (const FPinkCabD3Run& Run : Runs)
         {
-            if (!WorstWheelRun
-                || Run.MeanDrivenWheelRpm > MaxMeanDrivenWheelRpm)
-            {
-                MaxMeanDrivenWheelRpm = Run.MeanDrivenWheelRpm;
-                WorstWheelRun = &Run;
-            }
+            MaxMeanDrivenWheelRpm = FMath::Max(
+                MaxMeanDrivenWheelRpm,
+                Run.MeanDrivenWheelRpm);
             MaxBodyLinearSpeedCmPerSec = FMath::Max(
                 MaxBodyLinearSpeedCmPerSec,
                 Run.EndBodyLinearSpeedCmPerSec);
-            MinDynamometerBrakeTorqueNm = FMath::Min(
-                MinDynamometerBrakeTorqueNm,
-                Run.DynamometerBrakeTorqueNm);
         }
-        if (WorstWheelRun)
-        {
-            Test->AddInfo(FString::Printf(
-                TEXT("P02_D3_STATIONARY max_mean_driven_wheel_rpm=%.3f max_body_linear_cm_s=%.3f min_dyno_brake_nm=%.3f worst_coupling=%.3f worst_gear=%d worst_throttle=%.2f worst_repeat=%d"),
-                MaxMeanDrivenWheelRpm,
-                MaxBodyLinearSpeedCmPerSec,
-                MinDynamometerBrakeTorqueNm,
-                WorstWheelRun->Coupling,
-                WorstWheelRun->Gear,
-                WorstWheelRun->DriverThrottle01,
-                WorstWheelRun->Repeat + 1));
-        }
-        Test->TestTrue(
-            TEXT("D3 dynamometer torque is installed for every measured sample"),
-            MinDynamometerBrakeTorqueNm
-                >= DynamometerBrakeTorqueNm - KINDA_SMALL_NUMBER);
-        Test->TestTrue(
-            TEXT("D3 driven shaft remains stationary under dynamometer load"),
-            MaxMeanDrivenWheelRpm <= SampleWheelRpmTolerance);
-        Test->TestTrue(
-            TEXT("D3 chassis remains stationary under dynamometer load"),
-            MaxBodyLinearSpeedCmPerSec
-                <= SampleBodyLinearToleranceCmPerSec);
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_D3_CAUSAL_SAMPLE max_mean_driven_wheel_rpm=%.3f max_end_body_linear_cm_s=%.3f sample_seconds=%.6f"),
+            MaxMeanDrivenWheelRpm,
+            MaxBodyLinearSpeedCmPerSec,
+            SingleStepSampleSeconds));
 
         for (const int32 Gear : Gears)
         {
@@ -551,15 +508,11 @@ private:
 
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 925.0f;
-    static constexpr float SettleSeconds = 0.05f;
-    static constexpr float SampleSeconds = 0.20f;
+    static constexpr float SingleStepSampleSeconds = 1.0e-4f;
     static constexpr float OpenTorqueToleranceNm = 1.0f;
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
-    static constexpr float DynamometerBrakeTorqueNm = 6500.0f;
-    static constexpr float SampleWheelRpmTolerance = 2.0f;
-    static constexpr float SampleBodyLinearToleranceCmPerSec = 5.0f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
     static constexpr float ResetBodyLinearToleranceCmPerSec = 5.0f;
@@ -585,180 +538,6 @@ private:
     int64 CurrentResetMechanicalSteps = 0;
     int32 CurrentResetStableMechanicalSteps = 0;
 };
-
-class FPinkCabD3DynamometerProofCommand final
-    : public IAutomationLatentCommand
-{
-public:
-    explicit FPinkCabD3DynamometerProofCommand(
-        FAutomationTestBase* InTest)
-        : Test(InTest)
-    {
-    }
-
-    virtual bool Update() override
-    {
-        UWorld* World = AutomationCommon::GetAnyGameWorld();
-        if (!World)
-        {
-            return false;
-        }
-
-        AActor* Floor =
-            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
-        APinkCabPhysicsFixturePawn* Pawn =
-            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
-        if (!Floor || !Pawn)
-        {
-            Test->AddError(TEXT("D3 dyno proof fixture failed to spawn"));
-            return true;
-        }
-        PinkCabPhysicsFixture::KeepAwake(*Pawn);
-
-        UChaosWheeledVehicleMovementComponent* Movement =
-            Pawn->GetChaosMovement();
-        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
-            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
-        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
-        if (!Movement || !PinkCabMovement || !Mesh)
-        {
-            Test->AddError(TEXT("D3 dyno proof missing physics components"));
-            return true;
-        }
-
-        if (!bInitialized)
-        {
-            UGameplayStatics::SetGamePaused(World, false);
-            Test->TestTrue(
-                TEXT("D3 dyno proof starts engine"),
-                Cockpit.StartEngine());
-            Controls = {};
-            Controls.SetBrake(1.0f);
-            Controls.SetDriveline(0, 0, 0.0f);
-            Controls.SetDrivetrainTorqueCapacity(1.0f);
-            RestGate.Reset();
-            bInitialized = true;
-        }
-
-        FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
-        if (!FPinkCabChaosCockpitBridge::Apply(
-                Cockpit,
-                *Movement,
-                Controls,
-                Provider))
-        {
-            Test->AddError(TEXT("D3 dyno proof actuation failed"));
-            return true;
-        }
-
-        if (!bMeasuring)
-        {
-            if (!RestGate.Update(*Pawn))
-            {
-                return false;
-            }
-
-            Controls = {};
-            Controls.SetThrottle(1.0f);
-            Controls.SetBrake(0.0f);
-            Controls.SetHandbrake(0.0f);
-            Controls.SetDriveline(1, 1, 1.0f);
-            Controls.SetDrivetrainTorqueCapacity(1.0f);
-
-            FPinkCabChaosVehicleDynamicsProvider LoadProvider(Movement);
-            if (!FPinkCabChaosCockpitBridge::Apply(
-                    Cockpit,
-                    *Movement,
-                    Controls,
-                    LoadProvider))
-            {
-                Test->AddError(TEXT("D3 dyno proof load actuation failed"));
-                return true;
-            }
-#if WITH_DEV_AUTOMATION_TESTS
-            if (!PinkCabMovement->SetPinkCabDynamometerBrakeTorqueForTests(
-                    DynamometerBrakeTorqueNm))
-            {
-                Test->AddError(TEXT("D3 dyno proof could not install load"));
-                return true;
-            }
-#endif
-            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
-                    0.05f,
-                    0.20f))
-            {
-                Test->AddError(TEXT("D3 dyno proof evidence window failed"));
-                return true;
-            }
-            bMeasuring = true;
-            return false;
-        }
-
-        FPinkCabMechanicalEvidenceSnapshot Evidence;
-        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
-        {
-            Test->AddError(TEXT("D3 dyno proof evidence read failed"));
-            return true;
-        }
-        if (!Evidence.bComplete)
-        {
-            return false;
-        }
-
-        const float BodySpeedCmPerSec =
-            Mesh->GetPhysicsLinearVelocity().Size();
-        Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_DYNO_PROOF dyno_brake_nm=%.3f mean_driven_wheel_rpm=%.3f body_linear_cm_s=%.3f mean_rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f"),
-            Evidence.DynamometerBrakeTorqueNm,
-            Evidence.MeanDrivenWheelRpm,
-            BodySpeedCmPerSec,
-            Evidence.MeanDrivenWheelTorqueNm,
-            Evidence.MeanEngineRpm,
-            Evidence.MeanDeltaSeconds * 1000.0f));
-        Test->TestTrue(
-            TEXT("D3 dyno proof installs requested physical brake load"),
-            Evidence.DynamometerBrakeTorqueNm
-                >= DynamometerBrakeTorqueNm - KINDA_SMALL_NUMBER);
-        Test->TestTrue(
-            TEXT("D3 dyno proof holds driven shaft below 2 RPM"),
-            Evidence.MeanDrivenWheelRpm <= 2.0f);
-        Test->TestTrue(
-            TEXT("D3 dyno proof holds chassis below 5 cm/s"),
-            BodySpeedCmPerSec <= 5.0f);
-        return true;
-    }
-
-private:
-    static constexpr float DynamometerBrakeTorqueNm = 6500.0f;
-    FAutomationTestBase* Test = nullptr;
-    FPinkCabCockpitState Cockpit;
-    FPinkCabVehicleControlState Controls;
-    FPinkCabPhysicsFixtureRestGate RestGate;
-    bool bInitialized = false;
-    bool bMeasuring = false;
-};
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabD3DynamometerProofRuntimeTest,
-    "PinkCab.Vehicle.Physics.P02.D3.DynamometerProof",
-    EAutomationTestFlags::EditorContext
-        | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabD3DynamometerProofRuntimeTest::RunTest(const FString&)
-{
-    const bool bOpened = AutomationOpenMap(
-        PinkCabPhysicsFixture::MapPath,
-        true);
-    TestTrue(TEXT("D3 dyno proof map opens"), bOpened);
-    if (!bOpened)
-    {
-        return false;
-    }
-
-    ADD_LATENT_AUTOMATION_COMMAND(
-        FPinkCabD3DynamometerProofCommand(this));
-    return true;
-}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabD3CausalMatrixRuntimeTest,

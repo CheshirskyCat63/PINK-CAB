@@ -17,9 +17,6 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float MeanDrivenWheelRpm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanDeltaSeconds = 0.0f;
-#if WITH_DEV_AUTOMATION_TESTS
-    float DynamometerBrakeTorqueNm = 0.0f;
-#endif
     bool bComplete = false;
 };
 
@@ -83,9 +80,6 @@ public:
     bool ReadPinkCabMechanicalEvidenceWindow(
         FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
 
-#if WITH_DEV_AUTOMATION_TESTS
-    bool SetPinkCabDynamometerBrakeTorqueForTests(float BrakeTorqueNm);
-#endif
 
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;

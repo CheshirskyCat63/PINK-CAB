@@ -197,7 +197,6 @@ jobs:
             'PinkCab.Vehicle.Physics.Telemetry',
             'PinkCab.Vehicle.Physics.EngineState',
             'PinkCab.Vehicle.Physics.P02.ClutchModel',
-            'PinkCab.Vehicle.Physics.P02.D3.DynamometerProof',
             'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix',
             'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity',
             'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',

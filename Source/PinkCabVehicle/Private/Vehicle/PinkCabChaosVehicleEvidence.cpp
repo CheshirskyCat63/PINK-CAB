@@ -2,15 +2,6 @@
 
 #include "EngineSystem.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
-void FPinkCabChaosWheeledVehicleSimulation::SetDynamometerBrakeTorqueForTests(
-    const float BrakeTorqueNm)
-{
-    TestDynamometerBrakeTorqueNm =
-        FMath::Max(BrakeTorqueNm, 0.0f);
-}
-#endif
-
 void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     const float InSettleSeconds,
     const float InSampleSeconds)
@@ -54,10 +45,6 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
             EvidenceObservedDeltaSecondsSum
             / static_cast<double>(EvidenceCompletedSteps));
     }
-#if WITH_DEV_AUTOMATION_TESTS
-    Result.DynamometerBrakeTorqueNm =
-        TestDynamometerBrakeTorqueNm;
-#endif
     Result.bComplete =
         EvidenceTargetSampleSeconds > 0.0
         && EvidenceCompletedSampleSeconds

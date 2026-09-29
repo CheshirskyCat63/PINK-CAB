@@ -22,9 +22,6 @@ public:
     void BeginEvidenceWindow(float InSettleSeconds, float InSampleSeconds);
     FPinkCabMechanicalEvidenceSnapshot ReadEvidenceWindow() const;
 
-#if WITH_DEV_AUTOMATION_TESTS
-    void SetDynamometerBrakeTorqueForTests(float BrakeTorqueNm);
-#endif
 
     virtual void ApplyInput(
         const FControlInputs& ControlInputs,
@@ -62,9 +59,6 @@ private:
     FPinkCabChaosDrivelineCommand Command;
     FPinkCabEngineActuationResult PhysicsThreadActuation;
     FPinkCabClutchDrivelineModel ClutchModel;
-#if WITH_DEV_AUTOMATION_TESTS
-    float TestDynamometerBrakeTorqueNm = 0.0f;
-#endif
     double EvidenceSettleSecondsRemaining = 0.0;
     double EvidenceTargetSampleSeconds = 0.0;
     double EvidenceCompletedSampleSeconds = 0.0;
