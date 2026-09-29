@@ -148,3 +148,10 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 
 
 - With ignition Off/Stalled, the native mechanical step still advances wheel rotation/contact in neutral, but its idle-engine evolution is discarded; only P02 clutch reaction may mechanically back-drive the engine.
+
+
+### D3 hot/worn capacity verification
+- Capacity 1.0 and 0.5 are verified at coupling 0.999 and 1.0 in both first and reverse.
+- Every cell uses a fresh physically settled vehicle and records exactly the first mechanical response step.
+- Measured-state service brake/dyno loads are forbidden for this matrix; wheel RPM must remain within the stationary first-step envelope.
+- Reduced capacity must reduce transmitted torque while preserving the 0.999→1.0 continuity contract.
