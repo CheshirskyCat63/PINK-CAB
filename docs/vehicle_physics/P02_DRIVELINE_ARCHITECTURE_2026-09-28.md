@@ -170,3 +170,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Median torque and engine response must remain within 5% across the observed cadences.
 
 - D4 incline uses a fresh pawn spawned directly at the fixture transform; no teleport or velocity reset is used after physics creation.
+
+
+### D3 measured-dt engine response normalization
+- Single-step Hot/Worn capacity verification compares engine response as `(RPM_after - RPM_reset) / measured mechanical dt`, not raw endpoint RPM.
+- This removes render/game-cadence sensitivity from the observation without forcing a global physics timestep, changing solver settings, or relaxing the existing 5% continuity tolerance.
+- Torque continuity and the stationary first-step shaft envelope remain independent required gates.

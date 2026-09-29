@@ -21,6 +21,8 @@ struct FPinkCabD3CapacityRun
     int32 Repeat = 0;
     float RearTorqueNm = 0.0f;
     float EngineRpm = 0.0f;
+    float EngineResponseRpmPerSec = 0.0f;
+    float MechanicalDeltaSeconds = 0.0f;
     float ResetEngineRpm = 0.0f;
     float ResetMaxDrivenWheelRpm = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
@@ -164,6 +166,12 @@ public:
         Run.Repeat = RepeatIndex;
         Run.RearTorqueNm = Evidence.MeanDrivenWheelTorqueNm;
         Run.EngineRpm = Evidence.MeanEngineRpm;
+        Run.MechanicalDeltaSeconds = Evidence.MeanDeltaSeconds;
+        Run.EngineResponseRpmPerSec =
+            Evidence.MeanDeltaSeconds > KINDA_SMALL_NUMBER
+                ? (Evidence.MeanEngineRpm - CurrentResetEngineRpm)
+                    / Evidence.MeanDeltaSeconds
+                : 0.0f;
         Run.ResetEngineRpm = CurrentResetEngineRpm;
         Run.ResetMaxDrivenWheelRpm = CurrentResetWheelRpm;
         Run.MeanDrivenWheelRpm = Evidence.MeanDrivenWheelRpm;
@@ -173,9 +181,11 @@ public:
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_CAPACITY capacity=%.3f coupling=%.3f gear=%d repeat=%d torque_nm=%.3f engine_rpm=%.3f wheel_rpm=%.3f steps=%d"),
+            TEXT("P02_D3_CAPACITY capacity=%.3f coupling=%.3f gear=%d repeat=%d torque_nm=%.3f engine_rpm=%.3f engine_response_rpm_s=%.3f mechanical_dt_ms=%.6f wheel_rpm=%.3f steps=%d"),
             Run.Capacity01, Run.Coupling01, Run.Gear, Run.Repeat + 1,
-            Run.RearTorqueNm, Run.EngineRpm, Run.MeanDrivenWheelRpm, Run.SampleSteps));
+            Run.RearTorqueNm, Run.EngineRpm, Run.EngineResponseRpmPerSec,
+            Run.MechanicalDeltaSeconds * 1000.0f,
+            Run.MeanDrivenWheelRpm, Run.SampleSteps));
 
         Advance();
         if (IsFinished())
@@ -217,11 +227,10 @@ private:
         bResetting = true;
     }
 
-    TArray<float> Values(
+    TArray<float> TorqueValues(
         const float Capacity,
         const float Coupling,
-        const int32 Gear,
-        const bool bRpm) const
+        const int32 Gear) const
     {
         TArray<float> Result;
         for (const FPinkCabD3CapacityRun& Run : Runs)
@@ -230,7 +239,25 @@ private:
                 && FMath::IsNearlyEqual(Run.Coupling01, Coupling, 1.0e-4f)
                 && Run.Gear == Gear)
             {
-                Result.Add(bRpm ? Run.EngineRpm : Run.RearTorqueNm);
+                Result.Add(Run.RearTorqueNm);
+            }
+        }
+        return Result;
+    }
+
+    TArray<float> EngineResponseValues(
+        const float Capacity,
+        const float Coupling,
+        const int32 Gear) const
+    {
+        TArray<float> Result;
+        for (const FPinkCabD3CapacityRun& Run : Runs)
+        {
+            if (FMath::IsNearlyEqual(Run.Capacity01, Capacity, 1.0e-4f)
+                && FMath::IsNearlyEqual(Run.Coupling01, Coupling, 1.0e-4f)
+                && Run.Gear == Gear)
+            {
+                Result.Add(Run.EngineResponseRpmPerSec);
             }
         }
         return Result;
@@ -256,6 +283,13 @@ private:
                 TEXT("D3 capacity measures exactly one mechanical step"),
                 Run.SampleSteps, 1);
             Test->TestTrue(
+                TEXT("D3 capacity records a positive finite mechanical timestep"),
+                FMath::IsFinite(Run.MechanicalDeltaSeconds)
+                    && Run.MechanicalDeltaSeconds > KINDA_SMALL_NUMBER);
+            Test->TestTrue(
+                TEXT("D3 capacity records a finite normalized engine response"),
+                FMath::IsFinite(Run.EngineResponseRpmPerSec));
+            Test->TestTrue(
                 TEXT("D3 capacity first-step shaft remains effectively stationary"),
                 Run.MeanDrivenWheelRpm <= SampleWheelRpmTolerance);
             Test->TestEqual(TEXT("D3 capacity native Chaos current gear is neutral"),
@@ -269,28 +303,29 @@ private:
             for (const int32 Gear : Gears)
             {
                 const float NearTorque = MedianCapacity(
-                    Values(Capacity, 0.999f, Gear, false));
+                    TorqueValues(Capacity, 0.999f, Gear));
                 const float FullTorque = MedianCapacity(
-                    Values(Capacity, 1.0f, Gear, false));
-                const float NearRpm = MedianCapacity(
-                    Values(Capacity, 0.999f, Gear, true));
-                const float FullRpm = MedianCapacity(
-                    Values(Capacity, 1.0f, Gear, true));
+                    TorqueValues(Capacity, 1.0f, Gear));
+                const float NearResponse = MedianCapacity(
+                    EngineResponseValues(Capacity, 0.999f, Gear));
+                const float FullResponse = MedianCapacity(
+                    EngineResponseValues(Capacity, 1.0f, Gear));
                 Test->TestTrue(
                     TEXT("D3 hot/worn torque is continuous at full clutch"),
                     RelativeCapacityDelta(NearTorque, FullTorque, 25.0f)
                         <= FullBoundaryRelativeTolerance);
                 Test->TestTrue(
-                    TEXT("D3 hot/worn engine RPM is continuous at full clutch"),
-                    RelativeCapacityDelta(NearRpm, FullRpm, 250.0f)
+                    TEXT("D3 hot/worn normalized engine response is continuous at full clutch"),
+                    RelativeCapacityDelta(
+                        NearResponse, FullResponse, 250.0f)
                         <= FullBoundaryRelativeTolerance);
             }
         }
 
         for (const int32 Gear : Gears)
         {
-            const float Healthy = MedianCapacity(Values(1.0f, 1.0f, Gear, false));
-            const float Worn = MedianCapacity(Values(0.5f, 1.0f, Gear, false));
+            const float Healthy = MedianCapacity(TorqueValues(1.0f, 1.0f, Gear));
+            const float Worn = MedianCapacity(TorqueValues(0.5f, 1.0f, Gear));
             Test->TestTrue(
                 TEXT("D3 reduced clutch capacity limits transmitted torque"),
                 Worn + CapacityEffectFloorNm < Healthy);
