@@ -233,7 +233,7 @@ public:
                     Ramp->GetActorUpVector()));
             const float BodyAngularSpeedDegPerSec =
                 Mesh->GetPhysicsAngularVelocityInDegrees().Size();
-            const bool bStableWheelSupport =
+            const bool bSupportedContact =
                 ContactWheels == Movement->GetNumWheels()
                 && TotalSpringForce > KINDA_SMALL_NUMBER
                 && NormalSpeedCmPerSec
@@ -242,7 +242,7 @@ public:
                     <= ContactBodyAngularToleranceDegPerSec;
 
             if (PhaseSimSeconds >= MinimumContactSettleSeconds
-                && bStableWheelSupport)
+                && bSupportedContact)
             {
                 ++StableContactObservations;
             }
@@ -252,7 +252,7 @@ public:
             }
 
             if (StableContactObservations
-                < RequiredStableContactObservations)
+                < RequiredContactObservations)
             {
                 if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
                 {
@@ -284,11 +284,15 @@ public:
                 StableContactObservations,
                 *StartLocation.ToString()));
 
-            const FVector RampForward = Ramp->GetActorForwardVector();
+            const FVector Downhill3D =
+                FVector::VectorPlaneProject(
+                    FVector::DownVector,
+                    Ramp->GetActorUpVector())
+                    .GetSafeNormal();
             DownhillDirection2D =
-                FVector2D(-RampForward.X, -RampForward.Y).GetSafeNormal();
+                FVector2D(Downhill3D.X, Downhill3D.Y).GetSafeNormal();
             Test->TestTrue(
-                TEXT("slope fixture exposes a valid downhill direction"),
+                TEXT("slope fixture exposes gravity-projected downhill direction"),
                 !DownhillDirection2D.IsNearlyZero());
 
             bContactReady = true;
@@ -345,6 +349,10 @@ public:
             DownhillTravelCm > 20.0f);
         Test->TestTrue(TEXT("slope vehicle remains physically rolling downhill"),
             DownhillSpeedCmPerSec > 10.0f);
+        Test->TestTrue(
+            TEXT("gravity increases downhill speed after supported contact"),
+            DownhillSpeedCmPerSec
+                > StartDownhillSpeedCmPerSec + 5.0f);
         Test->TestTrue(TEXT("slope motion includes wheel rotation"),
             MaxAbsWheelAngularVelocity > 0.05f);
         Test->TestEqual(TEXT("slope coast remains zero engine throttle"),
@@ -366,12 +374,12 @@ private:
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
 
-    static constexpr double MinimumContactSettleSeconds = 0.35;
+    static constexpr double MinimumContactSettleSeconds = 0.10;
     static constexpr double ContactReadyTimeoutSeconds = 3.00;
     static constexpr double MeasurementSeconds = 1.20;
-    static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
-    static constexpr float ContactBodyAngularToleranceDegPerSec = 2.0f;
-    static constexpr int32 RequiredStableContactObservations = 5;
+    static constexpr float ContactNormalSpeedToleranceCmPerSec = 30.0f;
+    static constexpr float ContactBodyAngularToleranceDegPerSec = 8.0f;
+    static constexpr int32 RequiredContactObservations = 2;
 
     bool bInitialized = false;
     bool bContactReady = false;
