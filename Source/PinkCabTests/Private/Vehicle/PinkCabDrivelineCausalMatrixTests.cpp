@@ -23,6 +23,7 @@ struct FPinkCabD3Run
     float DriverThrottle01 = 0.0f;
     int32 Repeat = 0;
     float MeanRearDriveTorqueNm = 0.0f;
+    float MeanInitialRearDriveTorqueNm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float EffectiveGearRatio = 0.0f;
     float ResolvedEngineThrottle01 = 0.0f;
@@ -267,7 +268,7 @@ public:
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f initial_rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
@@ -279,6 +280,7 @@ public:
             static_cast<long long>(Run.ResetMechanicalSteps),
             Run.ResetStableMechanicalSteps,
             Run.MeanRearDriveTorqueNm,
+            Run.MeanInitialRearDriveTorqueNm,
             Run.MeanEngineRpm,
             Run.MeanMechanicalDeltaMs,
             Run.EffectiveGearRatio,
@@ -378,7 +380,7 @@ private:
                 && FMath::IsNearlyEqual(Run.DriverThrottle01, Throttle, 1.0e-4f)
                 && FMath::IsNearlyEqual(Run.Coupling, Coupling, 1.0e-4f))
             {
-                Values.Add(Run.MeanRearDriveTorqueNm);
+                Values.Add(Run.MeanInitialRearDriveTorqueNm);
             }
         }
         return Values;
@@ -415,6 +417,10 @@ private:
             Test->TestTrue(TEXT("every D3 repeat proves a physical settle window"),
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
+            Test->TestTrue(
+                TEXT("every D3 sample records finite applied and constitutive torque"),
+                FMath::IsFinite(Run.MeanRearDriveTorqueNm)
+                    && FMath::IsFinite(Run.MeanInitialRearDriveTorqueNm));
             Test->TestTrue(
                 TEXT("every D3 sample remains inside the stationary shaft envelope"),
                 FMath::IsFinite(Run.MeanDrivenWheelRpm)

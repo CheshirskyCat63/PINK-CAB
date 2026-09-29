@@ -250,3 +250,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The authored synchronization compliance is now derived from the full healthy clutch definition only. Pedal coupling and hot/worn condition change torque capacity, never synchronization gain.
 - The clutch step is integrated analytically as a piecewise ODE: saturated positive/negative capacity regions use exact linear slip evolution, and the unsaturated region uses exact exponential slip decay. Capacity-boundary crossing time is solved inside the step.
 - This removes dependence on arbitrary local numerical substep counts while preserving the same equal/opposite clutch impulse, physical torque clamp, full-coupling continuity and authored 0.20 s synchronization horizon.
+
+
+### D3 constitutive torque evidence
+- The one-step 240-cell matrix now distinguishes the applied step-average wheel torque from the step-entry constitutive wheel torque emitted by the same physics-thread clutch writer.
+- Coupling monotonicity, mirrored 1st/R and 0.999→1.000 continuity use the constitutive torque because Chaos mechanical dt is intentionally not fixed and step-average synchronization torque legitimately changes with step duration.
+- The applied average torque remains recorded and finite-gated, while D4/D5 continue to prove time-integrated runtime behavior.

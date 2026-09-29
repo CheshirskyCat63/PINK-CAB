@@ -246,6 +246,15 @@ FPinkCabChaosWheeledVehicleSimulation::ApplyDrivenWheelTorque(
     using namespace Chaos;
 
     FDrivenWheelTorqueStats Stats;
+    const float InitialTransmittedClutchTorqueNm = FMath::Clamp(
+        Output.RequestedClutchTorqueNm,
+        -Output.TorqueCapacityNm,
+        Output.TorqueCapacityNm);
+    const float InitialRearAxleTorqueNm =
+        InitialTransmittedClutchTorqueNm
+        * Command.EffectiveGearRatio
+        * FMath::Clamp(Command.TransmissionEfficiency, 0.0f, 1.0f);
+
     for (int32 WheelIndex = 0;
          WheelIndex < PVehicle->Wheels.Num();
          ++WheelIndex)
@@ -256,10 +265,16 @@ FPinkCabChaosWheeledVehicleSimulation::ApplyDrivenWheelTorque(
             bDriven
                 ? Output.RearAxleTorqueNm * Wheel.Setup().TorqueRatio
                 : 0.0f;
+        const float InitialWheelDriveTorqueNm =
+            bDriven
+                ? InitialRearAxleTorqueNm * Wheel.Setup().TorqueRatio
+                : 0.0f;
         Wheel.SetDriveTorque(TorqueMToCm(WheelDriveTorqueNm));
         if (bDriven)
         {
             Stats.AbsTorqueSumNm += FMath::Abs(WheelDriveTorqueNm);
+            Stats.InitialAbsTorqueSumNm +=
+                FMath::Abs(InitialWheelDriveTorqueNm);
             Stats.SignedTorqueSumNm += WheelDriveTorqueNm;
             Stats.AbsWheelRpmSum += FMath::Abs(Wheel.GetWheelRPM());
             ++Stats.DrivenWheelCount;

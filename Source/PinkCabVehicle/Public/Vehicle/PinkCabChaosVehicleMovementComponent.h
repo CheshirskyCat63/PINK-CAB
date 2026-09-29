@@ -14,6 +14,7 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float TargetSampleSeconds = 0.0f;
     float CompletedSampleSeconds = 0.0f;
     float MeanDrivenWheelTorqueNm = 0.0f;
+    float MeanInitialDrivenWheelTorqueNm = 0.0f;
     float MeanSignedDrivenWheelTorqueNm = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
     float MeanEngineRpm = 0.0f;
