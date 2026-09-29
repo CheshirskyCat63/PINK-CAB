@@ -200,6 +200,67 @@ bool FPinkCabClutchDrivelineEngineBrakingTest::RunTest(const FString&)
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchDrivelineSynchronizationHorizonTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchModel.SynchronizationHorizon",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchDrivelineSynchronizationHorizonTest::RunTest(
+    const FString&)
+{
+    FPinkCabClutchDrivelineConfig Config;
+    Config.EngineEffectiveInertia = 0.17f;
+    Config.MaxClutchTorqueNm = 390.0f;
+    Config.SynchronizationTimeSeconds = 0.20f;
+    Config.LockedSlipRpm = 25.0f;
+    FPinkCabClutchDrivelineModel Model(Config);
+
+    constexpr float ShaftRpm = 1700.0f;
+    constexpr float InitialSlipRpm = 600.0f;
+    constexpr float OuterDeltaSeconds = 1.0f / 60.0f;
+
+    float EngineRpm = ShaftRpm + InitialSlipRpm;
+    float ElapsedSeconds = 0.0f;
+    bool bAnyTorqueLimited = false;
+
+    while (ElapsedSeconds
+        < Config.SynchronizationTimeSeconds - KINDA_SMALL_NUMBER)
+    {
+        const float DeltaSeconds = FMath::Min(
+            OuterDeltaSeconds,
+            Config.SynchronizationTimeSeconds - ElapsedSeconds);
+
+        FPinkCabClutchDrivelineInput Input;
+        Input.DeltaSeconds = DeltaSeconds;
+        Input.EngineRpm = EngineRpm;
+        Input.ShaftEquivalentEngineRpm = ShaftRpm;
+        Input.AvailableEngineTorqueNm = 0.0f;
+        Input.EngineDragTorqueNm = 0.0f;
+        Input.ClutchCoupling01 = 1.0f;
+        Input.DrivetrainTorqueCapacity01 = 1.0f;
+        Input.EffectiveGearRatio = 14.72f;
+        Input.TransmissionEfficiency = 0.90f;
+
+        const FPinkCabClutchDrivelineOutput Out = Model.Step(Input);
+        bAnyTorqueLimited |= Out.bTorqueLimited;
+        EngineRpm += Out.EngineReactionDeltaRpm;
+        ElapsedSeconds += DeltaSeconds;
+    }
+
+    const float FinalSlipRpm = FMath::Abs(EngineRpm - ShaftRpm);
+    TestFalse(
+        TEXT("synchronization-horizon fixture remains below clutch capacity"),
+        bAnyTorqueLimited);
+    TestTrue(
+        *FString::Printf(
+            TEXT("unconstrained full clutch reaches locked-slip band within authored synchronization horizon final_slip_rpm=%.3f locked_slip_rpm=%.3f"),
+            FinalSlipRpm,
+            Config.LockedSlipRpm),
+        FinalSlipRpm <= Config.LockedSlipRpm);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabClutchDrivelineTimestepConsistencyTest,
     "PinkCab.Vehicle.Physics.P02.ClutchModel.TimestepConsistency",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
