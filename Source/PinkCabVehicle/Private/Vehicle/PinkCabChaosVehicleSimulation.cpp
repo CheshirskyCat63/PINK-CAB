@@ -85,8 +85,13 @@ void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
         float BrakeTorqueNm = 0.0f;
         if (Setup.BrakeEnabled)
         {
+            // PinkCab owns service-brake response before the Chaos bridge.
+            // ControlInputs.BrakeInput is native Chaos bookkeeping and can
+            // retain an independently interpolated stale value after the
+            // authoritative PinkCab command has reached zero. Never let that
+            // secondary state author wheel torque.
             BrakeTorqueNm = Setup.MaxBrakeTorque
-                * FMath::Clamp(ControlInputs.BrakeInput, 0.0f, 1.0f);
+                * FMath::Clamp(Command.ServiceBrake01, 0.0f, 1.0f);
         }
 
         if ((Command.Handbrake01 > KINDA_SMALL_NUMBER
