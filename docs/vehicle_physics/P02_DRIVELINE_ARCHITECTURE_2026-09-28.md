@@ -145,3 +145,6 @@ D3 does not use body-force, velocity, snapshot-loop or threshold handoff helpers
 ## Completion rule
 
 PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the previous P01 evidence remains green. Passing a boundary test alone is insufficient.
+
+
+- With ignition Off/Stalled, the native mechanical step still advances wheel rotation/contact in neutral, but its idle-engine evolution is discarded; only P02 clutch reaction may mechanically back-drive the engine.

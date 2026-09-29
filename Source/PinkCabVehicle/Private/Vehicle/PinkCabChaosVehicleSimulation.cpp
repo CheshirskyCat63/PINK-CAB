@@ -153,17 +153,25 @@ void FPinkCabChaosWheeledVehicleSimulation::AdvanceAcceptedNativeEngine(
     Chaos::FSimpleTransmissionSim& Transmission,
     const float DeltaTime)
 {
-    if (!Command.bCombustionAllowed)
-    {
-        return;
-    }
+    // The native mechanical step must run even with ignition Off/Stalled:
+    // Chaos advances wheel rotational state here, which is required for
+    // gravity coast and shaft back-drive. Native transmission remains neutral,
+    // so this cannot become a second propulsion path.
+    Chaos::FSimpleEngineSim& Engine = PVehicle->GetEngine();
+    const float PreservedEngineOmega = Engine.GetEngineOmega();
 
-    // P01 accepted the stock Chaos engine transient. Native transmission stays
-    // neutral before and after the stock mechanical step, so this preserves the
-    // engine authority without restoring a second propulsion path.
     Transmission.SetGear(0, true);
     UChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(DeltaTime);
     Transmission.SetGear(0, true);
+
+    if (!Command.bCombustionAllowed)
+    {
+        // Zero-throttle Chaos still maintains its own idle model. Ignition Off
+        // must not receive that synthetic combustion state, so preserve the
+        // pre-step engine omega and let the PinkCab clutch reaction below be
+        // the only way the stopped engine can be mechanically back-driven.
+        Engine.SetEngineOmega(PreservedEngineOmega);
+    }
 }
 
 FPinkCabClutchDrivelineOutput
