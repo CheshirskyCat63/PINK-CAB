@@ -176,3 +176,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Single-step Hot/Worn capacity verification compares engine response as `(RPM_after - RPM_reset) / measured mechanical dt`, not raw endpoint RPM.
 - This removes render/game-cadence sensitivity from the observation without forcing a global physics timestep, changing solver settings, or relaxing the existing 5% continuity tolerance.
 - Torque continuity and the stationary first-step shaft envelope remain independent required gates.
+
+
+### PHY-009 boundary measured-time window
+- The 0.999→1.000 moving boundary fixture uses a fixed 0.05 s settle and 0.50 s measured simulation window, driven by observed mechanical dt rather than a fixed step count.
+- Torque/RPM/authority telemetry is time-weighted. Final translational kinetic energy is interpolated to the exact end of the 0.50 s window, so render/game cadence cannot change the physical duration being compared.
+- The existing 10% boundary tolerance is unchanged and no project physics timestep is forced.

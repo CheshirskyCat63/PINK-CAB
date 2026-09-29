@@ -30,6 +30,8 @@ struct FPinkCabClutchBoundaryRun
     float AuthoritativeAvailableEngineTorqueNm = 0.0f;
     double EndTranslationalKineticEnergyJ = 0.0;
     float EndSpeedCmPerSec = 0.0f;
+    float MeasurementSeconds = 0.0f;
+    int32 MeasurementSteps = 0;
 };
 
 float Median(TArray<float> Values)
@@ -178,7 +180,7 @@ public:
 
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
-            MeasurementSettleStepsRemaining = MeasurementSettleMechanicalSteps;
+            MeasurementSettleSecondsRemaining = MeasurementSettleSeconds;
             ResetMeasurementSums();
             bMeasuring = true;
             return false;
@@ -204,63 +206,135 @@ public:
         }
         LastMechanicalStep = MechanicalStep;
 
-        if (MeasurementSettleStepsRemaining > 0)
+        const float MechanicalDeltaSeconds =
+            PinkCabMovement->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+        if (!FMath::IsFinite(MechanicalDeltaSeconds)
+            || MechanicalDeltaSeconds <= KINDA_SMALL_NUMBER)
         {
-            --MeasurementSettleStepsRemaining;
+            Test->AddError(TEXT("P02 boundary observed invalid mechanical dt"));
+            return true;
+        }
+
+        if (MeasurementSettleSecondsRemaining > 0.0)
+        {
+            MeasurementSettleSecondsRemaining = FMath::Max(
+                0.0,
+                MeasurementSettleSecondsRemaining
+                    - static_cast<double>(MechanicalDeltaSeconds));
+            if (MeasurementSettleSecondsRemaining <= 0.0)
+            {
+                PreviousTranslationalKineticEnergyJ =
+                    TranslationalKineticEnergyJ(*Movement, *Mesh);
+                PreviousSpeedCmPerSec =
+                    Mesh->GetPhysicsLinearVelocity().Size2D();
+            }
             return false;
+        }
+
+        const double RemainingSeconds =
+            MeasurementSampleSeconds - MeasurementElapsedSeconds;
+        const double UsedSeconds = FMath::Min(
+            static_cast<double>(MechanicalDeltaSeconds),
+            RemainingSeconds);
+        if (UsedSeconds <= 0.0)
+        {
+            Test->AddError(TEXT("P02 boundary exhausted measurement window"));
+            return true;
         }
 
         const FWheelStatus RearLeft = Movement->GetWheelState(2);
         const FWheelStatus RearRight = Movement->GetWheelState(3);
-        RearTorqueSum += 0.5f
+        const float RearTorqueNm = 0.5f
             * (FMath::Abs(RearLeft.DriveTorque)
                 + FMath::Abs(RearRight.DriveTorque));
-        EngineRpmSum += Movement->GetEngineRotationSpeed();
-        ResolvedThrottleSum += Controls.GetResolvedEngineThrottle01();
-        AvailableTorqueSum += Controls.GetAvailableEngineTorqueNm();
+        RearTorqueTimeIntegral +=
+            static_cast<double>(RearTorqueNm) * UsedSeconds;
+        EngineRpmTimeIntegral +=
+            static_cast<double>(Movement->GetEngineRotationSpeed())
+                * UsedSeconds;
+        ResolvedThrottleTimeIntegral +=
+            static_cast<double>(Controls.GetResolvedEngineThrottle01())
+                * UsedSeconds;
+        AvailableTorqueTimeIntegral +=
+            static_cast<double>(Controls.GetAvailableEngineTorqueNm())
+                * UsedSeconds;
 
         if (const TUniquePtr<FPhysicsVehicleOutput>& PhysicsOutput =
                 Movement->PhysicsVehicleOutput())
         {
             if (PhysicsOutput.IsValid())
             {
-                ChaosEngineTorqueSum += PhysicsOutput->EngineTorque;
-                ChaosTransmissionTorqueSum += PhysicsOutput->TransmissionTorque;
-                ChaosTransmissionRpmSum += PhysicsOutput->TransmissionRPM;
+                ChaosEngineTorqueTimeIntegral +=
+                    static_cast<double>(PhysicsOutput->EngineTorque)
+                        * UsedSeconds;
+                ChaosTransmissionTorqueTimeIntegral +=
+                    static_cast<double>(PhysicsOutput->TransmissionTorque)
+                        * UsedSeconds;
+                ChaosTransmissionRpmTimeIntegral +=
+                    static_cast<double>(PhysicsOutput->TransmissionRPM)
+                        * UsedSeconds;
             }
         }
-        ++SampleCount;
 
-        if (SampleCount < MeasurementSampleMechanicalSteps)
+        ++SampleCount;
+        const double CurrentEnergyJ =
+            TranslationalKineticEnergyJ(*Movement, *Mesh);
+        const float CurrentSpeedCmPerSec =
+            Mesh->GetPhysicsLinearVelocity().Size2D();
+
+        if (MeasurementElapsedSeconds
+                + static_cast<double>(MechanicalDeltaSeconds)
+            < MeasurementSampleSeconds)
         {
+            MeasurementElapsedSeconds +=
+                static_cast<double>(MechanicalDeltaSeconds);
+            PreviousTranslationalKineticEnergyJ = CurrentEnergyJ;
+            PreviousSpeedCmPerSec = CurrentSpeedCmPerSec;
             return false;
         }
 
+        const double Alpha = FMath::Clamp(
+            RemainingSeconds
+                / static_cast<double>(MechanicalDeltaSeconds),
+            0.0,
+            1.0);
+        TargetWindowTranslationalKineticEnergyJ =
+            FMath::Lerp(
+                PreviousTranslationalKineticEnergyJ,
+                CurrentEnergyJ,
+                Alpha);
+        TargetWindowSpeedCmPerSec = FMath::Lerp(
+            PreviousSpeedCmPerSec,
+            CurrentSpeedCmPerSec,
+            static_cast<float>(Alpha));
+        MeasurementElapsedSeconds = MeasurementSampleSeconds;
+
         FPinkCabClutchBoundaryRun Result;
         Result.Coupling = CurrentCoupling();
-        Result.MeanRearDriveTorqueNm =
-            RearTorqueSum / static_cast<float>(SampleCount);
-        Result.MeanEngineRpm =
-            EngineRpmSum / static_cast<float>(SampleCount);
-        Result.MeanChaosEngineTorqueNm =
-            ChaosEngineTorqueSum / static_cast<float>(SampleCount);
-        Result.MeanChaosTransmissionTorqueNm =
-            ChaosTransmissionTorqueSum / static_cast<float>(SampleCount);
-        Result.MeanChaosTransmissionRpm =
-            ChaosTransmissionRpmSum / static_cast<float>(SampleCount);
-        Result.ResolvedEngineThrottle01 =
-            ResolvedThrottleSum / static_cast<float>(SampleCount);
-        Result.AuthoritativeAvailableEngineTorqueNm =
-            AvailableTorqueSum / static_cast<float>(SampleCount);
-        Result.EndSpeedCmPerSec =
-            Mesh->GetPhysicsLinearVelocity().Size2D();
-        const double SpeedMps = Result.EndSpeedCmPerSec * 0.01;
+        Result.MeanRearDriveTorqueNm = static_cast<float>(
+            RearTorqueTimeIntegral / MeasurementElapsedSeconds);
+        Result.MeanEngineRpm = static_cast<float>(
+            EngineRpmTimeIntegral / MeasurementElapsedSeconds);
+        Result.MeanChaosEngineTorqueNm = static_cast<float>(
+            ChaosEngineTorqueTimeIntegral / MeasurementElapsedSeconds);
+        Result.MeanChaosTransmissionTorqueNm = static_cast<float>(
+            ChaosTransmissionTorqueTimeIntegral / MeasurementElapsedSeconds);
+        Result.MeanChaosTransmissionRpm = static_cast<float>(
+            ChaosTransmissionRpmTimeIntegral / MeasurementElapsedSeconds);
+        Result.ResolvedEngineThrottle01 = static_cast<float>(
+            ResolvedThrottleTimeIntegral / MeasurementElapsedSeconds);
+        Result.AuthoritativeAvailableEngineTorqueNm = static_cast<float>(
+            AvailableTorqueTimeIntegral / MeasurementElapsedSeconds);
+        Result.EndSpeedCmPerSec = TargetWindowSpeedCmPerSec;
         Result.EndTranslationalKineticEnergyJ =
-            0.5 * static_cast<double>(Movement->Mass) * SpeedMps * SpeedMps;
+            TargetWindowTranslationalKineticEnergyJ;
+        Result.MeasurementSeconds =
+            static_cast<float>(MeasurementElapsedSeconds);
+        Result.MeasurementSteps = SampleCount;
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d"),
             Result.Coupling,
             RepeatIndex + 1,
             Result.MeanRearDriveTorqueNm,
@@ -271,7 +345,9 @@ public:
             Result.MeanChaosTransmissionTorqueNm,
             Result.MeanChaosTransmissionRpm,
             Result.EndSpeedCmPerSec,
-            Result.EndTranslationalKineticEnergyJ));
+            Result.EndTranslationalKineticEnergyJ,
+            Result.MeasurementSeconds,
+            Result.MeasurementSteps));
 
         ++RepeatIndex;
         if (RepeatIndex >= RepeatsPerCondition)
@@ -311,20 +387,38 @@ private:
         RestGate.Reset();
         RestPollCount = 0;
         LastMechanicalStep = -1;
-        MeasurementSettleStepsRemaining = 0;
+        MeasurementSettleSecondsRemaining = 0.0;
         ResetMeasurementSums();
         bMeasuring = false;
     }
 
+    static double TranslationalKineticEnergyJ(
+        const UChaosWheeledVehicleMovementComponent& Movement,
+        const USkeletalMeshComponent& Mesh)
+    {
+        const double SpeedMps =
+            static_cast<double>(Mesh.GetPhysicsLinearVelocity().Size2D())
+                * 0.01;
+        return 0.5
+            * static_cast<double>(Movement.Mass)
+            * SpeedMps
+            * SpeedMps;
+    }
+
     void ResetMeasurementSums()
     {
-        RearTorqueSum = 0.0f;
-        EngineRpmSum = 0.0f;
-        ChaosEngineTorqueSum = 0.0f;
-        ChaosTransmissionTorqueSum = 0.0f;
-        ChaosTransmissionRpmSum = 0.0f;
-        ResolvedThrottleSum = 0.0f;
-        AvailableTorqueSum = 0.0f;
+        RearTorqueTimeIntegral = 0.0;
+        EngineRpmTimeIntegral = 0.0;
+        ChaosEngineTorqueTimeIntegral = 0.0;
+        ChaosTransmissionTorqueTimeIntegral = 0.0;
+        ChaosTransmissionRpmTimeIntegral = 0.0;
+        ResolvedThrottleTimeIntegral = 0.0;
+        AvailableTorqueTimeIntegral = 0.0;
+        MeasurementElapsedSeconds = 0.0;
+        PreviousTranslationalKineticEnergyJ = 0.0;
+        PreviousSpeedCmPerSec = 0.0f;
+        TargetWindowTranslationalKineticEnergyJ = 0.0;
+        TargetWindowSpeedCmPerSec = 0.0f;
         SampleCount = 0;
     }
 
@@ -412,8 +506,8 @@ private:
     const TArray<float> Couplings{0.999f, 1.0f};
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 2500.0f;
-    static constexpr int32 MeasurementSettleMechanicalSteps = 3;
-    static constexpr int32 MeasurementSampleMechanicalSteps = 30;
+    static constexpr double MeasurementSettleSeconds = 0.05;
+    static constexpr double MeasurementSampleSeconds = 0.50;
     static constexpr int64 RestTimeoutMechanicalSteps = 240;
     static constexpr int32 RestPollLimit = 2400;
     static constexpr float MaxBoundaryStep = 0.10f;
@@ -424,15 +518,20 @@ private:
     int32 RepeatIndex = 0;
     int32 RestPollCount = 0;
     int32 SampleCount = 0;
-    int32 MeasurementSettleStepsRemaining = 0;
+    double MeasurementSettleSecondsRemaining = 0.0;
+    double MeasurementElapsedSeconds = 0.0;
     int64 LastMechanicalStep = -1;
-    float RearTorqueSum = 0.0f;
-    float EngineRpmSum = 0.0f;
-    float ChaosEngineTorqueSum = 0.0f;
-    float ChaosTransmissionTorqueSum = 0.0f;
-    float ChaosTransmissionRpmSum = 0.0f;
-    float ResolvedThrottleSum = 0.0f;
-    float AvailableTorqueSum = 0.0f;
+    double RearTorqueTimeIntegral = 0.0;
+    double EngineRpmTimeIntegral = 0.0;
+    double ChaosEngineTorqueTimeIntegral = 0.0;
+    double ChaosTransmissionTorqueTimeIntegral = 0.0;
+    double ChaosTransmissionRpmTimeIntegral = 0.0;
+    double ResolvedThrottleTimeIntegral = 0.0;
+    double AvailableTorqueTimeIntegral = 0.0;
+    double PreviousTranslationalKineticEnergyJ = 0.0;
+    float PreviousSpeedCmPerSec = 0.0f;
+    double TargetWindowTranslationalKineticEnergyJ = 0.0;
+    float TargetWindowSpeedCmPerSec = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
