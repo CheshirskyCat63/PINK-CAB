@@ -586,6 +586,180 @@ private:
     int32 CurrentResetStableMechanicalSteps = 0;
 };
 
+class FPinkCabD3DynamometerProofCommand final
+    : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabD3DynamometerProofCommand(
+        FAutomationTestBase* InTest)
+        : Test(InTest)
+    {
+    }
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        AActor* Floor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!Floor || !Pawn)
+        {
+            Test->AddError(TEXT("D3 dyno proof fixture failed to spawn"));
+            return true;
+        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
+
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        if (!Movement || !PinkCabMovement || !Mesh)
+        {
+            Test->AddError(TEXT("D3 dyno proof missing physics components"));
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            UGameplayStatics::SetGamePaused(World, false);
+            Test->TestTrue(
+                TEXT("D3 dyno proof starts engine"),
+                Cockpit.StartEngine());
+            Controls = {};
+            Controls.SetBrake(1.0f);
+            Controls.SetDriveline(0, 0, 0.0f);
+            Controls.SetDrivetrainTorqueCapacity(1.0f);
+            RestGate.Reset();
+            bInitialized = true;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit,
+                *Movement,
+                Controls,
+                Provider))
+        {
+            Test->AddError(TEXT("D3 dyno proof actuation failed"));
+            return true;
+        }
+
+        if (!bMeasuring)
+        {
+            if (!RestGate.Update(*Pawn))
+            {
+                return false;
+            }
+
+            Controls = {};
+            Controls.SetThrottle(1.0f);
+            Controls.SetBrake(0.0f);
+            Controls.SetHandbrake(0.0f);
+            Controls.SetDriveline(1, 1, 1.0f);
+            Controls.SetDrivetrainTorqueCapacity(1.0f);
+
+            FPinkCabChaosVehicleDynamicsProvider LoadProvider(Movement);
+            if (!FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit,
+                    *Movement,
+                    Controls,
+                    LoadProvider))
+            {
+                Test->AddError(TEXT("D3 dyno proof load actuation failed"));
+                return true;
+            }
+#if WITH_DEV_AUTOMATION_TESTS
+            if (!PinkCabMovement->SetPinkCabDynamometerBrakeTorqueForTests(
+                    DynamometerBrakeTorqueNm))
+            {
+                Test->AddError(TEXT("D3 dyno proof could not install load"));
+                return true;
+            }
+#endif
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.05f,
+                    0.20f))
+            {
+                Test->AddError(TEXT("D3 dyno proof evidence window failed"));
+                return true;
+            }
+            bMeasuring = true;
+            return false;
+        }
+
+        FPinkCabMechanicalEvidenceSnapshot Evidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
+        {
+            Test->AddError(TEXT("D3 dyno proof evidence read failed"));
+            return true;
+        }
+        if (!Evidence.bComplete)
+        {
+            return false;
+        }
+
+        const float BodySpeedCmPerSec =
+            Mesh->GetPhysicsLinearVelocity().Size();
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_D3_DYNO_PROOF dyno_brake_nm=%.3f mean_driven_wheel_rpm=%.3f body_linear_cm_s=%.3f mean_rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f"),
+            Evidence.DynamometerBrakeTorqueNm,
+            Evidence.MeanDrivenWheelRpm,
+            BodySpeedCmPerSec,
+            Evidence.MeanDrivenWheelTorqueNm,
+            Evidence.MeanEngineRpm,
+            Evidence.MeanDeltaSeconds * 1000.0f));
+        Test->TestTrue(
+            TEXT("D3 dyno proof installs requested physical brake load"),
+            Evidence.DynamometerBrakeTorqueNm
+                >= DynamometerBrakeTorqueNm - KINDA_SMALL_NUMBER);
+        Test->TestTrue(
+            TEXT("D3 dyno proof holds driven shaft below 2 RPM"),
+            Evidence.MeanDrivenWheelRpm <= 2.0f);
+        Test->TestTrue(
+            TEXT("D3 dyno proof holds chassis below 5 cm/s"),
+            BodySpeedCmPerSec <= 5.0f);
+        return true;
+    }
+
+private:
+    static constexpr float DynamometerBrakeTorqueNm = 6500.0f;
+    FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    FPinkCabPhysicsFixtureRestGate RestGate;
+    bool bInitialized = false;
+    bool bMeasuring = false;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabD3DynamometerProofRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.D3.DynamometerProof",
+    EAutomationTestFlags::EditorContext
+        | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabD3DynamometerProofRuntimeTest::RunTest(const FString&)
+{
+    const bool bOpened = AutomationOpenMap(
+        PinkCabPhysicsFixture::MapPath,
+        true);
+    TestTrue(TEXT("D3 dyno proof map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+
+    ADD_LATENT_AUTOMATION_COMMAND(
+        FPinkCabD3DynamometerProofCommand(this));
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabD3CausalMatrixRuntimeTest,
     "PinkCab.Vehicle.Physics.P02.D3.CausalMatrix",
