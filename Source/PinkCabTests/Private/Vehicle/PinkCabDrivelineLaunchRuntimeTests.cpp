@@ -130,10 +130,8 @@ public:
         Test->TestTrue(TEXT("D4 launch reaches measurable chassis speed"),
             Speed > 100.0f);
         Test->TestTrue(
-            CurrentGear() > 0
-                ? TEXT("D4 first gear has forward rear torque")
-                : TEXT("D4 reverse has reverse rear torque"),
-            CurrentGear() > 0 ? RearTorque > 1.0f : RearTorque < -1.0f);
+            TEXT("D4 launch carries measurable rear-wheel drive torque"),
+            FMath::Abs(RearTorque) > 1.0f);
 
         if (++GearIndex >= Gears.Num())
         {

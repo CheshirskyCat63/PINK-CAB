@@ -194,3 +194,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The moving-load test no longer closes the clutch from 0.75 to 1.0 on the same mechanical boundary as throttle lift.
 - After launch it holds throttle with full clutch for 0.50 s, exceeding the 0.20 s accepted clutch synchronization horizon, then starts the engine-braking measurement from that already-coupled state.
 - This isolates engine braking from clutch-engagement acceleration without changing engine-brake calibration or the production clutch model.
+
+
+### D4 reverse direction evidence
+- Chaos `FWheelStatus.DriveTorque` is treated as wheel-torque magnitude evidence in the moving fixture, not as the semantic gear-direction authority.
+- Reverse direction is proven by signed chassis displacement under load; D3 independently proves the PINK CAB effective ratio is negative in R and mirrored in magnitude against 1st.
+- D4 retains the same >1 Nm wheel-torque presence threshold and the same >100 cm / <-100 cm directional-travel gates.
