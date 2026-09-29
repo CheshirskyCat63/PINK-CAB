@@ -97,6 +97,75 @@ def external_lfs_object_path(repo: Path, oid: str) -> Path | None:
     return common / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
 
 
+def iter_nested_lfs_object_candidates(
+    roots: Iterable[Path],
+    oid: str,
+    workspace: Path,
+) -> Iterable[Path]:
+    """Find an exact LFS object in Git caches nested below trusted roots.
+
+    Self-hosted runners and recovery trees can contain multiple historical
+    clones. Their worktrees may no longer hold the requested asset revision,
+    while the Git LFS object cache still does. Only the exact OID path is
+    considered and every yielded file is hash-verified by the caller.
+    """
+    workspace = workspace.resolve()
+    seen: set[Path] = set()
+    prune_names = {
+        "Binaries",
+        "Content",
+        "DerivedDataCache",
+        "Intermediate",
+        "Saved",
+        "Builds",
+        "node_modules",
+    }
+
+    for root in roots:
+        if not root.exists():
+            print(f"PINKCAB_LOCAL_LFS_CACHE_ROOT_MISSING={root}")
+            continue
+        print(f"PINKCAB_LOCAL_LFS_CACHE_ROOT={root}")
+
+        direct = external_lfs_object_path(root, oid)
+        if direct is not None and direct.exists():
+            resolved_direct = direct.resolve()
+            if resolved_direct not in seen:
+                seen.add(resolved_direct)
+                yield direct
+
+        for current, dirs, files in os.walk(root):
+            current_path = Path(current)
+            try:
+                resolved = current_path.resolve()
+                if resolved == workspace or workspace in resolved.parents:
+                    dirs[:] = []
+                    continue
+            except OSError:
+                pass
+
+            if current_path.name in prune_names:
+                dirs[:] = []
+                continue
+
+            # A normal clone has a .git directory; a linked worktree has a
+            # .git file. In both cases ask Git for the real common directory.
+            if ".git" in dirs or ".git" in files:
+                candidate = external_lfs_object_path(current_path, oid)
+                if candidate is not None and candidate.exists():
+                    try:
+                        resolved_candidate = candidate.resolve()
+                    except OSError:
+                        resolved_candidate = candidate
+                    if resolved_candidate not in seen:
+                        seen.add(resolved_candidate)
+                        yield candidate
+                if ".git" in dirs:
+                    dirs.remove(".git")
+
+            dirs[:] = [d for d in dirs if d not in prune_names]
+
+
 def is_git_worktree(workspace: Path) -> bool:
     proc = subprocess.run(
         ["git", "rev-parse", "--is-inside-work-tree"],
@@ -209,6 +278,7 @@ def materialize_required(
     workspace: Path,
     relative: Path,
     search_roots: list[Path],
+    cache_roots: list[Path],
 ) -> None:
     target = workspace / relative
     oid = parse_lfs_pointer(target) if target.exists() else None
@@ -225,6 +295,22 @@ def materialize_required(
         return
 
     matches: list[Path] = []
+
+    # Search exact historical OIDs across trusted local clone/cache roots
+    # before falling back to current worktree files.
+    for external_cached in iter_nested_lfs_object_candidates(
+        cache_roots, oid, workspace
+    ):
+        try:
+            actual = sha256_file(external_cached)
+        except OSError:
+            continue
+        print(
+            f"PINKCAB_LOCAL_LFS_NESTED_OBJECT_CANDIDATE={external_cached} "
+            f"sha256={actual} expected={oid}"
+        )
+        if actual == oid:
+            matches.append(external_cached)
 
     # Historical LFS object caches are authoritative candidates too. A mirror
     # worktree may have moved on to a newer revision while its local LFS store
@@ -327,11 +413,13 @@ def main() -> int:
     parser.add_argument("--required", action="append", default=[])
     parser.add_argument("--all-tracked", action="store_true")
     parser.add_argument("--search-root", action="append", default=[])
+    parser.add_argument("--cache-root", action="append", default=[])
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
     requested = [Path(value) for value in args.required]
     roots = [Path(value) for value in args.search_root]
+    cache_roots = [Path(value) for value in args.cache_root]
 
     subprocess.run(
         ["git", "lfs", "install", "--local"],
@@ -360,7 +448,7 @@ def main() -> int:
         else requested
     )
     for relative in required:
-        materialize_required(workspace, relative, roots)
+        materialize_required(workspace, relative, roots, cache_roots)
 
     unresolved: list[str] = []
     for relative in sorted(tracked):

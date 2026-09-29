@@ -48,6 +48,8 @@ jobs:
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
             --all-tracked `
+            --cache-root 'E:\CHESHIRE_DIVISION' `
+            --cache-root 'E:\Development' `
             --search-root 'E:\CHESHIRE_DIVISION\Games\PINK-CAB' `
             --search-root 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB' `
             --search-root 'E:\Development'
