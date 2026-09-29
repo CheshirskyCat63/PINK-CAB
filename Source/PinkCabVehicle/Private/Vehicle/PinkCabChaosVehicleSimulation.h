@@ -31,6 +31,7 @@ private:
     struct FDrivenWheelTorqueStats
     {
         float AbsTorqueSumNm = 0.0f;
+        float AbsWheelRpmSum = 0.0f;
         int32 DrivenWheelCount = 0;
     };
 
@@ -62,6 +63,7 @@ private:
     double EvidenceCompletedSampleSeconds = 0.0;
     int32 EvidenceCompletedSteps = 0;
     double EvidenceDrivenWheelTorqueTimeIntegral = 0.0;
+    double EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     double EvidenceEngineRpmTimeIntegral = 0.0;
     double EvidenceObservedDeltaSecondsSum = 0.0;
 };

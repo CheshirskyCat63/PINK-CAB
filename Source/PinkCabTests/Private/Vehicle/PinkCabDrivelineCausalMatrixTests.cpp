@@ -36,6 +36,8 @@ struct FPinkCabD3Run
     int64 ResetMechanicalSteps = 0;
     int32 ResetStableMechanicalSteps = 0;
     float MeanMechanicalDeltaMs = 0.0f;
+    float MeanDrivenWheelRpm = 0.0f;
+    float EndBodyLinearSpeedCmPerSec = 0.0f;
 };
 
 float MedianD3(TArray<float> Values)
@@ -257,10 +259,14 @@ public:
             CurrentResetStableMechanicalSteps;
         Run.MeanMechanicalDeltaMs =
             Evidence.MeanDeltaSeconds * 1000.0f;
+        Run.MeanDrivenWheelRpm =
+            Evidence.MeanDrivenWheelRpm;
+        Run.EndBodyLinearSpeedCmPerSec =
+            Mesh->GetPhysicsLinearVelocity().Size();
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
@@ -277,6 +283,8 @@ public:
             Run.EffectiveGearRatio,
             Run.ResolvedEngineThrottle01,
             Run.AvailableEngineTorqueNm,
+            Run.MeanDrivenWheelRpm,
+            Run.EndBodyLinearSpeedCmPerSec,
             Run.ChaosCurrentGear,
             Run.ChaosTargetGear));
 
@@ -406,6 +414,12 @@ private:
             Test->TestTrue(TEXT("every D3 repeat proves a physical settle window"),
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
+            Test->TestTrue(
+                TEXT("every D3 sample records finite driven-wheel motion evidence"),
+                FMath::IsFinite(Run.MeanDrivenWheelRpm)
+                    && Run.MeanDrivenWheelRpm >= 0.0f
+                    && FMath::IsFinite(Run.EndBodyLinearSpeedCmPerSec)
+                    && Run.EndBodyLinearSpeedCmPerSec >= 0.0f);
             Test->TestTrue(
                 TEXT("every D3 sample records a positive finite mechanical timestep"),
                 FMath::IsFinite(Run.MeanMechanicalDeltaMs)
