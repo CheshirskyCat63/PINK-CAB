@@ -230,3 +230,5 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 ### P01 slope process-level repeat gate
 - Because the previous slope fixture showed process-to-process nondeterminism, the dedicated P02 workflow now requires five fresh Unreal-process passes of `LiveOffNeutralSlope`.
 - This repeat gate runs the unchanged downhill-travel, rolling-speed, wheel-rotation and zero-propulsion assertions; it does not average or relax failures.
+
+- D4 opens the engine-brake evidence window only after the zero-throttle/full-clutch command has been synchronously installed through the authoritative bridge, preventing the first sample from inheriting the previous launch throttle.

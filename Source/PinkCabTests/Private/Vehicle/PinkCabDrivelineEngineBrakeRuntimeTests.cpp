@@ -113,6 +113,11 @@ public:
             Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
             Controls.SetDriveline(1, 1, 1.0f);
+            if (!Apply(*Pawn, Cockpit, Controls))
+            {
+                Test->AddError(TEXT("D4 throttle-lift command failed authoritative apply"));
+                return true;
+            }
             if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
                     0.0f,
                     static_cast<float>(EngineBrakeMeasurementSeconds)))
