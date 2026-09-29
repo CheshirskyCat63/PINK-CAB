@@ -69,6 +69,8 @@ No world access, no UObject, no hidden assist. The clutch domain uses local nume
 
 A dedicated PINK CAB Chaos adapter will:
 - read live engine RPM and driven-wheel angular velocity;
+- preserve native P01 engine evolution as the single engine authority;
+- derive the clutch predictor's signed free-engine net torque from the actual native angular-momentum change over that same physics step, rather than re-estimating the torque curve/drag in a second engine model;
 - feed the domain model once per control/physics step;
 - apply rear-wheel drive/reaction torque through Chaos wheel torque APIs;
 - feed clutch reaction into the existing P01 engine state without resetting chassis/wheels;

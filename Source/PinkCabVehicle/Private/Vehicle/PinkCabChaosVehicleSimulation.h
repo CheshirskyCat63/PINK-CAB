@@ -39,6 +39,7 @@ private:
         float DeltaTime);
     FPinkCabClutchDrivelineOutput SolveDrivelineStep(
         float EngineRpmBeforeNative,
+        float ObservedFreeEngineNetTorqueNm,
         float DeltaTime);
     void ApplyEngineReaction(
         Chaos::FSimpleEngineSim& Engine,

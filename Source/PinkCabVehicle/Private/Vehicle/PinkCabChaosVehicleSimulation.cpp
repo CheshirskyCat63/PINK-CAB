@@ -166,11 +166,26 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
 
     const float EngineRpmBeforeNative =
         Engine.GetEngineRPM();
+    const float EngineOmegaBeforeNative =
+        Engine.GetEngineOmega();
     AdvanceAcceptedNativeEngine(Transmission, DeltaTime);
+    const float EngineOmegaAfterNative =
+        Engine.GetEngineOmega();
+
+    const float ObservedFreeEngineNetTorqueNm =
+        Command.bCombustionAllowed
+            && DeltaTime > KINDA_SMALL_NUMBER
+            && Command.ClutchConfig.EngineEffectiveInertia
+                > KINDA_SMALL_NUMBER
+        ? Command.ClutchConfig.EngineEffectiveInertia
+            * (EngineOmegaAfterNative - EngineOmegaBeforeNative)
+            / DeltaTime
+        : 0.0f;
 
     const FPinkCabClutchDrivelineOutput Output =
         SolveDrivelineStep(
             EngineRpmBeforeNative,
+            ObservedFreeEngineNetTorqueNm,
             DeltaTime);
     ApplyEngineReaction(Engine, Output);
 
@@ -200,6 +215,7 @@ void FPinkCabChaosWheeledVehicleSimulation::AdvanceAcceptedNativeEngine(
 FPinkCabClutchDrivelineOutput
 FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
     const float EngineRpmBeforeNative,
+    const float ObservedFreeEngineNetTorqueNm,
     const float DeltaTime)
 {
     const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
@@ -213,18 +229,29 @@ FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
     Input.EngineRpm =
         FMath::Max(EngineRpmBeforeNative, 0.0f);
     Input.ShaftEquivalentEngineRpm = ShaftEquivalentEngineRpm;
-    Input.AvailableEngineTorqueNm =
-        Command.bCombustionAllowed
-            ? FMath::Max(
-                PhysicsThreadActuation
-                    .RequestedEngineTorqueAfterLimiterHealthNm,
-                0.0f)
-            : 0.0f;
-    Input.EngineDragTorqueNm =
-        FMath::Max(
-            EngineRpmBeforeNative
-                * Command.EngineBrakeEffect,
-            0.0f);
+    if (Command.bCombustionAllowed)
+    {
+        // P01 native Chaos is the engine authority. Convert the actual free
+        // engine angular-momentum change from this same physics step into the
+        // net engine torque consumed by the clutch predictor. This avoids
+        // duplicating/approximating the accepted engine torque/drag model.
+        Input.AvailableEngineTorqueNm =
+            FMath::Max(ObservedFreeEngineNetTorqueNm, 0.0f);
+        Input.EngineDragTorqueNm =
+            FMath::Max(-ObservedFreeEngineNetTorqueNm, 0.0f);
+    }
+    else
+    {
+        // Native combustion evolution is intentionally disabled when Off or
+        // Stalled. Mechanical engine drag remains a P02 driveline load and can
+        // still be back-driven through the same clutch path.
+        Input.AvailableEngineTorqueNm = 0.0f;
+        Input.EngineDragTorqueNm =
+            FMath::Max(
+                EngineRpmBeforeNative
+                    * Command.EngineBrakeEffect,
+                0.0f);
+    }
     Input.ClutchCoupling01 = Command.ClutchCoupling01;
     Input.DrivetrainTorqueCapacity01 =
         Command.DrivetrainTorqueCapacity01;
