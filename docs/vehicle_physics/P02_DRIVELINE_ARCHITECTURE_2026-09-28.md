@@ -263,3 +263,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - After zero throttle is authoritatively applied, D4 probes short physics-thread windows until both signed rear-wheel torque and transmitted clutch torque are negative, bounded to 2.00 s.
 - Only after that physical overrun onset does the 1.00 s sustained engine-brake window begin; it must retain negative clutch torque and reduce chassis speed.
 - No solver, engine-drag, clutch-capacity, tire, brake or timestep calibration changed.
+
+
+### P01 slope fixture: supported rolling gate
+- The gravity-coast acceptance now begins only after three consecutive mechanical observations with 4/4 wheel contact, positive suspension support, low velocity normal to the 20-degree ramp, and at least 10 cm/s real downhill velocity.
+- Chassis angular velocity is diagnostic only; it is not a valid reason to delay the gravity-coast measurement until the vehicle has already settled into static tire contact.
+- Service brake, parking brake, synthetic force, velocity writes and production calibration remain absent from the measured coast.

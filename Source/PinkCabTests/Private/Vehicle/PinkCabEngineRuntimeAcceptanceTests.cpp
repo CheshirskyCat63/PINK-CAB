@@ -173,6 +173,17 @@ public:
                 TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
+            const FVector Downhill3D =
+                FVector::VectorPlaneProject(
+                    FVector::DownVector,
+                    Ramp->GetActorUpVector())
+                    .GetSafeNormal();
+            DownhillDirection2D =
+                FVector2D(Downhill3D.X, Downhill3D.Y).GetSafeNormal();
+            Test->TestTrue(
+                TEXT("slope fixture exposes gravity-projected downhill direction"),
+                !DownhillDirection2D.IsNearlyZero());
+
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             PhaseSimSeconds = 0.0;
@@ -231,18 +242,23 @@ public:
                 FVector::DotProduct(
                     BodyVelocity,
                     Ramp->GetActorUpVector()));
+            const FVector2D HorizontalVelocity(
+                BodyVelocity.X, BodyVelocity.Y);
+            const float DownhillSpeedCmPerSec =
+                FVector2D::DotProduct(
+                    HorizontalVelocity, DownhillDirection2D);
             const float BodyAngularSpeedDegPerSec =
                 Mesh->GetPhysicsAngularVelocityInDegrees().Size();
-            const bool bSupportedContact =
+            const bool bSupportedRollingContact =
                 ContactWheels == Movement->GetNumWheels()
                 && TotalSpringForce > KINDA_SMALL_NUMBER
                 && NormalSpeedCmPerSec
                     <= ContactNormalSpeedToleranceCmPerSec
-                && BodyAngularSpeedDegPerSec
-                    <= ContactBodyAngularToleranceDegPerSec;
+                && DownhillSpeedCmPerSec
+                    >= ContactDownhillSpeedMinimumCmPerSec;
 
             if (PhaseSimSeconds >= MinimumContactSettleSeconds
-                && bSupportedContact)
+                && bSupportedRollingContact)
             {
                 ++StableContactObservations;
             }
@@ -260,12 +276,13 @@ public:
                 }
 
                 Test->AddError(FString::Printf(
-                    TEXT("P01 slope fixture never reached four-wheel support sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
+                    TEXT("P01 slope fixture never reached supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
                     PhaseSimSeconds,
                     ContactWheels,
                     Movement->GetNumWheels(),
                     TotalSpringForce,
                     NormalSpeedCmPerSec,
+                    DownhillSpeedCmPerSec,
                     BodyAngularSpeedDegPerSec,
                     StableContactObservations));
                 return true;
@@ -274,26 +291,16 @@ public:
             StartLocation = Mesh->GetComponentLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d start=%s"),
+                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d start=%s"),
                 PhaseSimSeconds,
                 ContactWheels,
                 Movement->GetNumWheels(),
                 TotalSpringForce,
                 NormalSpeedCmPerSec,
+                DownhillSpeedCmPerSec,
                 BodyAngularSpeedDegPerSec,
                 StableContactObservations,
                 *StartLocation.ToString()));
-
-            const FVector Downhill3D =
-                FVector::VectorPlaneProject(
-                    FVector::DownVector,
-                    Ramp->GetActorUpVector())
-                    .GetSafeNormal();
-            DownhillDirection2D =
-                FVector2D(Downhill3D.X, Downhill3D.Y).GetSafeNormal();
-            Test->TestTrue(
-                TEXT("slope fixture exposes gravity-projected downhill direction"),
-                !DownhillDirection2D.IsNearlyZero());
 
             bContactReady = true;
             PhaseSimSeconds = 0.0;
@@ -377,9 +384,9 @@ private:
     static constexpr double MinimumContactSettleSeconds = 0.10;
     static constexpr double ContactReadyTimeoutSeconds = 3.00;
     static constexpr double MeasurementSeconds = 1.20;
-    static constexpr float ContactNormalSpeedToleranceCmPerSec = 30.0f;
-    static constexpr float ContactBodyAngularToleranceDegPerSec = 8.0f;
-    static constexpr int32 RequiredContactObservations = 2;
+    static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
+    static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
+    static constexpr int32 RequiredContactObservations = 3;
 
     bool bInitialized = false;
     bool bContactReady = false;
