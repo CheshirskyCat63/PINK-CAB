@@ -172,6 +172,10 @@ public:
             Test->TestTrue(
                 TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
+            Test->TestTrue(
+                TEXT("slope brake-path evidence window starts"),
+                PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f, static_cast<float>(BrakeEvidenceSeconds)));
 
             const FVector Downhill3D =
                 FVector::VectorPlaneProject(
@@ -316,8 +320,16 @@ public:
 
             StartLocation = Mesh->GetComponentLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
+
+            FPinkCabMechanicalEvidenceSnapshot BrakeEvidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                    BrakeEvidence))
+            {
+                Test->AddError(TEXT("slope brake-path evidence read failed"));
+                return true;
+            }
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d start=%s"),
+                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f start=%s"),
                 PhaseSimSeconds,
                 ContactWheels,
                 Movement->GetNumWheels(),
@@ -326,7 +338,16 @@ public:
                 DownhillSpeedCmPerSec,
                 BodyAngularSpeedDegPerSec,
                 StableContactObservations,
+                BrakeEvidence.MeanAppliedWheelBrakeTorqueNm,
+                BrakeEvidence.bAnyParkingEnabled ? 1 : 0,
+                BrakeEvidence.CompletedSampleSeconds,
                 *StartLocation.ToString()));
+            Test->TestFalse(
+                TEXT("slope physics thread has no parking brake state"),
+                BrakeEvidence.bAnyParkingEnabled);
+            Test->TestTrue(
+                TEXT("slope physics thread applies zero wheel brake torque"),
+                BrakeEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
 
             bContactReady = true;
             PhaseSimSeconds = 0.0;
@@ -374,9 +395,25 @@ public:
                     FMath::Abs(Wheel->GetWheelAngularVelocity()));
             }
         }
+        FPinkCabMechanicalEvidenceSnapshot FinalBrakeEvidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                FinalBrakeEvidence))
+        {
+            Test->AddError(TEXT("slope final brake-path evidence read failed"));
+            return true;
+        }
         Test->AddInfo(FString::Printf(
-            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f"),
-            MaxAbsWheelAngularVelocity));
+            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f"),
+            MaxAbsWheelAngularVelocity,
+            FinalBrakeEvidence.MeanAppliedWheelBrakeTorqueNm,
+            FinalBrakeEvidence.bAnyParkingEnabled ? 1 : 0,
+            FinalBrakeEvidence.CompletedSampleSeconds));
+        Test->TestFalse(
+            TEXT("slope final physics evidence has no parking state"),
+            FinalBrakeEvidence.bAnyParkingEnabled);
+        Test->TestTrue(
+            TEXT("slope final physics evidence has zero wheel brake torque"),
+            FinalBrakeEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
 
         Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
             DownhillTravelCm > 20.0f);
@@ -410,6 +447,7 @@ private:
     static constexpr double MinimumContactSettleSeconds = 0.10;
     static constexpr double ContactReadyTimeoutSeconds = 3.00;
     static constexpr double MeasurementSeconds = 1.20;
+    static constexpr double BrakeEvidenceSeconds = 3.00;
     static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
     static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
     static constexpr int32 RequiredContactObservations = 3;

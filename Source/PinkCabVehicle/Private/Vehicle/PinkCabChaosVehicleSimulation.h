@@ -84,5 +84,9 @@ private:
     double EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
     double EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
     double EvidenceClutchSlipRpmTimeIntegral = 0.0;
+    double EvidenceAppliedWheelBrakeTorqueTimeIntegral = 0.0;
     double EvidenceObservedDeltaSecondsSum = 0.0;
+    float LastMaxAppliedWheelBrakeTorqueNm = 0.0f;
+    bool bLastParkingEnabled = false;
+    bool bEvidenceAnyParkingEnabled = false;
 };

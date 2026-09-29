@@ -22,7 +22,9 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float MeanRequestedClutchTorqueNm = 0.0f;
     float MeanTransmittedClutchTorqueNm = 0.0f;
     float MeanClutchSlipRpm = 0.0f;
+    float MeanAppliedWheelBrakeTorqueNm = 0.0f;
     float MeanDeltaSeconds = 0.0f;
+    bool bAnyParkingEnabled = false;
     bool bComplete = false;
 };
 

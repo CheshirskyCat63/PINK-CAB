@@ -21,7 +21,9 @@ void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
     EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
     EvidenceClutchSlipRpmTimeIntegral = 0.0;
+    EvidenceAppliedWheelBrakeTorqueTimeIntegral = 0.0;
     EvidenceObservedDeltaSecondsSum = 0.0;
+    bEvidenceAnyParkingEnabled = false;
 }
 
 FPinkCabMechanicalEvidenceSnapshot
@@ -62,7 +64,11 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
         Result.MeanClutchSlipRpm = static_cast<float>(
             EvidenceClutchSlipRpmTimeIntegral
             / EvidenceCompletedSampleSeconds);
+        Result.MeanAppliedWheelBrakeTorqueNm = static_cast<float>(
+            EvidenceAppliedWheelBrakeTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
     }
+    Result.bAnyParkingEnabled = bEvidenceAnyParkingEnabled;
     if (EvidenceCompletedSteps > 0)
     {
         Result.MeanDeltaSeconds = static_cast<float>(
@@ -154,6 +160,10 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceValues(
     EvidenceClutchSlipRpmTimeIntegral +=
         static_cast<double>(DrivelineOutput.SlipRpm)
         * SampleWeightSeconds;
+    EvidenceAppliedWheelBrakeTorqueTimeIntegral +=
+        static_cast<double>(LastMaxAppliedWheelBrakeTorqueNm)
+        * SampleWeightSeconds;
+    bEvidenceAnyParkingEnabled |= bLastParkingEnabled;
     EvidenceCompletedSampleSeconds += SampleWeightSeconds;
     EvidenceObservedDeltaSecondsSum += static_cast<double>(DeltaTime);
     ++EvidenceCompletedSteps;

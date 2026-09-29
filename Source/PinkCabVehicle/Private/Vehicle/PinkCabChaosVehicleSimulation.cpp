@@ -55,6 +55,8 @@ void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
     }
 
     PhysicsThreadActuation = {};
+    bLastParkingEnabled = ControlInputs.ParkingEnabled;
+    LastMaxAppliedWheelBrakeTorqueNm = 0.0f;
     if (PVehicle->HasEngine())
     {
         FSimpleEngineSim& Engine = PVehicle->GetEngine();
@@ -100,6 +102,8 @@ void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
                 FMath::Max(BrakeTorqueNm, HandbrakeTorqueNm);
         }
 
+        LastMaxAppliedWheelBrakeTorqueNm =
+            FMath::Max(LastMaxAppliedWheelBrakeTorqueNm, BrakeTorqueNm);
         Wheel.SetBrakeTorque(TorqueMToCm(BrakeTorqueNm), false);
     }
 }

@@ -274,3 +274,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 ### Runtime blocker diagnostics
 - The fast verification lane executes slope, incline-load and moving-boundary checks before the long D3 matrix and records every blocker in the trio before failing the job; no failed blocker is suppressed.
 - Slope timeout evidence records the maximum supported downhill speed and wheel angular velocity plus authoritative brake and handbrake inputs, allowing static-contact failures to be separated from hidden braking or drivetrain torque.
+
+
+### P01 gravity-coast brake-path observability
+- Mechanical evidence now records the physics-thread parking flag and the maximum wheel brake torque actually applied after service/handbrake/parking resolution.
+- The slope fixture opens this read-only evidence window under ignition Off, neutral, service brake 0 and handbrake 0, and asserts that both parking and applied wheel brake torque remain absent.
+- This instrumentation changes no force, wheel torque, brake command, parking state or calibration.
