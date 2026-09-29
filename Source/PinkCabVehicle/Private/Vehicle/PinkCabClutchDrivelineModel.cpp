@@ -6,6 +6,83 @@ constexpr float PinkCabClutchRpmToRadPerSecond = 2.0f * PI / 60.0f;
 constexpr float PinkCabClutchRadPerSecondToRpm = 60.0f / (2.0f * PI);
 constexpr float PinkCabIntegrationSlicesPerSyncHorizon = 32.0f;
 
+
+float PositiveLambertW(const float Value)
+{
+    if (!FMath::IsFinite(Value) || Value <= KINDA_SMALL_NUMBER)
+    {
+        return 0.0f;
+    }
+
+    float X = Value < 3.0f
+        ? Value / (1.0f + 0.5f * Value)
+        : FMath::Loge(Value) - FMath::Loge(FMath::Loge(Value));
+    X = FMath::Max(X, 0.0f);
+
+    // Principal real branch for Value > 0. Eight Newton iterations are
+    // deterministic and comfortably converge across the physical clutch
+    // parameter envelope used by PINK CAB.
+    for (int32 Index = 0; Index < 8; ++Index)
+    {
+        const float ExpX = FMath::Exp(X);
+        const float Denominator = ExpX * (X + 1.0f);
+        if (!FMath::IsFinite(ExpX)
+            || FMath::Abs(Denominator) <= KINDA_SMALL_NUMBER)
+        {
+            break;
+        }
+
+        const float Residual = X * ExpX - Value;
+        const float Next = X - Residual / Denominator;
+        if (!FMath::IsFinite(Next))
+        {
+            break;
+        }
+        X = FMath::Max(Next, 0.0f);
+    }
+    return X;
+}
+
+float SynchronizationGainPerSecond(
+    const FPinkCabClutchDrivelineConfig& Config,
+    const float TorqueCapacityNm)
+{
+    if (TorqueCapacityNm <= KINDA_SMALL_NUMBER
+        || Config.EngineEffectiveInertia <= KINDA_SMALL_NUMBER
+        || Config.SynchronizationTimeSeconds <= KINDA_SMALL_NUMBER)
+    {
+        return 0.0f;
+    }
+
+    const float LockedSlipOmega =
+        Config.LockedSlipRpm * PinkCabClutchRpmToRadPerSecond;
+    if (LockedSlipOmega <= KINDA_SMALL_NUMBER)
+    {
+        // A zero-width lock band has no finite exponential settling target.
+        // Preserve the legacy finite compliance rather than inventing an
+        // unbounded synchronization gain.
+        return 1.0f / Config.SynchronizationTimeSeconds;
+    }
+
+    // Let k be the slip-decay gain. The largest *unconstrained* slip is
+    // C/(I*k), because beyond that the requested synchronization torque would
+    // hit clutch capacity C. Require that reference slip to decay exactly to
+    // the authored lock band after horizon T:
+    //
+    //   C/(I*k) * exp(-k*T) = lockedSlip
+    //
+    // With x=k*T this becomes x*exp(x)=C*T/(I*lockedSlip), hence Lambert W.
+    // This gives the authored "synchronization horizon" literal meaning while
+    // retaining physical capacity limiting for larger slips.
+    const float CapacityHorizonRatio =
+        TorqueCapacityNm
+        * Config.SynchronizationTimeSeconds
+        / (Config.EngineEffectiveInertia * LockedSlipOmega);
+    const float HorizonExponent =
+        PositiveLambertW(CapacityHorizonRatio);
+    return HorizonExponent / Config.SynchronizationTimeSeconds;
+}
+
 struct FPinkCabClutchIntegrationResult
 {
     float InitialRequestedTorqueNm = 0.0f;
@@ -47,7 +124,9 @@ FPinkCabClutchIntegrationResult IntegrateClutchReaction(
             NetEngineTorqueNm
             + Config.EngineEffectiveInertia
                 * SlipOmega
-                / Config.SynchronizationTimeSeconds;
+                * SynchronizationGainPerSecond(
+                    Config,
+                    TorqueCapacityNm);
         const float TransmittedTorque = FMath::Clamp(
             RequestedTorque,
             -TorqueCapacityNm,

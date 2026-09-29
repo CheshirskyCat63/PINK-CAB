@@ -237,3 +237,10 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 ### D4 physics-thread clutch causality diagnostics
 - Mechanical evidence now records time-weighted native free-engine net torque, requested clutch torque, transmitted clutch torque and clutch slip RPM alongside signed wheel torque.
 - These values are observational only and are emitted in D4 failure assertions so closed-throttle engine-braking defects can be localized without changing calibration or solver behavior.
+
+
+### Synchronization-horizon solver correction
+- RED evidence on `SynchronizationHorizon` proved the old compliance law treated the authored 0.20 s value as a simple e-fold time constant: an unconstrained 600 RPM slip still had 217.626 RPM after one horizon, above the accepted 25 RPM lock band.
+- The solver now derives its slip-decay gain from the existing physical parameters only: clutch torque capacity `C`, effective engine inertia `I`, synchronization horizon `T`, and locked-slip angular band `ω_lock`.
+- For the largest slip that remains below clutch capacity, the gain `k` is chosen from `x·exp(x)=C·T/(I·ω_lock)` with `x=k·T`. This makes that unconstrained reference slip settle to the lock band in the authored horizon; larger slips remain honestly capacity-limited.
+- No new tuning constant, helper force, velocity write, fixed timestep, engine-brake coefficient change, clutch-capacity change, or 0.999→1.000 handoff was introduced.
