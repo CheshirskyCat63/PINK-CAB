@@ -278,8 +278,9 @@ def materialize_required(
     workspace: Path,
     relative: Path,
     search_roots: list[Path],
-    cache_roots: list[Path],
+    cache_roots: list[Path] | None = None,
 ) -> None:
+    cache_roots = cache_roots or []
     target = workspace / relative
     oid = parse_lfs_pointer(target) if target.exists() else None
     if oid is None:
