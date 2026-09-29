@@ -262,6 +262,20 @@ public:
             Controls.SetThrottle(0.70f);
             Controls.SetDriveline(1, 1, 0.75f);
             Controls.SetDrivetrainTorqueCapacity(1.0f);
+            if (!Apply(*Pawn, Cockpit, Controls))
+            {
+                Test->AddError(
+                    TEXT("D4 incline launch command failed authoritative apply"));
+                return true;
+            }
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f,
+                    static_cast<float>(LaunchTorqueEvidenceSeconds)))
+            {
+                Test->AddError(
+                    TEXT("D4 incline physics-thread torque evidence failed to start"));
+                return true;
+            }
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             PhaseSimSeconds = 0.0;
@@ -275,21 +289,45 @@ public:
             return false;
         }
 
+        FPinkCabMechanicalEvidenceSnapshot Evidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
+        {
+            Test->AddError(
+                TEXT("D4 incline physics-thread torque evidence read failed"));
+            return true;
+        }
+        if (Evidence.bComplete && !bLaunchTorqueEvidenceCaptured)
+        {
+            LaunchMeanSignedRearTorqueNm =
+                Evidence.MeanSignedDrivenWheelTorqueNm;
+            LaunchMeanAbsRearTorqueNm =
+                Evidence.MeanDrivenWheelTorqueNm;
+            LaunchEvidenceSteps = Evidence.CompletedSampleSteps;
+            bLaunchTorqueEvidenceCaptured = true;
+        }
+
         const float SignedTravel = SignedForwardDistanceCm(
             StartLocation, Mesh->GetComponentLocation(), StartForward);
-        if (SignedTravel < 75.0f && PhaseSimSeconds < 6.0)
+        if ((!bLaunchTorqueEvidenceCaptured || SignedTravel < 75.0f)
+            && PhaseSimSeconds < 6.0)
         {
             return false;
         }
 
-        const float RearTorque = MeanRearDriveTorqueNm(*Movement);
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D4_INCLINE grade=0.08 sim_s=%.3f travel_cm=%.3f speed_cm_s=%.3f rear_torque_nm=%.3f"),
-            PhaseSimSeconds, SignedTravel, HorizontalSpeedCmPerSec(*Mesh), RearTorque));
+            TEXT("P02_D4_INCLINE grade=0.08 sim_s=%.3f travel_cm=%.3f speed_cm_s=%.3f signed_rear_torque_nm=%.3f abs_rear_torque_nm=%.3f evidence_steps=%d"),
+            PhaseSimSeconds,
+            SignedTravel,
+            HorizontalSpeedCmPerSec(*Mesh),
+            LaunchMeanSignedRearTorqueNm,
+            LaunchMeanAbsRearTorqueNm,
+            LaunchEvidenceSteps));
+        Test->TestTrue(TEXT("D4 incline captures completed launch torque evidence"),
+            bLaunchTorqueEvidenceCaptured);
         Test->TestTrue(TEXT("D4 drivetrain moves uphill on 8% grade"),
             SignedTravel > 75.0f);
-        Test->TestTrue(TEXT("D4 incline retains positive rear torque"),
-            RearTorque > 1.0f);
+        Test->TestTrue(TEXT("D4 incline sustains positive rear torque under load"),
+            LaunchMeanSignedRearTorqueNm > 1.0f);
         Ramp->Destroy();
         Ramp = nullptr;
         return true;
@@ -301,8 +339,14 @@ private:
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
     FPinkCabPhysicsFixtureRestGate RestGate;
+    static constexpr double LaunchTorqueEvidenceSeconds = 1.0;
+
     bool bInitialized = false;
     bool bLaunching = false;
+    bool bLaunchTorqueEvidenceCaptured = false;
+    int32 LaunchEvidenceSteps = 0;
+    float LaunchMeanSignedRearTorqueNm = 0.0f;
+    float LaunchMeanAbsRearTorqueNm = 0.0f;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
