@@ -243,6 +243,8 @@ public:
         Run.Repeat = RepeatIndex;
         Run.MeanRearDriveTorqueNm =
             Evidence.MeanDrivenWheelTorqueNm;
+        Run.MeanInitialRearDriveTorqueNm =
+            Evidence.MeanInitialDrivenWheelTorqueNm;
         Test->TestTrue(
             TEXT("D3 run captures constitutive wheel torque from physics evidence"),
             CurrentCoupling() <= KINDA_SMALL_NUMBER
