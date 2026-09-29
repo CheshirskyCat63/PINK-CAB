@@ -211,11 +211,11 @@ jobs:
             'PinkCab.Vehicle.Physics.Telemetry',
             'PinkCab.Vehicle.Physics.EngineState',
             'PinkCab.Vehicle.Physics.P02.ClutchModel',
+            'PinkCab.Vehicle.Physics.P02.D4',
             'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix',
             'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity',
             'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',
             'PinkCab.Vehicle.Physics.P02.D3.HotWornCapacity',
-            'PinkCab.Vehicle.Physics.P02.D4',
             'PinkCab.Vehicle.Physics.P02.D5.RenderCadenceInvariance',
             'PinkCab.Vehicle.Physics'
           )
