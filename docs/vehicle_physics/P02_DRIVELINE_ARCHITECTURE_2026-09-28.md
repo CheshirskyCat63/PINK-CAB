@@ -225,3 +225,8 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Mechanical evidence now carries both absolute and signed mean driven-wheel torque from the canonical physics-thread writer.
 - D4 throttle-lift verification no longer gates on asynchronous game-thread wheel telemetry. After the already-coupled synchronization phase it opens a 1.00 s physics-thread evidence window and requires sustained negative signed rear-wheel torque plus real chassis speed reduction.
 - This is evidence-only instrumentation; wheel torque calculation, engine drag, clutch calibration and tire/brake parameters are unchanged.
+
+
+### P01 slope process-level repeat gate
+- Because the previous slope fixture showed process-to-process nondeterminism, the dedicated P02 workflow now requires five fresh Unreal-process passes of `LiveOffNeutralSlope`.
+- This repeat gate runs the unchanged downhill-travel, rolling-speed, wheel-rotation and zero-propulsion assertions; it does not average or relax failures.

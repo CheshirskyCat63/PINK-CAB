@@ -248,6 +248,29 @@ jobs:
           }
           Write-Host "P02_PHY009_TEST_LOOP=PASS count=$completedTests"
 
+      - name: Prove P01 slope fixture determinism
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $test='PinkCab.Vehicle.Physics.EngineState.LiveOffNeutralSlope'
+          $passes=0
+          foreach($repeat in 1..5){
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P01_SLOPE_REPEAT_$repeat.log"
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath $log `
+              -TimeoutSeconds 180
+            ++$passes
+            Write-Host "P01_SLOPE_REPEAT_PASS=$repeat"
+          }
+          if($passes -ne 5){
+            throw "P01_SLOPE_REPEAT_INCOMPLETE passes=$passes expected=5"
+          }
+          Write-Host 'P01_SLOPE_DETERMINISM=PASS repeats=5'
+
       - name: Zero-debt and writer guard
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
