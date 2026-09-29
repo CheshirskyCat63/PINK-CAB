@@ -57,14 +57,8 @@ float SynchronizationGainPerSecond(
         return 1.0f / Config.SynchronizationTimeSeconds;
     }
 
-    // Synchronization compliance is a property of the authored clutch, not of
-    // pedal coupling or wear capacity. Use the full healthy clutch capacity to
-    // define the largest unsaturated reference slip. Coupling/condition then
-    // affect only the physical torque clamp below.
-    //
-    //   s_ref = C_max / (I*k)
-    //   s_ref * exp(-k*T) = s_lock
-    //   x*exp(x) = C_max*T / (I*s_lock), x=k*T
+    // Full healthy capacity defines compliance; coupling/wear only clamp torque.
+    // s_ref=C_max/(I*k), s_ref*exp(-k*T)=s_lock.
     const float CapacityHorizonRatio =
         Config.MaxClutchTorqueNm
         * Config.SynchronizationTimeSeconds
