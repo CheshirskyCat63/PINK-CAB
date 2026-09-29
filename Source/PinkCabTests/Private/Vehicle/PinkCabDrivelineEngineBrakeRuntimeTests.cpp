@@ -94,7 +94,22 @@ public:
                 return true;
             }
 
-            LiftStartSpeedCmPerSec = Speed;
+            Controls.SetThrottle(0.60f);
+            Controls.SetBrake(0.0f);
+            Controls.SetDriveline(1, 1, 1.0f);
+            ResetPhaseClock(*PinkCabMovement);
+            Phase = EPhase::Synchronizing;
+            return false;
+        }
+
+        if (Phase == EPhase::Synchronizing)
+        {
+            if (PhaseSimSeconds < FullCouplingSyncSeconds)
+            {
+                return false;
+            }
+
+            LiftStartSpeedCmPerSec = HorizontalSpeedCmPerSec(*Mesh);
             MinRearTorqueNm = 0.0f;
             Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
@@ -183,6 +198,7 @@ private:
     {
         Settling,
         Launching,
+        Synchronizing,
         LiftOff,
         Stopping
     };
@@ -203,6 +219,8 @@ private:
     bool bInitialized = false;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
+    static constexpr double FullCouplingSyncSeconds = 0.50;
+
     float LiftStartSpeedCmPerSec = 0.0f;
     float MinRearTorqueNm = 0.0f;
 };

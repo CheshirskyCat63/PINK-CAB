@@ -188,3 +188,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - D5 compares single-step engine response as `(RPM_after - RPM_reset) / measured mechanical dt` across 30/60/120 game caps.
 - Raw endpoint RPM is retained as telemetry but is not used as the cadence-invariance metric because the accepted project does not force one global mechanical timestep.
 - The 5% cadence-invariance tolerance is unchanged.
+
+
+### D4 engine-braking fixture isolation
+- The moving-load test no longer closes the clutch from 0.75 to 1.0 on the same mechanical boundary as throttle lift.
+- After launch it holds throttle with full clutch for 0.50 s, exceeding the 0.20 s accepted clutch synchronization horizon, then starts the engine-braking measurement from that already-coupled state.
+- This isolates engine braking from clutch-engagement acceleration without changing engine-brake calibration or the production clutch model.
