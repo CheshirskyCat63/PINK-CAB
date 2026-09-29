@@ -21,6 +21,7 @@ namespace
 struct FPinkCabClutchBoundaryRun
 {
     float Coupling = 0.0f;
+    float ConstitutiveRearDriveTorqueNm = 0.0f;
     float MeanRearDriveTorqueNm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanChaosEngineTorqueNm = 0.0f;
@@ -128,7 +129,7 @@ public:
             return true;
         }
 
-        if (!bMeasuring)
+        if (Phase == EBoundaryPhase::Resting)
         {
             ++RestPollCount;
             if (!RestGate.Update(*Pawn))
@@ -180,10 +181,49 @@ public:
                 return true;
             }
             if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f,
+                    ConstitutiveSampleSeconds))
+            {
+                Test->AddError(
+                    TEXT("P02 clutch boundary constitutive evidence window failed"));
+                return true;
+            }
+
+            Phase = EBoundaryPhase::Constitutive;
+            return false;
+        }
+
+        if (Phase == EBoundaryPhase::Constitutive)
+        {
+            FPinkCabMechanicalEvidenceSnapshot ConstitutiveEvidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                    ConstitutiveEvidence))
+            {
+                Test->AddError(
+                    TEXT("P02 clutch boundary constitutive evidence read failed"));
+                return true;
+            }
+            if (!ConstitutiveEvidence.bComplete)
+            {
+                return false;
+            }
+
+            Test->TestEqual(
+                TEXT("P02 boundary constitutive evidence uses one physics sample"),
+                ConstitutiveEvidence.CompletedSampleSteps,
+                1);
+            CurrentConstitutiveRearDriveTorqueNm =
+                ConstitutiveEvidence.MeanInitialDrivenWheelTorqueNm;
+            Test->TestTrue(
+                TEXT("P02 boundary constitutive torque is finite"),
+                FMath::IsFinite(CurrentConstitutiveRearDriveTorqueNm));
+
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
                     static_cast<float>(MeasurementSettleSeconds),
                     static_cast<float>(MeasurementSampleSeconds)))
             {
-                Test->AddError(TEXT("P02 clutch boundary physics-thread evidence window failed"));
+                Test->AddError(
+                    TEXT("P02 clutch boundary moving evidence window failed"));
                 return true;
             }
 
@@ -191,7 +231,7 @@ public:
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             MeasurementSettleSecondsRemaining = MeasurementSettleSeconds;
             ResetMeasurementSums();
-            bMeasuring = true;
+            Phase = EBoundaryPhase::Measuring;
             return false;
         }
 
@@ -324,6 +364,8 @@ public:
 
         FPinkCabClutchBoundaryRun Result;
         Result.Coupling = CurrentCoupling();
+        Result.ConstitutiveRearDriveTorqueNm =
+            CurrentConstitutiveRearDriveTorqueNm;
         Result.MeanRearDriveTorqueNm = Evidence.MeanDrivenWheelTorqueNm;
         Result.MeanEngineRpm = Evidence.MeanEngineRpm;
         Result.MeanChaosEngineTorqueNm = static_cast<float>(
@@ -347,9 +389,10 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d evidence_s=%.6f evidence_steps=%d"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d constitutive_rear_torque_nm=%.3f mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d evidence_s=%.6f evidence_steps=%d"),
             Result.Coupling,
             RepeatIndex + 1,
+            Result.ConstitutiveRearDriveTorqueNm,
             Result.MeanRearDriveTorqueNm,
             Result.MeanEngineRpm,
             Result.ResolvedEngineThrottle01,
@@ -404,7 +447,8 @@ private:
         LastMechanicalStep = -1;
         MeasurementSettleSecondsRemaining = 0.0;
         ResetMeasurementSums();
-        bMeasuring = false;
+        CurrentConstitutiveRearDriveTorqueNm = 0.0f;
+        Phase = EBoundaryPhase::Resting;
     }
 
     static double TranslationalKineticEnergyJ(
@@ -459,7 +503,7 @@ private:
                 Run.Coupling < 1.0f ? PartialRpm : FullRpm;
             TArray<double>& Energy =
                 Run.Coupling < 1.0f ? PartialEnergy : FullEnergy;
-            Torque.Add(Run.MeanRearDriveTorqueNm);
+            Torque.Add(Run.ConstitutiveRearDriveTorqueNm);
             Rpm.Add(Run.MeanEngineRpm);
             Energy.Add(Run.EndTranslationalKineticEnergyJ);
         }
@@ -516,9 +560,17 @@ private:
     FPinkCabPhysicsFixtureRestGate RestGate;
     TArray<FPinkCabClutchBoundaryRun> Runs;
 
+    enum class EBoundaryPhase : uint8
+    {
+        Resting,
+        Constitutive,
+        Measuring
+    };
+
     const TArray<float> Couplings{0.999f, 1.0f};
     static constexpr int32 RepeatsPerCondition = 5;
     static constexpr float InitialEngineRpm = 2500.0f;
+    static constexpr float ConstitutiveSampleSeconds = 1.0e-4f;
     static constexpr double MeasurementSettleSeconds = 0.05;
     static constexpr double MeasurementSampleSeconds = 0.50;
     static constexpr int64 RestTimeoutMechanicalSteps = 240;
@@ -526,11 +578,12 @@ private:
     static constexpr float MaxBoundaryStep = 0.10f;
 
     bool bInitialized = false;
-    bool bMeasuring = false;
+    EBoundaryPhase Phase = EBoundaryPhase::Resting;
     int32 ConditionIndex = 0;
     int32 RepeatIndex = 0;
     int32 RestPollCount = 0;
     int32 SampleCount = 0;
+    float CurrentConstitutiveRearDriveTorqueNm = 0.0f;
     double MeasurementSettleSecondsRemaining = 0.0;
     double MeasurementElapsedSeconds = 0.0;
     int64 LastMechanicalStep = -1;
