@@ -32,6 +32,8 @@ struct FPinkCabClutchBoundaryRun
     float EndSpeedCmPerSec = 0.0f;
     float MeasurementSeconds = 0.0f;
     int32 MeasurementSteps = 0;
+    float EvidenceSampleSeconds = 0.0f;
+    int32 EvidenceSampleSteps = 0;
 };
 
 float Median(TArray<float> Values)
@@ -177,6 +179,13 @@ public:
                 Test->AddError(TEXT("P02 clutch boundary initial actuation failed"));
                 return true;
             }
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    static_cast<float>(MeasurementSettleSeconds),
+                    static_cast<float>(MeasurementSampleSeconds)))
+            {
+                Test->AddError(TEXT("P02 clutch boundary physics-thread evidence window failed"));
+                return true;
+            }
 
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
@@ -242,16 +251,6 @@ public:
             return true;
         }
 
-        const FWheelStatus RearLeft = Movement->GetWheelState(2);
-        const FWheelStatus RearRight = Movement->GetWheelState(3);
-        const float RearTorqueNm = 0.5f
-            * (FMath::Abs(RearLeft.DriveTorque)
-                + FMath::Abs(RearRight.DriveTorque));
-        RearTorqueTimeIntegral +=
-            static_cast<double>(RearTorqueNm) * UsedSeconds;
-        EngineRpmTimeIntegral +=
-            static_cast<double>(Movement->GetEngineRotationSpeed())
-                * UsedSeconds;
         ResolvedThrottleTimeIntegral +=
             static_cast<double>(Controls.GetResolvedEngineThrottle01())
                 * UsedSeconds;
@@ -309,12 +308,24 @@ public:
             static_cast<float>(Alpha));
         MeasurementElapsedSeconds = MeasurementSampleSeconds;
 
+        FPinkCabMechanicalEvidenceSnapshot Evidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence)
+            || !Evidence.bComplete)
+        {
+            Test->AddError(FString::Printf(
+                TEXT("P02 boundary physics-thread evidence incomplete coupling=%.3f repeat=%d completed_s=%.6f target_s=%.6f steps=%d"),
+                CurrentCoupling(),
+                RepeatIndex + 1,
+                Evidence.CompletedSampleSeconds,
+                Evidence.TargetSampleSeconds,
+                Evidence.CompletedSampleSteps));
+            return true;
+        }
+
         FPinkCabClutchBoundaryRun Result;
         Result.Coupling = CurrentCoupling();
-        Result.MeanRearDriveTorqueNm = static_cast<float>(
-            RearTorqueTimeIntegral / MeasurementElapsedSeconds);
-        Result.MeanEngineRpm = static_cast<float>(
-            EngineRpmTimeIntegral / MeasurementElapsedSeconds);
+        Result.MeanRearDriveTorqueNm = Evidence.MeanDrivenWheelTorqueNm;
+        Result.MeanEngineRpm = Evidence.MeanEngineRpm;
         Result.MeanChaosEngineTorqueNm = static_cast<float>(
             ChaosEngineTorqueTimeIntegral / MeasurementElapsedSeconds);
         Result.MeanChaosTransmissionTorqueNm = static_cast<float>(
@@ -331,10 +342,12 @@ public:
         Result.MeasurementSeconds =
             static_cast<float>(MeasurementElapsedSeconds);
         Result.MeasurementSteps = SampleCount;
+        Result.EvidenceSampleSeconds = Evidence.CompletedSampleSeconds;
+        Result.EvidenceSampleSteps = Evidence.CompletedSampleSteps;
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d evidence_s=%.6f evidence_steps=%d"),
             Result.Coupling,
             RepeatIndex + 1,
             Result.MeanRearDriveTorqueNm,
@@ -347,7 +360,9 @@ public:
             Result.EndSpeedCmPerSec,
             Result.EndTranslationalKineticEnergyJ,
             Result.MeasurementSeconds,
-            Result.MeasurementSteps));
+            Result.MeasurementSteps,
+            Result.EvidenceSampleSeconds,
+            Result.EvidenceSampleSteps));
 
         ++RepeatIndex;
         if (RepeatIndex >= RepeatsPerCondition)
@@ -407,8 +422,6 @@ private:
 
     void ResetMeasurementSums()
     {
-        RearTorqueTimeIntegral = 0.0;
-        EngineRpmTimeIntegral = 0.0;
         ChaosEngineTorqueTimeIntegral = 0.0;
         ChaosTransmissionTorqueTimeIntegral = 0.0;
         ChaosTransmissionRpmTimeIntegral = 0.0;
@@ -521,8 +534,6 @@ private:
     double MeasurementSettleSecondsRemaining = 0.0;
     double MeasurementElapsedSeconds = 0.0;
     int64 LastMechanicalStep = -1;
-    double RearTorqueTimeIntegral = 0.0;
-    double EngineRpmTimeIntegral = 0.0;
     double ChaosEngineTorqueTimeIntegral = 0.0;
     double ChaosTransmissionTorqueTimeIntegral = 0.0;
     double ChaosTransmissionRpmTimeIntegral = 0.0;

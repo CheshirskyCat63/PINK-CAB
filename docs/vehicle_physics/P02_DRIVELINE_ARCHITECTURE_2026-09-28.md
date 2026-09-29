@@ -213,3 +213,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - A fresh fixture pawn is spawned directly at the ramp transform with ignition Off / neutral / zero external drive torque.
 - Measurement begins only after five consecutive mechanical observations with low velocity normal to the ramp, proving stable physical contact while leaving tangential downhill motion unconstrained.
 - The original downhill travel, rolling-speed and wheel-rotation acceptance thresholds are unchanged.
+
+
+### PHY-009 boundary physics-thread evidence
+- The moving 0.999→1.000 boundary gate now sources mean driven-wheel torque and engine RPM from the physics-thread evidence accumulator attached to the canonical PinkCab torque writer.
+- This removes game-thread wheel-state publication lag from the acceptance metric while preserving the same 0.05 s settle, 0.50 s measured window and 10% continuity threshold.
+- Chassis kinetic-energy timing and Chaos/native telemetry remain independently recorded; no production solver or calibration value changes.
