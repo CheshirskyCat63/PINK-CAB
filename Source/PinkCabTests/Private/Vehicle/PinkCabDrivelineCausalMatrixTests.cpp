@@ -416,12 +416,12 @@ private:
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
             Test->TestTrue(
-                TEXT("every D3 sample records finite stationary-bench evidence"),
+                TEXT("every D3 sample remains inside the stationary shaft envelope"),
                 FMath::IsFinite(Run.MeanDrivenWheelRpm)
                     && Run.MeanDrivenWheelRpm >= 0.0f
+                    && Run.MeanDrivenWheelRpm <= SampleWheelRpmTolerance
                     && FMath::IsFinite(Run.EndBodyLinearSpeedCmPerSec)
-                    && Run.EndBodyLinearSpeedCmPerSec >= 0.0f
-);
+                    && Run.EndBodyLinearSpeedCmPerSec >= 0.0f);
             Test->TestTrue(
                 TEXT("every D3 sample records a positive finite mechanical timestep"),
                 FMath::IsFinite(Run.MeanMechanicalDeltaMs)
@@ -515,6 +515,7 @@ private:
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
+    static constexpr float SampleWheelRpmTolerance = 2.0f;
     static constexpr float ResetBodyLinearToleranceCmPerSec = 5.0f;
     static constexpr float ResetBodyAngularToleranceDegPerSec = 2.0f;
     static constexpr int64 MinimumResetMechanicalSteps = 20;
