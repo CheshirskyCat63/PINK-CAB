@@ -168,3 +168,5 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Each cap executes five fresh physically settled first-step responses and records actual game-thread and mechanical-step deltas.
 - No physics timestep, substep or solver setting is modified for D5; the accepted project configuration remains frozen.
 - Median torque and engine response must remain within 5% across the observed cadences.
+
+- D4 incline uses a fresh pawn spawned directly at the fixture transform; no teleport or velocity reset is used after physics creation.

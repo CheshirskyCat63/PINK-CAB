@@ -206,8 +206,22 @@ public:
             if (!Ramp) return true;
         }
 
-        APinkCabPhysicsFixturePawn* Pawn =
-            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        APinkCabPhysicsFixturePawn* Pawn = nullptr;
+        if (!bInitialized)
+        {
+            PinkCabPhysicsFixture::DestroyPawns(*World);
+            constexpr float Grade = 0.08f;
+            const float PitchDeg =
+                FMath::RadiansToDegrees(FMath::Atan(Grade));
+            Pawn = PinkCabPhysicsFixture::SpawnFreshPawn(
+                *World,
+                FVector(0.0f, 0.0f, 12280.0f),
+                FRotator(PitchDeg, 0.0f, 0.0f));
+        }
+        else
+        {
+            Pawn = PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        }
         if (!Pawn) return false;
         PinkCabPhysicsFixture::KeepAwake(*Pawn);
 
@@ -226,15 +240,6 @@ public:
         {
             UGameplayStatics::SetGamePaused(World, false);
             Test->TestTrue(TEXT("D4 incline engine starts"), Cockpit.StartEngine());
-            constexpr float Grade = 0.08f;
-            const float PitchDeg = FMath::RadiansToDegrees(FMath::Atan(Grade));
-            Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12280.0f),
-                FRotator(PitchDeg, 0.0f, 0.0f),
-                false, nullptr, ETeleportType::TeleportPhysics);
-            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-            Mesh->WakeAllRigidBodies();
             Controls = {};
             Controls.SetBrake(1.0f);
             Controls.SetDriveline(0, 0, 0.0f);

@@ -198,14 +198,25 @@ APinkCabPhysicsFixturePawn* PinkCabPhysicsFixture::FindOrSpawnPawn(
         }
     }
 
+    return PinkCabPhysicsFixture::SpawnFreshPawn(
+        World,
+        FVector(0.0f, 0.0f, 120.0f),
+        FRotator::ZeroRotator);
+}
+
+APinkCabPhysicsFixturePawn* PinkCabPhysicsFixture::SpawnFreshPawn(
+    UWorld& World,
+    const FVector& Location,
+    const FRotator& Rotation)
+{
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride =
         ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
     APinkCabPhysicsFixturePawn* Pawn =
         World.SpawnActor<APinkCabPhysicsFixturePawn>(
-            FVector(0.0f, 0.0f, 120.0f),
-            FRotator::ZeroRotator,
+            Location,
+            Rotation,
             Params);
     if (Pawn)
     {

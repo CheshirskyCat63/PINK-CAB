@@ -60,6 +60,10 @@ namespace PinkCabPhysicsFixture
     inline const TCHAR* MapPath = TEXT("/Engine/Maps/Entry");
 
     APinkCabPhysicsFixturePawn* FindOrSpawnPawn(UWorld& World);
+    APinkCabPhysicsFixturePawn* SpawnFreshPawn(
+        UWorld& World,
+        const FVector& Location,
+        const FRotator& Rotation);
     AActor* FindOrSpawnFlatFloor(UWorld& World);
     void KeepAwake(APinkCabPhysicsFixturePawn& Pawn);
     void DestroyPawns(UWorld& World);
