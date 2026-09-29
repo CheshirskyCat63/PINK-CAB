@@ -249,6 +249,28 @@ public:
                     HorizontalVelocity, DownhillDirection2D);
             const float BodyAngularSpeedDegPerSec =
                 Mesh->GetPhysicsAngularVelocityInDegrees().Size();
+
+            float CurrentMaxAbsWheelAngularVelocity = 0.0f;
+            for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
+            {
+                if (Wheel)
+                {
+                    CurrentMaxAbsWheelAngularVelocity = FMath::Max(
+                        CurrentMaxAbsWheelAngularVelocity,
+                        FMath::Abs(Wheel->GetWheelAngularVelocity()));
+                }
+            }
+            if (ContactWheels == Movement->GetNumWheels()
+                && TotalSpringForce > KINDA_SMALL_NUMBER)
+            {
+                MaxSupportedDownhillSpeedCmPerSec = FMath::Max(
+                    MaxSupportedDownhillSpeedCmPerSec,
+                    DownhillSpeedCmPerSec);
+                MaxSupportedWheelAngularVelocity = FMath::Max(
+                    MaxSupportedWheelAngularVelocity,
+                    CurrentMaxAbsWheelAngularVelocity);
+            }
+
             const bool bSupportedRollingContact =
                 ContactWheels == Movement->GetNumWheels()
                 && TotalSpringForce > KINDA_SMALL_NUMBER
@@ -276,13 +298,17 @@ public:
                 }
 
                 Test->AddError(FString::Printf(
-                    TEXT("P01 slope fixture never reached supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
+                    TEXT("P01 slope fixture never reached supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f max_supported_downhill_speed_cm_s=%.3f max_supported_wheel_rad_s=%.3f brake_input=%.3f handbrake_command=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
                     PhaseSimSeconds,
                     ContactWheels,
                     Movement->GetNumWheels(),
                     TotalSpringForce,
                     NormalSpeedCmPerSec,
                     DownhillSpeedCmPerSec,
+                    MaxSupportedDownhillSpeedCmPerSec,
+                    MaxSupportedWheelAngularVelocity,
+                    Movement->GetBrakeInput(),
+                    PinkCabMovement->GetPendingPinkCabDrivelineCommand().Handbrake01,
                     BodyAngularSpeedDegPerSec,
                     StableContactObservations));
                 return true;
@@ -396,6 +422,8 @@ private:
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
     FVector2D DownhillDirection2D = FVector2D::ZeroVector;
+    float MaxSupportedDownhillSpeedCmPerSec = 0.0f;
+    float MaxSupportedWheelAngularVelocity = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

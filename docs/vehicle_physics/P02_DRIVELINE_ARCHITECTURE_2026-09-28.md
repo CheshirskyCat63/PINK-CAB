@@ -269,3 +269,8 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The gravity-coast acceptance now begins only after three consecutive mechanical observations with 4/4 wheel contact, positive suspension support, low velocity normal to the 20-degree ramp, and at least 10 cm/s real downhill velocity.
 - Chassis angular velocity is diagnostic only; it is not a valid reason to delay the gravity-coast measurement until the vehicle has already settled into static tire contact.
 - Service brake, parking brake, synthetic force, velocity writes and production calibration remain absent from the measured coast.
+
+
+### Runtime blocker diagnostics
+- The fast verification lane executes slope, incline-load and moving-boundary checks before the long D3 matrix and records every blocker in the trio before failing the job; no failed blocker is suppressed.
+- Slope timeout evidence records the maximum supported downhill speed and wheel angular velocity plus authoritative brake and handbrake inputs, allowing static-contact failures to be separated from hidden braking or drivetrain torque.
