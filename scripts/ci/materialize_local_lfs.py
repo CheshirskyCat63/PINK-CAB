@@ -391,6 +391,36 @@ def materialize_required(
     )
 
 
+def normalize_repo_path(value: str | Path) -> str:
+    return str(value).replace("\\", "/").strip("/")
+
+
+def is_excluded_from_all_tracked(
+    relative: str | Path,
+    exclude_prefixes: Iterable[str],
+) -> bool:
+    normalized = normalize_repo_path(relative)
+    for raw_prefix in exclude_prefixes:
+        prefix = normalize_repo_path(raw_prefix)
+        if not prefix:
+            continue
+        if normalized == prefix or normalized.startswith(prefix + "/"):
+            return True
+    return False
+
+
+def select_all_tracked_paths(
+    tracked: Iterable[str],
+    exclude_prefixes: Iterable[str],
+) -> list[Path]:
+    prefixes = list(exclude_prefixes)
+    return [
+        Path(value)
+        for value in sorted(tracked)
+        if not is_excluded_from_all_tracked(value, prefixes)
+    ]
+
+
 def git_lines(workspace: Path, *args: str) -> list[str]:
     proc = subprocess.run(
         ["git", *args],
@@ -415,6 +445,7 @@ def main() -> int:
     parser.add_argument("--all-tracked", action="store_true")
     parser.add_argument("--search-root", action="append", default=[])
     parser.add_argument("--cache-root", action="append", default=[])
+    parser.add_argument("--exclude-prefix", action="append", default=[])
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
@@ -443,8 +474,16 @@ def main() -> int:
             f"Code-only gate contains {len(changed_lfs)} changed LFS file(s)"
         )
 
+    excluded_all_tracked = sorted(
+        value
+        for value in tracked
+        if is_excluded_from_all_tracked(value, args.exclude_prefix)
+    )
+    for relative in excluded_all_tracked:
+        print(f"PINKCAB_LOCAL_LFS_ALL_TRACKED_EXCLUDED={relative}")
+
     required = (
-        [Path(value) for value in sorted(tracked)]
+        select_all_tracked_paths(tracked, args.exclude_prefix)
         if args.all_tracked
         else requested
     )
@@ -452,8 +491,13 @@ def main() -> int:
         materialize_required(workspace, relative, roots, cache_roots)
 
     unresolved: list[str] = []
-    for relative in sorted(tracked):
-        path = workspace / relative
+    unresolved_scope = (
+        [str(relative) for relative in required]
+        if args.all_tracked
+        else sorted(tracked)
+    )
+    for relative in unresolved_scope:
+        path = workspace / Path(relative)
         if not path.exists() or parse_lfs_pointer(path) is not None:
             unresolved.append(relative)
 
@@ -470,7 +514,9 @@ def main() -> int:
     print(
         "PINKCAB_LOCAL_LFS=PASS "
         f"required={len(required)} tracked={len(tracked)} "
-        f"unresolved_unrelated={len(unresolved)} all_tracked={int(args.all_tracked)}"
+        f"unresolved_unrelated={len(unresolved)} "
+        f"excluded_all_tracked={len(excluded_all_tracked)} "
+        f"all_tracked={int(args.all_tracked)}"
     )
     return 0
 

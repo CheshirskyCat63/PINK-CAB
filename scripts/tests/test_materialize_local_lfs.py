@@ -7,8 +7,10 @@ import unittest
 from scripts.ci.materialize_local_lfs import (
     POINTER_VERSION,
     lfs_object_path,
+    is_excluded_from_all_tracked,
     materialize_required,
     parse_lfs_pointer,
+    select_all_tracked_paths,
     sha256_file,
 )
 
@@ -46,6 +48,33 @@ class LocalLfsMaterializationTests(unittest.TestCase):
         self.assertEqual(
             lfs_object_path(root, oid),
             root / ".git" / "lfs" / "objects" / "01" / "23" / oid,
+        )
+
+
+    def test_all_tracked_exclusion_is_prefix_scoped(self):
+        tracked = {
+            "Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap",
+            "Content/World/L1/Road/RoadSurface.uasset",
+        }
+        selected = select_all_tracked_paths(
+            tracked,
+            ["Content/Dev/Authoring/"],
+        )
+        self.assertEqual(
+            [path.as_posix() for path in selected],
+            ["Content/World/L1/Road/RoadSurface.uasset"],
+        )
+        self.assertTrue(
+            is_excluded_from_all_tracked(
+                "Content\\Dev\\Authoring\\L_PC_L1_MetaRoadAuthoring.umap",
+                ["Content/Dev/Authoring/"],
+            )
+        )
+        self.assertFalse(
+            is_excluded_from_all_tracked(
+                "Content/World/L1/Road/RoadSurface.uasset",
+                ["Content/Dev/Authoring/"],
+            )
         )
 
 

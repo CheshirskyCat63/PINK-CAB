@@ -48,6 +48,7 @@ jobs:
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
             --all-tracked `
+            --exclude-prefix 'Content/Dev/Authoring/' `
             --cache-root 'E:\CHESHIRE_DIVISION' `
             --cache-root 'E:\Development' `
             --search-root 'E:\CHESHIRE_DIVISION\Games\PINK-CAB' `
@@ -55,6 +56,9 @@ jobs:
             --search-root 'E:\Development'
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
+          # Content/Dev/Authoring is editor/test source only. The runtime cook
+          # below targets L_PinkCab_L1_EndlessStraight and remains the authority
+          # for detecting any missing packaged dependency.
           $dirty=@(git status --porcelain)
           if($dirty.Count -ne 0){
             $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
