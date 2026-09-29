@@ -136,6 +136,20 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'PINKCAB_PHYSICS_EDITOR_BUILD=PASS'
 
+      - name: Run D4 fail-fast diagnostic
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_D4_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P02.D4.EngineBrakingAndStopStall' `
+            -LogPath $log `
+            -TimeoutSeconds 180
+          Write-Host 'PINKCAB_D4_FAILFAST=PASS'
+
       - name: Run focused vehicle-physics tests
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
