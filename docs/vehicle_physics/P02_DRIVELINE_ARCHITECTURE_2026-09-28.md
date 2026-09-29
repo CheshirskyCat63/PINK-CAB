@@ -155,3 +155,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Every cell uses a fresh physically settled vehicle and records exactly the first mechanical response step.
 - Measured-state service brake/dyno loads are forbidden for this matrix; wheel RPM must remain within the stationary first-step envelope.
 - Reduced capacity must reduce transmitted torque while preserving the 0.999→1.0 continuity contract.
+
+
+### D4 moving-load verification
+- D4 uses the real Chaos contact/wheel path with production service brake, tire and suspension calibration.
+- Flat first/reverse launch, an 8% incline load, lift-off engine braking and stop-in-gear stall are timed from the authoritative mechanical-step clock rather than wall time.
+- Fixture teleport is permitted only before measurement to place a fresh vehicle on the isolated incline; velocities are zeroed before the physical rest gate and no runtime velocity/force injection is permitted.
