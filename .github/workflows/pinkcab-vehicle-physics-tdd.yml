@@ -178,6 +178,29 @@ jobs:
             -TimeoutSeconds 900
           Write-Host 'PINKCAB_D3_CAUSAL_FAILFAST=PASS'
 
+      - name: Run remaining P02 runtime blockers fail-fast
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.Vehicle.Physics.EngineState.LiveOffNeutralSlope',
+            'PinkCab.Vehicle.Physics.P02.D4.InclineLoad',
+            'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity'
+          )
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\FAILFAST_$safe.log"
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath $log `
+              -TimeoutSeconds 300
+            Write-Host "PINKCAB_RUNTIME_BLOCKER_PASS=$test"
+          }
+          Write-Host 'PINKCAB_RUNTIME_BLOCKERS_FAILFAST=PASS'
+
       - name: Run focused vehicle-physics tests
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
