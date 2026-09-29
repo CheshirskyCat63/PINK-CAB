@@ -53,6 +53,7 @@ on:
       - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
       - '.github/workflows/cd648-p02-phy009.yml'
+      - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
 
 permissions:
@@ -133,6 +134,7 @@ jobs:
           $allowed=@(
             '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
             '.github/workflows/cd648-p02-phy009.yml',
+            '.github/workflows/cd869-deliver.yml',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp',
@@ -255,3 +257,12 @@ jobs:
           python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/P02_PHY009_WRITERS.json
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'P02_PHY009_ZERO_DEBT=PASS'
+
+
+  human-delivery:
+    name: Exact-head HUMAN delivery
+    needs: verify
+    uses: ./.github/workflows/cd869-deliver.yml
+    with:
+      candidate_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+    secrets: inherit
