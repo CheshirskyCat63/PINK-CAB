@@ -36,9 +36,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: false
           ref: ${{ inputs.candidate_sha || github.sha }}
+
+      - name: Materialize verified local LFS
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python .\scripts\ci\materialize_local_lfs.py `
+            --workspace "$env:GITHUB_WORKSPACE" `
+            --base-ref origin/main `
+            --all-tracked `
+            --search-root 'E:\CHESHIRE_DIVISION\Games\PINK-CAB' `
+            --search-root 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB' `
+            --search-root 'E:\Development'
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          $dirty=@(git status --porcelain)
+          if($dirty.Count -ne 0){
+            $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
+            throw "CD869_LOCAL_LFS_DIRTIED_WORKTREE count=$($dirty.Count)"
+          }
+          Write-Host 'CD869_LOCAL_LFS_MATERIALIZATION=PASS'
 
       - name: Exact-head and package preflight
         id: preflight
