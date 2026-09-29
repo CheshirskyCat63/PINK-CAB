@@ -50,6 +50,14 @@ private:
         const FPinkCabClutchDrivelineOutput& Output);
     FDrivenWheelTorqueStats ApplyDrivenWheelTorque(
         const FPinkCabClutchDrivelineOutput& Output);
+    double ConsumeEvidenceSampleSeconds(float DeltaTime);
+    void AccumulateEvidenceValues(
+        const Chaos::FSimpleEngineSim& Engine,
+        const FPinkCabClutchDrivelineOutput& DrivelineOutput,
+        float ObservedFreeEngineNetTorqueNm,
+        const FDrivenWheelTorqueStats& WheelStats,
+        double SampleWeightSeconds,
+        float DeltaTime);
     void AccumulateEvidenceStep(
         const Chaos::FSimpleEngineSim& Engine,
         const FPinkCabClutchDrivelineOutput& DrivelineOutput,

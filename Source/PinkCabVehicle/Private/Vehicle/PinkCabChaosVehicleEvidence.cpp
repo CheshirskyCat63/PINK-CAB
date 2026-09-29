@@ -76,11 +76,7 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
     return Result;
 }
 
-void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
-    const Chaos::FSimpleEngineSim& Engine,
-    const FPinkCabClutchDrivelineOutput& DrivelineOutput,
-    const float ObservedFreeEngineNetTorqueNm,
-    const FDrivenWheelTorqueStats& WheelStats,
+double FPinkCabChaosWheeledVehicleSimulation::ConsumeEvidenceSampleSeconds(
     const float DeltaTime)
 {
     if (EvidenceTargetSampleSeconds <= 0.0
@@ -88,7 +84,7 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
             + 1.0e-9 >= EvidenceTargetSampleSeconds
         || DeltaTime <= KINDA_SMALL_NUMBER)
     {
-        return;
+        return 0.0;
     }
 
     double RemainingSeconds = static_cast<double>(DeltaTime);
@@ -99,42 +95,38 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
             EvidenceSettleSecondsRemaining);
         EvidenceSettleSecondsRemaining -= SettleConsumed;
         RemainingSeconds -= SettleConsumed;
-        if (RemainingSeconds <= 1.0e-9)
-        {
-            return;
-        }
     }
-
-    const double SampleRemaining =
-        EvidenceTargetSampleSeconds
-        - EvidenceCompletedSampleSeconds;
-    const double SampleWeightSeconds =
-        FMath::Min(RemainingSeconds, SampleRemaining);
-    if (SampleWeightSeconds <= 1.0e-9)
+    if (RemainingSeconds <= 1.0e-9)
     {
-        return;
+        return 0.0;
     }
 
+    return FMath::Min(
+        RemainingSeconds,
+        EvidenceTargetSampleSeconds - EvidenceCompletedSampleSeconds);
+}
+
+void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceValues(
+    const Chaos::FSimpleEngineSim& Engine,
+    const FPinkCabClutchDrivelineOutput& DrivelineOutput,
+    const float ObservedFreeEngineNetTorqueNm,
+    const FDrivenWheelTorqueStats& WheelStats,
+    const double SampleWeightSeconds,
+    const float DeltaTime)
+{
+    const float WheelDivisor =
+        WheelStats.DrivenWheelCount > 0
+            ? static_cast<float>(WheelStats.DrivenWheelCount)
+            : 1.0f;
     const float MeanDrivenWheelTorqueNm =
-        WheelStats.DrivenWheelCount > 0
-            ? WheelStats.AbsTorqueSumNm
-                / static_cast<float>(WheelStats.DrivenWheelCount)
-            : 0.0f;
+        WheelStats.AbsTorqueSumNm / WheelDivisor;
     const float MeanInitialDrivenWheelTorqueNm =
-        WheelStats.DrivenWheelCount > 0
-            ? WheelStats.InitialAbsTorqueSumNm
-                / static_cast<float>(WheelStats.DrivenWheelCount)
-            : 0.0f;
+        WheelStats.InitialAbsTorqueSumNm / WheelDivisor;
     const float MeanSignedDrivenWheelTorqueNm =
-        WheelStats.DrivenWheelCount > 0
-            ? WheelStats.SignedTorqueSumNm
-                / static_cast<float>(WheelStats.DrivenWheelCount)
-            : 0.0f;
+        WheelStats.SignedTorqueSumNm / WheelDivisor;
     const float MeanDrivenWheelRpm =
-        WheelStats.DrivenWheelCount > 0
-            ? WheelStats.AbsWheelRpmSum
-                / static_cast<float>(WheelStats.DrivenWheelCount)
-            : 0.0f;
+        WheelStats.AbsWheelRpmSum / WheelDivisor;
+
     EvidenceDrivenWheelTorqueTimeIntegral +=
         static_cast<double>(MeanDrivenWheelTorqueNm)
         * SampleWeightSeconds;
@@ -163,8 +155,29 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
         static_cast<double>(DrivelineOutput.SlipRpm)
         * SampleWeightSeconds;
     EvidenceCompletedSampleSeconds += SampleWeightSeconds;
-    EvidenceObservedDeltaSecondsSum +=
-        static_cast<double>(DeltaTime);
+    EvidenceObservedDeltaSecondsSum += static_cast<double>(DeltaTime);
     ++EvidenceCompletedSteps;
 }
 
+void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
+    const Chaos::FSimpleEngineSim& Engine,
+    const FPinkCabClutchDrivelineOutput& DrivelineOutput,
+    const float ObservedFreeEngineNetTorqueNm,
+    const FDrivenWheelTorqueStats& WheelStats,
+    const float DeltaTime)
+{
+    const double SampleWeightSeconds =
+        ConsumeEvidenceSampleSeconds(DeltaTime);
+    if (SampleWeightSeconds <= 1.0e-9)
+    {
+        return;
+    }
+
+    AccumulateEvidenceValues(
+        Engine,
+        DrivelineOutput,
+        ObservedFreeEngineNetTorqueNm,
+        WheelStats,
+        SampleWeightSeconds,
+        DeltaTime);
+}
