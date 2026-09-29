@@ -256,3 +256,10 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The one-step 240-cell matrix now distinguishes the applied step-average wheel torque from the step-entry constitutive wheel torque emitted by the same physics-thread clutch writer.
 - Coupling monotonicity, mirrored 1st/R and 0.999→1.000 continuity use the constitutive torque because Chaos mechanical dt is intentionally not fixed and step-average synchronization torque legitimately changes with step duration.
 - The applied average torque remains recorded and finite-gated, while D4/D5 continue to prove time-integrated runtime behavior.
+
+
+### D4 engine-brake overrun phase gate
+- Throttle lift no longer assumes negative clutch torque is instantaneous while the engine is still physically overspeeding the shaft.
+- After zero throttle is authoritatively applied, D4 probes short physics-thread windows until both signed rear-wheel torque and transmitted clutch torque are negative, bounded to 2.00 s.
+- Only after that physical overrun onset does the 1.00 s sustained engine-brake window begin; it must retain negative clutch torque and reduce chassis speed.
+- No solver, engine-drag, clutch-capacity, tire, brake or timestep calibration changed.

@@ -109,7 +109,6 @@ public:
                 return false;
             }
 
-            LiftStartSpeedCmPerSec = HorizontalSpeedCmPerSec(*Mesh);
             Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
             Controls.SetDriveline(1, 1, 1.0f);
@@ -120,9 +119,81 @@ public:
             }
             if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
                     0.0f,
+                    static_cast<float>(EngineBrakeOnsetProbeSeconds)))
+            {
+                Test->AddError(TEXT("D4 engine-brake onset evidence window failed"));
+                return true;
+            }
+            ResetPhaseClock(*PinkCabMovement);
+            Phase = EPhase::AwaitingEngineBrakeOnset;
+            return false;
+        }
+
+        if (Phase == EPhase::AwaitingEngineBrakeOnset)
+        {
+            FPinkCabMechanicalEvidenceSnapshot Evidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
+            {
+                Test->AddError(TEXT("D4 engine-brake onset evidence read failed"));
+                return true;
+            }
+            if (!Evidence.bComplete)
+            {
+                if (PhaseSimSeconds < EngineBrakeOnsetLimitSeconds)
+                {
+                    return false;
+                }
+                Test->AddError(FString::Printf(
+                    TEXT("D4 engine-brake onset evidence did not complete sim_s=%.3f completed_s=%.6f target_s=%.6f steps=%d"),
+                    PhaseSimSeconds,
+                    Evidence.CompletedSampleSeconds,
+                    Evidence.TargetSampleSeconds,
+                    Evidence.CompletedSampleSteps));
+                return true;
+            }
+
+            const bool bNegativeOverrun =
+                Evidence.MeanSignedDrivenWheelTorqueNm
+                    < -EngineBrakeTorqueThresholdNm
+                && Evidence.MeanTransmittedClutchTorqueNm < 0.0f;
+            if (!bNegativeOverrun)
+            {
+                if (PhaseSimSeconds >= EngineBrakeOnsetLimitSeconds)
+                {
+                    Test->AddError(FString::Printf(
+                        TEXT("D4 throttle lift never reaches negative clutch overrun within bound sim_s=%.3f signed_rear_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f"),
+                        PhaseSimSeconds,
+                        Evidence.MeanSignedDrivenWheelTorqueNm,
+                        Evidence.MeanTransmittedClutchTorqueNm,
+                        Evidence.MeanClutchSlipRpm,
+                        Evidence.MeanEngineRpm,
+                        Evidence.MeanDrivenWheelRpm));
+                    return true;
+                }
+                if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                        0.0f,
+                        static_cast<float>(EngineBrakeOnsetProbeSeconds)))
+                {
+                    Test->AddError(TEXT("D4 engine-brake onset probe restart failed"));
+                    return true;
+                }
+                return false;
+            }
+
+            LiftStartSpeedCmPerSec = HorizontalSpeedCmPerSec(*Mesh);
+            Test->AddInfo(FString::Printf(
+                TEXT("P02_D4_ENGINE_BRAKE_ONSET sim_s=%.3f speed_cm_s=%.3f signed_rear_torque_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f"),
+                PhaseSimSeconds,
+                LiftStartSpeedCmPerSec,
+                Evidence.MeanSignedDrivenWheelTorqueNm,
+                Evidence.MeanTransmittedClutchTorqueNm,
+                Evidence.MeanClutchSlipRpm));
+
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f,
                     static_cast<float>(EngineBrakeMeasurementSeconds)))
             {
-                Test->AddError(TEXT("D4 engine-brake physics-thread evidence window failed"));
+                Test->AddError(TEXT("D4 sustained engine-brake evidence window failed"));
                 return true;
             }
             ResetPhaseClock(*PinkCabMovement);
@@ -165,7 +236,7 @@ public:
                 Evidence.CompletedSampleSteps));
             Test->TestTrue(
                 *FString::Printf(
-                    TEXT("D4 lift-off sends sustained negative rear torque signed_rear_nm=%.3f abs_rear_nm=%.3f free_engine_net_nm=%.3f requested_clutch_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f"),
+                    TEXT("D4 lift-off sustains negative rear torque after physical onset signed_rear_nm=%.3f abs_rear_nm=%.3f free_engine_net_nm=%.3f requested_clutch_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f"),
                     Evidence.MeanSignedDrivenWheelTorqueNm,
                     Evidence.MeanDrivenWheelTorqueNm,
                     Evidence.MeanObservedFreeEngineNetTorqueNm,
@@ -175,10 +246,11 @@ public:
                     Evidence.MeanEngineRpm,
                     Evidence.MeanDrivenWheelRpm),
                 Evidence.MeanSignedDrivenWheelTorqueNm
-                    < -EngineBrakeTorqueThresholdNm);
+                    < -EngineBrakeTorqueThresholdNm
+                && Evidence.MeanTransmittedClutchTorqueNm < 0.0f);
             Test->TestTrue(
                 *FString::Printf(
-                    TEXT("D4 lift-off physically reduces speed start_cm_s=%.3f end_cm_s=%.3f free_engine_net_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f"),
+                    TEXT("D4 engine braking physically reduces speed after negative-torque onset start_cm_s=%.3f end_cm_s=%.3f free_engine_net_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f"),
                     LiftStartSpeedCmPerSec,
                     EndSpeed,
                     Evidence.MeanObservedFreeEngineNetTorqueNm,
@@ -248,6 +320,7 @@ private:
         Settling,
         Launching,
         Synchronizing,
+        AwaitingEngineBrakeOnset,
         LiftOff,
         Stopping
     };
@@ -269,6 +342,8 @@ private:
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
     static constexpr double FullCouplingSyncSeconds = 0.50;
+    static constexpr double EngineBrakeOnsetProbeSeconds = 0.10;
+    static constexpr double EngineBrakeOnsetLimitSeconds = 2.00;
     static constexpr double EngineBrakeMeasurementSeconds = 1.00;
     static constexpr double EngineBrakeEvidenceTimeoutSeconds = 1.50;
     static constexpr float EngineBrakeTorqueThresholdNm = 1.0f;
