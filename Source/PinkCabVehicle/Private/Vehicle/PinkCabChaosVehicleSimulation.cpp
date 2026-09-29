@@ -145,7 +145,12 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
 
     const FDrivenWheelTorqueStats WheelStats =
         ApplyDrivenWheelTorque(Output);
-    AccumulateEvidenceStep(Engine, WheelStats, DeltaTime);
+    AccumulateEvidenceStep(
+        Engine,
+        Output,
+        ObservedFreeEngineNetTorqueNm,
+        WheelStats,
+        DeltaTime);
     PublishMechanicalStep(DeltaTime);
 }
 

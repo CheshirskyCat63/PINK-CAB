@@ -16,6 +16,10 @@ void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     EvidenceSignedDrivenWheelTorqueTimeIntegral = 0.0;
     EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     EvidenceEngineRpmTimeIntegral = 0.0;
+    EvidenceObservedFreeEngineNetTorqueTimeIntegral = 0.0;
+    EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
+    EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
+    EvidenceClutchSlipRpmTimeIntegral = 0.0;
     EvidenceObservedDeltaSecondsSum = 0.0;
 }
 
@@ -42,6 +46,18 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
         Result.MeanEngineRpm = static_cast<float>(
             EvidenceEngineRpmTimeIntegral
             / EvidenceCompletedSampleSeconds);
+        Result.MeanObservedFreeEngineNetTorqueNm = static_cast<float>(
+            EvidenceObservedFreeEngineNetTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+        Result.MeanRequestedClutchTorqueNm = static_cast<float>(
+            EvidenceRequestedClutchTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+        Result.MeanTransmittedClutchTorqueNm = static_cast<float>(
+            EvidenceTransmittedClutchTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+        Result.MeanClutchSlipRpm = static_cast<float>(
+            EvidenceClutchSlipRpmTimeIntegral
+            / EvidenceCompletedSampleSeconds);
     }
     if (EvidenceCompletedSteps > 0)
     {
@@ -58,6 +74,8 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
 
 void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
     const Chaos::FSimpleEngineSim& Engine,
+    const FPinkCabClutchDrivelineOutput& DrivelineOutput,
+    const float ObservedFreeEngineNetTorqueNm,
     const FDrivenWheelTorqueStats& WheelStats,
     const float DeltaTime)
 {
@@ -119,6 +137,18 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
         * SampleWeightSeconds;
     EvidenceEngineRpmTimeIntegral +=
         static_cast<double>(Engine.GetEngineRPM())
+        * SampleWeightSeconds;
+    EvidenceObservedFreeEngineNetTorqueTimeIntegral +=
+        static_cast<double>(ObservedFreeEngineNetTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceRequestedClutchTorqueTimeIntegral +=
+        static_cast<double>(DrivelineOutput.RequestedClutchTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceTransmittedClutchTorqueTimeIntegral +=
+        static_cast<double>(DrivelineOutput.TransmittedClutchTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceClutchSlipRpmTimeIntegral +=
+        static_cast<double>(DrivelineOutput.SlipRpm)
         * SampleWeightSeconds;
     EvidenceCompletedSampleSeconds += SampleWeightSeconds;
     EvidenceObservedDeltaSecondsSum +=

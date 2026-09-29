@@ -232,3 +232,8 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - This repeat gate runs the unchanged downhill-travel, rolling-speed, wheel-rotation and zero-propulsion assertions; it does not average or relax failures.
 
 - D4 opens the engine-brake evidence window only after the zero-throttle/full-clutch command has been synchronously installed through the authoritative bridge, preventing the first sample from inheriting the previous launch throttle.
+
+
+### D4 physics-thread clutch causality diagnostics
+- Mechanical evidence now records time-weighted native free-engine net torque, requested clutch torque, transmitted clutch torque and clutch slip RPM alongside signed wheel torque.
+- These values are observational only and are emitted in D4 failure assertions so closed-throttle engine-braking defects can be localized without changing calibration or solver behavior.

@@ -51,6 +51,8 @@ private:
         const FPinkCabClutchDrivelineOutput& Output);
     void AccumulateEvidenceStep(
         const Chaos::FSimpleEngineSim& Engine,
+        const FPinkCabClutchDrivelineOutput& DrivelineOutput,
+        float ObservedFreeEngineNetTorqueNm,
         const FDrivenWheelTorqueStats& WheelStats,
         float DeltaTime);
     void PublishMechanicalStep(float DeltaTime);
@@ -68,5 +70,9 @@ private:
     double EvidenceSignedDrivenWheelTorqueTimeIntegral = 0.0;
     double EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     double EvidenceEngineRpmTimeIntegral = 0.0;
+    double EvidenceObservedFreeEngineNetTorqueTimeIntegral = 0.0;
+    double EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
+    double EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
+    double EvidenceClutchSlipRpmTimeIntegral = 0.0;
     double EvidenceObservedDeltaSecondsSum = 0.0;
 };

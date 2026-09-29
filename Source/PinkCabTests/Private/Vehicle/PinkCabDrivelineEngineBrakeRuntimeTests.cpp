@@ -163,10 +163,27 @@ public:
                 Evidence.MeanDrivenWheelTorqueNm,
                 Evidence.CompletedSampleSeconds,
                 Evidence.CompletedSampleSteps));
-            Test->TestTrue(TEXT("D4 lift-off sends sustained negative rear torque"),
+            Test->TestTrue(
+                *FString::Printf(
+                    TEXT("D4 lift-off sends sustained negative rear torque signed_rear_nm=%.3f abs_rear_nm=%.3f free_engine_net_nm=%.3f requested_clutch_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f engine_rpm=%.3f driven_wheel_rpm=%.3f"),
+                    Evidence.MeanSignedDrivenWheelTorqueNm,
+                    Evidence.MeanDrivenWheelTorqueNm,
+                    Evidence.MeanObservedFreeEngineNetTorqueNm,
+                    Evidence.MeanRequestedClutchTorqueNm,
+                    Evidence.MeanTransmittedClutchTorqueNm,
+                    Evidence.MeanClutchSlipRpm,
+                    Evidence.MeanEngineRpm,
+                    Evidence.MeanDrivenWheelRpm),
                 Evidence.MeanSignedDrivenWheelTorqueNm
                     < -EngineBrakeTorqueThresholdNm);
-            Test->TestTrue(TEXT("D4 lift-off physically reduces speed"),
+            Test->TestTrue(
+                *FString::Printf(
+                    TEXT("D4 lift-off physically reduces speed start_cm_s=%.3f end_cm_s=%.3f free_engine_net_nm=%.3f transmitted_clutch_nm=%.3f clutch_slip_rpm=%.3f"),
+                    LiftStartSpeedCmPerSec,
+                    EndSpeed,
+                    Evidence.MeanObservedFreeEngineNetTorqueNm,
+                    Evidence.MeanTransmittedClutchTorqueNm,
+                    Evidence.MeanClutchSlipRpm),
                 EndSpeed < LiftStartSpeedCmPerSec);
 
             Controls.SetBrake(1.0f);
