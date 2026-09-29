@@ -38,6 +38,7 @@ struct FPinkCabD3Run
     float MeanMechanicalDeltaMs = 0.0f;
     float MeanDrivenWheelRpm = 0.0f;
     float EndBodyLinearSpeedCmPerSec = 0.0f;
+    float DynamometerBrakeTorqueNm = 0.0f;
 };
 
 float MedianD3(TArray<float> Values)
@@ -275,10 +276,14 @@ public:
             Evidence.MeanDrivenWheelRpm;
         Run.EndBodyLinearSpeedCmPerSec =
             Mesh->GetPhysicsLinearVelocity().Size();
+#if WITH_DEV_AUTOMATION_TESTS
+        Run.DynamometerBrakeTorqueNm =
+            Evidence.DynamometerBrakeTorqueNm;
+#endif
         Runs.Add(Run);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
+            TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f dyno_brake_nm=%.3f chaos_current=%d chaos_target=%d"),
             Run.Coupling,
             Run.Gear,
             Run.DriverThrottle01,
@@ -297,6 +302,7 @@ public:
             Run.AvailableEngineTorqueNm,
             Run.MeanDrivenWheelRpm,
             Run.EndBodyLinearSpeedCmPerSec,
+            Run.DynamometerBrakeTorqueNm,
             Run.ChaosCurrentGear,
             Run.ChaosTargetGear));
 
@@ -427,18 +433,60 @@ private:
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
             Test->TestTrue(
-                TEXT("every D3 sample remains physically shaft-stationary"),
+                TEXT("every D3 sample records finite stationary-bench evidence"),
                 FMath::IsFinite(Run.MeanDrivenWheelRpm)
-                    && Run.MeanDrivenWheelRpm
-                        <= SampleWheelRpmTolerance
+                    && Run.MeanDrivenWheelRpm >= 0.0f
                     && FMath::IsFinite(Run.EndBodyLinearSpeedCmPerSec)
-                    && Run.EndBodyLinearSpeedCmPerSec
-                        <= SampleBodyLinearToleranceCmPerSec);
+                    && Run.EndBodyLinearSpeedCmPerSec >= 0.0f
+                    && FMath::IsFinite(Run.DynamometerBrakeTorqueNm));
             Test->TestTrue(
                 TEXT("every D3 sample records a positive finite mechanical timestep"),
                 FMath::IsFinite(Run.MeanMechanicalDeltaMs)
                     && Run.MeanMechanicalDeltaMs > KINDA_SMALL_NUMBER);
         }
+
+        float MaxMeanDrivenWheelRpm = 0.0f;
+        float MaxBodyLinearSpeedCmPerSec = 0.0f;
+        float MinDynamometerBrakeTorqueNm = TNumericLimits<float>::Max();
+        const FPinkCabD3Run* WorstWheelRun = nullptr;
+        for (const FPinkCabD3Run& Run : Runs)
+        {
+            if (!WorstWheelRun
+                || Run.MeanDrivenWheelRpm > MaxMeanDrivenWheelRpm)
+            {
+                MaxMeanDrivenWheelRpm = Run.MeanDrivenWheelRpm;
+                WorstWheelRun = &Run;
+            }
+            MaxBodyLinearSpeedCmPerSec = FMath::Max(
+                MaxBodyLinearSpeedCmPerSec,
+                Run.EndBodyLinearSpeedCmPerSec);
+            MinDynamometerBrakeTorqueNm = FMath::Min(
+                MinDynamometerBrakeTorqueNm,
+                Run.DynamometerBrakeTorqueNm);
+        }
+        if (WorstWheelRun)
+        {
+            Test->AddInfo(FString::Printf(
+                TEXT("P02_D3_STATIONARY max_mean_driven_wheel_rpm=%.3f max_body_linear_cm_s=%.3f min_dyno_brake_nm=%.3f worst_coupling=%.3f worst_gear=%d worst_throttle=%.2f worst_repeat=%d"),
+                MaxMeanDrivenWheelRpm,
+                MaxBodyLinearSpeedCmPerSec,
+                MinDynamometerBrakeTorqueNm,
+                WorstWheelRun->Coupling,
+                WorstWheelRun->Gear,
+                WorstWheelRun->DriverThrottle01,
+                WorstWheelRun->Repeat + 1));
+        }
+        Test->TestTrue(
+            TEXT("D3 dynamometer torque is installed for every measured sample"),
+            MinDynamometerBrakeTorqueNm
+                >= DynamometerBrakeTorqueNm - KINDA_SMALL_NUMBER);
+        Test->TestTrue(
+            TEXT("D3 driven shaft remains stationary under dynamometer load"),
+            MaxMeanDrivenWheelRpm <= SampleWheelRpmTolerance);
+        Test->TestTrue(
+            TEXT("D3 chassis remains stationary under dynamometer load"),
+            MaxBodyLinearSpeedCmPerSec
+                <= SampleBodyLinearToleranceCmPerSec);
 
         for (const int32 Gear : Gears)
         {
