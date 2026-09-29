@@ -13,6 +13,7 @@ void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     EvidenceCompletedSampleSeconds = 0.0;
     EvidenceCompletedSteps = 0;
     EvidenceDrivenWheelTorqueTimeIntegral = 0.0;
+    EvidenceSignedDrivenWheelTorqueTimeIntegral = 0.0;
     EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     EvidenceEngineRpmTimeIntegral = 0.0;
     EvidenceObservedDeltaSecondsSum = 0.0;
@@ -31,6 +32,9 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
     {
         Result.MeanDrivenWheelTorqueNm = static_cast<float>(
             EvidenceDrivenWheelTorqueTimeIntegral
+            / EvidenceCompletedSampleSeconds);
+        Result.MeanSignedDrivenWheelTorqueNm = static_cast<float>(
+            EvidenceSignedDrivenWheelTorqueTimeIntegral
             / EvidenceCompletedSampleSeconds);
         Result.MeanDrivenWheelRpm = static_cast<float>(
             EvidenceDrivenWheelRpmTimeIntegral
@@ -94,6 +98,11 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
             ? WheelStats.AbsTorqueSumNm
                 / static_cast<float>(WheelStats.DrivenWheelCount)
             : 0.0f;
+    const float MeanSignedDrivenWheelTorqueNm =
+        WheelStats.DrivenWheelCount > 0
+            ? WheelStats.SignedTorqueSumNm
+                / static_cast<float>(WheelStats.DrivenWheelCount)
+            : 0.0f;
     const float MeanDrivenWheelRpm =
         WheelStats.DrivenWheelCount > 0
             ? WheelStats.AbsWheelRpmSum
@@ -101,6 +110,9 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceStep(
             : 0.0f;
     EvidenceDrivenWheelTorqueTimeIntegral +=
         static_cast<double>(MeanDrivenWheelTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceSignedDrivenWheelTorqueTimeIntegral +=
+        static_cast<double>(MeanSignedDrivenWheelTorqueNm)
         * SampleWeightSeconds;
     EvidenceDrivenWheelRpmTimeIntegral +=
         static_cast<double>(MeanDrivenWheelRpm)

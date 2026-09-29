@@ -109,57 +109,60 @@ public:
                 return false;
             }
 
-            MinRearTorqueNm = 0.0f;
+            LiftStartSpeedCmPerSec = HorizontalSpeedCmPerSec(*Mesh);
             Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
             Controls.SetDriveline(1, 1, 1.0f);
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f,
+                    static_cast<float>(EngineBrakeMeasurementSeconds)))
+            {
+                Test->AddError(TEXT("D4 engine-brake physics-thread evidence window failed"));
+                return true;
+            }
             ResetPhaseClock(*PinkCabMovement);
-            Phase = EPhase::AwaitingEngineBrake;
+            Phase = EPhase::LiftOff;
             return false;
-        }
-
-        if (Phase == EPhase::AwaitingEngineBrake)
-        {
-            const float RearTorqueNm = MeanRearDriveTorqueNm(*Movement);
-            MinRearTorqueNm = FMath::Min(MinRearTorqueNm, RearTorqueNm);
-            if (RearTorqueNm < -EngineBrakeTorqueThresholdNm)
-            {
-                LiftStartSpeedCmPerSec = HorizontalSpeedCmPerSec(*Mesh);
-                ResetPhaseClock(*PinkCabMovement);
-                Phase = EPhase::LiftOff;
-                return false;
-            }
-
-            if (PhaseSimSeconds < EngineBrakeOnsetLimitSeconds)
-            {
-                return false;
-            }
-
-            Test->AddError(FString::Printf(
-                TEXT("D4 throttle lift did not produce negative wheel torque within onset bound sim_s=%.3f rear_torque_nm=%.3f speed_cm_s=%.3f"),
-                PhaseSimSeconds,
-                RearTorqueNm,
-                HorizontalSpeedCmPerSec(*Mesh)));
-            return true;
         }
 
         if (Phase == EPhase::LiftOff)
         {
-            MinRearTorqueNm = FMath::Min(
-                MinRearTorqueNm, MeanRearDriveTorqueNm(*Movement));
-            if (PhaseSimSeconds < EngineBrakeMeasurementSeconds)
+            FPinkCabMechanicalEvidenceSnapshot Evidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
             {
-                return false;
+                Test->AddError(TEXT("D4 engine-brake evidence read failed"));
+                return true;
+            }
+            if (!Evidence.bComplete)
+            {
+                if (PhaseSimSeconds < EngineBrakeEvidenceTimeoutSeconds)
+                {
+                    return false;
+                }
+                Test->AddError(FString::Printf(
+                    TEXT("D4 engine-brake evidence did not complete sim_s=%.3f completed_s=%.6f target_s=%.6f steps=%d"),
+                    PhaseSimSeconds,
+                    Evidence.CompletedSampleSeconds,
+                    Evidence.TargetSampleSeconds,
+                    Evidence.CompletedSampleSteps));
+                return true;
             }
 
             const float EndSpeed = HorizontalSpeedCmPerSec(*Mesh);
             Test->AddInfo(FString::Printf(
-                TEXT("P02_D4_ENGINE_BRAKE sim_s=%.3f start_speed_cm_s=%.3f end_speed_cm_s=%.3f min_rear_torque_nm=%.3f"),
-                PhaseSimSeconds, LiftStartSpeedCmPerSec, EndSpeed, MinRearTorqueNm));
+                TEXT("P02_D4_ENGINE_BRAKE sim_s=%.3f start_speed_cm_s=%.3f end_speed_cm_s=%.3f signed_rear_torque_nm=%.3f abs_rear_torque_nm=%.3f evidence_s=%.6f evidence_steps=%d"),
+                PhaseSimSeconds,
+                LiftStartSpeedCmPerSec,
+                EndSpeed,
+                Evidence.MeanSignedDrivenWheelTorqueNm,
+                Evidence.MeanDrivenWheelTorqueNm,
+                Evidence.CompletedSampleSeconds,
+                Evidence.CompletedSampleSteps));
+            Test->TestTrue(TEXT("D4 lift-off sends sustained negative rear torque"),
+                Evidence.MeanSignedDrivenWheelTorqueNm
+                    < -EngineBrakeTorqueThresholdNm);
             Test->TestTrue(TEXT("D4 lift-off physically reduces speed"),
                 EndSpeed < LiftStartSpeedCmPerSec);
-            Test->TestTrue(TEXT("D4 lift-off sends negative rear torque"),
-                MinRearTorqueNm < -1.0f);
 
             Controls.SetBrake(1.0f);
             Controls.SetThrottle(0.0f);
@@ -223,7 +226,6 @@ private:
         Settling,
         Launching,
         Synchronizing,
-        AwaitingEngineBrake,
         LiftOff,
         Stopping
     };
@@ -245,12 +247,11 @@ private:
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
     static constexpr double FullCouplingSyncSeconds = 0.50;
-    static constexpr double EngineBrakeOnsetLimitSeconds = 0.25;
     static constexpr double EngineBrakeMeasurementSeconds = 1.00;
+    static constexpr double EngineBrakeEvidenceTimeoutSeconds = 1.50;
     static constexpr float EngineBrakeTorqueThresholdNm = 1.0f;
 
     float LiftStartSpeedCmPerSec = 0.0f;
-    float MinRearTorqueNm = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

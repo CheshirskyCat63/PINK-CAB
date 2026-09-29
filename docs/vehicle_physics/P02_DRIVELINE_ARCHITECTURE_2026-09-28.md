@@ -219,3 +219,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - The moving 0.999→1.000 boundary gate now sources mean driven-wheel torque and engine RPM from the physics-thread evidence accumulator attached to the canonical PinkCab torque writer.
 - This removes game-thread wheel-state publication lag from the acceptance metric while preserving the same 0.05 s settle, 0.50 s measured window and 10% continuity threshold.
 - Chassis kinetic-energy timing and Chaos/native telemetry remain independently recorded; no production solver or calibration value changes.
+
+
+### D4 signed physics-thread engine-brake evidence
+- Mechanical evidence now carries both absolute and signed mean driven-wheel torque from the canonical physics-thread writer.
+- D4 throttle-lift verification no longer gates on asynchronous game-thread wheel telemetry. After the already-coupled synchronization phase it opens a 1.00 s physics-thread evidence window and requires sustained negative signed rear-wheel torque plus real chassis speed reduction.
+- This is evidence-only instrumentation; wheel torque calculation, engine drag, clutch calibration and tire/brake parameters are unchanged.

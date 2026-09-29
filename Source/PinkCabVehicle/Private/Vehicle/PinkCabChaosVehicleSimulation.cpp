@@ -255,6 +255,7 @@ FPinkCabChaosWheeledVehicleSimulation::ApplyDrivenWheelTorque(
         if (bDriven)
         {
             Stats.AbsTorqueSumNm += FMath::Abs(WheelDriveTorqueNm);
+            Stats.SignedTorqueSumNm += WheelDriveTorqueNm;
             Stats.AbsWheelRpmSum += FMath::Abs(Wheel.GetWheelRPM());
             ++Stats.DrivenWheelCount;
         }
