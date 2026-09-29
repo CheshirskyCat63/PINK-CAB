@@ -164,6 +164,20 @@ jobs:
             -TimeoutSeconds 180
           Write-Host 'PINKCAB_D4_FAILFAST=PASS'
 
+      - name: Run D3 causal matrix fail-fast
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_D3_CAUSAL_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix' `
+            -LogPath $log `
+            -TimeoutSeconds 900
+          Write-Host 'PINKCAB_D3_CAUSAL_FAILFAST=PASS'
+
       - name: Run focused vehicle-physics tests
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
