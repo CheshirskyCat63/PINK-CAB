@@ -19,6 +19,7 @@ on:
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCapacityRuntimeTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineEngineBrakeRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineDeterminismRuntimeTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineLaunchRuntimeTests.cpp'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineRuntimeTestUtils.h'
       - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp'
@@ -145,6 +146,7 @@ jobs:
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCapacityRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineEngineBrakeRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineDeterminismRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineLaunchRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineRuntimeTestUtils.h',
             'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp',
@@ -210,6 +212,7 @@ jobs:
             'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',
             'PinkCab.Vehicle.Physics.P02.D3.HotWornCapacity',
             'PinkCab.Vehicle.Physics.P02.D4',
+            'PinkCab.Vehicle.Physics.P02.D5.RenderCadenceInvariance',
             'PinkCab.Vehicle.Physics'
           )
           $completedTests=0

@@ -161,3 +161,10 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - D4 uses the real Chaos contact/wheel path with production service brake, tire and suspension calibration.
 - Flat first/reverse launch, an 8% incline load, lift-off engine braking and stop-in-gear stall are timed from the authoritative mechanical-step clock rather than wall time.
 - Fixture teleport is permitted only before measurement to place a fresh vehicle on the isolated incline; velocities are zeroed before the physical rest gate and no runtime velocity/force injection is permitted.
+
+
+### D5 cadence invariance
+- Supported game/render caps 30, 60 and 120 are measured rather than assumed.
+- Each cap executes five fresh physically settled first-step responses and records actual game-thread and mechanical-step deltas.
+- No physics timestep, substep or solver setting is modified for D5; the accepted project configuration remains frozen.
+- Median torque and engine response must remain within 5% across the observed cadences.
