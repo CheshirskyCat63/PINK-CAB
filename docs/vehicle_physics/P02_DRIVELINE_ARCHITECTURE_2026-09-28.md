@@ -200,3 +200,9 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Chaos `FWheelStatus.DriveTorque` is treated as wheel-torque magnitude evidence in the moving fixture, not as the semantic gear-direction authority.
 - Reverse direction is proven by signed chassis displacement under load; D3 independently proves the PINK CAB effective ratio is negative in R and mirrored in magnitude against 1st.
 - D4 retains the same >1 Nm wheel-torque presence threshold and the same >100 cm / <-100 cm directional-travel gates.
+
+
+### D4 engine-brake onset gate
+- Throttle lift first enters an explicit onset phase. The forward driveline must produce rear-wheel torque below -1 Nm within 0.25 s of measured mechanical time.
+- The 1.00 s chassis-deceleration window starts on the first observed negative-torque mechanical state, not on the game-thread command write. This separates command propagation from the physical braking interval.
+- Failure to produce negative torque within the onset bound is a hard D4 failure; no engine-brake coefficient, clutch parameter, speed threshold, or project timestep is modified.
