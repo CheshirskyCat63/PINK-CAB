@@ -206,3 +206,10 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Throttle lift first enters an explicit onset phase. The forward driveline must produce rear-wheel torque below -1 Nm within 0.25 s of measured mechanical time.
 - The 1.00 s chassis-deceleration window starts on the first observed negative-torque mechanical state, not on the game-thread command write. This separates command propagation from the physical braking interval.
 - Failure to produce negative torque within the onset bound is a hard D4 failure; no engine-brake coefficient, clutch parameter, speed threshold, or project timestep is modified.
+
+
+### P01 slope fixture determinism hardening
+- The engine-off neutral slope acceptance no longer teleports an already-live Chaos vehicle from the flat fixture or overwrites body velocity after physics creation.
+- A fresh fixture pawn is spawned directly at the ramp transform with ignition Off / neutral / zero external drive torque.
+- Measurement begins only after five consecutive mechanical observations with low velocity normal to the ramp, proving stable physical contact while leaving tangential downhill motion unconstrained.
+- The original downhill travel, rolling-speed and wheel-rotation acceptance thresholds are unchanged.

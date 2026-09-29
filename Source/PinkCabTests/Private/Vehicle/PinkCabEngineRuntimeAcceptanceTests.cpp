@@ -84,31 +84,11 @@ public:
             return false;
         }
 
-        APinkCabPhysicsFixturePawn* Pawn = FindTatra(*World);
-        if (!Pawn)
-        {
-            return false;
-        }
-        PinkCabPhysicsFixture::KeepAwake(*Pawn);
-        UChaosWheeledVehicleMovementComponent* Movement =
-            Pawn->GetChaosMovement();
-        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
-            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
-        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
-        Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
-        Test->TestNotNull(
-            TEXT("slope fixture has exact mechanical clock"),
-            PinkCabMovement);
-        Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
-        if (!Movement || !PinkCabMovement || !Mesh)
-        {
-            return true;
-        }
-
         if (!bInitialized)
         {
-                        UGameplayStatics::SetGamePaused(World, false);
-            Pawn->SetActorTickEnabled(false);
+            UGameplayStatics::SetGamePaused(World, false);
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+
             Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
             if (!Ramp)
@@ -135,42 +115,86 @@ public:
                 FVector(0.0f, 0.0f, 12500.0f),
                 FVector(0.0f, 0.0f, 11500.0f),
                 ECC_Visibility);
-            Test->TestTrue(TEXT("isolated slope fixture has query collision"), bRampProbeHit);
+            Test->TestTrue(
+                TEXT("isolated slope fixture has query collision"),
+                bRampProbeHit);
             if (!bRampProbeHit)
             {
                 return true;
             }
 
-            Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12280.0f),
-                FRotator(RampPitchDeg, 0.0f, 0.0f),
-                false,
-                nullptr,
-                ETeleportType::TeleportPhysics);
-            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-            Mesh->WakeAllRigidBodies();
+            PinkCabPhysicsFixture::DestroyPawns(*World);
+            APinkCabPhysicsFixturePawn* SpawnedPawn =
+                PinkCabPhysicsFixture::SpawnFreshPawn(
+                    *World,
+                    FVector(0.0f, 0.0f, 12280.0f),
+                    FRotator(RampPitchDeg, 0.0f, 0.0f));
+            Test->TestNotNull(
+                TEXT("slope fixture fresh pawn spawns in-place"),
+                SpawnedPawn);
+            if (!SpawnedPawn)
+            {
+                return true;
+            }
+            FixturePawn = SpawnedPawn;
+            SpawnedPawn->SetActorTickEnabled(false);
+
+            UChaosWheeledVehicleMovementComponent* Movement =
+                SpawnedPawn->GetChaosMovement();
+            UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+            USkeletalMeshComponent* Mesh = SpawnedPawn->GetMesh();
+            Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
+            Test->TestNotNull(
+                TEXT("slope fixture has exact mechanical clock"),
+                PinkCabMovement);
+            Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
+            if (!Movement || !PinkCabMovement || !Mesh)
+            {
+                return true;
+            }
 
             Controls.SetThrottle(1.0f);
             Controls.SetBrake(0.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
             Test->TestTrue(TEXT("off neutral slope state applies"),
-                ApplyEngineState(*Pawn, Cockpit, Controls));
+                ApplyEngineState(*SpawnedPawn, Cockpit, Controls));
             Test->TestFalse(TEXT("off slope denies combustion"),
                 Controls.IsCombustionAllowed());
             Test->TestEqual(TEXT("off slope final throttle is zero"),
                 Controls.GetResolvedEngineThrottle01(), 0.0f);
             Test->TestEqual(TEXT("off slope external drive torque is zero"),
                 Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
-            Test->TestTrue(TEXT("off slope keeps physical driveline simulation alive"),
+            Test->TestTrue(
+                TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             PhaseSimSeconds = 0.0;
+            StableContactObservations = 0;
             bInitialized = true;
             return false;
+        }
+
+        APinkCabPhysicsFixturePawn* Pawn = FixturePawn.Get();
+        if (!Pawn || !Ramp)
+        {
+            Test->AddError(TEXT("slope fixture disappeared during runtime"));
+            return true;
+        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
+
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        if (!Movement || !PinkCabMovement || !Mesh)
+        {
+            Test->AddError(TEXT("slope fixture runtime state is incomplete"));
+            return true;
         }
 
         if (!AdvanceMechanicalTime(
@@ -181,20 +205,53 @@ public:
             return false;
         }
 
-        if (!bSettled)
+        if (!bContactReady)
         {
-            if (PhaseSimSeconds < 0.90)
+            const float NormalSpeedCmPerSec = FMath::Abs(
+                FVector::DotProduct(
+                    Mesh->GetPhysicsLinearVelocity(),
+                    Ramp->GetActorUpVector()));
+
+            if (PhaseSimSeconds >= MinimumContactSettleSeconds
+                && NormalSpeedCmPerSec <= ContactNormalSpeedToleranceCmPerSec)
             {
-                return false;
+                ++StableContactObservations;
             }
+            else
+            {
+                StableContactObservations = 0;
+            }
+
+            if (StableContactObservations
+                < RequiredStableContactObservations)
+            {
+                if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
+                {
+                    return false;
+                }
+
+                Test->AddError(FString::Printf(
+                    TEXT("P01 slope fixture never reached stable ramp contact sim_s=%.3f normal_speed_cm_s=%.3f stable_observations=%d"),
+                    PhaseSimSeconds,
+                    NormalSpeedCmPerSec,
+                    StableContactObservations));
+                return true;
+            }
+
             StartLocation = Pawn->GetActorLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
-            bSettled = true;
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f normal_speed_cm_s=%.3f stable_observations=%d start=%s"),
+                PhaseSimSeconds,
+                NormalSpeedCmPerSec,
+                StableContactObservations,
+                *StartLocation.ToString()));
+            bContactReady = true;
             PhaseSimSeconds = 0.0;
             return false;
         }
 
-        if (PhaseSimSeconds < 1.20)
+        if (PhaseSimSeconds < MeasurementSeconds)
         {
             return false;
         }
@@ -215,6 +272,7 @@ public:
             HorizontalSpeedCmPerSec,
             *StartLocation.ToString(),
             *EndLocation.ToString()));
+
         float MaxAbsWheelAngularVelocity = 0.0f;
         for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
         {
@@ -228,6 +286,7 @@ public:
         Test->AddInfo(FString::Printf(
             TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f"),
             MaxAbsWheelAngularVelocity));
+
         Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
             HorizontalTravelCm > 20.0f);
         Test->TestTrue(TEXT("slope vehicle remains physically rolling"),
@@ -239,21 +298,27 @@ public:
         Test->TestEqual(TEXT("slope coast remains zero external drive torque"),
             Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
 
-        if (Ramp)
-        {
-            Ramp->Destroy();
-            Ramp = nullptr;
-        }
+        Ramp->Destroy();
+        Ramp = nullptr;
         return true;
     }
 
 private:
     FAutomationTestBase* Test = nullptr;
     AActor* Ramp = nullptr;
+    TWeakObjectPtr<APinkCabPhysicsFixturePawn> FixturePawn;
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
+
+    static constexpr double MinimumContactSettleSeconds = 0.35;
+    static constexpr double ContactReadyTimeoutSeconds = 2.50;
+    static constexpr double MeasurementSeconds = 1.20;
+    static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
+    static constexpr int32 RequiredStableContactObservations = 5;
+
     bool bInitialized = false;
-    bool bSettled = false;
+    bool bContactReady = false;
+    int32 StableContactObservations = 0;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
