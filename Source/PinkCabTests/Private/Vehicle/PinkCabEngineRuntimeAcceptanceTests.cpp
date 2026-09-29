@@ -84,10 +84,30 @@ public:
             return false;
         }
 
-        if (!bInitialized)
+        if (!bCleanupPrepared)
         {
             UGameplayStatics::SetGamePaused(World, false);
+            PinkCabPhysicsFixture::DestroyPawns(*World);
 
+            // Destroy() is deferred until the world finishes the frame. In a
+            // full automation suite the previous sterile Chaos pawn can still
+            // own a physics proxy during this Update(), even though the actor
+            // is already marked for destruction. Give teardown two complete
+            // world frames before creating the slope fixture so this test has
+            // the same physics-scene baseline as a fresh process.
+            CleanupFramesRemaining = 2;
+            bCleanupPrepared = true;
+            return false;
+        }
+
+        if (CleanupFramesRemaining > 0)
+        {
+            --CleanupFramesRemaining;
+            return false;
+        }
+
+        if (!bInitialized)
+        {
             constexpr float RampPitchDeg = 20.0f;
 
             Ramp = World->SpawnActor<AActor>();
@@ -123,7 +143,6 @@ public:
                 return true;
             }
 
-            PinkCabPhysicsFixture::DestroyPawns(*World);
             APinkCabPhysicsFixturePawn* SpawnedPawn =
                 PinkCabPhysicsFixture::SpawnFreshPawn(
                     *World,
@@ -432,6 +451,12 @@ public:
         Test->TestEqual(TEXT("slope coast releases service brake"),
             Movement->GetBrakeInput(), 0.0f);
 
+        if (APinkCabPhysicsFixturePawn* FinishedPawn = FixturePawn.Get())
+        {
+            FinishedPawn->Destroy();
+        }
+        FixturePawn.Reset();
+
         Ramp->Destroy();
         Ramp = nullptr;
         return true;
@@ -452,6 +477,8 @@ private:
     static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
     static constexpr int32 RequiredContactObservations = 3;
 
+    bool bCleanupPrepared = false;
+    int32 CleanupFramesRemaining = 0;
     bool bInitialized = false;
     bool bContactReady = false;
     int32 StableContactObservations = 0;
