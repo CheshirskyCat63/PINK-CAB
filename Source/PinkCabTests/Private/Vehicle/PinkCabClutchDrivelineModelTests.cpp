@@ -261,6 +261,61 @@ bool FPinkCabClutchDrivelineSynchronizationHorizonTest::RunTest(
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchDrivelineCapacityIndependentComplianceTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchModel.CapacityIndependentCompliance",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchDrivelineCapacityIndependentComplianceTest::RunTest(
+    const FString&)
+{
+    FPinkCabClutchDrivelineConfig Config;
+    Config.EngineEffectiveInertia = 0.17f;
+    Config.MaxClutchTorqueNm = 390.0f;
+    Config.SynchronizationTimeSeconds = 0.20f;
+    Config.LockedSlipRpm = 25.0f;
+    FPinkCabClutchDrivelineModel Model(Config);
+
+    FPinkCabClutchDrivelineInput Full;
+    Full.DeltaSeconds = 1.0f / 60.0f;
+    Full.EngineRpm = 1800.0f;
+    Full.ShaftEquivalentEngineRpm = 1700.0f;
+    Full.AvailableEngineTorqueNm = 0.0f;
+    Full.EngineDragTorqueNm = 0.0f;
+    Full.ClutchCoupling01 = 1.0f;
+    Full.DrivetrainTorqueCapacity01 = 1.0f;
+    Full.EffectiveGearRatio = 14.72f;
+    Full.TransmissionEfficiency = 0.90f;
+
+    FPinkCabClutchDrivelineInput Partial = Full;
+    Partial.ClutchCoupling01 = 0.75f;
+
+    const FPinkCabClutchDrivelineOutput FullOut = Model.Step(Full);
+    const FPinkCabClutchDrivelineOutput PartialOut = Model.Step(Partial);
+
+    TestFalse(TEXT("full fixture is below torque capacity"),
+        FullOut.bTorqueLimited);
+    TestFalse(TEXT("partial fixture is below torque capacity"),
+        PartialOut.bTorqueLimited);
+
+    const float RelativeTorqueDelta =
+        FMath::Abs(
+            FullOut.TransmittedClutchTorqueNm
+            - PartialOut.TransmittedClutchTorqueNm)
+        / FMath::Max(
+            FMath::Abs(FullOut.TransmittedClutchTorqueNm),
+            1.0f);
+    TestTrue(
+        *FString::Printf(
+            TEXT("clutch compliance is independent of unused torque capacity full_nm=%.6f partial_nm=%.6f relative_delta=%.6f"),
+            FullOut.TransmittedClutchTorqueNm,
+            PartialOut.TransmittedClutchTorqueNm,
+            RelativeTorqueDelta),
+        RelativeTorqueDelta <= 0.001f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabClutchDrivelineTimestepConsistencyTest,
     "PinkCab.Vehicle.Physics.P02.ClutchModel.TimestepConsistency",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
