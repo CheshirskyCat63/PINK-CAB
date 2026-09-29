@@ -79,6 +79,24 @@ def lfs_object_path(repo: Path, oid: str) -> Path:
     return repo / ".git" / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
 
 
+def external_lfs_object_path(repo: Path, oid: str) -> Path | None:
+    """Resolve an exact historical LFS object from another local Git mirror."""
+    proc = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        cwd=repo,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    common = Path(proc.stdout.strip())
+    if not common.is_absolute():
+        common = (repo / common).resolve()
+    return common / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
+
+
 def is_git_worktree(workspace: Path) -> bool:
     proc = subprocess.run(
         ["git", "rev-parse", "--is-inside-work-tree"],
@@ -207,6 +225,26 @@ def materialize_required(
         return
 
     matches: list[Path] = []
+
+    # Historical LFS object caches are authoritative candidates too. A mirror
+    # worktree may have moved on to a newer revision while its local LFS store
+    # still retains the exact OID required by this candidate SHA.
+    for root in search_roots:
+        if not root.exists():
+            continue
+        external_cached = external_lfs_object_path(root, oid)
+        if external_cached is None or not external_cached.exists():
+            continue
+        try:
+            actual = sha256_file(external_cached)
+        except OSError:
+            continue
+        print(
+            f"PINKCAB_LOCAL_LFS_OBJECT_CANDIDATE={external_cached} "
+            f"sha256={actual} expected={oid}"
+        )
+        if actual == oid:
+            matches.append(external_cached)
 
     # Fast path: canonical mirrors preserve repository-relative paths.
     for root in search_roots:
