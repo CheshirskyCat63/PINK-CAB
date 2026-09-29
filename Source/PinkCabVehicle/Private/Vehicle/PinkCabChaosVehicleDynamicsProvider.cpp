@@ -80,6 +80,8 @@ FPinkCabChaosDrivelineCommand BuildDrivelineCommand(
         Controls.DrivetrainTorqueCapacity;
     Command.HealthClampedControlThrottle01 =
         FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
+    Command.ServiceBrake01 =
+        FMath::Clamp(Controls.Brake, 0.0f, 1.0f);
     Command.EffectiveGearRatio =
         Controls.EngagedGear != 0
             ? Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear)
