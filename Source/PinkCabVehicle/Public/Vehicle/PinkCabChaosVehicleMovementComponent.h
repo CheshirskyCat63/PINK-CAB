@@ -80,6 +80,10 @@ public:
     bool ReadPinkCabMechanicalEvidenceWindow(
         FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
 
+#if WITH_DEV_AUTOMATION_TESTS
+    bool SetPinkCabDynamometerBrakeTorqueForTests(float BrakeTorqueNm);
+#endif
+
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
 

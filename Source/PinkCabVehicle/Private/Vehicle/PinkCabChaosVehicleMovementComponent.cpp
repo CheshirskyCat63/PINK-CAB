@@ -116,3 +116,27 @@ bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDrivelineCommand(
             }
         });
 }
+
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDynamometerBrakeTorqueForTests(
+    const float BrakeTorqueNm)
+{
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return false;
+    }
+
+    return FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this, BrakeTorqueNm](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                PinkCabSimulationPT->SetDynamometerBrakeTorqueForTests(
+                    FMath::Max(BrakeTorqueNm, 0.0f));
+            }
+        });
+}
+#endif

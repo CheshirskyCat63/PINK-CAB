@@ -115,7 +115,7 @@ Five identical-reset repeats per condition:
 - coupling 0 / 0.25 / 0.50 / 0.75 / 0.999 / 1.000;
 - 1st and R;
 - zero/25/50/100% throttle;
-- the base 240-cell coupling matrix runs as a stationary driveline bench with the ordinary service brake physically holding the shaft/load state, so 0.999→1.000 compares the clutch solver rather than diverging tire/chassis trajectories;
+- the base 240-cell coupling matrix runs as a stationary driveline bench with an explicit test-only physical dynamometer brake on the driven wheels. The dynamometer torque exceeds the maximum clutch/first-gear wheel torque, is compiled only for automation, and does not modify production brake/tire calibration. D3 additionally asserts near-zero measured driven-wheel RPM during every sample, so 0.999→1.000 compares one shaft/load state rather than diverging tire/chassis trajectories;
 - low and high wheel-speed back-drive is a separate moving-shaft comparison against an open-clutch control;
 - limiter approach;
 - engine-off coast;

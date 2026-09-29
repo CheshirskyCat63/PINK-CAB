@@ -146,12 +146,14 @@ public:
 
                 Controls = {};
                 Controls.SetThrottle(CurrentThrottle());
-                // D3 is a stationary driveline bench. Hold the ordinary
-                // service brake during the measured window so the clutch
-                // boundary is compared at one physical shaft/load state rather
-                // than after twelve diverging tire/chassis trajectories.
-                // Moving-load behavior is verified separately in D4.
-                Controls.SetBrake(1.0f);
+                // D3 is a stationary driveline bench. The production rear
+                // service brake is intentionally weaker than the maximum
+                // clutch/first-gear wheel torque, so it cannot define a fixed
+                // shaft state at full load. Use an explicit test-only physical
+                // dynamometer brake on the driven wheels instead; production
+                // brake calibration is untouched. Moving-load behavior remains
+                // D4's responsibility.
+                Controls.SetBrake(0.0f);
                 Controls.SetHandbrake(0.0f);
                 Controls.SetDriveline(
                     CurrentGear(), CurrentGear(), CurrentCoupling());
@@ -169,6 +171,16 @@ public:
                 LastEffectiveGearRatio =
                     ConditionProvider.GetLastCausalActuationTelemetry()
                         .EffectiveGearRatio;
+#if WITH_DEV_AUTOMATION_TESTS
+                if (!PinkCabMovement
+                        ->SetPinkCabDynamometerBrakeTorqueForTests(
+                            DynamometerBrakeTorqueNm))
+                {
+                    Test->AddError(
+                        TEXT("D3 failed to install physical dynamometer load"));
+                    return true;
+                }
+#endif
                 if (!PinkCabMovement
                         ->BeginPinkCabMechanicalEvidenceWindow(
                             SettleSeconds,
@@ -415,11 +427,13 @@ private:
                 Run.ResetMechanicalSteps >= MinimumResetMechanicalSteps
                     && Run.ResetStableMechanicalSteps >= MinimumStableResetMechanicalSteps);
             Test->TestTrue(
-                TEXT("every D3 sample records finite driven-wheel motion evidence"),
+                TEXT("every D3 sample remains physically shaft-stationary"),
                 FMath::IsFinite(Run.MeanDrivenWheelRpm)
-                    && Run.MeanDrivenWheelRpm >= 0.0f
+                    && Run.MeanDrivenWheelRpm
+                        <= SampleWheelRpmTolerance
                     && FMath::IsFinite(Run.EndBodyLinearSpeedCmPerSec)
-                    && Run.EndBodyLinearSpeedCmPerSec >= 0.0f);
+                    && Run.EndBodyLinearSpeedCmPerSec
+                        <= SampleBodyLinearToleranceCmPerSec);
             Test->TestTrue(
                 TEXT("every D3 sample records a positive finite mechanical timestep"),
                 FMath::IsFinite(Run.MeanMechanicalDeltaMs)
@@ -495,6 +509,9 @@ private:
     static constexpr float MonotonicToleranceNm = 50.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float FirstReverseRelativeTolerance = 0.08f;
+    static constexpr float DynamometerBrakeTorqueNm = 6500.0f;
+    static constexpr float SampleWheelRpmTolerance = 2.0f;
+    static constexpr float SampleBodyLinearToleranceCmPerSec = 5.0f;
     static constexpr float ResetEngineRpmTolerance = 30.0f;
     static constexpr float ResetWheelRpmTolerance = 2.0f;
     static constexpr float ResetBodyLinearToleranceCmPerSec = 5.0f;
