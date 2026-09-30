@@ -85,11 +85,15 @@ jobs:
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
           }
 
-      - name: Materialize canonical L1 road runtime assets
+      - name: Restore canonical R4 L1 road runtime assets
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+          $r4='0950cf0b59efbfb777040e709a5aa0fcdf2c2599'
+          git cat-file -e "$r4^{commit}"
+          if($LASTEXITCODE -ne 0){ throw "CD869_R4_SOURCE_COMMIT_MISSING=$r4" }
+
           $generatedPhys='Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset'
           $road=@(
             git lfs ls-files -n |
@@ -102,19 +106,22 @@ jobs:
             throw "CD869_ROAD_LFS_SET_INCOMPLETE count=$($road.Count)"
           }
 
-          $args=@(
-            '.\scripts\ci\materialize_local_lfs.py',
-            '--workspace', $env:GITHUB_WORKSPACE,
-            '--base-ref', 'origin/main',
-            '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
-            '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
-            '--search-root', 'E:\Development'
-          )
           foreach($path in $road){
-            $args += @('--required', $path)
+            $headPointer=(git show "HEAD:$path" 2>$null) -join "`n"
+            if($LASTEXITCODE -ne 0){ throw "CD869_HEAD_ROAD_POINTER_MISSING=$path" }
+            $r4Pointer=(git show "$r4`:$path" 2>$null) -join "`n"
+            if($LASTEXITCODE -ne 0){ throw "CD869_R4_ROAD_POINTER_MISSING=$path" }
+            if($headPointer -ne $r4Pointer){
+              throw "CD869_R4_ROAD_POINTER_DRIFT=$path"
+            }
           }
-          python @args
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host "CD869_R4_ROAD_POINTERS=PASS count=$($road.Count) source=$r4"
+
+          git lfs fetch origin $r4 --include='Content/World/L1/Road/*' --exclude=''
+          if($LASTEXITCODE -ne 0){ throw 'CD869_R4_ROAD_LFS_FETCH_FAIL' }
+
+          git lfs checkout -- $road
+          if($LASTEXITCODE -ne 0){ throw 'CD869_R4_ROAD_LFS_CHECKOUT_FAIL' }
 
           foreach($path in $road){
             $full=Join-Path $env:GITHUB_WORKSPACE $path
@@ -126,7 +133,7 @@ jobs:
               throw "CD869_ROAD_RUNTIME_ASSET_POINTER=$path"
             }
           }
-          Write-Host "CD869_ROAD_RUNTIME_LFS=PASS count=$($road.Count)"
+          Write-Host "CD869_R4_ROAD_RUNTIME_LFS=PASS count=$($road.Count)"
 
       - name: Regenerate canonical endless runtime map from exact-head source
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
