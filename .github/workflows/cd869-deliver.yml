@@ -51,6 +51,7 @@ jobs:
             --exclude-prefix 'Content/Dev/Authoring/' `
             --cache-root 'E:\CHESHIRE_DIVISION' `
             --cache-root 'E:\Development' `
+            --search-root 'E:\CHESHIRE_DIVISION' `
             --search-root 'E:\CHESHIRE_DIVISION\Games\PINK-CAB' `
             --search-root 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB' `
             --search-root 'E:\Development'
