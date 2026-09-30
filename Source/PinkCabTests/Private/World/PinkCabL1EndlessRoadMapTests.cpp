@@ -6,6 +6,7 @@
 #include "Editor.h"
 #include "EngineUtils.h"
 #include "Engine/StaticMesh.h"
+#include "UObject/Package.h"
 #include "Materials/MaterialInterface.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
@@ -43,6 +44,29 @@ bool FPinkCabL1EndlessRoadMapCompositionTest::RunTest(const FString& Parameters)
     {
         return false;
     }
+
+    UPackage* RuntimeMapPackage = World->GetOutermost();
+    TestNotNull(TEXT("loaded endless map package exists"), RuntimeMapPackage);
+    if (!RuntimeMapPackage)
+    {
+        return false;
+    }
+
+    constexpr uint32 NonRuntimePackageFlags =
+        PKG_EditorOnly |
+        PKG_Developer |
+        PKG_UncookedOnly |
+        PKG_PlayInEditor;
+    const uint32 PackageFlags = RuntimeMapPackage->GetPackageFlags();
+    AddInfo(FString::Printf(
+        TEXT("CD869_ENDLESS_MAP_PACKAGE_FLAGS_LOADED=0x%08x"),
+        PackageFlags));
+    TestTrue(
+        TEXT("endless map package is marked as a map"),
+        RuntimeMapPackage->ContainsMap());
+    TestTrue(
+        TEXT("endless map package has no editor/developer/PIE/uncooked-only flags"),
+        (PackageFlags & NonRuntimePackageFlags) == 0);
 
     APinkCabChaosTatraPawn* Pawn = nullptr;
     APinkCabL1EndlessRoadStreamer* Streamer = nullptr;
