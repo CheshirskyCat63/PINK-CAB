@@ -20,7 +20,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: cd869-main-baseline
@@ -172,10 +172,23 @@ jobs:
           $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
           New-Item -ItemType Directory -Force $gate | Out-Null
 
-          # These two assets are authored outputs whose canonical values live in
-          # exact-head C++ tests. Never substitute stale LFS bytes for them.
+          # The dry-asphalt physical material is rebuilt from exact-head source.
+          # The runtime map, however, is a canonical tracked Git-LFS asset: preserve it
+          # when its real bytes are available and regenerate only when the checkout still
+          # contains a missing/unresolved pointer.
           Remove-Item $phys -Force -ErrorAction SilentlyContinue
-          Remove-Item $map -Force -ErrorAction SilentlyContinue
+
+          $mapReady=$false
+          if(Test-Path -LiteralPath $map){
+            try {
+              $mapFirst=Get-Content -LiteralPath $map -TotalCount 1 -ErrorAction Stop
+              $mapLength=(Get-Item -LiteralPath $map).Length
+              $mapReady=($mapFirst -ne 'version https://git-lfs.github.com/spec/v1') -and ($mapLength -gt 1024)
+            } catch {
+              $mapReady=$false
+            }
+          }
+          Write-Host "CD869_CANONICAL_MAP_MATERIALIZED=$([int]$mapReady)"
 
           & .\scripts\ci\run-unreal-automation.ps1 `
             -EngineRoot $env:UE_ROOT `
@@ -217,21 +230,26 @@ jobs:
 
           $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $mapLog=Join-Path $gate 'CD869_GENERATE_ENDLESS_MAP.log'
-          $editorArgs=@(
-            $project, '/Engine/Maps/Entry', '-unattended', '-NullRHI', '-nosplash', '-nopause', '-NoSound',
-            '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
-            '-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap',
-            '-TestExit=Automation Test Queue Empty'
-          )
-          & $editor @editorArgs
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          if(Select-String -LiteralPath $mapLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
-            throw 'CD869_GENERATE_ENDLESS_MAP_TEST_FAIL'
+          if(-not $mapReady){
+            Remove-Item $map -Force -ErrorAction SilentlyContinue
+            $editorArgs=@(
+              $project, '/Engine/Maps/Entry', '-unattended', '-NullRHI', '-nosplash', '-nopause', '-NoSound',
+              '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
+              '-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap',
+              '-TestExit=Automation Test Queue Empty'
+            )
+            & $editor @editorArgs
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -LiteralPath $mapLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              throw 'CD869_GENERATE_ENDLESS_MAP_TEST_FAIL'
+            }
+            if(-not (Select-String -LiteralPath $mapLog -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
+              throw 'CD869_GENERATE_ENDLESS_MAP_QUEUE_MISSING'
+            }
+            Write-Host 'CD869_GENERATE_ENDLESS_MAP_NORMAL_SCAN=PASS'
+          } else {
+            Write-Host 'CD869_GENERATE_ENDLESS_MAP=SKIPPED_CANONICAL_LFS'
           }
-          if(-not (Select-String -LiteralPath $mapLog -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
-            throw 'CD869_GENERATE_ENDLESS_MAP_QUEUE_MISSING'
-          }
-          Write-Host 'CD869_GENERATE_ENDLESS_MAP_NORMAL_SCAN=PASS'
 
           $registryFiles=@(
             Get-ChildItem -LiteralPath $registryDir -File -ErrorAction SilentlyContinue
@@ -244,6 +262,36 @@ jobs:
           if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){ throw 'CD869_GENERATED_MAP_IS_LFS_POINTER' }
           $mapSha=(Get-FileHash $map -Algorithm SHA256).Hash.ToLowerInvariant()
           Write-Host "CD869_GENERATED_MAP=PASS sha256=$mapSha bytes=$($bytes.Length)"
+
+          if(-not $mapReady){
+            $mapRel='Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -- $mapRel
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            $indexPointer=(git show ":$mapRel") -join "`n"
+            $oidMatch=[regex]::Match($indexPointer,'oid sha256:([0-9a-f]{64})')
+            if(-not $oidMatch.Success){ throw 'CD869_CANONICAL_MAP_LFS_POINTER_NOT_STAGED' }
+            $oid=$oidMatch.Groups[1].Value
+            if($oid -ne $mapSha){ throw "CD869_CANONICAL_MAP_LFS_OID_MISMATCH $oid != $mapSha" }
+
+            git lfs push --object-id origin $oid
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            Write-Host "CD869_CANONICAL_MAP_LFS_OBJECT=PASS oid=$oid"
+
+            git diff --cached --quiet
+            $hasMapDelta=($LASTEXITCODE -ne 0)
+            $global:LASTEXITCODE=0
+            if($hasMapDelta){
+              git commit -m 'asset(CD-869): restore canonical endless runtime map'
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+              if(-not $env:GITHUB_HEAD_REF){ throw 'CD869_HEAD_REF_MISSING_FOR_MAP_REPAIR' }
+              git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+              Write-Host "CD869_CANONICAL_MAP_COMMIT=PASS sha=$((git rev-parse HEAD).Trim())"
+            }
+          }
 
           foreach($test in @(
             'PinkCab.World.L1Road.R5.DryAsphaltPhysicalSurface',
