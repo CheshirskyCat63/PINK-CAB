@@ -11,6 +11,7 @@ from scripts.ci.materialize_local_lfs import (
     materialize_required,
     parse_lfs_pointer,
     select_all_tracked_paths,
+    select_disallowed_changed_lfs,
     sha256_file,
 )
 
@@ -50,6 +51,20 @@ class LocalLfsMaterializationTests(unittest.TestCase):
             root / ".git" / "lfs" / "objects" / "01" / "23" / oid,
         )
 
+
+    def test_changed_lfs_allowlist_is_exact_path_scoped(self):
+        changed = {
+            "Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap",
+            "Content/World/L1/Road/RoadSurface.uasset",
+        }
+        disallowed = select_disallowed_changed_lfs(
+            changed,
+            ["Content\\Dev\\Maps\\L_PinkCab_L1_EndlessStraight.umap"],
+        )
+        self.assertEqual(
+            disallowed,
+            ["Content/World/L1/Road/RoadSurface.uasset"],
+        )
 
     def test_all_tracked_exclusion_is_prefix_scoped(self):
         tracked = {
