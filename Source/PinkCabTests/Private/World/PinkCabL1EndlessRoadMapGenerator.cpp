@@ -9,6 +9,7 @@
 #include "Modules/ModuleManager.h"
 #include "Editor.h"
 #include "Engine/World.h"
+#include "Factories/WorldFactory.h"
 #include "UObject/Package.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
@@ -27,12 +28,44 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
         return true;
     }
 
-    UWorld* World = GEditor ? GEditor->NewMap() : nullptr;
-    TestNotNull(TEXT("blank editor world created through GEditor"), World);
+    UPackage* TargetPackage = CreatePackage(*MapPackage);
+    TestNotNull(TEXT("target endless map package created"), TargetPackage);
+    if (!TargetPackage || !GEditor)
+    {
+        return false;
+    }
+
+    UWorldFactory* WorldFactory = NewObject<UWorldFactory>();
+    TestNotNull(TEXT("world factory created"), WorldFactory);
+    if (!WorldFactory)
+    {
+        return false;
+    }
+
+    WorldFactory->WorldType = EWorldType::Editor;
+    WorldFactory->bInformEngineOfWorld = true;
+    WorldFactory->FeatureLevel = GEditor->DefaultWorldFeatureLevel;
+
+    const FName WorldName(*FPackageName::GetLongPackageAssetName(MapPackage));
+    UWorld* World = Cast<UWorld>(
+        WorldFactory->FactoryCreateNew(
+            UWorld::StaticClass(),
+            TargetPackage,
+            WorldName,
+            RF_Public | RF_Standalone | RF_Transactional,
+            nullptr,
+            GWarn));
+    TestNotNull(TEXT("cookable editor world created in target package"), World);
     if (!World)
     {
         return false;
     }
+
+    World->ClearFlags(RF_Transient);
+    World->SetFlags(RF_Public | RF_Standalone | RF_Transactional);
+    World->UpdateWorldComponents(true, true);
+    World->MarkPackageDirty();
+    FAssetRegistryModule::AssetCreated(World);
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.OverrideLevel = World->PersistentLevel;
@@ -84,6 +117,10 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
     // contract explicit before SaveMap: the result must be a normal cookable
     // map, never an editor/developer/PIE/uncooked-only package.
     UPackage* RuntimeMapPackage = World->GetOutermost();
+    TestEqual(
+        TEXT("runtime endless world is born in canonical target package"),
+        RuntimeMapPackage ? RuntimeMapPackage->GetName() : FString(),
+        MapPackage);
     TestNotNull(TEXT("runtime endless map package exists"), RuntimeMapPackage);
     if (!RuntimeMapPackage)
     {
