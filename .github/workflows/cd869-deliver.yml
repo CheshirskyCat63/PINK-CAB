@@ -329,7 +329,7 @@ jobs:
             Write-Host "CD869_PRECOOK_REGISTRY_CACHE_COUNT=$($freshRegistryFiles.Count)"
 
             $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain -NoAssetRegistryCacheRead" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
