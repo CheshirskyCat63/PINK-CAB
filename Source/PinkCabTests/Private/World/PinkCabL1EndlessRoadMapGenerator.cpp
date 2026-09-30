@@ -5,6 +5,7 @@
 #include "FileHelpers.h"
 #include "Editor.h"
 #include "Engine/World.h"
+#include "UObject/Package.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 
@@ -73,6 +74,29 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
     Streamer->SetFlags(RF_Transactional);
     Pawn->MarkPackageDirty();
     Streamer->MarkPackageDirty();
+
+    // This authoring test produces the runtime Level 1 map used by packaged
+    // HUMAN builds. NewBlankMap is an editor operation, so make the package
+    // contract explicit before SaveMap: the result must be a normal cookable
+    // map, never an editor/developer/PIE/uncooked-only package.
+    UPackage* RuntimeMapPackage = World->GetOutermost();
+    TestNotNull(TEXT("runtime endless map package exists"), RuntimeMapPackage);
+    if (!RuntimeMapPackage)
+    {
+        return false;
+    }
+
+    constexpr uint32 NonRuntimePackageFlags =
+        PKG_EditorOnly |
+        PKG_Developer |
+        PKG_UncookedOnly |
+        PKG_PlayInEditor;
+    RuntimeMapPackage->ClearPackageFlags(NonRuntimePackageFlags);
+    RuntimeMapPackage->ThisContainsMap();
+
+    AddInfo(FString::Printf(
+        TEXT("CD869_ENDLESS_MAP_PACKAGE_FLAGS_BEFORE_SAVE=0x%08x"),
+        RuntimeMapPackage->GetPackageFlags()));
 
     const bool bSaved =
         UEditorLoadingAndSavingUtils::SaveMap(World, MapPackage);
