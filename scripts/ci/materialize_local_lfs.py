@@ -421,6 +421,18 @@ def select_all_tracked_paths(
     ]
 
 
+def select_disallowed_changed_lfs(
+    changed_lfs: Iterable[str],
+    allowed_changed_lfs: Iterable[str],
+) -> list[str]:
+    allowed = {normalize_repo_path(value) for value in allowed_changed_lfs}
+    return sorted(
+        value
+        for value in changed_lfs
+        if normalize_repo_path(value) not in allowed
+    )
+
+
 def git_lines(workspace: Path, *args: str) -> list[str]:
     proc = subprocess.run(
         ["git", *args],
@@ -446,6 +458,7 @@ def main() -> int:
     parser.add_argument("--search-root", action="append", default=[])
     parser.add_argument("--cache-root", action="append", default=[])
     parser.add_argument("--exclude-prefix", action="append", default=[])
+    parser.add_argument("--allow-changed-lfs", action="append", default=[])
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
@@ -467,11 +480,19 @@ def main() -> int:
     tracked = set(git_lines(workspace, "lfs", "ls-files", "-n"))
     changed = git_lines(workspace, "diff", "--name-only", f"{args.base_ref}...HEAD")
     changed_lfs = sorted(set(changed) & tracked)
-    if changed_lfs:
-        for relative in changed_lfs:
+    disallowed_changed_lfs = select_disallowed_changed_lfs(
+        changed_lfs,
+        args.allow_changed_lfs,
+    )
+    allowed_changed = sorted(set(changed_lfs) - set(disallowed_changed_lfs))
+    for relative in allowed_changed:
+        print(f"PINKCAB_LOCAL_LFS_CHANGED_ALLOWED={relative}")
+    if disallowed_changed_lfs:
+        for relative in disallowed_changed_lfs:
             print(f"PINKCAB_LOCAL_LFS_CHANGED={relative}")
         raise RuntimeError(
-            f"Code-only gate contains {len(changed_lfs)} changed LFS file(s)"
+            "Code-only gate contains "
+            f"{len(disallowed_changed_lfs)} disallowed changed LFS file(s)"
         )
 
     excluded_all_tracked = sorted(
