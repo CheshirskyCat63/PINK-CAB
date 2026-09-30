@@ -2,6 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
+#include "Misc/Paths.h"
 #include "FileHelpers.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
