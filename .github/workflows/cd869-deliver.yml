@@ -230,6 +230,9 @@ jobs:
             throw 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT_MARKER_MISSING'
           }
           Write-Host 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT=PASS'
+          Get-Content -LiteralPath $compositionLog |
+            Select-String -Pattern 'CD869_ENDLESS_MAP_(PACKAGE_FLAGS_LOADED|ON_DISK_REGISTRY)' |
+            ForEach-Object { Write-Host $_.Line }
 
       - name: Build package only when warm package is absent
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
@@ -302,7 +305,7 @@ jobs:
             Write-Host 'CD869_FRESH_ASSET_REGISTRY_PRECOOK=PASS'
 
             $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain -ini:Editor:[CookSettings]:bSkipOnlyEditorOnly=false" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
