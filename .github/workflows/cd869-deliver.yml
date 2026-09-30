@@ -85,55 +85,79 @@ jobs:
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
           }
 
-      - name: Restore canonical R4 L1 road runtime assets
+      - name: Rebuild canonical R4 road assets from MetaRoad authoring source
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $r4='0950cf0b59efbfb777040e709a5aa0fcdf2c2599'
-          git cat-file -e "$r4^{commit}"
-          if($LASTEXITCODE -ne 0){ throw "CD869_R4_SOURCE_COMMIT_MISSING=$r4" }
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
+          New-Item -ItemType Directory -Force $gate | Out-Null
 
-          $generatedPhys='Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset'
           $road=@(
             git lfs ls-files -n |
               Where-Object {
-                $_ -like 'Content/World/L1/Road/*' -and
-                $_ -ne $generatedPhys
+                $_ -like 'Content/World/L1/Road/Road*.uasset'
               }
           )
           if($road.Count -lt 84){
-            throw "CD869_ROAD_LFS_SET_INCOMPLETE count=$($road.Count)"
+            throw "CD869_ROAD_AUTHORING_SET_INCOMPLETE count=$($road.Count)"
           }
 
+          # Road meshes are deterministic authoring outputs. Remove unresolved
+          # LFS pointers and rebuild them from exact-head authoring code + the
+          # installed canonical MetaRoad plugin.
           foreach($path in $road){
-            $headPointer=(git show "HEAD:$path" 2>$null) -join "`n"
-            if($LASTEXITCODE -ne 0){ throw "CD869_HEAD_ROAD_POINTER_MISSING=$path" }
-            $r4Pointer=(git show "$r4`:$path" 2>$null) -join "`n"
-            if($LASTEXITCODE -ne 0){ throw "CD869_R4_ROAD_POINTER_MISSING=$path" }
-            if($headPointer -ne $r4Pointer){
-              throw "CD869_R4_ROAD_POINTER_DRIFT=$path"
-            }
+            Remove-Item (Join-Path $env:GITHUB_WORKSPACE $path) -Force -ErrorAction SilentlyContinue
           }
-          Write-Host "CD869_R4_ROAD_POINTERS=PASS count=$($road.Count) source=$r4"
+          Remove-Item (Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Authoring\L_PC_L1_MetaRoadAuthoring.umap') -Force -ErrorAction SilentlyContinue
 
-          git lfs fetch origin $r4 --include='Content/World/L1/Road/*' --exclude=''
-          if($LASTEXITCODE -ne 0){ throw 'CD869_R4_ROAD_LFS_FETCH_FAIL' }
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          git lfs checkout -- $road
-          if($LASTEXITCODE -ne 0){ throw 'CD869_R4_ROAD_LFS_CHECKOUT_FAIL' }
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadAssets' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_ASSETS.log') `
+            -TimeoutSeconds 300
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           foreach($path in $road){
             $full=Join-Path $env:GITHUB_WORKSPACE $path
-            if(-not (Test-Path $full)){ throw "CD869_ROAD_RUNTIME_ASSET_MISSING=$path" }
+            if(-not (Test-Path $full)){ throw "CD869_GENERATED_ROAD_ASSET_MISSING=$path" }
             $bytes=[IO.File]::ReadAllBytes($full)
-            if($bytes.Length -lt 1024){ throw "CD869_ROAD_RUNTIME_ASSET_TOO_SMALL=$path bytes=$($bytes.Length)" }
+            if($bytes.Length -lt 1024){ throw "CD869_GENERATED_ROAD_ASSET_TOO_SMALL=$path bytes=$($bytes.Length)" }
             $prefix=[Text.Encoding]::ASCII.GetString($bytes[0..([Math]::Min(80,$bytes.Length-1))])
             if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){
-              throw "CD869_ROAD_RUNTIME_ASSET_POINTER=$path"
+              throw "CD869_GENERATED_ROAD_ASSET_IS_LFS_POINTER=$path"
             }
           }
-          Write-Host "CD869_R4_ROAD_RUNTIME_LFS=PASS count=$($road.Count)"
+          Write-Host "CD869_GENERATED_METAROAD_ASSETS=PASS count=$($road.Count)"
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_RUNTIME_MATERIALS.log') `
+            -TimeoutSeconds 240
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          foreach($test in @(
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack'
+          )){
+            $safe=$test.Replace('.','_')
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
+              -TimeoutSeconds 240
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            Write-Host "CD869_METAROAD_AUTHORING_TEST=PASS test=$test"
+          }
 
       - name: Regenerate canonical endless runtime map from exact-head source
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
@@ -150,9 +174,6 @@ jobs:
           # exact-head C++ tests. Never substitute stale LFS bytes for them.
           Remove-Item $phys -Force -ErrorAction SilentlyContinue
           Remove-Item $map -Force -ErrorAction SilentlyContinue
-
-          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           & .\scripts\ci\run-unreal-automation.ps1 `
             -EngineRoot $env:UE_ROOT `
