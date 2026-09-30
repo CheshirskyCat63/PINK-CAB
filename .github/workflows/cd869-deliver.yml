@@ -272,6 +272,20 @@ jobs:
             }
             Write-Host "CD869_COOK_LFS_POINTER_QUARANTINE=PASS count=$quarantined"
 
+            # The target map and R4 assets are authored during this workflow.
+            # Remove only asset-registry caches that can predate those files so
+            # the cook process performs a fresh disk discovery of the new map.
+            foreach($cache in @(
+              (Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry.bin'),
+              (Join-Path $env:GITHUB_WORKSPACE 'Intermediate\AssetRegistryCache'),
+              (Join-Path $env:GITHUB_WORKSPACE 'Saved\AssetRegistry')
+            )){
+              if(Test-Path $cache){
+                Remove-Item $cache -Recurse -Force
+                Write-Host "CD869_COOK_REMOVED_ASSET_REGISTRY_CACHE=$cache"
+              }
+            }
+
             & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
