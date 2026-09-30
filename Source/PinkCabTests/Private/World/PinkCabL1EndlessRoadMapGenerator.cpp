@@ -3,6 +3,9 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
 #include "FileHelpers.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
+#include "Modules/ModuleManager.h"
 #include "Editor.h"
 #include "Engine/World.h"
 #include "UObject/Package.h"
@@ -23,8 +26,8 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
         return true;
     }
 
-    UWorld* World = UEditorLoadingAndSavingUtils::NewBlankMap(false);
-    TestNotNull(TEXT("blank editor world created"), World);
+    UWorld* World = GEditor ? GEditor->NewMap() : nullptr;
+    TestNotNull(TEXT("blank editor world created through GEditor"), World);
     if (!World)
     {
         return false;
@@ -101,7 +104,40 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
     const bool bSaved =
         UEditorLoadingAndSavingUtils::SaveMap(World, MapPackage);
     TestTrue(TEXT("endless Level 1 candidate map saved"), bSaved);
-    return bSaved;
+    if (!bSaved)
+    {
+        return false;
+    }
+
+    const FString MapFilename =
+        FPackageName::LongPackageNameToFilename(
+            MapPackage,
+            FPackageName::GetMapPackageExtension());
+    TestTrue(
+        TEXT("endless Level 1 candidate map exists at canonical filename"),
+        FPaths::FileExists(MapFilename));
+
+    IAssetRegistry& Registry =
+        FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
+            TEXT("AssetRegistry")).Get();
+    Registry.ScanFilesSynchronous({MapFilename}, true);
+
+    TArray<FAssetData> Assets;
+    Registry.GetAssetsByPackageName(FName(*MapPackage), Assets, true);
+    bool bHasWorldAsset = false;
+    for (const FAssetData& Asset : Assets)
+    {
+        bHasWorldAsset |= Asset.AssetClassPath == UWorld::StaticClass()->GetClassPathName();
+    }
+    TestTrue(
+        TEXT("generated map is discoverable by AssetRegistry as a UWorld asset"),
+        bHasWorldAsset);
+    AddInfo(FString::Printf(
+        TEXT("CD869_GENERATED_MAP_ASSET_REGISTRY assets=%d world=%d"),
+        Assets.Num(),
+        bHasWorldAsset ? 1 : 0));
+
+    return bHasWorldAsset;
 }
 
 #endif
