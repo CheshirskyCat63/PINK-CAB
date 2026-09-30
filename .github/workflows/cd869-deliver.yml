@@ -193,14 +193,50 @@ jobs:
           $physSha=(Get-FileHash $phys -Algorithm SHA256).Hash.ToLowerInvariant()
           Write-Host "CD869_GENERATED_DRY_ASPHALT=PASS sha256=$physSha bytes=$($physBytes.Length)"
 
-          & .\scripts\ci\run-unreal-automation.ps1 `
-            -EngineRoot $env:UE_ROOT `
-            -ProjectPath $project `
-            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadMap' `
-            -LogPath (Join-Path $gate 'CD869_GENERATE_ENDLESS_MAP.log') `
-            -TimeoutSeconds 180
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          # The target map is born during this workflow. Run its authoring in
+          # a normal editor process (no -SkipAssetScan) so the on-disk package
+          # enters the same AssetRegistry lifecycle used by the later cooker.
+          $preMapQuarantined=0
+          foreach($relative in @(git lfs ls-files -n)){
+            $full=Join-Path $env:GITHUB_WORKSPACE $relative
+            if(-not (Test-Path -LiteralPath $full)){ continue }
+            try { $first=Get-Content -LiteralPath $full -TotalCount 1 -ErrorAction Stop } catch { continue }
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+              Remove-Item -LiteralPath $full -Force
+              ++$preMapQuarantined
+              Write-Host "CD869_PREMAP_QUARANTINED_LFS_POINTER=$relative"
+            }
+          }
+          Write-Host "CD869_PREMAP_LFS_POINTER_QUARANTINE=PASS count=$preMapQuarantined"
 
+          $registryDir=Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'
+          if(Test-Path $registryDir){
+            Remove-Item $registryDir -Recurse -Force
+            Write-Host "CD869_PREMAP_REMOVED_STALE_REGISTRY=$registryDir"
+          }
+
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $mapLog=Join-Path $gate 'CD869_GENERATE_ENDLESS_MAP.log'
+          $editorArgs=@(
+            $project, '/Engine/Maps/Entry', '-unattended', '-NullRHI', '-nosplash', '-nopause', '-NoSound',
+            '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
+            '-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap',
+            '-TestExit=Automation Test Queue Empty'
+          )
+          & $editor @editorArgs
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          if(Select-String -LiteralPath $mapLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+            throw 'CD869_GENERATE_ENDLESS_MAP_TEST_FAIL'
+          }
+          if(-not (Select-String -LiteralPath $mapLog -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
+            throw 'CD869_GENERATE_ENDLESS_MAP_QUEUE_MISSING'
+          }
+          Write-Host 'CD869_GENERATE_ENDLESS_MAP_NORMAL_SCAN=PASS'
+
+          $registryFiles=@(
+            Get-ChildItem -LiteralPath $registryDir -File -ErrorAction SilentlyContinue
+          )
+          Write-Host "CD869_GENERATED_MAP_REGISTRY_CACHE_COUNT=$($registryFiles.Count)"
           if(-not (Test-Path $map)){ throw 'CD869_GENERATED_MAP_MISSING' }
           $bytes=[IO.File]::ReadAllBytes($map)
           if($bytes.Length -lt 1024){ throw "CD869_GENERATED_MAP_TOO_SMALL=$($bytes.Length)" }
@@ -283,29 +319,17 @@ jobs:
             }
             Write-Host "CD869_COOK_LFS_POINTER_QUARANTINE=PASS count=$quarantined"
 
-            # The target map and R4 assets are authored during this workflow.
-            # Remove only asset-registry caches that can predate those files so
-            # the cook process performs a fresh disk discovery of the new map.
-            foreach($cache in @(
-              (Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'),
-              (Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry.bin'),
-              (Join-Path $env:GITHUB_WORKSPACE 'Intermediate\AssetRegistryCache'),
-              (Join-Path $env:GITHUB_WORKSPACE 'Saved\AssetRegistry')
-            )){
-              if(Test-Path $cache){
-                Remove-Item $cache -Recurse -Force
-                Write-Host "CD869_COOK_REMOVED_ASSET_REGISTRY_CACHE=$cache"
-              }
-            }
-
-            $cachedRegistryDir=Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'
-            if(Test-Path $cachedRegistryDir){
-              throw "CD869_STALE_ASSET_REGISTRY_SURVIVED=$cachedRegistryDir"
-            }
-            Write-Host 'CD869_FRESH_ASSET_REGISTRY_PRECOOK=PASS'
+            # Preserve the fresh AssetRegistry produced by normal map authoring.
+            # Deleting it here would make the next process forget a package that
+            # did not exist when the runner checkout started.
+            $freshRegistryDir=Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'
+            $freshRegistryFiles=@(
+              Get-ChildItem -LiteralPath $freshRegistryDir -File -ErrorAction SilentlyContinue
+            )
+            Write-Host "CD869_PRECOOK_REGISTRY_CACHE_COUNT=$($freshRegistryFiles.Count)"
 
             $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain -ini:Editor:[CookSettings]:bSkipOnlyEditorOnly=false" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
