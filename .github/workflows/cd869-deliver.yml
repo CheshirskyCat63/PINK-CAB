@@ -52,7 +52,8 @@ jobs:
           $ErrorActionPreference='Stop'
           python .\scripts\ci\materialize_local_lfs.py `
             --workspace "$env:GITHUB_WORKSPACE" `
-            --base-ref origin/main
+            --base-ref origin/main `
+            --allow-changed-lfs "Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           # Local git-lfs cache is materialized first. Unresolved unrelated
