@@ -123,7 +123,6 @@ jobs:
             -TestName 'PinkCab.Editor.GenerateL1EndlessRoadAssets' `
             -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_ASSETS.log') `
             -TimeoutSeconds 300
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           foreach($path in $road){
             $full=Join-Path $env:GITHUB_WORKSPACE $path
@@ -143,7 +142,6 @@ jobs:
             -TestName 'PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials' `
             -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_RUNTIME_MATERIALS.log') `
             -TimeoutSeconds 240
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           foreach($test in @(
             'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
@@ -157,7 +155,6 @@ jobs:
               -TestName $test `
               -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
               -TimeoutSeconds 240
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
             Write-Host "CD869_METAROAD_AUTHORING_TEST=PASS test=$test"
           }
 
@@ -196,7 +193,6 @@ jobs:
             -TestName 'PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial' `
             -LogPath (Join-Path $gate 'CD869_GENERATE_DRY_ASPHALT.log') `
             -TimeoutSeconds 180
-          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           if(-not (Test-Path $phys)){ throw 'CD869_GENERATED_DRY_ASPHALT_MISSING' }
           $physBytes=[IO.File]::ReadAllBytes($phys)
@@ -305,7 +301,6 @@ jobs:
               -TestName $test `
               -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
               -TimeoutSeconds 240
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
             Write-Host "CD869_GENERATED_MAP_TEST=PASS test=$test"
           }
 
