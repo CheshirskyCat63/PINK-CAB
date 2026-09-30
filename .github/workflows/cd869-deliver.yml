@@ -223,6 +223,12 @@ jobs:
             Write-Host "CD869_GENERATED_MAP_TEST=PASS test=$test"
           }
 
+          $compositionLog=Join-Path $gate 'CD869_PinkCab_World_L1EndlessRoad_Map_Composition.log'
+          if(-not (Select-String -LiteralPath $compositionLog -Pattern 'CD869_ENDLESS_MAP_PACKAGE_FLAGS_LOADED=0x' -Quiet)){
+            throw 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT_MARKER_MISSING'
+          }
+          Write-Host 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT=PASS'
+
       - name: Build package only when warm package is absent
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
