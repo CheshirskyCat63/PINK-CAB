@@ -302,7 +302,7 @@ jobs:
             Write-Host 'CD869_FRESH_ASSET_REGISTRY_PRECOOK=PASS'
 
             $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
