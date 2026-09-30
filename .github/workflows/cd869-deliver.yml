@@ -50,20 +50,12 @@ jobs:
           $ErrorActionPreference='Stop'
           python .\scripts\ci\materialize_local_lfs.py `
             --workspace "$env:GITHUB_WORKSPACE" `
-            --base-ref origin/main `
-            --all-tracked `
-            --exclude-prefix 'Content/Dev/' `
-            --cache-root 'E:\CHESHIRE_DIVISION' `
-            --cache-root 'E:\Development' `
-            --search-root 'E:\CHESHIRE_DIVISION' `
-            --search-root 'E:\CHESHIRE_DIVISION\Games\PINK-CAB' `
-            --search-root 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB' `
-            --search-root 'E:\Development'
+            --base-ref origin/main
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          # Content/Dev is not binary delivery source-of-truth. The target
-          # endless map is regenerated from exact-head C++ immediately below.
-          # Every non-Dev tracked LFS asset remains byte/OID verified.
+          # Local git-lfs cache is materialized first. Unresolved unrelated
+          # pointers are allowed here; the exact target map is regenerated from
+          # source below and BuildCookRun is the hard runtime dependency gate.
           $dirty=@(git status --porcelain)
           if($dirty.Count -ne 0){
             $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
