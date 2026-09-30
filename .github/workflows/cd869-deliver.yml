@@ -1,6 +1,10 @@
 name: CD-869 Fast Human Delivery
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
     inputs:
       candidate_sha:
@@ -29,7 +33,7 @@ jobs:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       ARCHIVE: Artifacts\CD869Human
-      CANDIDATE_SHA: ${{ inputs.candidate_sha || github.sha }}
+      CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout exact candidate
@@ -38,7 +42,7 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-          ref: ${{ inputs.candidate_sha || github.sha }}
+          ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: Materialize verified local LFS
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
@@ -48,7 +52,7 @@ jobs:
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
             --all-tracked `
-            --exclude-prefix 'Content/Dev/Authoring/' `
+            --exclude-prefix 'Content/Dev/' `
             --cache-root 'E:\CHESHIRE_DIVISION' `
             --cache-root 'E:\Development' `
             --search-root 'E:\CHESHIRE_DIVISION' `
@@ -57,9 +61,9 @@ jobs:
             --search-root 'E:\Development'
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          # Content/Dev/Authoring is editor/test source only. The runtime cook
-          # below targets L_PinkCab_L1_EndlessStraight and remains the authority
-          # for detecting any missing packaged dependency.
+          # Content/Dev is not binary delivery source-of-truth. The target
+          # endless map is regenerated from exact-head C++ immediately below.
+          # Every non-Dev tracked LFS asset remains byte/OID verified.
           $dirty=@(git status --porcelain)
           if($dirty.Count -ne 0){
             $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
@@ -87,6 +91,54 @@ jobs:
           } else {
             Write-Host "CD869_PACKAGE_REUSE=0 sha=$head"
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
+          }
+
+      - name: Regenerate canonical endless runtime map from exact-head source
+        if: ${{ steps.preflight.outputs.package_ready != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $map=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps\L_PinkCab_L1_EndlessStraight.umap'
+          $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
+          New-Item -ItemType Directory -Force $gate | Out-Null
+
+          # The checked-in LFS pointer is not a usable runtime package. Remove
+          # it and recreate the map from the canonical exact-head generator.
+          Remove-Item $map -Force -ErrorAction SilentlyContinue
+
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadMap' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_ENDLESS_MAP.log') `
+            -TimeoutSeconds 180
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          if(-not (Test-Path $map)){ throw 'CD869_GENERATED_MAP_MISSING' }
+          $bytes=[IO.File]::ReadAllBytes($map)
+          if($bytes.Length -lt 1024){ throw "CD869_GENERATED_MAP_TOO_SMALL=$($bytes.Length)" }
+          $prefix=[Text.Encoding]::ASCII.GetString($bytes[0..([Math]::Min(80,$bytes.Length-1))])
+          if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){ throw 'CD869_GENERATED_MAP_IS_LFS_POINTER' }
+          $mapSha=(Get-FileHash $map -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "CD869_GENERATED_MAP=PASS sha256=$mapSha bytes=$($bytes.Length)"
+
+          foreach($test in @(
+            'PinkCab.World.L1EndlessRoad.Map.Composition',
+            'PinkCab.World.L1EndlessRoad.Asset.MaterialContract'
+          )){
+            $safe=$test.Replace('.','_')
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
+              -TimeoutSeconds 240
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            Write-Host "CD869_GENERATED_MAP_TEST=PASS test=$test"
           }
 
       - name: Build package only when warm package is absent
