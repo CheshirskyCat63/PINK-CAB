@@ -286,13 +286,23 @@ jobs:
               }
             }
 
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
             Move-Item $backup $project -Force
           }
           if($exit -ne 0){ exit $exit }
+
+          $cookedRoot=Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'
+          $cookedMap=@(
+            Get-ChildItem -LiteralPath $cookedRoot -Recurse -File -Filter 'L_PinkCab_L1_EndlessStraight.umap' -ErrorAction SilentlyContinue
+          )
+          if($cookedMap.Count -lt 1){
+            throw 'CD869_COOKED_ENDLESS_MAP_MISSING'
+          }
+          $cookedMap | ForEach-Object { Write-Host "CD869_COOKED_ENDLESS_MAP=$($_.FullName)" }
 
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $inner)){ throw 'CD869_INNER_EXE_MISSING_AFTER_COOK' }
