@@ -90,11 +90,15 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+          $generatedPhys='Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset'
           $road=@(
             git lfs ls-files -n |
-              Where-Object { $_ -like 'Content/World/L1/Road/*' }
+              Where-Object {
+                $_ -like 'Content/World/L1/Road/*' -and
+                $_ -ne $generatedPhys
+              }
           )
-          if($road.Count -lt 80){
+          if($road.Count -lt 84){
             throw "CD869_ROAD_LFS_SET_INCOMPLETE count=$($road.Count)"
           }
 
@@ -130,16 +134,34 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $phys=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Physics\PM_PC_DryAsphalt.uasset'
           $map=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps\L_PinkCab_L1_EndlessStraight.umap'
           $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
           New-Item -ItemType Directory -Force $gate | Out-Null
 
-          # The checked-in LFS pointer is not a usable runtime package. Remove
-          # it and recreate the map from the canonical exact-head generator.
+          # These two assets are authored outputs whose canonical values live in
+          # exact-head C++ tests. Never substitute stale LFS bytes for them.
+          Remove-Item $phys -Force -ErrorAction SilentlyContinue
           Remove-Item $map -Force -ErrorAction SilentlyContinue
 
           & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_DRY_ASPHALT.log') `
+            -TimeoutSeconds 180
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          if(-not (Test-Path $phys)){ throw 'CD869_GENERATED_DRY_ASPHALT_MISSING' }
+          $physBytes=[IO.File]::ReadAllBytes($phys)
+          if($physBytes.Length -lt 1024){ throw "CD869_GENERATED_DRY_ASPHALT_TOO_SMALL=$($physBytes.Length)" }
+          $physPrefix=[Text.Encoding]::ASCII.GetString($physBytes[0..([Math]::Min(80,$physBytes.Length-1))])
+          if($physPrefix -like 'version https://git-lfs.github.com/spec/v1*'){ throw 'CD869_GENERATED_DRY_ASPHALT_IS_LFS_POINTER' }
+          $physSha=(Get-FileHash $phys -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "CD869_GENERATED_DRY_ASPHALT=PASS sha256=$physSha bytes=$($physBytes.Length)"
 
           & .\scripts\ci\run-unreal-automation.ps1 `
             -EngineRoot $env:UE_ROOT `
@@ -158,6 +180,7 @@ jobs:
           Write-Host "CD869_GENERATED_MAP=PASS sha256=$mapSha bytes=$($bytes.Length)"
 
           foreach($test in @(
+            'PinkCab.World.L1Road.R5.DryAsphaltPhysicalSurface',
             'PinkCab.World.L1EndlessRoad.Map.Composition',
             'PinkCab.World.L1EndlessRoad.Asset.MaterialContract'
           )){
