@@ -250,6 +250,28 @@ jobs:
             # StructUtils remains editor-only through PinkCab.uproject TargetAllowList.
             $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
 
+            # Git LFS pointers are text stubs, not Unreal packages. The cooker
+            # scans the project asset registry before following the explicit map
+            # dependency closure, so unrelated unresolved pointers would fail
+            # PACKAGE_FILE_TAG validation. Quarantine only files that are still
+            # literal LFS pointers; generated/materialized runtime assets remain.
+            $quarantined=0
+            foreach($relative in @(git lfs ls-files -n)){
+              $full=Join-Path $env:GITHUB_WORKSPACE $relative
+              if(-not (Test-Path -LiteralPath $full)){ continue }
+              try {
+                $first=Get-Content -LiteralPath $full -TotalCount 1 -ErrorAction Stop
+              } catch {
+                continue
+              }
+              if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+                Remove-Item -LiteralPath $full -Force
+                ++$quarantined
+                Write-Host "CD869_COOK_QUARANTINED_LFS_POINTER=$relative"
+              }
+            }
+            Write-Host "CD869_COOK_LFS_POINTER_QUARANTINE=PASS count=$quarantined"
+
             & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
