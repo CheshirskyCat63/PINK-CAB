@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/cd869-deliver.yml'
+      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapGenerator.cpp'
+      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp'
   workflow_dispatch:
     inputs:
       candidate_sha:
