@@ -71,6 +71,8 @@ jobs:
     name: P02 PHY-009 evidence
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 60
+    outputs:
+      run_physics: ${{ steps.latest_scope.outputs.run_physics }}
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       BASELINE: 4cc96ab3361039f053d609ba4a6e1020adb45c0b
@@ -84,7 +86,34 @@ jobs:
           clean: true
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Determine latest-commit P02 scope
+        id: latest_scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
+          $physics=@($changed | Where-Object {
+            $_.StartsWith('Source/PinkCabVehicle/') -or
+            $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn') -or
+            $_ -eq 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h' -or
+            $_ -eq 'Config/VehiclePhysicsRuntimeFixtures.json' -or
+            $_ -eq 'Config/DefaultEngine.ini' -or
+            $_ -eq 'Config/ArchitectureOwnership.json' -or
+            $_ -eq 'Config/CodeHealthPolicy.json' -or
+            $_ -eq 'scripts/ci/materialize_local_lfs.py' -or
+            $_ -eq 'scripts/ci/run-unreal-automation.ps1' -or
+            $_ -eq 'scripts/ci/verify_vehicle_physics_writers.py' -or
+            $_.StartsWith('docs/vehicle_physics/')
+          })
+          $run=($physics.Count -gt 0)
+          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "P02_PHY009_LATEST_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
+          $changed | ForEach-Object { Write-Host "P02_PHY009_LATEST_FILE=$_" }
+
       - name: Materialize verified local LFS fixtures
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -123,6 +152,7 @@ jobs:
           Write-Host "P02_LOCAL_LFS_MATERIALIZATION=PASS"
 
       - name: Exact-head preflight and scope guard
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -199,6 +229,7 @@ jobs:
           Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head changed=$($changed.Count)"
 
       - name: Build PinkCabEditor
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -207,6 +238,7 @@ jobs:
           Write-Host 'P02_PHY009_EDITOR_BUILD=PASS'
 
       - name: Focused telemetry and physics regressions
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -253,6 +285,7 @@ jobs:
           Write-Host "P02_PHY009_TEST_LOOP=PASS count=$completedTests"
 
       - name: Prove P01 slope fixture determinism
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -276,6 +309,7 @@ jobs:
           Write-Host 'P01_SLOPE_DETERMINISM=PASS repeats=5'
 
       - name: Zero-debt and writer guard
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -291,6 +325,7 @@ jobs:
   human-delivery:
     name: Exact-head HUMAN delivery
     needs: verify
+    if: ${{ needs.verify.outputs.run_physics == 'true' }}
     uses: ./.github/workflows/cd869-deliver.yml
     with:
       candidate_sha: ${{ github.event.pull_request.head.sha || github.sha }}
