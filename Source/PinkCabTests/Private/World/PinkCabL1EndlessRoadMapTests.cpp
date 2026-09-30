@@ -81,6 +81,7 @@ bool FPinkCabL1EndlessRoadMapCompositionTest::RunTest(const FString& Parameters)
     }
 
     constexpr uint32 NonRuntimePackageFlags =
+        PKG_NewlyCreated |
         PKG_EditorOnly |
         PKG_Developer |
         PKG_UncookedOnly |
