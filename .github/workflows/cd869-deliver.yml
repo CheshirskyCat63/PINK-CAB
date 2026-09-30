@@ -85,6 +85,45 @@ jobs:
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
           }
 
+      - name: Materialize canonical L1 road runtime assets
+        if: ${{ steps.preflight.outputs.package_ready != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $road=@(
+            git lfs ls-files -n |
+              Where-Object { $_ -like 'Content/World/L1/Road/*' }
+          )
+          if($road.Count -lt 80){
+            throw "CD869_ROAD_LFS_SET_INCOMPLETE count=$($road.Count)"
+          }
+
+          $args=@(
+            '.\scripts\ci\materialize_local_lfs.py',
+            '--workspace', $env:GITHUB_WORKSPACE,
+            '--base-ref', 'origin/main',
+            '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
+            '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
+            '--search-root', 'E:\Development'
+          )
+          foreach($path in $road){
+            $args += @('--required', $path)
+          }
+          python @args
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          foreach($path in $road){
+            $full=Join-Path $env:GITHUB_WORKSPACE $path
+            if(-not (Test-Path $full)){ throw "CD869_ROAD_RUNTIME_ASSET_MISSING=$path" }
+            $bytes=[IO.File]::ReadAllBytes($full)
+            if($bytes.Length -lt 1024){ throw "CD869_ROAD_RUNTIME_ASSET_TOO_SMALL=$path bytes=$($bytes.Length)" }
+            $prefix=[Text.Encoding]::ASCII.GetString($bytes[0..([Math]::Min(80,$bytes.Length-1))])
+            if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){
+              throw "CD869_ROAD_RUNTIME_ASSET_POINTER=$path"
+            }
+          }
+          Write-Host "CD869_ROAD_RUNTIME_LFS=PASS count=$($road.Count)"
+
       - name: Regenerate canonical endless runtime map from exact-head source
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
