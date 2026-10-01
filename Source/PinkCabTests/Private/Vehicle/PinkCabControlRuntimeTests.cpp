@@ -13,6 +13,7 @@
 #include "Vehicle/PinkCabGearEngagementValidator.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabThrottleResponse.h"
+#include "Vehicle/PinkCabVehicleControlRuntime.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -499,6 +500,133 @@ bool FPinkCabContinuousClutchTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("clutch transfer is continuous and monotonic"), C0 < C25 && C25 < C50 && C50 < C75 && C75 < C100);
     TestTrue(TEXT("half clutch remains partial rather than binary"), C50 > 0.0f && C50 < 1.0f);
     TestEqual(TEXT("released clutch reaches full coupling"), C100, 1.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContinuousClutchReleaseRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.ContinuousClutchRelease",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabContinuousClutchReleaseRuntimeTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabGearboxController Gearbox;
+    FPinkCabVehicleInputFrame Input;
+
+    Input.Clutch = 1.0f;
+    FPinkCabPreparedVehicleControlFrame Prepared =
+        Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.20f);
+    TestTrue(TEXT("Q press reaches fully disengaged clutch"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+
+    Input.Clutch = 0.0f;
+    float PreviousPedal = Prepared.Frame.Clutch;
+    float PreviousCoupling = Gearbox.ComputeClutchCoupling(PreviousPedal);
+    int32 DistinctPartialStates = 0;
+
+    for (int32 Step = 0; Step < 5; ++Step)
+    {
+        Prepared = Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+        const float Pedal = Prepared.Frame.Clutch;
+        const float Coupling = Gearbox.ComputeClutchCoupling(Pedal);
+
+        TestTrue(TEXT("clutch pedal releases monotonically"),
+            Pedal < PreviousPedal);
+        TestTrue(TEXT("driveline coupling rises monotonically during release"),
+            Coupling > PreviousCoupling);
+        TestTrue(TEXT("release remains bounded"),
+            Pedal >= 0.0f && Pedal <= 1.0f
+            && Coupling >= 0.0f && Coupling <= 1.0f);
+
+        if (Coupling > KINDA_SMALL_NUMBER
+            && Coupling < 1.0f - KINDA_SMALL_NUMBER)
+        {
+            ++DistinctPartialStates;
+        }
+
+        PreviousPedal = Pedal;
+        PreviousCoupling = Coupling;
+    }
+
+    TestTrue(TEXT("release exposes several distinct partial-coupling states"),
+        DistinctPartialStates >= 4);
+
+    // Default owner-selected release is 0.70 s. Two more 0.10 s steps must
+    // complete the continuous release without a binary snap.
+    Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+    TestTrue(TEXT("player-selected release time reaches fully released pedal"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 0.0f, 1.e-4f));
+    TestTrue(TEXT("fully released pedal reaches full coupling"),
+        FMath::IsNearlyEqual(
+            Gearbox.ComputeClutchCoupling(Prepared.Frame.Clutch),
+            1.0f,
+            1.e-4f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchReleaseInterruptRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchReleaseInterrupt",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchReleaseInterruptRuntimeTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabGearboxController Gearbox;
+    FPinkCabVehicleInputFrame Input;
+
+    Input.Clutch = 1.0f;
+    FPinkCabPreparedVehicleControlFrame Prepared =
+        Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.20f);
+    TestTrue(TEXT("interrupt fixture starts fully disengaged"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+
+    Input.Clutch = 0.0f;
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.28f);
+    const float ReleasingPedal = Prepared.Frame.Clutch;
+    const float ReleasingCoupling =
+        Gearbox.ComputeClutchCoupling(ReleasingPedal);
+    TestTrue(TEXT("release fixture is genuinely mid-bite"),
+        ReleasingPedal > 0.0f && ReleasingPedal < 1.0f
+        && ReleasingCoupling > 0.0f && ReleasingCoupling < 1.0f);
+
+    // Q is pressed again while the pedal is still releasing. The very next
+    // runtime step must reverse direction; no queued release frame is allowed.
+    Input.Clutch = 1.0f;
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.05f);
+    const float InterruptedPedal = Prepared.Frame.Clutch;
+    const float InterruptedCoupling =
+        Gearbox.ComputeClutchCoupling(InterruptedPedal);
+
+    TestTrue(TEXT("Q mid-release immediately moves pedal back toward disengaged"),
+        InterruptedPedal > ReleasingPedal);
+    TestTrue(TEXT("Q mid-release immediately reduces transmitted coupling"),
+        InterruptedCoupling < ReleasingCoupling);
+
+    for (int32 Step = 0; Step < 3; ++Step)
+    {
+        Prepared = Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.05f);
+    }
+
+    TestTrue(TEXT("continued Q press cleanly reaches fully disengaged clutch"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+    TestTrue(TEXT("fully disengaged clutch transfers zero coupling"),
+        FMath::IsNearlyEqual(
+            Gearbox.ComputeClutchCoupling(Prepared.Frame.Clutch),
+            0.0f,
+            1.e-4f));
     return true;
 }
 
