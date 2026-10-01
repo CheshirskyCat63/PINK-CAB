@@ -152,6 +152,50 @@ bool FPinkCabVehicleControlRuntimeSteeringTest::RunTest(const FString& Parameter
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03SteeringTargetAuthorityTest,
+    "PinkCab.Vehicle.Physics.P03.SteeringTargetAuthority",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03SteeringTargetAuthorityTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringController Steering;
+
+    Steering.Reset();
+    Steering.Step(
+        420.0f,
+        false,
+        10.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+    const float AuthoredTarget = Steering.GetTarget();
+    TestTrue(TEXT("fixture authors a positive nonzero steering target"),
+        AuthoredTarget > KINDA_SMALL_NUMBER);
+
+    Steering.Step(
+        0.0f,
+        false,
+        120.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+
+    TestTrue(TEXT("vehicle speed alone cannot shrink an already-authored steering target"),
+        FMath::IsNearlyEqual(Steering.GetTarget(), AuthoredTarget, 1.0e-6f));
+
+    Steering.Reset();
+    Steering.Step(
+        10000.0f,
+        false,
+        120.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+
+    TestTrue(TEXT("deliberate high-speed input retains access to full mechanical steering authority"),
+        Steering.GetTarget() > 0.99f);
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleControlRuntimeGearboxTest,
     "PinkCab.Vehicle.ControlRuntime.Runtime.GearboxRequestedEngaged",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
