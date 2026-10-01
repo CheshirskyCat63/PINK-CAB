@@ -21,7 +21,9 @@ public:
         const FPinkCabChaosDrivelineCommand& InCommand);
     void BeginEvidenceWindow(float InSettleSeconds, float InSampleSeconds);
     FPinkCabMechanicalEvidenceSnapshot ReadEvidenceWindow() const;
-
+#if WITH_DEV_AUTOMATION_TESTS
+    bool ResetFixtureWheelKinetics();
+#endif
 
     virtual void ApplyInput(
         const FControlInputs& ControlInputs,
