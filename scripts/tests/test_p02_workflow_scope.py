@@ -25,6 +25,13 @@ class P02WorkflowScopeTests(unittest.TestCase):
             "docs-only admin changes must not trigger the P02 runtime suite",
         )
 
+    def test_scope_regression_file_is_a_pull_request_trigger(self):
+        self.assertIn(
+            "- 'scripts/tests/test_p02_workflow_scope.py'",
+            self.text,
+            "editing the scope regression test must trigger this workflow",
+        )
+
     def test_runtime_scope_guard_allows_canonical_p02_admin_documents(self):
         required = (
             "docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md",
