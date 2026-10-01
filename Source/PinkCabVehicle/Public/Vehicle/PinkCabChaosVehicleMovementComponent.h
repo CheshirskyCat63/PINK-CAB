@@ -4,6 +4,7 @@
 #include "HAL/ThreadSafeCounter64.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabClutchDrivelineModel.h"
+#include "Vehicle/PinkCabEngineRpmEnvelope.h"
 #include "PinkCabChaosVehicleMovementComponent.generated.h"
 
 class FPinkCabChaosWheeledVehicleSimulation;
@@ -46,6 +47,7 @@ struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
     float TransmissionEfficiency = 1.0f;
     float EngineBrakeEffect = 0.0f;
     float Handbrake01 = 0.0f;
+    FPinkCabEngineRpmEnvelope EngineRpmEnvelope;
     FPinkCabClutchDrivelineConfig ClutchConfig;
 };
 
@@ -61,6 +63,12 @@ public:
 
     void ConfigurePinkCabClutch(
         const FPinkCabClutchDrivelineConfig& InConfig);
+    void ConfigurePinkCabEngineRpmEnvelope(
+        const FPinkCabEngineRpmEnvelope& InEnvelope);
+    const FPinkCabEngineRpmEnvelope& GetPinkCabEngineRpmEnvelope() const
+    {
+        return EngineRpmEnvelope;
+    }
     const FPinkCabClutchDrivelineConfig& GetPinkCabClutchConfig() const
     {
         return ClutchConfig;
@@ -100,6 +108,7 @@ private:
     FThreadSafeCounter64 MechanicalIntegrationStepCounter;
     FThreadSafeCounter64 MechanicalIntegrationDeltaMicros;
     FPinkCabClutchDrivelineConfig ClutchConfig;
+    FPinkCabEngineRpmEnvelope EngineRpmEnvelope;
     FPinkCabChaosDrivelineCommand PendingDrivelineCommand;
     FPinkCabChaosWheeledVehicleSimulation* PinkCabSimulationPT = nullptr;
 };
