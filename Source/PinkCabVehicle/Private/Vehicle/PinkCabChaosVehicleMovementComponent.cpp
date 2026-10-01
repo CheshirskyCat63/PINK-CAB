@@ -32,6 +32,30 @@ void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabClutch(
         });
 }
 
+void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabEngineRpmEnvelope(
+    const FPinkCabEngineRpmEnvelope& InEnvelope)
+{
+    EngineRpmEnvelope = InEnvelope;
+    PendingDrivelineCommand.EngineRpmEnvelope = EngineRpmEnvelope;
+
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return;
+    }
+
+    FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                PinkCabSimulationPT->SetDrivelineCommand(
+                    PendingDrivelineCommand);
+            }
+        });
+}
+
 bool UPinkCabChaosVehicleMovementComponent::BeginPinkCabMechanicalEvidenceWindow(
     const float SettleSeconds,
     const float SampleSeconds)
@@ -95,6 +119,7 @@ bool UPinkCabChaosVehicleMovementComponent::SetPinkCabDrivelineCommand(
 {
     PendingDrivelineCommand = InCommand;
     PendingDrivelineCommand.ClutchConfig = ClutchConfig;
+    PendingDrivelineCommand.EngineRpmEnvelope = EngineRpmEnvelope;
     const FPinkCabChaosDrivelineCommand Command =
         PendingDrivelineCommand;
 
