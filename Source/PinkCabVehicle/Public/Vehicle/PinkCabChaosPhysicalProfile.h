@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Vehicle/PinkCabEngineRpmEnvelope.h"
 
 class UChaosVehicleWheel;
 class UChaosWheeledVehicleMovementComponent;
@@ -61,6 +62,7 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
     uint64 GetDeterministicProfileHash() const;
     bool HasCompleteProvenance() const;
     void ApplyToMovement(UChaosWheeledVehicleMovementComponent& Movement) const;
+    FPinkCabEngineRpmEnvelope GetEngineRpmEnvelope() const;
     void ApplyToFrontWheel(UChaosVehicleWheel& Wheel) const;
     void ApplyToRearWheel(UChaosVehicleWheel& Wheel) const;
 
@@ -87,6 +89,9 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
 
     TPinkCabPhysicalParameter<float> EngineMaxRpm;
     TPinkCabPhysicalParameter<float> EngineIdleRpm;
+    TPinkCabPhysicalParameter<float> EngineRedZoneStartRpm;
+    TPinkCabPhysicalParameter<float> EngineLimiterHardCutRpm;
+    TPinkCabPhysicalParameter<float> EngineDamageOverspeedRpm;
     TPinkCabPhysicalParameter<float> EngineBrakeEffect;
     TPinkCabPhysicalParameter<float> EngineRevUpMOI;
     TPinkCabPhysicalParameter<float> EngineRevDownRate;
