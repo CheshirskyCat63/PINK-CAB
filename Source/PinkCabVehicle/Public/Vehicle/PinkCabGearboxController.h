@@ -13,7 +13,14 @@ public:
     int32 GetEngagedGear() const { return EngagedGear; }
     EPinkCabGearEngagementResult GetLastResult() const { return LastResult; }
     float GetExpectedCoupledRpm() const { return ExpectedCoupledRpm; }
-    float GetMaxSafeEngineRpm() const { return Config.MaxSafeEngineRpm; }
+    float GetDamageOverspeedRpm() const
+    {
+        return Config.EngineRpmEnvelope.DamageOverspeedRpm;
+    }
+    const FPinkCabEngineRpmEnvelope& GetEngineRpmEnvelope() const
+    {
+        return Config.EngineRpmEnvelope;
+    }
     uint32 GetEventSerial() const { return EventSerial; }
     float GetLeverX() const { return GateState.LeverX; }
     float GetLeverY() const { return GateState.LeverY; }
@@ -23,6 +30,10 @@ public:
     bool MoveGate(float X, float Y);
     bool ApplyLeverDriverDelta(float DriverRightCounts, float DriverForwardCounts);
     void CancelPendingRequest();
+    void SetEngineRpmEnvelope(const FPinkCabEngineRpmEnvelope& InEnvelope)
+    {
+        Config.EngineRpmEnvelope = InEnvelope;
+    }
     bool RequestGear(int32 Gear, const FPinkCabGearEngagementContext& Context);
     bool RequestGearByDelta(int32 Delta, const FPinkCabGearEngagementContext& Context);
     EPinkCabGearEngagementResult EvaluateCurrentEngagement(
