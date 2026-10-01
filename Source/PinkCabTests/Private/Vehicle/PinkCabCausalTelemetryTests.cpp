@@ -4,6 +4,7 @@
 #include "Vehicle/PinkCabCausalTelemetry.h"
 #include "Vehicle/PinkCabCausalTelemetryFrameBuilder.h"
 #include "Vehicle/PinkCabChaosEngineAdapter.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 
