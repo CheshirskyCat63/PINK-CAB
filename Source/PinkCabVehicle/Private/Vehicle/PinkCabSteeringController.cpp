@@ -47,11 +47,12 @@ float FPinkCabSteeringController::Step(
     const float Curve = FMath::Pow(
         AbsCursor,
         FMath::Max(Config.CenterExponent, 1.0f));
-    const float Gain = MotionMode == EPinkCabVehicleMotionMode::Moving
-        ? FMath::Lerp(1.0f, Config.HighSpeedTargetGain, SpeedAlpha)
-        : 1.0f;
+    // Speed may shape how new mouse travel reaches the authored steering target,
+    // but it must never rewrite an already-authored target merely because vehicle
+    // speed changed. Full mechanical steering authority therefore remains available
+    // at every speed; high-speed calmness is owned by travel scale and response rate.
     Target = FMath::Clamp(
-        FMath::Sign(VirtualCursor) * Curve * Gain,
+        FMath::Sign(VirtualCursor) * Curve,
         -1.0f,
         1.0f);
 
