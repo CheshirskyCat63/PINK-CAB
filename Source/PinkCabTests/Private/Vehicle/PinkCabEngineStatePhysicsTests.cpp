@@ -25,7 +25,10 @@ FPinkCabEngineActuationInput ResolverInput(
     Input.bCombustionAllowed = bAllowed;
     Input.HealthClampedControlThrottle01 = Throttle;
     Input.EngineRpm = Rpm;
-    Input.MaxRpm = 8500.0f;
+    Input.RpmEnvelope =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal)
+            .GetEngineRpmEnvelope();
     Input.EngineTorqueCurveNm = 260.0f;
     return Input;
 }
@@ -93,7 +96,13 @@ bool FPinkCabCombustionPermissionResolverTest::RunTest(const FString& Parameters
     }
 
     const FPinkCabEngineActuationResult Limited =
-        FPinkCabEngineActuationResolver::Resolve(ResolverInput(true, 1.0f, 8500.0f));
+        FPinkCabEngineActuationResolver::Resolve(
+            ResolverInput(
+                true,
+                1.0f,
+                FPinkCabChaosPhysicalProfile::ForVariant(
+                    EPinkCabCalibrationVariant::Nominal)
+                    .EngineLimiterHardCutRpm.Value));
     TestEqual(TEXT("limiter remains authoritative after permission"), Limited.EngineThrottleFinal01, 0.0f);
     TestEqual(TEXT("limiter also removes available combustion torque"),
         Limited.RequestedEngineTorqueAfterLimiterHealthNm, 0.0f);
