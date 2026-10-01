@@ -47,6 +47,8 @@ on:
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfileFingerprint.cpp'
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosPhysicalProfile.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineRpmEnvelope.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineRpmEnvelope.cpp'
       - 'docs/ENGINEERING_START_HERE.md'
       - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
       - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
@@ -217,6 +219,7 @@ jobs:
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfileFingerprint.cpp',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosPhysicalProfile.h',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineRpmEnvelope.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineRpmEnvelope.cpp',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineActuationResolver.h',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineActuationResolver.cpp',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxTypes.h',
