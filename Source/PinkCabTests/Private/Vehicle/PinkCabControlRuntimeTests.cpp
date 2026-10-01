@@ -514,6 +514,8 @@ bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
             EPinkCabCalibrationVariant::Nominal);
     FPinkCabGearboxController Gearbox;
 
+    TestEqual(TEXT("current operating profile max RPM is the accepted 8500 target"),
+        Physical.EngineMaxRpm.Value, 8500.0f);
     TestEqual(
         TEXT("gearbox dangerous-overrev boundary follows physical profile max RPM"),
         Gearbox.GetMaxSafeEngineRpm(),
