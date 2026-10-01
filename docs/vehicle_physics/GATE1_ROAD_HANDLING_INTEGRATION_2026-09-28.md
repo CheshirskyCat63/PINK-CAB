@@ -107,7 +107,7 @@ Key discipline:
 The existing P00–P11 sequence remains authoritative. Gate-1 constrains the handling slice:
 
 1. preserve accepted/frozen P01;
-2. complete P02 drivetrain energy continuity;
+2. P02 drivetrain energy continuity — **HUMAN ACCEPTED / INTEGRATED / FROZEN** on `8d68e456d1944be295281535cf9fd103ecf05d52`;
 3. P03 steering/pedal transfer;
 4. P05 contact/geometry + CoM/inertia evidence;
 5. P06 suspension/load transfer;
@@ -122,3 +122,10 @@ The existing P00–P11 sequence remains authoritative. Gate-1 constrains the han
 **ADMIN_CLOSED** means the source package is fully dispositioned, all G1 work is mapped without duplicate backlog, conflicts are resolved, Git/Jira/Confluence agree, and next runtime ownership is unambiguous.
 
 It does **not** mean **GATE1_ACCEPTED**. Runtime implementation, T00–T11, A01–A14 evidence and the owner handling gate remain future work.
+
+
+## P02 prerequisite checkpoint · 2026-10-01
+
+P02 / PHY-009..012 is **HUMAN ACCEPTED / INTEGRATED / FROZEN**. PR #49 merged to canonical `main@104295ab6329e85b5998e8df298770255ad2dd05`; accepted runtime HEAD is `8d68e456d1944be295281535cf9fd103ecf05d52`; exact-head runs `36868646398` and `36868646970` are SUCCESS.
+
+The handling sequence therefore advances to P03 input-response calibration. R6 remains a separate **HUMAN_PENDING / diagnostic** tire candidate under CD-650; Gate-1 runtime acceptance remains open.
