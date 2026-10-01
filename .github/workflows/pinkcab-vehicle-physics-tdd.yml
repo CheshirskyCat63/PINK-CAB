@@ -297,8 +297,7 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Persist focused evidence on canonical runner
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
-        if: always()
+        if: ${{ always() && steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
