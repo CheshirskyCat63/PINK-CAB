@@ -300,6 +300,8 @@ bool FPinkCabVehicleControlRuntime::ResetTransient(FPinkCabCockpitState& Cockpit
         PreviousRequestedGear != GearboxController.GetRequestedGear();
 
     Cockpit.SetSelectedGear(EngagedGear);
+    // Focus/menu cleanup must leave semantic output aligned immediately; no
+    // stale requested gear may survive until the next control tick.
     ControlState.SetDriveline(
         GearboxController.GetRequestedGear(),
         EngagedGear,
