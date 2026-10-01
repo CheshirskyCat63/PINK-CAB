@@ -181,6 +181,21 @@ jobs:
             -TimeoutSeconds 180
           Write-Host 'PINKCAB_CLUTCH_MODEL_FAILFAST=PASS'
 
+      - name: Run P03 input-response fail-fast
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_P03_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P03' `
+            -LogPath $log `
+            -TimeoutSeconds 180
+          Write-Host 'PINKCAB_P03_FAILFAST=PASS'
+
       - name: Run D4 fail-fast diagnostic
         if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
