@@ -99,9 +99,7 @@ public:
         float SampleSeconds);
     bool ReadPinkCabMechanicalEvidenceWindow(
         FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
-#if WITH_DEV_AUTOMATION_TESTS
-    bool ResetPinkCabFixtureKinetics();
-#endif
+
 
 protected:
     virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
