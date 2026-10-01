@@ -273,6 +273,8 @@ jobs:
             'PinkCab.Vehicle.Physics.P02.CentralRpmEnvelope',
             'PinkCab.Vehicle.Physics.P02.ContinuousClutchRelease',
             'PinkCab.Vehicle.Physics.P02.ClutchReleaseInterrupt',
+            'PinkCab.Vehicle.Physics.P02.UnifiedEngagementValidator',
+            'PinkCab.Vehicle.Physics.P02.FocusLossCancelsPendingEngagement',
             'PinkCab.Vehicle.Physics'
           )
           $completedTests=0
