@@ -25,6 +25,15 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("FIRST EURO boosted power target"), Profile.MaxPowerHp.Value, 250.0f);
     TestEqual(TEXT("FIRST EURO boosted torque target"), Profile.MaxTorqueNm.Value, 260.0f);
     TestEqual(TEXT("high-rev redline target"), Profile.EngineMaxRpm.Value, 8500.0f);
+    TestEqual(TEXT("warm idle authority"), Profile.EngineIdleRpm.Value, 925.0f);
+    TestEqual(TEXT("red-zone start preserves accepted limiter onset"),
+        Profile.EngineRedZoneStartRpm.Value, 8202.5f);
+    TestEqual(TEXT("hard limiter preserves accepted cut point"),
+        Profile.EngineLimiterHardCutRpm.Value, 8457.5f);
+    TestEqual(TEXT("damage overspeed follows 8500 operating profile"),
+        Profile.EngineDamageOverspeedRpm.Value, 8500.0f);
+    TestTrue(TEXT("profile RPM envelope is ordered and valid"),
+        Profile.GetEngineRpmEnvelope().IsValid());
     TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
     TestEqual(TEXT("P01 free-rev return is explicit and responsive"),
         Profile.EngineRevDownRate.Value, 1800.0f);
@@ -149,7 +158,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("P02 driveline candidate advances profile to v4"), Profile.CalibrationVersion, 4);
+    TestEqual(TEXT("PHY-010 RPM envelope advances profile to v5"), Profile.CalibrationVersion, 5);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
@@ -187,6 +196,11 @@ bool FPinkCabPhysicsProfileEnvelopeHashTest::RunTest(const FString& Parameters)
     FPinkCabChaosPhysicalProfile Mutated = NominalA;
     Mutated.EngineIdleRpm.Value += 1.0f;
     TestTrue(TEXT("physical parameter mutation changes deterministic hash"),
+        HashA != Mutated.GetDeterministicProfileHash());
+
+    Mutated = NominalA;
+    Mutated.EngineDamageOverspeedRpm.Value += 1.0f;
+    TestTrue(TEXT("RPM-envelope mutation changes deterministic hash"),
         HashA != Mutated.GetDeterministicProfileHash());
 
     Mutated = NominalA;
