@@ -202,6 +202,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabP03NoPostInputGhostSteeringTest::RunTest(const FString& Parameters)
 {
+    // PHY-014 criterion B: device input ending must end command motion unless
+    // a separate declared physical/self-aligning source owns that motion.
     FPinkCabSteeringController Steering;
 
     Steering.Reset();
