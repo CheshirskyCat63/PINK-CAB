@@ -67,7 +67,7 @@ void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
         ActuationInput.HealthClampedControlThrottle01 =
             Command.HealthClampedControlThrottle01;
         ActuationInput.EngineRpm = EngineRpm;
-        ActuationInput.MaxRpm = Engine.Setup().MaxRPM;
+        ActuationInput.RpmEnvelope = Command.EngineRpmEnvelope;
         ActuationInput.EngineTorqueCurveNm =
             Engine.GetTorqueFromRPM(EngineRpm, false);
         PhysicsThreadActuation =
