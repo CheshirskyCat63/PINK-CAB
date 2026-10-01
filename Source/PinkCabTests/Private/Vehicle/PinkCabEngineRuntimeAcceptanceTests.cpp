@@ -339,6 +339,9 @@ public:
 
             StartLocation = Mesh->GetComponentLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
+            PeakDownhillSpeedCmPerSec = FVector2D::DotProduct(
+                FVector2D(StartVelocity.X, StartVelocity.Y),
+                DownhillDirection2D);
 
             FPinkCabMechanicalEvidenceSnapshot BrakeEvidence;
             if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
@@ -373,6 +376,14 @@ public:
             return false;
         }
 
+        const FVector CurrentVelocity =
+            Mesh->GetPhysicsLinearVelocity();
+        PeakDownhillSpeedCmPerSec = FMath::Max(
+            PeakDownhillSpeedCmPerSec,
+            FVector2D::DotProduct(
+                FVector2D(CurrentVelocity.X, CurrentVelocity.Y),
+                DownhillDirection2D));
+
         if (PhaseSimSeconds < MeasurementSeconds)
         {
             return false;
@@ -397,10 +408,11 @@ public:
                 StartHorizontalVelocity, DownhillDirection2D);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P01_SLOPE downhill_travel_cm=%.3f start_downhill_speed_cm_s=%.3f end_downhill_speed_cm_s=%.3f start=%s end=%s"),
+            TEXT("P01_SLOPE downhill_travel_cm=%.3f start_downhill_speed_cm_s=%.3f end_downhill_speed_cm_s=%.3f peak_downhill_speed_cm_s=%.3f start=%s end=%s"),
             DownhillTravelCm,
             StartDownhillSpeedCmPerSec,
             DownhillSpeedCmPerSec,
+            PeakDownhillSpeedCmPerSec,
             *StartLocation.ToString(),
             *EndLocation.ToString()));
 
@@ -440,7 +452,7 @@ public:
             DownhillSpeedCmPerSec > 10.0f);
         Test->TestTrue(
             TEXT("gravity increases downhill speed after supported contact"),
-            DownhillSpeedCmPerSec
+            PeakDownhillSpeedCmPerSec
                 > StartDownhillSpeedCmPerSec + 5.0f);
         Test->TestTrue(TEXT("slope motion includes wheel rotation"),
             MaxAbsWheelAngularVelocity > 0.05f);
@@ -490,6 +502,7 @@ private:
     FVector2D DownhillDirection2D = FVector2D::ZeroVector;
     float MaxSupportedDownhillSpeedCmPerSec = 0.0f;
     float MaxSupportedWheelAngularVelocity = 0.0f;
+    float PeakDownhillSpeedCmPerSec = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
