@@ -1,4 +1,5 @@
 name: CD-648 P02 PHY-009 Drivetrain Continuity
+# Scope-regression coverage is mandatory for this frozen P02 gate.
 
 on:
   pull_request:
