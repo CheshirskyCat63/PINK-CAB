@@ -1,7 +1,7 @@
 # PINK CAB · P02 / PHY-009 · Authoritative Driveline Architecture · 2026-09-28
 
 Base authority: `main@4cc96ab3361039f053d609ba4a6e1020adb45c0b`.
-Owner: CD-644 under CD-648. This document is an implementation contract, not a completion claim.
+Owner: CD-644 under CD-648. This document began as the P02 implementation contract. The terminal acceptance record below is now authoritative for completion state; the earlier RED/problem narrative is retained as engineering history.
 
 ## Problem proven by runtime evidence
 
@@ -280,3 +280,21 @@ PHY-009 is GREEN only when the single-path implementation passes D1–D5 and the
 - Mechanical evidence now records the physics-thread parking flag and the maximum wheel brake torque actually applied after service/handbrake/parking resolution.
 - The slope fixture opens this read-only evidence window under ignition Off, neutral, service brake 0 and handbrake 0, and asserts that both parking and applied wheel brake torque remain absent.
 - This instrumentation changes no force, wheel torque, brake command, parking state or calibration.
+
+
+## Terminal P02 acceptance · 2026-10-01
+
+**Verdict:** **HUMAN ACCEPTED / INTEGRATED / FROZEN**.
+
+- Accepted runtime HEAD: `8d68e456d1944be295281535cf9fd103ecf05d52`.
+- Vehicle Physics TDD #353 / run `36868646398`: **SUCCESS**.
+- P02 exact-head #246 / run `36868646970`: **SUCCESS**.
+- P01 slope determinism: **5/5 PASS**.
+- Zero-debt + writer guard: **PASS**.
+- Exact-head package, signing, packaged smoke, install, shortcuts and launch: **PASS**.
+- Owner HUMAN gate: **ACCEPTED**.
+- PR #49: squash-merged to canonical `main@104295ab6329e85b5998e8df298770255ad2dd05`.
+
+Closed scope: PHY-009 single-path drivetrain continuity; PHY-010 central RPM envelope; PHY-011 continuous release/Q interruption; PHY-012 unified engagement validator and focus/menu cleanup.
+
+Historical RED and diagnostic measurements above remain provenance only. They do not describe the current runtime state. P03 input-response calibration is the next stage and is not started by this closure.
