@@ -51,6 +51,11 @@ class P02WorkflowScopeTests(unittest.TestCase):
                     allowed,
                     "frozen P02 regression gate must admit the explicit canonical P03 steering owner without admitting arbitrary files",
                 )
+                self.assertIn(
+                    f"- '{path}'",
+                    self.text,
+                    "canonical P03 steering owner must also trigger the frozen P02 regression suite",
+                )
 
     def test_runtime_scope_guard_allows_canonical_p02_admin_documents(self):
         required = (
