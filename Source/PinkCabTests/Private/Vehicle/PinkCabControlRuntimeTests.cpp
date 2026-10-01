@@ -503,6 +503,64 @@ bool FPinkCabContinuousClutchTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCentralRpmEnvelopeContractTest,
+    "PinkCab.Vehicle.Physics.P02.CentralRpmEnvelope",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosPhysicalProfile Physical =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+    FPinkCabGearboxController Gearbox;
+
+    TestEqual(
+        TEXT("gearbox dangerous-overrev boundary follows physical profile max RPM"),
+        Gearbox.GetMaxSafeEngineRpm(),
+        Physical.EngineMaxRpm.Value);
+
+    FPinkCabGearEngagementContext Context;
+    Context.ClutchPedal = 1.0f;
+    Context.EngineRpm = 3000.0f;
+    Context.Throttle = 0.0f;
+
+    const float FirstRpmPerKmh =
+        Gearbox.ExpectedEngineRpmForGear(1, 1.0f);
+    TestTrue(TEXT("first-gear RPM-per-kmh contract is positive"),
+        FirstRpmPerKmh > KINDA_SMALL_NUMBER);
+    if (FirstRpmPerKmh <= KINDA_SMALL_NUMBER)
+    {
+        return false;
+    }
+
+    // Legitimate high-rev operation below the profile ceiling must not trip
+    // the historical 6500-RPM gearbox-only damage guard.
+    Context.SpeedKmh = 7000.0f / FirstRpmPerKmh;
+    TestTrue(TEXT("first selected with clutch open at 7000 coupled RPM"),
+        Gearbox.RequestGear(1, Context));
+    Context.ClutchPedal = 0.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestNotEqual(
+        TEXT("7000 RPM coupled state is valid inside the 8500 operating profile"),
+        Gearbox.GetLastResult(),
+        EPinkCabGearEngagementResult::DangerousOverrev);
+
+    // A connected first-gear downshift beyond the profile ceiling must still
+    // remain physically dangerous after the stale 6500 constant is removed.
+    Context.ClutchPedal = 1.0f;
+    Context.SpeedKmh = 100.0f;
+    TestTrue(TEXT("first can be selected while clutch remains open"),
+        Gearbox.RequestGear(1, Context));
+    Context.ClutchPedal = 0.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestEqual(
+        TEXT("connected downshift above profile damage-overspeed remains dangerous"),
+        Gearbox.GetLastResult(),
+        EPinkCabGearEngagementResult::DangerousOverrev);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabDangerousDownshiftTest,
     "PinkCab.Vehicle.ControlRuntime.Gearbox.DangerousDownshift",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
