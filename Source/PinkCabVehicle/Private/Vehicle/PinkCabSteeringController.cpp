@@ -56,18 +56,12 @@ float FPinkCabSteeringController::Step(
         -1.0f,
         1.0f);
 
-    if (DeltaSeconds <= 0.0f)
-    {
-        return Steering;
-    }
-
-    const float ResponseRate = FMath::Max(GetResponseRate(SpeedKmh, MotionMode), 0.0f);
-    const float ResponseAlpha = FMath::Clamp(
-        1.0f - FMath::Exp(-ResponseRate * DeltaSeconds),
-        0.0f,
-        1.0f);
-    Steering = FMath::Lerp(Steering, Target, ResponseAlpha);
-    Steering = FMath::Clamp(Steering, -1.0f, 1.0f);
+    // Mouse delta already authors the persistent steering target through
+    // VirtualCursor. A second temporal interpolation layer would keep moving the
+    // command after the device delta has ended, which is undeclared ghost steering.
+    // Standstill/high-speed feel remains in the device travel scale above.
+    (void)DeltaSeconds;
+    Steering = Target;
     return Steering;
 }
 
