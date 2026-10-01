@@ -136,6 +136,9 @@ FString BuildProfileFingerprint(const FPinkCabChaosPhysicalProfile& P)
     AppendBoolParameter(Out, TEXT("bRearWheelDrive"), P.bRearWheelDrive);
     AppendFloatParameter(Out, TEXT("EngineMaxRpm"), P.EngineMaxRpm);
     AppendFloatParameter(Out, TEXT("EngineIdleRpm"), P.EngineIdleRpm);
+    AppendFloatParameter(Out, TEXT("EngineRedZoneStartRpm"), P.EngineRedZoneStartRpm);
+    AppendFloatParameter(Out, TEXT("EngineLimiterHardCutRpm"), P.EngineLimiterHardCutRpm);
+    AppendFloatParameter(Out, TEXT("EngineDamageOverspeedRpm"), P.EngineDamageOverspeedRpm);
     AppendFloatParameter(Out, TEXT("EngineBrakeEffect"), P.EngineBrakeEffect);
     AppendFloatParameter(Out, TEXT("EngineRevUpMOI"), P.EngineRevUpMOI);
     AppendFloatParameter(Out, TEXT("EngineRevDownRate"), P.EngineRevDownRate);
