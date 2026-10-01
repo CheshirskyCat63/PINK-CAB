@@ -2,9 +2,15 @@
 
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
+#include "Misc/Paths.h"
 #include "FileHelpers.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
+#include "Modules/ModuleManager.h"
 #include "Editor.h"
 #include "Engine/World.h"
+#include "Factories/WorldFactory.h"
+#include "UObject/Package.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "World/PinkCabL1EndlessRoadStreamer.h"
 
@@ -22,12 +28,44 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
         return true;
     }
 
-    UWorld* World = UEditorLoadingAndSavingUtils::NewBlankMap(false);
-    TestNotNull(TEXT("blank editor world created"), World);
+    UPackage* TargetPackage = CreatePackage(*MapPackage);
+    TestNotNull(TEXT("target endless map package created"), TargetPackage);
+    if (!TargetPackage || !GEditor)
+    {
+        return false;
+    }
+
+    UWorldFactory* WorldFactory = NewObject<UWorldFactory>();
+    TestNotNull(TEXT("world factory created"), WorldFactory);
+    if (!WorldFactory)
+    {
+        return false;
+    }
+
+    WorldFactory->WorldType = EWorldType::Editor;
+    WorldFactory->bInformEngineOfWorld = true;
+    WorldFactory->FeatureLevel = GEditor->DefaultWorldFeatureLevel;
+
+    const FName WorldName(*FPackageName::GetLongPackageAssetName(MapPackage));
+    UWorld* World = Cast<UWorld>(
+        WorldFactory->FactoryCreateNew(
+            UWorld::StaticClass(),
+            TargetPackage,
+            WorldName,
+            RF_Public | RF_Standalone | RF_Transactional,
+            nullptr,
+            GWarn));
+    TestNotNull(TEXT("cookable editor world created in target package"), World);
     if (!World)
     {
         return false;
     }
+
+    World->ClearFlags(RF_Transient);
+    World->SetFlags(RF_Public | RF_Standalone | RF_Transactional);
+    World->UpdateWorldComponents(true, true);
+    World->MarkPackageDirty();
+    FAssetRegistryModule::AssetCreated(World);
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.OverrideLevel = World->PersistentLevel;
@@ -74,10 +112,71 @@ bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
     Pawn->MarkPackageDirty();
     Streamer->MarkPackageDirty();
 
+    // This authoring test produces the runtime Level 1 map used by packaged
+    // HUMAN builds. NewBlankMap is an editor operation, so make the package
+    // contract explicit before SaveMap: the result must be a normal cookable
+    // map, never an editor/developer/PIE/uncooked-only package.
+    UPackage* RuntimeMapPackage = World->GetOutermost();
+    TestEqual(
+        TEXT("runtime endless world is born in canonical target package"),
+        RuntimeMapPackage ? RuntimeMapPackage->GetName() : FString(),
+        MapPackage);
+    TestNotNull(TEXT("runtime endless map package exists"), RuntimeMapPackage);
+    if (!RuntimeMapPackage)
+    {
+        return false;
+    }
+
+    constexpr uint32 NonRuntimePackageFlags =
+        PKG_NewlyCreated |
+        PKG_EditorOnly |
+        PKG_Developer |
+        PKG_UncookedOnly |
+        PKG_PlayInEditor;
+    RuntimeMapPackage->ClearPackageFlags(NonRuntimePackageFlags);
+    RuntimeMapPackage->ThisContainsMap();
+
+    AddInfo(FString::Printf(
+        TEXT("CD869_ENDLESS_MAP_PACKAGE_FLAGS_BEFORE_SAVE=0x%08x"),
+        RuntimeMapPackage->GetPackageFlags()));
+
     const bool bSaved =
         UEditorLoadingAndSavingUtils::SaveMap(World, MapPackage);
     TestTrue(TEXT("endless Level 1 candidate map saved"), bSaved);
-    return bSaved;
+    if (!bSaved)
+    {
+        return false;
+    }
+
+    const FString MapFilename =
+        FPackageName::LongPackageNameToFilename(
+            MapPackage,
+            FPackageName::GetMapPackageExtension());
+    TestTrue(
+        TEXT("endless Level 1 candidate map exists at canonical filename"),
+        FPaths::FileExists(MapFilename));
+
+    IAssetRegistry& Registry =
+        FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
+            TEXT("AssetRegistry")).Get();
+    Registry.ScanFilesSynchronous({MapFilename}, true);
+
+    TArray<FAssetData> Assets;
+    Registry.GetAssetsByPackageName(FName(*MapPackage), Assets, true);
+    bool bHasWorldAsset = false;
+    for (const FAssetData& Asset : Assets)
+    {
+        bHasWorldAsset |= Asset.AssetClassPath == UWorld::StaticClass()->GetClassPathName();
+    }
+    TestTrue(
+        TEXT("generated map is discoverable by AssetRegistry as a UWorld asset"),
+        bHasWorldAsset);
+    AddInfo(FString::Printf(
+        TEXT("CD869_GENERATED_MAP_ASSET_REGISTRY assets=%d world=%d"),
+        Assets.Num(),
+        bHasWorldAsset ? 1 : 0));
+
+    return bHasWorldAsset;
 }
 
 #endif

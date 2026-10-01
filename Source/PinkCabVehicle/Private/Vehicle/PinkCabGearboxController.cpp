@@ -87,7 +87,7 @@ EPinkCabGearEngagementResult FPinkCabGearboxController::EvaluateCurrentEngagemen
 
     if (EngagedGear == 0)
     {
-        ExpectedCoupledRpm = Config.IdleRpm;
+        ExpectedCoupledRpm = Config.EngineRpmEnvelope.IdleRpm;
         LastResult = EPinkCabGearEngagementResult::Neutral;
         return LastResult;
     }

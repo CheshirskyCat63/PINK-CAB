@@ -1,7 +1,23 @@
 name: CD-869 Fast Human Delivery
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cd869-deliver.yml'
+      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapGenerator.cpp'
+      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp'
   workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'Exact candidate SHA to package and launch'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      candidate_sha:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -19,14 +35,36 @@ jobs:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       ARCHIVE: Artifacts\CD869Human
+      CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: false
+          ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+
+      - name: Materialize verified local LFS
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python .\scripts\ci\materialize_local_lfs.py `
+            --workspace "$env:GITHUB_WORKSPACE" `
+            --base-ref origin/main `
+            --allow-changed-lfs "Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          # Local git-lfs cache is materialized first. Unresolved unrelated
+          # pointers are allowed here; the exact target map is regenerated from
+          # source below and BuildCookRun is the hard runtime dependency gate.
+          $dirty=@(git status --porcelain)
+          if($dirty.Count -ne 0){
+            $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
+            throw "CD869_LOCAL_LFS_DIRTIED_WORKTREE count=$($dirty.Count)"
+          }
+          Write-Host 'CD869_LOCAL_LFS_MATERIALIZATION=PASS'
 
       - name: Exact-head and package preflight
         id: preflight
@@ -34,7 +72,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
-          if($head -ne $env:GITHUB_SHA){ throw "CD869_DELIVERY_HEAD_MISMATCH $head != $env:GITHUB_SHA" }
+          if($head -ne $env:CANDIDATE_SHA){ throw "CD869_DELIVERY_HEAD_MISMATCH $head != $env:CANDIDATE_SHA" }
 
           $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
@@ -49,6 +87,232 @@ jobs:
             Write-Host "CD869_PACKAGE_REUSE=0 sha=$head"
             'package_ready=false' | Out-File $env:GITHUB_OUTPUT -Append
           }
+
+      - name: Rebuild canonical R4 road assets from MetaRoad authoring source
+        if: ${{ steps.preflight.outputs.package_ready != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
+          New-Item -ItemType Directory -Force $gate | Out-Null
+
+          $road=@(
+            git lfs ls-files -n |
+              Where-Object {
+                $_ -like 'Content/World/L1/Road/Road*.uasset'
+              }
+          )
+          if($road.Count -lt 84){
+            throw "CD869_ROAD_AUTHORING_SET_INCOMPLETE count=$($road.Count)"
+          }
+
+          # Road meshes are deterministic authoring outputs. Remove unresolved
+          # LFS pointers and rebuild them from exact-head authoring code + the
+          # installed canonical MetaRoad plugin.
+          foreach($path in $road){
+            Remove-Item (Join-Path $env:GITHUB_WORKSPACE $path) -Force -ErrorAction SilentlyContinue
+          }
+          Remove-Item (Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Authoring\L_PC_L1_MetaRoadAuthoring.umap') -Force -ErrorAction SilentlyContinue
+
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development $project -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadAssets' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_ASSETS.log') `
+            -TimeoutSeconds 300
+
+          foreach($path in $road){
+            $full=Join-Path $env:GITHUB_WORKSPACE $path
+            if(-not (Test-Path $full)){ throw "CD869_GENERATED_ROAD_ASSET_MISSING=$path" }
+            $bytes=[IO.File]::ReadAllBytes($full)
+            if($bytes.Length -lt 1024){ throw "CD869_GENERATED_ROAD_ASSET_TOO_SMALL=$path bytes=$($bytes.Length)" }
+            $prefix=[Text.Encoding]::ASCII.GetString($bytes[0..([Math]::Min(80,$bytes.Length-1))])
+            if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){
+              throw "CD869_GENERATED_ROAD_ASSET_IS_LFS_POINTER=$path"
+            }
+          }
+          Write-Host "CD869_GENERATED_METAROAD_ASSETS=PASS count=$($road.Count)"
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_RUNTIME_MATERIALS.log') `
+            -TimeoutSeconds 240
+
+          foreach($test in @(
+            'PinkCab.World.L1Road.R2.NativeMetaRoadAsset',
+            'PinkCab.World.L1Road.R3.NativeMetaRoadMarkings',
+            'PinkCab.World.L1Road.R4.NativeMetaRoadVisualStack'
+          )){
+            $safe=$test.Replace('.','_')
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
+              -TimeoutSeconds 240
+            Write-Host "CD869_METAROAD_AUTHORING_TEST=PASS test=$test"
+          }
+
+      - name: Regenerate canonical endless runtime map from exact-head source
+        if: ${{ steps.preflight.outputs.package_ready != 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
+          $phys=Join-Path $env:GITHUB_WORKSPACE 'Content\World\L1\Road\Physics\PM_PC_DryAsphalt.uasset'
+          $map=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps\L_PinkCab_L1_EndlessStraight.umap'
+          $gate=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate'
+          New-Item -ItemType Directory -Force $gate | Out-Null
+
+          # The dry-asphalt physical material is rebuilt from exact-head source.
+          # The runtime map, however, is a canonical tracked Git-LFS asset: preserve it
+          # when its real bytes are available and regenerate only when the checkout still
+          # contains a missing/unresolved pointer.
+          Remove-Item $phys -Force -ErrorAction SilentlyContinue
+
+          $mapReady=$false
+          if(Test-Path -LiteralPath $map){
+            try {
+              $mapFirst=Get-Content -LiteralPath $map -TotalCount 1 -ErrorAction Stop
+              $mapLength=(Get-Item -LiteralPath $map).Length
+              $mapReady=($mapFirst -ne 'version https://git-lfs.github.com/spec/v1') -and ($mapLength -gt 1024)
+            } catch {
+              $mapReady=$false
+            }
+          }
+          Write-Host "CD869_CANONICAL_MAP_MATERIALIZED=$([int]$mapReady)"
+
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial' `
+            -LogPath (Join-Path $gate 'CD869_GENERATE_DRY_ASPHALT.log') `
+            -TimeoutSeconds 180
+
+          if(-not (Test-Path $phys)){ throw 'CD869_GENERATED_DRY_ASPHALT_MISSING' }
+          $physBytes=[IO.File]::ReadAllBytes($phys)
+          if($physBytes.Length -lt 1024){ throw "CD869_GENERATED_DRY_ASPHALT_TOO_SMALL=$($physBytes.Length)" }
+          $physPrefix=[Text.Encoding]::ASCII.GetString($physBytes[0..([Math]::Min(80,$physBytes.Length-1))])
+          if($physPrefix -like 'version https://git-lfs.github.com/spec/v1*'){ throw 'CD869_GENERATED_DRY_ASPHALT_IS_LFS_POINTER' }
+          $physSha=(Get-FileHash $phys -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "CD869_GENERATED_DRY_ASPHALT=PASS sha256=$physSha bytes=$($physBytes.Length)"
+
+          # The target map is born during this workflow. Run its authoring in
+          # a normal editor process (no -SkipAssetScan) so the on-disk package
+          # enters the same AssetRegistry lifecycle used by the later cooker.
+          $preMapQuarantined=0
+          foreach($relative in @(git lfs ls-files -n)){
+            $full=Join-Path $env:GITHUB_WORKSPACE $relative
+            if(-not (Test-Path -LiteralPath $full)){ continue }
+            try { $first=Get-Content -LiteralPath $full -TotalCount 1 -ErrorAction Stop } catch { continue }
+            if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+              Remove-Item -LiteralPath $full -Force
+              ++$preMapQuarantined
+              Write-Host "CD869_PREMAP_QUARANTINED_LFS_POINTER=$relative"
+            }
+          }
+          Write-Host "CD869_PREMAP_LFS_POINTER_QUARANTINE=PASS count=$preMapQuarantined"
+
+          $registryDir=Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'
+          if(Test-Path $registryDir){
+            Remove-Item $registryDir -Recurse -Force
+            Write-Host "CD869_PREMAP_REMOVED_STALE_REGISTRY=$registryDir"
+          }
+
+          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $mapLog=Join-Path $gate 'CD869_GENERATE_ENDLESS_MAP.log'
+          if(-not $mapReady){
+            Remove-Item $map -Force -ErrorAction SilentlyContinue
+            $editorArgs=@(
+              $project, '/Engine/Maps/Entry', '-unattended', '-NullRHI', '-nosplash', '-nopause', '-NoSound',
+              '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
+              '-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap',
+              '-TestExit=Automation Test Queue Empty'
+            )
+            & $editor @editorArgs
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            if(Select-String -LiteralPath $mapLog -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
+              throw 'CD869_GENERATE_ENDLESS_MAP_TEST_FAIL'
+            }
+            if(-not (Select-String -LiteralPath $mapLog -Pattern 'Automation Test Queue Empty [0-9]+ tests performed' -Quiet)){
+              throw 'CD869_GENERATE_ENDLESS_MAP_QUEUE_MISSING'
+            }
+            Write-Host 'CD869_GENERATE_ENDLESS_MAP_NORMAL_SCAN=PASS'
+          } else {
+            Write-Host 'CD869_GENERATE_ENDLESS_MAP=SKIPPED_CANONICAL_LFS'
+          }
+
+          $registryFiles=@(
+            Get-ChildItem -LiteralPath $registryDir -File -ErrorAction SilentlyContinue
+          )
+          Write-Host "CD869_GENERATED_MAP_REGISTRY_CACHE_COUNT=$($registryFiles.Count)"
+          if(-not (Test-Path $map)){ throw 'CD869_GENERATED_MAP_MISSING' }
+          $bytes=[IO.File]::ReadAllBytes($map)
+          if($bytes.Length -lt 1024){ throw "CD869_GENERATED_MAP_TOO_SMALL=$($bytes.Length)" }
+          $prefix=[Text.Encoding]::ASCII.GetString($bytes[0..([Math]::Min(80,$bytes.Length-1))])
+          if($prefix -like 'version https://git-lfs.github.com/spec/v1*'){ throw 'CD869_GENERATED_MAP_IS_LFS_POINTER' }
+          $mapSha=(Get-FileHash $map -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "CD869_GENERATED_MAP=PASS sha256=$mapSha bytes=$($bytes.Length)"
+
+          if(-not $mapReady){
+            $mapRel='Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -- $mapRel
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+            $indexPointer=(git show ":$mapRel") -join "`n"
+            $oidMatch=[regex]::Match($indexPointer,'oid sha256:([0-9a-f]{64})')
+            if(-not $oidMatch.Success){ throw 'CD869_CANONICAL_MAP_LFS_POINTER_NOT_STAGED' }
+            $oid=$oidMatch.Groups[1].Value
+            if($oid -ne $mapSha){ throw "CD869_CANONICAL_MAP_LFS_OID_MISMATCH $oid != $mapSha" }
+
+            git lfs push --object-id origin $oid
+            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+            Write-Host "CD869_CANONICAL_MAP_LFS_OBJECT=PASS oid=$oid"
+
+            git diff --cached --quiet
+            $hasMapDelta=($LASTEXITCODE -ne 0)
+            $global:LASTEXITCODE=0
+            if($hasMapDelta){
+              git commit -m 'asset(CD-869): restore canonical endless runtime map'
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+              if(-not $env:GITHUB_HEAD_REF){ throw 'CD869_HEAD_REF_MISSING_FOR_MAP_REPAIR' }
+              git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+              Write-Host "CD869_CANONICAL_MAP_COMMIT=PASS sha=$((git rev-parse HEAD).Trim())"
+            }
+          }
+
+          foreach($test in @(
+            'PinkCab.World.L1Road.R5.DryAsphaltPhysicalSurface',
+            'PinkCab.World.L1EndlessRoad.Map.Composition',
+            'PinkCab.World.L1EndlessRoad.Asset.MaterialContract'
+          )){
+            $safe=$test.Replace('.','_')
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath (Join-Path $gate ("CD869_" + $safe + ".log")) `
+              -TimeoutSeconds 240
+            Write-Host "CD869_GENERATED_MAP_TEST=PASS test=$test"
+          }
+
+          $compositionLog=Join-Path $gate 'CD869_PinkCab_World_L1EndlessRoad_Map_Composition.log'
+          if(-not (Select-String -LiteralPath $compositionLog -Pattern 'CD869_ENDLESS_MAP_PACKAGE_FLAGS_LOADED=0x' -Quiet)){
+            throw 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT_MARKER_MISSING'
+          }
+          Write-Host 'CD869_RUNTIME_MAP_PACKAGE_CONTRACT=PASS'
+          Get-Content -LiteralPath $compositionLog |
+            Select-String -Pattern 'CD869_ENDLESS_MAP_(PACKAGE_FLAGS_LOADED|ON_DISK_REGISTRY)' |
+            ForEach-Object { Write-Host $_.Line }
 
       - name: Build package only when warm package is absent
         if: ${{ steps.preflight.outputs.package_ready != 'true' }}
@@ -77,13 +341,56 @@ jobs:
             # StructUtils remains editor-only through PinkCab.uproject TargetAllowList.
             $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
 
-            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
+            # Git LFS pointers are text stubs, not Unreal packages. The cooker
+            # scans the project asset registry before following the explicit map
+            # dependency closure, so unrelated unresolved pointers would fail
+            # PACKAGE_FILE_TAG validation. Quarantine only files that are still
+            # literal LFS pointers; generated/materialized runtime assets remain.
+            $quarantined=0
+            foreach($relative in @(git lfs ls-files -n)){
+              $full=Join-Path $env:GITHUB_WORKSPACE $relative
+              if(-not (Test-Path -LiteralPath $full)){ continue }
+              try {
+                $first=Get-Content -LiteralPath $full -TotalCount 1 -ErrorAction Stop
+              } catch {
+                continue
+              }
+              if($first -eq 'version https://git-lfs.github.com/spec/v1'){
+                Remove-Item -LiteralPath $full -Force
+                ++$quarantined
+                Write-Host "CD869_COOK_QUARANTINED_LFS_POINTER=$relative"
+              }
+            }
+            Write-Host "CD869_COOK_LFS_POINTER_QUARANTINE=PASS count=$quarantined"
+
+            # Preserve the fresh AssetRegistry produced by normal map authoring.
+            # Deleting it here would make the next process forget a package that
+            # did not exist when the runner checkout started.
+            $freshRegistryDir=Join-Path $env:GITHUB_WORKSPACE 'Intermediate\CachedAssetRegistry'
+            $freshRegistryFiles=@(
+              Get-ChildItem -LiteralPath $freshRegistryDir -File -ErrorAction SilentlyContinue
+            )
+            Write-Host "CD869_PRECOOK_REGISTRY_CACHE_COUNT=$($freshRegistryFiles.Count)"
+
+            $mapDir=Join-Path $env:GITHUB_WORKSPACE 'Content\Dev\Maps'
+            & $uat -WaitForUATMutex BuildCookRun "-project=$project" -noP4 -platform=Win64 -clientconfig=Development -build -cook "-map=/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight" "-CookDir=$mapDir" "-AdditionalCookerOptions=-NoEditorDomain -NoAssetRegistryCacheRead" -stage -pak -archive "-archivedirectory=$archive" -nodebuginfo -utf8output
             $exit=$LASTEXITCODE
           }
           finally {
             Move-Item $backup $project -Force
           }
           if($exit -ne 0){ exit $exit }
+
+          # UE 5.8 IoStore does not leave cooked map packages as loose .umap
+          # files. Prove that packaging produced real IoStore containers here;
+          # the following packaged smoke is the authoritative map-load gate.
+          $pakDir=Join-Path $archive 'Windows\PinkCab\Content\Paks'
+          $utoc=@(Get-ChildItem -LiteralPath $pakDir -File -Filter '*.utoc' -ErrorAction SilentlyContinue)
+          $ucas=@(Get-ChildItem -LiteralPath $pakDir -File -Filter '*.ucas' -ErrorAction SilentlyContinue)
+          if($utoc.Count -lt 1 -or $ucas.Count -lt 1){
+            throw "CD869_IOSTORE_CONTAINER_MISSING utoc=$($utoc.Count) ucas=$($ucas.Count)"
+          }
+          Write-Host "CD869_IOSTORE_PACKAGE=PASS utoc=$($utoc.Count) ucas=$($ucas.Count)"
 
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $inner)){ throw 'CD869_INNER_EXE_MISSING_AFTER_COOK' }

@@ -39,7 +39,8 @@ class PINKCAB_API APinkCabChaosTatraPawn : public AWheeledVehiclePawn
     GENERATED_BODY()
 
 public:
-    APinkCabChaosTatraPawn();
+    explicit APinkCabChaosTatraPawn(
+        const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

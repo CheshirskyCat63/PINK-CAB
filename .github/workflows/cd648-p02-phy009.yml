@@ -1,0 +1,355 @@
+name: CD-648 P02 PHY-009 Drivetrain Continuity
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineOffCoastRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCapacityRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineEngineBrakeRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineDeterminismRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineLaunchRuntimeTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineRuntimeTestUtils.h'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.cpp'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineIntegration.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineIntegration.cpp'
+      - 'Source/PinkCabVehicle/PinkCabVehicle.Build.cs'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleEvidence.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.h'
+      - 'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
+      - 'Config/VehiclePhysicsRuntimeFixtures.json'
+      - 'Config/DefaultEngine.ini'
+      - 'Config/ArchitectureOwnership.json'
+      - 'Config/CodeHealthPolicy.json'
+      - 'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp'
+      - 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h'
+      - 'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosCockpitBridge.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfileFingerprint.cpp'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosPhysicalProfile.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineRpmEnvelope.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineRpmEnvelope.cpp'
+      - 'docs/ENGINEERING_START_HERE.md'
+      - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
+      - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
+      - 'scripts/ci/verify_vehicle_physics_writers.py'
+      - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
+      - 'scripts/ci/materialize_local_lfs.py'
+      - 'scripts/ci/run-unreal-automation.ps1'
+      - 'scripts/tests/test_materialize_local_lfs.py'
+      - '.github/workflows/cd648-p02-phy009.yml'
+      - '.github/workflows/cd869-deliver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd648-p02-phy009
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: P02 PHY-009 evidence
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 60
+    outputs:
+      run_physics: ${{ steps.latest_scope.outputs.run_physics }}
+    env:
+      UE_ROOT: C:\Program Files\Epic Games\UE_5.8
+      BASELINE: 4cc96ab3361039f053d609ba4a6e1020adb45c0b
+
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          clean: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Determine latest-commit P02 scope
+        id: latest_scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
+          $physics=@($changed | Where-Object {
+            $_.StartsWith('Source/PinkCabVehicle/') -or
+            $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn') -or
+            $_ -eq 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h' -or
+            $_ -eq 'Config/VehiclePhysicsRuntimeFixtures.json' -or
+            $_ -eq 'Config/DefaultEngine.ini' -or
+            $_ -eq 'Config/ArchitectureOwnership.json' -or
+            $_ -eq 'Config/CodeHealthPolicy.json' -or
+            $_ -eq 'scripts/ci/materialize_local_lfs.py' -or
+            $_ -eq 'scripts/ci/run-unreal-automation.ps1' -or
+            $_ -eq 'scripts/ci/verify_vehicle_physics_writers.py' -or
+            $_.StartsWith('docs/vehicle_physics/')
+          })
+          $run=($physics.Count -gt 0)
+          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "P02_PHY009_LATEST_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
+          $changed | ForEach-Object { Write-Host "P02_PHY009_LATEST_FILE=$_" }
+
+      - name: Materialize verified local LFS fixtures
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_materialize_local_lfs -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $fixtureManifestPath=Join-Path $env:GITHUB_WORKSPACE 'Config\VehiclePhysicsRuntimeFixtures.json'
+          $fixtureManifest=Get-Content -LiteralPath $fixtureManifestPath -Raw | ConvertFrom-Json
+          $materializeArgs=@(
+            'scripts/ci/materialize_local_lfs.py',
+            '--workspace', $env:GITHUB_WORKSPACE,
+            '--base-ref', 'origin/main',
+            '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
+            '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
+            '--search-root', 'E:\Development',
+            '--allow-changed-lfs', 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
+          )
+          foreach($fixture in $fixtureManifest.lfs){
+            $absolute=Join-Path $env:GITHUB_WORKSPACE ([string]$fixture.path)
+            if(-not (Test-Path -LiteralPath $absolute)){
+              throw "PINKCAB_PHYSICS_FIXTURE_POINTER_MISSING=$($fixture.path)"
+            }
+            $pointer=Get-Content -LiteralPath $absolute -Raw
+            $match=[regex]::Match($pointer,"(?m)^oid sha256:([0-9a-f]{64})\s*$")
+            if(-not $match.Success){
+              $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $absolute).Hash.ToLowerInvariant()
+              if($actual -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+                throw "PINKCAB_PHYSICS_FIXTURE_HASH_MISMATCH=$($fixture.path) actual=$actual expected=$($fixture.oid_sha256)"
+              }
+            } elseif($match.Groups[1].Value -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+              throw "PINKCAB_PHYSICS_FIXTURE_OID_MISMATCH=$($fixture.path) actual=$($match.Groups[1].Value) expected=$($fixture.oid_sha256)"
+            }
+            $materializeArgs += '--required'
+            $materializeArgs += [string]$fixture.path
+          }
+          python @materializeArgs
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host "P02_LOCAL_LFS_MATERIALIZATION=PASS"
+
+      - name: Exact-head preflight and scope guard
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $head=(git rev-parse HEAD).Trim()
+          if(@(git status --porcelain --untracked-files=all).Count -ne 0){
+            git status --short
+            throw 'P02_PHY009_DIRTY_PREFLIGHT'
+          }
+          git merge-base --is-ancestor $env:BASELINE HEAD
+          if($LASTEXITCODE -ne 0){ throw 'P02_PHY009_BASELINE_MISMATCH' }
+
+          $allowed=@(
+            '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
+            '.github/workflows/cd648-p02-phy009.yml',
+            '.github/workflows/cd869-deliver.yml',
+            'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabControlRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapGenerator.cpp',
+            'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabCausalTelemetryTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineOffCoastRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabClutchContinuityPhysicsTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabClutchDrivelineModelTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCausalMatrixTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineCapacityRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineEngineBrakeRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineDeterminismRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineLaunchRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineRuntimeTestUtils.h',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabVehicleControlRuntimeTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineIntegration.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineIntegration.cpp',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabEngineStatePhysicsTests.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
+            'Source/PinkCabVehicle/PinkCabVehicle.Build.cs',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleMovementComponent.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleEvidence.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.h',
+            'Config/VehiclePhysicsRuntimeFixtures.json',
+            'Config/DefaultEngine.ini',
+            'Config/ArchitectureOwnership.json',
+            'Config/CodeHealthPolicy.json',
+            'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn.cpp',
+            'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabChaosPhysicalProfileTests.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosCockpitBridge.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfile.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosPhysicalProfileFingerprint.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosPhysicalProfile.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineRpmEnvelope.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineRpmEnvelope.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabEngineActuationResolver.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabEngineActuationResolver.cpp',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxTypes.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabGearboxController.cpp',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabGearEngagementValidator.cpp',
+            'Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h',
+            'Source/PinkCab/Private/Vehicle/PinkCabVehicleControlRuntime.cpp',
+            'docs/ENGINEERING_START_HERE.md',
+            'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv',
+            'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md',
+            'scripts/ci/verify_vehicle_physics_writers.py',
+            'scripts/tests/test_materialize_local_lfs.py',
+            'scripts/ci/materialize_local_lfs.py',
+            'scripts/ci/run-unreal-automation.ps1',
+            'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
+          )
+          $changed=@(git diff --name-only "$env:BASELINE...HEAD")
+          $unexpected=@($changed | Where-Object { $_ -notin $allowed })
+          if($unexpected.Count -ne 0){
+            $unexpected | ForEach-Object { Write-Host "P02_PHY009_UNEXPECTED=$_" }
+            throw 'P02_PHY009_SCOPE_GUARD_FAIL'
+          }
+          Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head changed=$($changed.Count)"
+
+      - name: Build PinkCabEditor
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$env:UE_ROOT\Engine\Build\BatchFiles\Build.bat" PinkCabEditor Win64 Development "$env:GITHUB_WORKSPACE\PinkCab.uproject" -WaitMutex -NoHotReloadFromIDE -NoUBA -MaxParallelActions=8
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'P02_PHY009_EDITOR_BUILD=PASS'
+
+      - name: Focused telemetry and physics regressions
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.Vehicle.Physics.P02.ClutchModel',
+            'PinkCab.Vehicle.Physics.Telemetry',
+            'PinkCab.Vehicle.Physics.EngineState',
+            'PinkCab.Vehicle.Physics.P02.D4',
+            'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix',
+            'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity',
+            'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',
+            'PinkCab.Vehicle.Physics.P02.D3.HotWornCapacity',
+            'PinkCab.Vehicle.Physics.P02.D5.RenderCadenceInvariance',
+            'PinkCab.Vehicle.Physics.P02.CentralRpmEnvelope',
+            'PinkCab.Vehicle.Physics.P02.ContinuousClutchRelease',
+            'PinkCab.Vehicle.Physics.P02.ClutchReleaseInterrupt',
+            'PinkCab.Vehicle.Physics.P02.UnifiedEngagementValidator',
+            'PinkCab.Vehicle.Physics.P02.FocusLossCancelsPendingEngagement',
+            'PinkCab.Vehicle.Physics'
+          )
+          $completedTests=0
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P02_PHY009_$safe.log"
+            $timeoutSeconds=180
+            if($test -eq 'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix'){
+              # 240 fresh-reset runs plus fresh pawn spawn/settle overhead exceeded the
+              # previous 420 s budget in dedicated run 36500675114. The
+              # acceptance matrix is unchanged; only the runner budget matches
+              # the already-authoritative 900 s full-suite allowance.
+              $timeoutSeconds=900
+            } elseif($test -eq 'PinkCab.Vehicle.Physics'){
+              # Full regression includes the complete D3 matrix plus P01/D1/D2.
+              $timeoutSeconds=900
+            }
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath $log `
+              -TimeoutSeconds $timeoutSeconds
+            ++$completedTests
+            Write-Host "P02_PHY009_TEST_PASS=$test"
+          }
+          if($completedTests -ne $tests.Count){
+            throw "P02_PHY009_INCOMPLETE_TEST_LOOP completed=$completedTests expected=$($tests.Count)"
+          }
+          Write-Host "P02_PHY009_TEST_LOOP=PASS count=$completedTests"
+
+      - name: Prove P01 slope fixture determinism
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $test='PinkCab.Vehicle.Physics.EngineState.LiveOffNeutralSlope'
+          $passes=0
+          foreach($repeat in 1..5){
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\P01_SLOPE_REPEAT_$repeat.log"
+            & .\scripts\ci\run-unreal-automation.ps1 `
+              -EngineRoot $env:UE_ROOT `
+              -ProjectPath $project `
+              -TestName $test `
+              -LogPath $log `
+              -TimeoutSeconds 180
+            ++$passes
+            Write-Host "P01_SLOPE_REPEAT_PASS=$repeat"
+          }
+          if($passes -ne 5){
+            throw "P01_SLOPE_REPEAT_INCOMPLETE passes=$passes expected=5"
+          }
+          Write-Host 'P01_SLOPE_DETERMINISM=PASS repeats=5'
+
+      - name: Zero-debt and writer guard
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_repo_hygiene scripts.tests.test_code_health -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          & .\scripts\code-health.ps1 -RequireZeroDebt
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/P02_PHY009_WRITERS.json
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host 'P02_PHY009_ZERO_DEBT=PASS'
+
+
+  human-delivery:
+    name: Exact-head HUMAN delivery
+    needs: verify
+    if: ${{ needs.verify.outputs.run_physics == 'true' }}
+    uses: ./.github/workflows/cd869-deliver.yml
+    with:
+      candidate_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+    secrets: inherit

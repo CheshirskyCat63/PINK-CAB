@@ -1,4 +1,7 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
+
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
@@ -16,6 +19,9 @@ void PopulateActuationTelemetry(
         Controls.GetResolvedEngineThrottlePreLimiter01();
     Out.EngineThrottleFinal01 =
         Controls.GetResolvedEngineThrottle01();
+    Out.ChaosThrottleInput01 =
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Out.EngineThrottleFinal01);
     Out.EngineTorqueCurveNm =
         Controls.GetResolvedEngineTorqueCurveNm();
     Out.RequestedEngineTorqueAfterLimiterHealthNm =
@@ -27,41 +33,21 @@ void PopulateActuationTelemetry(
     Out.ConfiguredFinalDriveRatio = Movement.TransmissionSetup.FinalRatio;
     Out.TransmissionEfficiency =
         Movement.TransmissionSetup.TransmissionEfficiency;
-    Out.ExternalRearDriveTorquePerWheelNm =
-        Controls.ExternalRearDriveTorquePerWheelNm;
+
+    // PHY-009: the legacy external-partial torque transport remains present
+    // only for compatibility/evidence and is always zero on the production path.
+    Out.ExternalRearDriveTorquePerWheelNm = 0.0f;
     Out.DriveTorquePath =
-        FMath::Abs(Controls.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER
-            ? EPinkCabCausalDriveTorquePath::ExternalPartialClutch
-            : (Controls.EngagedGear != 0 && Controls.ClutchCoupling >= 1.0f
-                ? EPinkCabCausalDriveTorquePath::ChaosMechanical
-                : EPinkCabCausalDriveTorquePath::None);
+        Controls.EngagedGear != 0
+            && Controls.ClutchCoupling > KINDA_SMALL_NUMBER
+            ? EPinkCabCausalDriveTorquePath::PinkCabClutchDriveline
+            : EPinkCabCausalDriveTorquePath::None;
+
     Out.bTorqueControlEnabled = Movement.TorqueControl.Enabled;
     Out.bTargetRotationControlEnabled =
         Movement.TargetRotationControl.Enabled;
     Out.bStabilizeControlEnabled = Movement.StabilizeControl.Enabled;
     Out.AssistContribution = 0.0f;
-}
-
-void ApplyRearWheelTorques(
-    UChaosWheeledVehicleMovementComponent& Movement,
-    const FPinkCabVehicleControlState& Controls)
-{
-    Movement.SetHandbrakeInput(false);
-    constexpr float RearHandbrakeMaxTorqueNm = 1700.0f;
-    const float RearBrakeTorqueNm =
-        FMath::Clamp(Controls.Handbrake, 0.0f, 1.0f)
-        * RearHandbrakeMaxTorqueNm;
-    const int32 WheelCount = Movement.GetNumWheels();
-    for (int32 WheelIndex = 2; WheelIndex < FMath::Min(WheelCount, 4); ++WheelIndex)
-    {
-        Movement.SetTorqueCombineMethod(
-            ETorqueCombineMethod::Additive,
-            WheelIndex);
-        Movement.SetBrakeTorque(RearBrakeTorqueNm, WheelIndex);
-        Movement.SetDriveTorque(
-            Controls.ExternalRearDriveTorquePerWheelNm,
-            WheelIndex);
-    }
 }
 
 void PopulateConfiguredAssistFlags(
@@ -81,6 +67,32 @@ void PopulateConfiguredAssistFlags(
             Wheel->bTractionControlEnabled;
     }
 }
+
+FPinkCabChaosDrivelineCommand BuildDrivelineCommand(
+    UChaosWheeledVehicleMovementComponent& Movement,
+    const FPinkCabVehicleControlState& Controls)
+{
+    FPinkCabChaosDrivelineCommand Command;
+    Command.bCombustionAllowed = Controls.IsCombustionAllowed();
+    Command.EngagedGear = Controls.EngagedGear;
+    Command.ClutchCoupling01 = Controls.ClutchCoupling;
+    Command.DrivetrainTorqueCapacity01 =
+        Controls.DrivetrainTorqueCapacity;
+    Command.HealthClampedControlThrottle01 =
+        FMath::Clamp(Controls.Throttle, 0.0f, 1.0f);
+    Command.ServiceBrake01 =
+        FMath::Clamp(Controls.Brake, 0.0f, 1.0f);
+    Command.EffectiveGearRatio =
+        Controls.EngagedGear != 0
+            ? Movement.TransmissionSetup.GetGearRatio(Controls.EngagedGear)
+            : 0.0f;
+    Command.TransmissionEfficiency =
+        Movement.TransmissionSetup.TransmissionEfficiency;
+    Command.EngineBrakeEffect =
+        Movement.EngineSetup.EngineBrakeEffect;
+    Command.Handbrake01 = Controls.Handbrake;
+    return Command;
+}
 }
 
 FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
@@ -97,6 +109,15 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
         return false;
     }
 
+    UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    if (!PinkCabMovement)
+    {
+        // Production PHY-009 must never silently fall back to the old
+        // one-way external torque / native full-coupling split.
+        return false;
+    }
+
     LastControls = Controls;
     Movement->SetSteeringInput(Controls.Steering);
 
@@ -105,10 +126,20 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
         Controls,
         LastCausalActuation);
 
+    // Keep public Chaos inputs coherent for telemetry and generic input-rate
+    // bookkeeping. The physics-thread simulation consumes the authoritative
+    // clutch command below for actual engine/wheel torque exchange.
     Movement->SetThrottleInput(
-        Controls.GetResolvedEngineThrottle01());
+        LastCausalActuation.ChaosThrottleInput01);
     Movement->SetBrakeInput(Controls.Brake);
-    ApplyRearWheelTorques(*Movement, Controls);
+
+    const FPinkCabChaosDrivelineCommand Command =
+        BuildDrivelineCommand(*Movement, Controls);
+    if (!PinkCabMovement->SetPinkCabDrivelineCommand(Command))
+    {
+        return false;
+    }
+
     PopulateConfiguredAssistFlags(*Movement, LastCausalActuation);
     return true;
 }

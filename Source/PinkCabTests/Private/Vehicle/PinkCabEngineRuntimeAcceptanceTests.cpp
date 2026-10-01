@@ -6,27 +6,24 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/BoxComponent.h"
-#include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
 namespace
 {
-APinkCabChaosTatraPawn* FindTatra(UWorld& World)
+APinkCabPhysicsFixturePawn* FindTatra(UWorld& World)
 {
-    for (TActorIterator<APinkCabChaosTatraPawn> It(&World); It; ++It)
-    {
-        return *It;
-    }
-    return nullptr;
+    PinkCabPhysicsFixture::FindOrSpawnFlatFloor(World);
+    return PinkCabPhysicsFixture::FindOrSpawnPawn(World);
 }
 
 bool ApplyEngineState(
-    APinkCabChaosTatraPawn& Pawn,
+    APinkCabPhysicsFixturePawn& Pawn,
     FPinkCabCockpitState& Cockpit,
     FPinkCabVehicleControlState& Controls)
 {
@@ -38,6 +35,38 @@ bool ApplyEngineState(
     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
     return FPinkCabChaosCockpitBridge::Apply(
         Cockpit, *Movement, Controls, Provider);
+}
+
+bool AdvanceMechanicalTime(
+    UPinkCabChaosVehicleMovementComponent& Movement,
+    int64& LastStep,
+    double& ElapsedSimSeconds)
+{
+    const int64 CurrentStep =
+        Movement.GetPinkCabMechanicalIntegrationStepCount();
+    if (LastStep < 0)
+    {
+        LastStep = CurrentStep;
+        return false;
+    }
+    if (CurrentStep <= LastStep)
+    {
+        return false;
+    }
+
+    const int64 StepDelta = CurrentStep - LastStep;
+    const float DeltaSeconds =
+        Movement.GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+    LastStep = CurrentStep;
+    if (DeltaSeconds <= 0.0f)
+    {
+        return false;
+    }
+
+    ElapsedSimSeconds +=
+        static_cast<double>(StepDelta)
+        * static_cast<double>(DeltaSeconds);
+    return true;
 }
 }
 
@@ -55,26 +84,32 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
-        if (!Pawn)
+        if (!bCleanupPrepared)
         {
+            UGameplayStatics::SetGamePaused(World, false);
+            PinkCabPhysicsFixture::DestroyPawns(*World);
+
+            // Destroy() is deferred until the world finishes the frame. In a
+            // full automation suite the previous sterile Chaos pawn can still
+            // own a physics proxy during this Update(), even though the actor
+            // is already marked for destruction. Give teardown two complete
+            // world frames before creating the slope fixture so this test has
+            // the same physics-scene baseline as a fresh process.
+            CleanupFramesRemaining = 2;
+            bCleanupPrepared = true;
             return false;
         }
-        UChaosWheeledVehicleMovementComponent* Movement =
-            Pawn->GetChaosMovement();
-        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
-        Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
-        Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
-        if (!Movement || !Mesh)
+
+        if (CleanupFramesRemaining > 0)
         {
-            return true;
+            --CleanupFramesRemaining;
+            return false;
         }
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
-            Pawn->SetActorTickEnabled(false);
+            constexpr float RampPitchDeg = 20.0f;
+
             Ramp = World->SpawnActor<AActor>();
             Test->TestNotNull(TEXT("isolated slope actor spawns"), Ramp);
             if (!Ramp)
@@ -82,10 +117,9 @@ public:
                 return true;
             }
 
-            constexpr float RampPitchDeg = 20.0f;
             UBoxComponent* RampBox = NewObject<UBoxComponent>(Ramp);
             Ramp->SetRootComponent(RampBox);
-            RampBox->SetBoxExtent(FVector(700.0f, 250.0f, 60.0f));
+            RampBox->SetBoxExtent(FVector(1200.0f, 350.0f, 60.0f));
             RampBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
             RampBox->SetCollisionObjectType(ECC_WorldStatic);
             RampBox->SetCollisionResponseToAllChannels(ECR_Block);
@@ -101,77 +135,348 @@ public:
                 FVector(0.0f, 0.0f, 12500.0f),
                 FVector(0.0f, 0.0f, 11500.0f),
                 ECC_Visibility);
-            Test->TestTrue(TEXT("isolated slope fixture has query collision"), bRampProbeHit);
+            Test->TestTrue(
+                TEXT("isolated slope fixture has query collision"),
+                bRampProbeHit);
             if (!bRampProbeHit)
             {
                 return true;
             }
 
-            Pawn->SetActorLocationAndRotation(
-                FVector(0.0f, 0.0f, 12280.0f),
-                FRotator(RampPitchDeg, 0.0f, 0.0f),
-                false,
-                nullptr,
-                ETeleportType::TeleportPhysics);
-            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-            Mesh->WakeAllRigidBodies();
+            APinkCabPhysicsFixturePawn* SpawnedPawn =
+                PinkCabPhysicsFixture::SpawnFreshPawn(
+                    *World,
+                    FVector(0.0f, 0.0f, 12280.0f),
+                    FRotator(RampPitchDeg, 0.0f, 0.0f));
+            Test->TestNotNull(
+                TEXT("slope fixture fresh pawn spawns in-place"),
+                SpawnedPawn);
+            if (!SpawnedPawn)
+            {
+                return true;
+            }
 
-            Controls.SetThrottle(1.0f);
-            Controls.SetBrake(0.0f);
+            FixturePawn = SpawnedPawn;
+            SpawnedPawn->SetActorTickEnabled(false);
+
+            UChaosWheeledVehicleMovementComponent* Movement =
+                SpawnedPawn->GetChaosMovement();
+            UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+            USkeletalMeshComponent* Mesh = SpawnedPawn->GetMesh();
+            Test->TestNotNull(TEXT("slope fixture has movement"), Movement);
+            Test->TestNotNull(
+                TEXT("slope fixture has exact mechanical clock"),
+                PinkCabMovement);
+            Test->TestNotNull(TEXT("slope fixture has physics mesh"), Mesh);
+            if (!Movement || !PinkCabMovement || !Mesh)
+            {
+                return true;
+            }
+
+            // Establish a deterministic physical initial condition: let the
+            // vehicle land and settle naturally on all four wheels while the
+            // normal production service-brake path holds it. The brake is
+            // released through the same authoritative control path before any
+            // coast measurement begins.
+            Controls.SetThrottle(0.0f);
+            Controls.SetBrake(1.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
-            Test->TestTrue(TEXT("off neutral slope state applies"),
-                ApplyEngineState(*Pawn, Cockpit, Controls));
+            Test->TestTrue(TEXT("off neutral slope gravity state applies"),
+                ApplyEngineState(*SpawnedPawn, Cockpit, Controls));
             Test->TestFalse(TEXT("off slope denies combustion"),
                 Controls.IsCombustionAllowed());
             Test->TestEqual(TEXT("off slope final throttle is zero"),
                 Controls.GetResolvedEngineThrottle01(), 0.0f);
             Test->TestEqual(TEXT("off slope external drive torque is zero"),
                 Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
-            Test->TestFalse(TEXT("off slope mechanical engine sim disabled"),
+            Test->TestTrue(
+                TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            DownhillDirection3D =
+                FVector::VectorPlaneProject(
+                    FVector::DownVector,
+                    Ramp->GetActorUpVector())
+                    .GetSafeNormal();
+            DownhillDirection2D =
+                FVector2D(
+                    DownhillDirection3D.X,
+                    DownhillDirection3D.Y)
+                    .GetSafeNormal();
+            Test->TestTrue(
+                TEXT("slope fixture exposes gravity-projected downhill direction"),
+                !DownhillDirection2D.IsNearlyZero());
+
+            LastMechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            PhaseSimSeconds = 0.0;
+            SupportedRestSeconds = 0.0;
+            LastContactObservationSimSeconds = 0.0;
             bInitialized = true;
             return false;
         }
 
-        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
-        if (!bSettled)
+        APinkCabPhysicsFixturePawn* Pawn = FixturePawn.Get();
+        if (!Pawn || !Ramp)
         {
-            if (Elapsed < 0.90)
+            Test->AddError(TEXT("slope fixture disappeared during runtime"));
+            return true;
+        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
+
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        if (!Movement || !PinkCabMovement || !Mesh)
+        {
+            Test->AddError(TEXT("slope fixture runtime state is incomplete"));
+            return true;
+        }
+
+        if (!AdvanceMechanicalTime(
+                *PinkCabMovement,
+                LastMechanicalStep,
+                PhaseSimSeconds))
+        {
+            return false;
+        }
+
+        if (!bContactReady)
+        {
+            int32 ContactWheels = 0;
+            float TotalSpringForce = 0.0f;
+            for (int32 WheelIndex = 0;
+                 WheelIndex < Movement->GetNumWheels();
+                 ++WheelIndex)
+            {
+                const FWheelStatus& Wheel =
+                    Movement->GetWheelState(WheelIndex);
+                if (Wheel.bInContact)
+                {
+                    ++ContactWheels;
+                    TotalSpringForce += FMath::Max(Wheel.SpringForce, 0.0f);
+                }
+            }
+
+            const FVector BodyVelocity =
+                Mesh->GetPhysicsLinearVelocity();
+            const float BodyLinearSpeedCmPerSec = BodyVelocity.Size();
+            const float NormalSpeedCmPerSec = FMath::Abs(
+                FVector::DotProduct(
+                    BodyVelocity,
+                    Ramp->GetActorUpVector()));
+            const FVector2D HorizontalVelocity(
+                BodyVelocity.X, BodyVelocity.Y);
+            const float DownhillSpeedCmPerSec =
+                FVector2D::DotProduct(
+                    HorizontalVelocity, DownhillDirection2D);
+            const float BodyAngularSpeedDegPerSec =
+                Mesh->GetPhysicsAngularVelocityInDegrees().Size();
+
+            const double ObservationDeltaSeconds =
+                FMath::Max(
+                    PhaseSimSeconds - LastContactObservationSimSeconds,
+                    0.0);
+            LastContactObservationSimSeconds = PhaseSimSeconds;
+
+            if (!bBrakeReleased)
+            {
+                const bool bSupportedRest =
+                    ContactWheels == Movement->GetNumWheels()
+                    && TotalSpringForce > KINDA_SMALL_NUMBER
+                    && BodyLinearSpeedCmPerSec
+                        <= RestLinearSpeedToleranceCmPerSec
+                    && BodyAngularSpeedDegPerSec
+                        <= RestAngularSpeedToleranceDegPerSec;
+
+                if (PhaseSimSeconds >= MinimumContactSettleSeconds
+                    && bSupportedRest)
+                {
+                    SupportedRestSeconds += ObservationDeltaSeconds;
+                }
+                else
+                {
+                    SupportedRestSeconds = 0.0;
+                }
+
+                if (SupportedRestSeconds < RequiredSupportedRestSeconds)
+                {
+                    if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
+                    {
+                        return false;
+                    }
+
+                    Test->AddError(FString::Printf(
+                        TEXT("P01 slope fixture never reached brake-held supported rest sim_s=%.3f contacts=%d/%d spring_force=%.3f body_speed_cm_s=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f supported_rest_s=%.6f"),
+                        PhaseSimSeconds,
+                        ContactWheels,
+                        Movement->GetNumWheels(),
+                        TotalSpringForce,
+                        BodyLinearSpeedCmPerSec,
+                        NormalSpeedCmPerSec,
+                        DownhillSpeedCmPerSec,
+                        BodyAngularSpeedDegPerSec,
+                        SupportedRestSeconds));
+                    return true;
+                }
+
+                Controls.SetBrake(0.0f);
+                Test->TestTrue(
+                    TEXT("slope service brake releases through production path"),
+                    ApplyEngineState(*Pawn, Cockpit, Controls));
+                Test->TestTrue(
+                    TEXT("slope release evidence window starts"),
+                    PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                        0.0f,
+                        static_cast<float>(BrakeReleaseProofSeconds)));
+                bBrakeReleased = true;
+                PhaseSimSeconds = 0.0;
+                LastContactObservationSimSeconds = 0.0;
+                return false;
+            }
+
+            if (PhaseSimSeconds < BrakeReleaseProofSeconds)
             {
                 return false;
             }
-            StartLocation = Pawn->GetActorLocation();
-            StartVelocity = Mesh->GetPhysicsLinearVelocity();
-            bSettled = true;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+
+            FPinkCabMechanicalEvidenceSnapshot ReleaseEvidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                    ReleaseEvidence))
+            {
+                Test->AddError(
+                    TEXT("slope brake-release evidence read failed"));
+                return true;
+            }
+            Test->TestFalse(
+                TEXT("slope release has no parking brake state"),
+                ReleaseEvidence.bAnyParkingEnabled);
+            Test->TestTrue(
+                TEXT("slope release reaches zero wheel brake torque"),
+                ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
+            if (ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm > 1.0e-3f)
+            {
+                return true;
+            }
+
+            FWheeledSnaphotData Seed = Movement->GetSnapshot();
+            const FVector SeedLinearVelocity =
+                DownhillDirection3D * SeedRollingSpeedCmPerSec;
+            const float SeedForwardSpeedMps =
+                FVector::DotProduct(
+                    SeedLinearVelocity * 0.01f,
+                    Pawn->GetActorForwardVector());
+
+            Seed.LinearVelocity = SeedLinearVelocity;
+            Seed.AngularVelocity = FVector::ZeroVector;
+            Seed.EngineRPM = 0.0f;
+            Seed.SelectedGear = 0;
+
+            float MaxSeedAbsWheelAngularVelocity = 0.0f;
+            for (int32 WheelIndex = 0;
+                 WheelIndex < Seed.WheelSnapshots.Num()
+                    && WheelIndex < Movement->Wheels.Num();
+                 ++WheelIndex)
+            {
+                const UChaosVehicleWheel* Wheel =
+                    Movement->Wheels[WheelIndex];
+                if (!Wheel)
+                {
+                    continue;
+                }
+
+                const float RadiusM =
+                    FMath::Max(
+                        Wheel->WheelRadius * 0.01f,
+                        KINDA_SMALL_NUMBER);
+                const float SeedWheelAngularVelocity =
+                    SeedForwardSpeedMps / RadiusM;
+                Seed.WheelSnapshots[WheelIndex].WheelAngularVelocity =
+                    SeedWheelAngularVelocity;
+                MaxSeedAbsWheelAngularVelocity = FMath::Max(
+                    MaxSeedAbsWheelAngularVelocity,
+                    FMath::Abs(SeedWheelAngularVelocity));
+            }
+
+            Movement->SetSnapshot(Seed);
+            Mesh->SetPhysicsLinearVelocity(SeedLinearVelocity);
+            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
+
+            StartLocation = Mesh->GetComponentLocation();
+            StartVelocity = SeedLinearVelocity;
+            PeakDownhillSpeedCmPerSec = FVector2D::DotProduct(
+                FVector2D(StartVelocity.X, StartVelocity.Y),
+                DownhillDirection2D);
+
+            Test->TestTrue(
+                TEXT("slope rolling seed includes wheel rotation"),
+                MaxSeedAbsWheelAngularVelocity > 0.05f);
+            Test->TestTrue(
+                TEXT("slope measurement evidence window starts"),
+                PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f, static_cast<float>(BrakeEvidenceSeconds)));
+
+            Test->AddInfo(FString::Printf(
+                TEXT("P01_SLOPE_SEEDED sim_s=%.3f contacts=%d/%d spring_force=%.3f seed_downhill_speed_cm_s=%.3f seed_max_abs_wheel_rad_s=%.3f mean_applied_brake_torque_nm=%.6f start=%s"),
+                PhaseSimSeconds,
+                ContactWheels,
+                Movement->GetNumWheels(),
+                TotalSpringForce,
+                PeakDownhillSpeedCmPerSec,
+                MaxSeedAbsWheelAngularVelocity,
+                ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm,
+                *StartLocation.ToString()));
+
+            bContactReady = true;
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
-        if (FPlatformTime::Seconds() - PhaseStartSeconds < 1.20)
+        const FVector CurrentVelocity =
+            Mesh->GetPhysicsLinearVelocity();
+        PeakDownhillSpeedCmPerSec = FMath::Max(
+            PeakDownhillSpeedCmPerSec,
+            FVector2D::DotProduct(
+                FVector2D(CurrentVelocity.X, CurrentVelocity.Y),
+                DownhillDirection2D));
+
+        if (PhaseSimSeconds < MeasurementSeconds)
         {
             return false;
         }
 
-        const FVector EndLocation = Pawn->GetActorLocation();
+        const FVector EndLocation = Mesh->GetComponentLocation();
         const FVector EndVelocity = Mesh->GetPhysicsLinearVelocity();
-        const float HorizontalTravelCm =
-            FVector2D(EndLocation - StartLocation).Size();
-        const float HorizontalSpeedCmPerSec =
-            FVector2D(EndVelocity.X, EndVelocity.Y).Size();
-        const float StartHorizontalSpeedCmPerSec =
-            FVector2D(StartVelocity.X, StartVelocity.Y).Size();
+        const FVector2D HorizontalDelta(
+            EndLocation.X - StartLocation.X,
+            EndLocation.Y - StartLocation.Y);
+        const FVector2D EndHorizontalVelocity(
+            EndVelocity.X, EndVelocity.Y);
+        const FVector2D StartHorizontalVelocity(
+            StartVelocity.X, StartVelocity.Y);
+        const float DownhillTravelCm =
+            FVector2D::DotProduct(HorizontalDelta, DownhillDirection2D);
+        const float DownhillSpeedCmPerSec =
+            FVector2D::DotProduct(
+                EndHorizontalVelocity, DownhillDirection2D);
+        const float StartDownhillSpeedCmPerSec =
+            FVector2D::DotProduct(
+                StartHorizontalVelocity, DownhillDirection2D);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P01_SLOPE travel_cm=%.3f start_speed_cm_s=%.3f end_speed_cm_s=%.3f start=%s end=%s"),
-            HorizontalTravelCm,
-            StartHorizontalSpeedCmPerSec,
-            HorizontalSpeedCmPerSec,
+            TEXT("P01_SLOPE downhill_travel_cm=%.3f start_downhill_speed_cm_s=%.3f end_downhill_speed_cm_s=%.3f peak_downhill_speed_cm_s=%.3f start=%s end=%s"),
+            DownhillTravelCm,
+            StartDownhillSpeedCmPerSec,
+            DownhillSpeedCmPerSec,
+            PeakDownhillSpeedCmPerSec,
             *StartLocation.ToString(),
             *EndLocation.ToString()));
+
         float MaxAbsWheelAngularVelocity = 0.0f;
         for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
         {
@@ -182,38 +487,86 @@ public:
                     FMath::Abs(Wheel->GetWheelAngularVelocity()));
             }
         }
+        FPinkCabMechanicalEvidenceSnapshot FinalBrakeEvidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                FinalBrakeEvidence))
+        {
+            Test->AddError(TEXT("slope final brake-path evidence read failed"));
+            return true;
+        }
         Test->AddInfo(FString::Printf(
-            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f"),
-            MaxAbsWheelAngularVelocity));
+            TEXT("P01_SLOPE max_abs_wheel_rad_s=%.3f mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f"),
+            MaxAbsWheelAngularVelocity,
+            FinalBrakeEvidence.MeanAppliedWheelBrakeTorqueNm,
+            FinalBrakeEvidence.bAnyParkingEnabled ? 1 : 0,
+            FinalBrakeEvidence.CompletedSampleSeconds));
+        Test->TestFalse(
+            TEXT("slope final physics evidence has no parking state"),
+            FinalBrakeEvidence.bAnyParkingEnabled);
+        Test->TestTrue(
+            TEXT("slope final physics evidence has zero wheel brake torque"),
+            FinalBrakeEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
+
         Test->TestTrue(TEXT("off neutral vehicle moves downhill under gravity"),
-            HorizontalTravelCm > 20.0f);
-        Test->TestTrue(TEXT("slope vehicle remains physically rolling"),
-            HorizontalSpeedCmPerSec > 10.0f);
+            DownhillTravelCm > 20.0f);
+        Test->TestTrue(TEXT("slope vehicle remains physically rolling downhill"),
+            DownhillSpeedCmPerSec > 10.0f);
+        Test->TestTrue(
+            TEXT("gravity increases downhill speed after supported contact"),
+            PeakDownhillSpeedCmPerSec
+                > StartDownhillSpeedCmPerSec + 5.0f);
         Test->TestTrue(TEXT("slope motion includes wheel rotation"),
             MaxAbsWheelAngularVelocity > 0.05f);
         Test->TestEqual(TEXT("slope coast remains zero engine throttle"),
             Movement->GetThrottleInput(), 0.0f);
         Test->TestEqual(TEXT("slope coast remains zero external drive torque"),
             Controls.ExternalRearDriveTorquePerWheelNm, 0.0f);
+        Test->TestEqual(TEXT("slope coast releases service brake"),
+            Movement->GetBrakeInput(), 0.0f);
 
-        if (Ramp)
+        if (APinkCabPhysicsFixturePawn* FinishedPawn = FixturePawn.Get())
         {
-            Ramp->Destroy();
-            Ramp = nullptr;
+            FinishedPawn->Destroy();
         }
+        FixturePawn.Reset();
+
+        Ramp->Destroy();
+        Ramp = nullptr;
         return true;
     }
 
 private:
     FAutomationTestBase* Test = nullptr;
     AActor* Ramp = nullptr;
+    TWeakObjectPtr<APinkCabPhysicsFixturePawn> FixturePawn;
     FPinkCabCockpitState Cockpit;
     FPinkCabVehicleControlState Controls;
+
+    static constexpr double MinimumContactSettleSeconds = 0.10;
+    static constexpr double ContactReadyTimeoutSeconds = 3.00;
+    // Measure a sustained supported coast, not one suspension-bounce phase.
+    static constexpr double MeasurementSeconds = 2.40;
+    static constexpr double BrakeEvidenceSeconds = 3.00;
+    static constexpr float RestLinearSpeedToleranceCmPerSec = 5.0f;
+    static constexpr float RestAngularSpeedToleranceDegPerSec = 2.0f;
+    static constexpr double RequiredSupportedRestSeconds = 0.25;
+    static constexpr double BrakeReleaseProofSeconds = 0.20;
+    static constexpr float SeedRollingSpeedCmPerSec = 50.0f;
+
+    bool bCleanupPrepared = false;
+    int32 CleanupFramesRemaining = 0;
     bool bInitialized = false;
-    bool bSettled = false;
-    double PhaseStartSeconds = 0.0;
+    bool bBrakeReleased = false;
+    bool bContactReady = false;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
+    double LastContactObservationSimSeconds = 0.0;
+    double SupportedRestSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
+    FVector DownhillDirection3D = FVector::ZeroVector;
+    FVector2D DownhillDirection2D = FVector2D::ZeroVector;
+    float PeakDownhillSpeedCmPerSec = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -224,7 +577,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabEngineOffNeutralSlopeRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+        PinkCabPhysicsFixture::MapPath, true);
     TestTrue(TEXT("slope runtime map opens"), bOpened);
     if (!bOpened)
     {
@@ -248,23 +601,28 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = FindTatra(*World);
+        APinkCabPhysicsFixturePawn* Pawn = FindTatra(*World);
         if (!Pawn)
         {
             return false;
         }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
         Test->TestNotNull(TEXT("idle fixture has movement"), Movement);
-        if (!Movement)
+        Test->TestNotNull(
+            TEXT("idle fixture has exact mechanical clock"),
+            PinkCabMovement);
+        if (!Movement || !PinkCabMovement)
         {
             return true;
         }
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             if (USkeletalMeshComponent* Mesh = Pawn->GetMesh())
             {
@@ -280,15 +638,24 @@ public:
             Test->TestTrue(TEXT("warm idle enables mechanical sim"),
                 Movement->bMechanicalSimEnabled);
             Phase = EPhase::SettlingIdle;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            LastMechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            PhaseSimSeconds = 0.0;
             bInitialized = true;
             return false;
         }
 
-        const double Elapsed = FPlatformTime::Seconds() - PhaseStartSeconds;
+        if (!AdvanceMechanicalTime(
+                *PinkCabMovement,
+                LastMechanicalStep,
+                PhaseSimSeconds))
+        {
+            return false;
+        }
+
         if (Phase == EPhase::SettlingIdle)
         {
-            if (Elapsed < 1.50)
+            if (PhaseSimSeconds < 1.50)
             {
                 return false;
             }
@@ -304,13 +671,13 @@ public:
             Test->TestTrue(TEXT("throttle blip applies through authoritative bridge"),
                 ApplyEngineState(*Pawn, Cockpit, Controls));
             Phase = EPhase::Blipping;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
         if (Phase == EPhase::Blipping)
         {
-            if (Elapsed < 0.70)
+            if (PhaseSimSeconds < 0.70)
             {
                 return false;
             }
@@ -323,7 +690,7 @@ public:
             Test->TestTrue(TEXT("blip release applies zero driver throttle"),
                 ApplyEngineState(*Pawn, Cockpit, Controls));
             Phase = EPhase::ReturningIdle;
-            PhaseStartSeconds = FPlatformTime::Seconds();
+            PhaseSimSeconds = 0.0;
             return false;
         }
 
@@ -333,13 +700,13 @@ public:
             Test->AddInfo(FString::Printf(
                 TEXT("P01_IDLE returned_rpm=%.3f return_seconds=%.3f"),
                 ReturnedIdleRpm,
-                Elapsed));
+                PhaseSimSeconds));
             Test->TestEqual(TEXT("released blip has zero final throttle"),
                 Controls.GetResolvedEngineThrottle01(), 0.0f);
             return true;
         }
 
-        if (Elapsed < 8.00)
+        if (PhaseSimSeconds < 8.00)
         {
             return false;
         }
@@ -347,7 +714,7 @@ public:
         Test->AddInfo(FString::Printf(
             TEXT("P01_IDLE return_timeout_rpm=%.3f return_seconds=%.3f"),
             ReturnedIdleRpm,
-            Elapsed));
+            PhaseSimSeconds));
         Test->TestTrue(TEXT("engine returns to warm carb idle band after blip"),
             ReturnedIdleRpm >= 900.0f && ReturnedIdleRpm <= 950.0f);
         Test->TestEqual(TEXT("released blip has zero final throttle"),
@@ -368,7 +735,8 @@ private:
     FPinkCabVehicleControlState Controls;
     bool bInitialized = false;
     EPhase Phase = EPhase::SettlingIdle;
-    double PhaseStartSeconds = 0.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
     float IdleBeforeBlip = 0.0f;
 };
 
@@ -380,7 +748,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabWarmIdleBlipRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"), true);
+        PinkCabPhysicsFixture::MapPath, true);
     TestTrue(TEXT("idle runtime map opens"), bOpened);
     if (!bOpened)
     {

@@ -69,3 +69,12 @@ PHY-002 is acceptable only when the exact-head guard reports:
 - exact Windows build and focused physics tests remain green.
 
 PHY-002 does **not** tune the vehicle. It freezes the writer topology so PHY-003 telemetry and P01/P02 bug fixes can identify the first causal writer instead of masking symptoms.
+
+
+## P02 engine omega writer refinement — 2026-09-29
+
+`FPinkCabChaosWheeledVehicleSimulation` remains the sole engine-angular-state physical owner. It now has two explicit `SetEngineOmega` sites:
+1. ignition Off/Stalled restores the pre-native engine omega after the neutral native mechanical step, allowing Chaos wheel/contact rotation to advance without synthesizing native idle combustion;
+2. the clutch reaction applies equal/opposite angular impulse and is therefore the only path that can mechanically back-drive the stopped engine.
+
+The count increase from one to two is an intentional topology refinement inside the same authoritative owner, not a second subsystem writer.

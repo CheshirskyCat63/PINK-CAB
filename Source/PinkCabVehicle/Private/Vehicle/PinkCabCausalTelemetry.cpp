@@ -29,6 +29,38 @@ void FPinkCabCausalTelemetryFrame::RefreshDerivedFields()
         ? FMath::Max(RequestedEngineTorqueAfterLimiterHealthNm, 0.0f)
         : 0.0f;
     ClutchSlipRpm = FMath::Abs(EngineRpm - ExpectedCoupledRpm);
+
+    float DrivenRpmSum = 0.0f;
+    int32 DrivenWheelCount = 0;
+    for (const FPinkCabCausalWheelTelemetry& Wheel : Wheels)
+    {
+        if (!Wheel.bEngineDriven)
+        {
+            continue;
+        }
+        DrivenRpmSum += FMath::Abs(Wheel.WheelRpm);
+        ++DrivenWheelCount;
+    }
+
+    bHasDrivenWheelRpm = DrivenWheelCount > 0;
+    DrivenWheelRpmMean = bHasDrivenWheelRpm
+        ? DrivenRpmSum / static_cast<float>(DrivenWheelCount)
+        : 0.0f;
+
+    const float EffectiveRatio = FMath::Abs(Actuation.EffectiveGearRatio);
+    if (bHasDrivenWheelRpm
+        && EngagedGear != 0
+        && EffectiveRatio > KINDA_SMALL_NUMBER)
+    {
+        WheelDerivedEngineRpm =
+            FMath::Abs(DrivenWheelRpmMean) * EffectiveRatio;
+        EngineWheelRpmDelta = EngineRpm - WheelDerivedEngineRpm;
+    }
+    else
+    {
+        WheelDerivedEngineRpm = 0.0f;
+        EngineWheelRpmDelta = 0.0f;
+    }
 }
 
 FPinkCabCausalTelemetryTrace::FPinkCabCausalTelemetryTrace(const int32 InCapacity)
@@ -65,8 +97,9 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
         "sequence,timestamp_s,dt_s,ignition,combustion_permission,model_id,profile_id,"
         "profile_schema,calibration,profile_hash,raw_throttle,prepared_throttle,"
         "post_drivetrain_throttle,health_clamped_throttle,engine_throttle_pre_limiter,"
-        "engine_throttle_final,engine_rpm,expected_coupled_rpm,clutch_coupling,clutch_slip_rpm,"
+        "engine_throttle_final,chaos_throttle_input,engine_rpm,expected_coupled_rpm,clutch_coupling,clutch_slip_rpm,"
         "drivetrain_capacity,engine_health,requested_engine_torque_nm,permission_gated_engine_torque_nm,"
+        "driven_wheel_rpm_available,driven_wheel_rpm_mean,wheel_derived_engine_rpm,engine_wheel_rpm_delta,"
         "requested_gear,engaged_gear,chaos_current_gear,chaos_target_gear,effective_gear_ratio,"
         "final_drive,external_rear_torque_per_wheel_nm,drive_path,forward_speed_kmh,world_speed_mps,"
         "vehicle_mass_kg,translational_ke_j,raw_steering_mouse,steering_cursor,steering_target,"
@@ -77,8 +110,8 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
     {
         Csv += FString::Printf(
             TEXT("%llu,%.9f,%.6f,%s,%d,%s,%s,%d,%d,%016llX,")
-            TEXT("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f,%.3f,%.6f,%.3f,")
-            TEXT("%.6f,%.6f,%.3f,%.3f,%d,%d,%d,%d,%.6f,%.6f,%.3f,%s,")
+            TEXT("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f,%.3f,%.6f,%.3f,")
+            TEXT("%.6f,%.6f,%.3f,%.3f,%d,%.6f,%.3f,%.3f,%d,%d,%d,%d,%.6f,%.6f,%.3f,%s,")
             TEXT("%.6f,%.6f,%.3f,%.3f,%.6f,%.6f,%.6f,%.6f,%d,%d,%d,%d,%d,%.6f,%d\n"),
             static_cast<unsigned long long>(F.Sequence),
             F.TimestampSeconds,
@@ -96,6 +129,7 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
             F.Actuation.HealthClampedControlThrottle01,
             F.Actuation.EngineThrottlePreLimiter01,
             F.Actuation.EngineThrottleFinal01,
+            F.Actuation.ChaosThrottleInput01,
             F.EngineRpm,
             F.ExpectedCoupledRpm,
             F.ClutchCoupling01,
@@ -104,6 +138,10 @@ FString FPinkCabCausalTelemetryTrace::ToCsv() const
             F.EngineHealthFactor01,
             F.RequestedEngineTorqueAfterLimiterHealthNm,
             F.PermissionGatedAvailableEngineTorqueNm,
+            F.bHasDrivenWheelRpm ? 1 : 0,
+            F.DrivenWheelRpmMean,
+            F.WheelDerivedEngineRpm,
+            F.EngineWheelRpmDelta,
             F.RequestedGear,
             F.EngagedGear,
             F.ChaosCurrentGear,
@@ -137,7 +175,7 @@ FString FPinkCabCausalTelemetryTrace::ToWheelCsv() const
     FString Csv = TEXT(
         "sequence,timestamp_s,wheel_index,in_contact,wheel_rpm,steer_angle_deg,"
         "suspension_length,spring_force_n,slip_angle,slip_magnitude,drive_torque_nm,"
-        "brake_torque_nm,abs_configured,abs_active,tc_configured,"
+        "brake_torque_nm,abs_configured,abs_active,tc_configured,engine_driven,"
         "normal_load_available,normal_load_n,slip_ratio_available,slip_ratio,"
         "longitudinal_force_available,longitudinal_force_n,lateral_force_available,lateral_force_n\n");
 
@@ -147,7 +185,7 @@ FString FPinkCabCausalTelemetryTrace::ToWheelCsv() const
         {
             Csv += FString::Printf(
                 TEXT("%llu,%.9f,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,")
-                TEXT("%d,%d,%d,%d,%.6f,%d,%.6f,%d,%.6f,%d,%.6f\n"),
+                TEXT("%d,%d,%d,%d,%d,%.6f,%d,%.6f,%d,%.6f,%d,%.6f\n"),
                 static_cast<unsigned long long>(Frame.Sequence),
                 Frame.TimestampSeconds,
                 Wheel.WheelIndex,
@@ -163,6 +201,7 @@ FString FPinkCabCausalTelemetryTrace::ToWheelCsv() const
                 Wheel.bABSConfigured ? 1 : 0,
                 Wheel.bABSActivated ? 1 : 0,
                 Wheel.bTractionControlConfigured ? 1 : 0,
+                Wheel.bEngineDriven ? 1 : 0,
                 Wheel.bHasNormalLoad ? 1 : 0,
                 Wheel.NormalLoadN,
                 Wheel.bHasSlipRatio ? 1 : 0,

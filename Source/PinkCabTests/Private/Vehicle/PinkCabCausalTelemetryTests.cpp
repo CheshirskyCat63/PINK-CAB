@@ -3,6 +3,8 @@
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabCausalTelemetry.h"
 #include "Vehicle/PinkCabCausalTelemetryFrameBuilder.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 
@@ -131,6 +133,29 @@ bool FPinkCabCausalFrameAvailabilityContractTest::RunTest(const FString& Paramet
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabChaosThrottleAdapterTest,
+    "PinkCab.Vehicle.Physics.Telemetry.ChaosThrottleAdapter",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabChaosThrottleAdapterTest::RunTest(const FString& Parameters)
+{
+    for (const float Authoritative : {0.0f, 0.10f, 0.25f, 0.683020f, 1.0f})
+    {
+        const float ChaosInput =
+            FPinkCabChaosEngineAdapter::ToChaosThrottleInput(Authoritative);
+        TestTrue(TEXT("Chaos adapter is bounded"),
+            ChaosInput >= 0.0f && ChaosInput <= 1.0f);
+        TestTrue(TEXT("Chaos square law reconstructs authoritative throttle"),
+            FMath::IsNearlyEqual(
+                ChaosInput * ChaosInput,
+                Authoritative,
+                1.0e-5f));
+    }
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCausalActuationResolverTest,
     "PinkCab.Vehicle.Physics.Telemetry.ActuationResolver",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -141,7 +166,10 @@ bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
     Input.bCombustionAllowed = true;
     Input.HealthClampedControlThrottle01 = 0.25f;
     Input.EngineRpm = 3000.0f;
-    Input.MaxRpm = 8500.0f;
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+    Input.RpmEnvelope = Profile.GetEngineRpmEnvelope();
     Input.EngineTorqueCurveNm = 220.0f;
 
     const FPinkCabEngineActuationResult Normal =
@@ -156,7 +184,7 @@ bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
             Input.EngineTorqueCurveNm * Normal.EngineThrottleFinal01,
             1.0e-5f));
 
-    Input.EngineRpm = Input.MaxRpm;
+    Input.EngineRpm = Input.RpmEnvelope.LimiterHardCutRpm;
     const FPinkCabEngineActuationResult Limited =
         FPinkCabEngineActuationResolver::Resolve(Input);
     TestEqual(TEXT("hard limiter cuts final engine throttle"), Limited.EngineThrottleFinal01, 0.0f);
@@ -197,12 +225,19 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     Input.Vehicle.CurrentGear = 1;
     Input.Vehicle.TargetGear = 0;
     Input.Vehicle.CausalActuation.RequestedEngineTorqueAfterLimiterHealthNm = 90.0f;
+    Input.Vehicle.CausalActuation.EffectiveGearRatio = 3.0f;
     Input.Vehicle.CausalActuation.DriveTorquePath =
         EPinkCabCausalDriveTorquePath::ExternalPartialClutch;
     FPinkCabCausalWheelTelemetry Wheel;
     Wheel.WheelIndex = 2;
+    Wheel.WheelRpm = 300.0f;
     Wheel.DriveTorqueNm = 120.0f;
+    Wheel.bEngineDriven = true;
     Input.Vehicle.CausalWheels.Add(Wheel);
+    FPinkCabCausalWheelTelemetry OtherDrivenWheel = Wheel;
+    OtherDrivenWheel.WheelIndex = 3;
+    OtherDrivenWheel.WheelRpm = -300.0f; // mirrored/sign-opposed wheel must not cancel shaft speed evidence
+    Input.Vehicle.CausalWheels.Add(OtherDrivenWheel);
     Input.EngineHealthFactor01 = 0.75f;
     Input.WorldSpeedMps = 10.0f;
     Input.VehicleMassKg = 1600.0f;
@@ -220,10 +255,17 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("health factor copied"), Frame.EngineHealthFactor01, 0.75f);
     TestEqual(TEXT("permission-gated torque remains visible while running"),
         Frame.PermissionGatedAvailableEngineTorqueNm, 90.0f);
+    TestTrue(TEXT("driven-wheel rpm availability is explicit"), Frame.bHasDrivenWheelRpm);
+    TestEqual(TEXT("driven-wheel rpm mean uses magnitudes so mirrored wheel signs cannot cancel"),
+        Frame.DrivenWheelRpmMean, 300.0f);
+    TestEqual(TEXT("wheel-derived engine rpm uses effective transmission ratio"),
+        Frame.WheelDerivedEngineRpm, 900.0f);
+    TestEqual(TEXT("engine-vs-wheel rpm delta is signed and observable"),
+        Frame.EngineWheelRpmDelta, 300.0f);
     TestEqual(TEXT("world speed copied"), Frame.WorldSpeedMps, 10.0f);
     TestTrue(TEXT("translational energy is physically derived"),
         FMath::IsNearlyEqual(Frame.TranslationalKineticEnergyJ, 80000.0, 0.01));
-    TestEqual(TEXT("per-wheel causal payload copied"), Frame.Wheels.Num(), 1);
+    TestEqual(TEXT("per-wheel causal payload copied"), Frame.Wheels.Num(), 2);
     return true;
 }
 
@@ -246,12 +288,15 @@ bool FPinkCabCausalWheelCsvTest::RunTest(const FString& Parameters)
     Wheel.SlipMagnitude = 4.0f;
     Wheel.DriveTorqueNm = 200.0f;
     Wheel.BrakeTorqueNm = 30.0f;
+    Wheel.bEngineDriven = true;
     Frame.Wheels.Add(Wheel);
     TestTrue(TEXT("wheel fixture records"), Trace.Record(Frame));
 
     const FString Csv = Trace.ToWheelCsv();
     TestTrue(TEXT("wheel csv includes wheel index"), Csv.Contains(TEXT("wheel_index")));
     TestTrue(TEXT("wheel csv includes drive torque"), Csv.Contains(TEXT("drive_torque_nm")));
+    TestTrue(TEXT("wheel csv includes driven-wheel identity"),
+        Csv.Contains(TEXT("engine_driven")));
     TestTrue(TEXT("wheel csv includes explicit normal-load availability"),
         Csv.Contains(TEXT("normal_load_available")));
     TestTrue(TEXT("wheel csv includes explicit longitudinal-force availability"),

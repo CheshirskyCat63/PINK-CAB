@@ -6,6 +6,11 @@ on:
     paths:
       - 'Source/PinkCabVehicle/**'
       - 'Source/PinkCabTests/Private/Vehicle/**'
+      - 'Config/VehiclePhysicsRuntimeFixtures.json'
+      - 'Config/DefaultEngine.ini'
+      - 'scripts/ci/materialize_local_lfs.py'
+      - 'scripts/ci/run-unreal-automation.ps1'
+      - 'scripts/tests/test_materialize_local_lfs.py'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
       - 'scripts/ci/verify_vehicle_physics_writers.py'
@@ -20,6 +25,7 @@ on:
       - 'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn*.cpp'
       - 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h'
       - 'Source/PinkCabTests/Private/Vehicle/**'
+      - 'Config/DefaultEngine.ini'
       - '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
       - 'scripts/ci/capture-vehicle-physics-baseline.ps1'
       - 'scripts/ci/verify_vehicle_physics_writers.py'
@@ -60,10 +66,77 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-          lfs: true
+          lfs: false
           clean: false
 
+      - name: Determine latest-commit physics scope
+        id: latest_scope
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
+          $physics=@($changed | Where-Object {
+            $_.StartsWith('Source/PinkCabVehicle/') -or
+            $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
+            $_.StartsWith('Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn') -or
+            $_ -eq 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h' -or
+            $_ -eq 'Config/VehiclePhysicsRuntimeFixtures.json' -or
+            $_ -eq 'Config/DefaultEngine.ini' -or
+            $_ -eq 'scripts/ci/materialize_local_lfs.py' -or
+            $_ -eq 'scripts/ci/run-unreal-automation.ps1' -or
+            $_ -eq 'scripts/ci/capture-vehicle-physics-baseline.ps1' -or
+            $_ -eq 'scripts/ci/verify_vehicle_physics_writers.py' -or
+            $_ -eq 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv' -or
+            $_ -eq 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
+          })
+          $run=($physics.Count -gt 0)
+          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "PINKCAB_PHYSICS_LATEST_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
+          $changed | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LATEST_FILE=$_" }
+
+      - name: Materialize verified local LFS fixtures
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_materialize_local_lfs -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          $fixtureManifestPath=Join-Path $env:GITHUB_WORKSPACE 'Config\VehiclePhysicsRuntimeFixtures.json'
+          $fixtureManifest=Get-Content -LiteralPath $fixtureManifestPath -Raw | ConvertFrom-Json
+          $materializeArgs=@(
+            'scripts/ci/materialize_local_lfs.py',
+            '--workspace', $env:GITHUB_WORKSPACE,
+            '--base-ref', 'origin/main',
+            '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
+            '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
+            '--search-root', 'E:\Development',
+            '--allow-changed-lfs', 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
+          )
+          foreach($fixture in $fixtureManifest.lfs){
+            $absolute=Join-Path $env:GITHUB_WORKSPACE ([string]$fixture.path)
+            if(-not (Test-Path -LiteralPath $absolute)){
+              throw "PINKCAB_PHYSICS_FIXTURE_POINTER_MISSING=$($fixture.path)"
+            }
+            $pointer=Get-Content -LiteralPath $absolute -Raw
+            $match=[regex]::Match($pointer,"(?m)^oid sha256:([0-9a-f]{64})\s*$")
+            if(-not $match.Success){
+              $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $absolute).Hash.ToLowerInvariant()
+              if($actual -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+                throw "PINKCAB_PHYSICS_FIXTURE_HASH_MISMATCH=$($fixture.path) actual=$actual expected=$($fixture.oid_sha256)"
+              }
+            } elseif($match.Groups[1].Value -ne ([string]$fixture.oid_sha256).ToLowerInvariant()){
+              throw "PINKCAB_PHYSICS_FIXTURE_OID_MISMATCH=$($fixture.path) actual=$($match.Groups[1].Value) expected=$($fixture.oid_sha256)"
+            }
+            $materializeArgs += '--required'
+            $materializeArgs += [string]$fixture.path
+          }
+          python @materializeArgs
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+          Write-Host "PINKCAB_PHYSICS_LOCAL_LFS_MATERIALIZATION=PASS"
+
       - name: Exact-head and hygiene preflight
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -81,6 +154,7 @@ jobs:
           Write-Host "PINKCAB_PHYSICS_EXACT_HEAD=$head"
 
       - name: Build PinkCabEditor
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -92,25 +166,102 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           Write-Host 'PINKCAB_PHYSICS_EDITOR_BUILD=PASS'
 
-      - name: Run focused vehicle-physics tests
+      - name: Run P02 clutch-model fail-fast
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $editor=Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_CLUTCH_MODEL_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P02.ClutchModel' `
+            -LogPath $log `
+            -TimeoutSeconds 180
+          Write-Host 'PINKCAB_CLUTCH_MODEL_FAILFAST=PASS'
+
+      - name: Run D4 fail-fast diagnostic
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_D4_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P02.D4.EngineBrakingAndStopStall' `
+            -LogPath $log `
+            -TimeoutSeconds 180
+          Write-Host 'PINKCAB_D4_FAILFAST=PASS'
+
+      - name: Run remaining P02 runtime blockers fail-fast
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $tests=@(
+            'PinkCab.Vehicle.Physics.EngineState.LiveOffNeutralSlope',
+            'PinkCab.Vehicle.Physics.P02.D4.InclineLoad',
+            'PinkCab.Vehicle.Physics.P02.ClutchBoundaryContinuity'
+          )
+          $failures=@()
+          foreach($test in $tests){
+            $safe=$test.Replace('.','_')
+            $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\FAILFAST_$safe.log"
+            try {
+              & .\scripts\ci\run-unreal-automation.ps1 `
+                -EngineRoot $env:UE_ROOT `
+                -ProjectPath $project `
+                -TestName $test `
+                -LogPath $log `
+                -TimeoutSeconds 300
+              Write-Host "PINKCAB_RUNTIME_BLOCKER_PASS=$test"
+            } catch {
+              $failures += $test
+              Write-Host "PINKCAB_RUNTIME_BLOCKER_FAIL=$test"
+              Write-Host $_
+            }
+          }
+          if($failures.Count -gt 0){
+            throw "PINKCAB_RUNTIME_BLOCKERS_FAIL=$($failures -join ',')"
+          }
+          Write-Host 'PINKCAB_RUNTIME_BLOCKERS_FAILFAST=PASS'
+
+      - name: Run D3 causal matrix fail-fast
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
+          $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\VEHICLE_PHYSICS_D3_CAUSAL_FAILFAST.log"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics.P02.D3.CausalMatrix' `
+            -LogPath $log `
+            -TimeoutSeconds 900
+          Write-Host 'PINKCAB_D3_CAUSAL_FAILFAST=PASS'
+
+      - name: Run focused vehicle-physics tests
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
           $project=Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log=Join-Path $env:GITHUB_WORKSPACE $env:TEST_LOG
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Vehicle.Physics" "-TestExit=Automation Test Queue Empty"
-          $exit=$LASTEXITCODE
-          if(Test-Path $log){
-            Get-Content $log | Select-String -Pattern 'Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
-          }
-          if($exit -ne 0){ exit $exit }
-          $queue=@(Select-String -Path $log -Pattern 'Automation Test Queue Empty [0-9]+ tests performed')
-          $fail=@(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:')
-          if($queue.Count -eq 0 -or $fail.Count -gt 0){ throw "PINKCAB_PHYSICS_TEST_FAIL queue=$($queue.Count) fail=$($fail.Count)" }
-          Write-Host "PINKCAB_PHYSICS_TDD=PASS $($queue[-1].Line)"
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath $project `
+            -TestName 'PinkCab.Vehicle.Physics' `
+            -LogPath $log `
+            -TimeoutSeconds 900
+          Write-Host 'PINKCAB_PHYSICS_TDD=PASS'
 
       - name: Build exact game executable for PHY-001 baseline
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -125,6 +276,7 @@ jobs:
           Write-Host 'PINKCAB_PHYSICS_GAME_BUILD=PASS'
 
       - name: Capture PHY-001 executable/profile/rollback baseline
+        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -145,15 +297,50 @@ jobs:
             -OutputPath (Join-Path $env:GITHUB_WORKSPACE $env:BASELINE_JSON)
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-      - name: Upload focused evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: PINKCAB-vehicle-physics-tdd-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
-          path: |
-            Saved/GitHubGate/VEHICLE_PHYSICS_TDD.log
-            Saved/GitHubGate/VEHICLE_PHYSICS_BASELINE.json
-            Saved/GitHubGate/VEHICLE_PHYSICS_WRITERS.json
-            Saved/Reports/code-health.json
-          if-no-files-found: warn
-          retention-days: 30
+      - name: Persist focused evidence on canonical runner
+        if: ${{ always() && steps.latest_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $sha='${{ github.event.pull_request.head.sha || github.sha }}'
+          $root=Join-Path $env:BASELINE_ROOT_BASE "Evidence\VehiclePhysics\$sha\${{ github.run_id }}"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+
+          $sources=@(
+            'Saved\GitHubGate\VEHICLE_PHYSICS_TDD.log',
+            'Saved\GitHubGate\VEHICLE_PHYSICS_BASELINE.json',
+            'Saved\GitHubGate\VEHICLE_PHYSICS_WRITERS.json',
+            'Saved\Reports\code-health.json'
+          )
+          $manifest=@()
+          foreach($relative in $sources){
+            $source=Join-Path $env:GITHUB_WORKSPACE $relative
+            if(-not (Test-Path -LiteralPath $source)){
+              Write-Host "PINKCAB_PHYSICS_EVIDENCE_MISSING=$relative"
+              continue
+            }
+            $name=[IO.Path]::GetFileName($source)
+            $dest=Join-Path $root $name
+            Copy-Item -LiteralPath $source -Destination $dest -Force
+            $hash=(Get-FileHash -Algorithm SHA256 -LiteralPath $dest).Hash.ToLowerInvariant()
+            $manifest += [pscustomobject]@{
+              file=$name
+              sha256=$hash
+              bytes=(Get-Item -LiteralPath $dest).Length
+            }
+            Write-Host "PINKCAB_PHYSICS_EVIDENCE_FILE=$dest sha256=$hash"
+          }
+
+          if($manifest.Count -eq 0){
+            Write-Host 'PINKCAB_PHYSICS_EVIDENCE_NO_PAYLOAD=1'
+          }
+          $manifestPath=Join-Path $root 'manifest.json'
+          $manifestJson = if($manifest.Count -eq 0){
+            '[]'
+          } else {
+            $manifest | ConvertTo-Json -Depth 4
+          }
+          Set-Content -LiteralPath $manifestPath -Value $manifestJson -Encoding UTF8
+          $manifestHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
+          Write-Host "PINKCAB_PHYSICS_EVIDENCE_ROOT=$root"
+          Write-Host "PINKCAB_PHYSICS_EVIDENCE_MANIFEST=$manifestPath sha256=$manifestHash"

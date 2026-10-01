@@ -7,9 +7,10 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
-#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Vehicle/PinkCabPhysicsFixturePawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
@@ -27,16 +28,16 @@ public:
             return false;
         }
 
-        APinkCabChaosTatraPawn* Pawn = nullptr;
-        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        AActor* FixtureFloor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!FixtureFloor || !Pawn)
         {
-            Pawn = *It;
-            break;
+            Test->AddError(TEXT("sterile physics fixture failed to spawn"));
+            return true;
         }
-        if (!Pawn)
-        {
-            return false;
-        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
 
         UChaosWheeledVehicleMovementComponent* Movement =
             Pawn->GetChaosMovement();
@@ -50,8 +51,7 @@ public:
 
         if (!bInitialized)
         {
-            Pawn->SetSystemMenuOpen(false);
-            UGameplayStatics::SetGamePaused(World, false);
+                        UGameplayStatics::SetGamePaused(World, false);
             Pawn->SetActorTickEnabled(false);
             Mesh->WakeAllRigidBodies();
 
@@ -67,8 +67,27 @@ public:
                     Cockpit, *Movement, Controls, Provider));
             Test->TestTrue(TEXT("launch has combustion permission"),
                 Controls.IsCombustionAllowed());
-            Test->TestTrue(TEXT("partial-clutch launch requests positive torque"),
-                Controls.ExternalRearDriveTorquePerWheelNm > 0.0f);
+            const UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+            Test->TestNotNull(
+                TEXT("production launch uses PinkCab custom movement"),
+                PinkCabMovement);
+            if (PinkCabMovement)
+            {
+                const FPinkCabChaosDrivelineCommand& Command =
+                    PinkCabMovement->GetPendingPinkCabDrivelineCommand();
+                Test->TestTrue(
+                    TEXT("partial-clutch launch carries positive driver/health torque demand"),
+                    Command.HealthClampedControlThrottle01 > 0.0f);
+                Test->TestEqual(
+                    TEXT("partial-clutch launch keeps authored coupling"),
+                    Command.ClutchCoupling01,
+                    0.50f);
+            }
+            Test->TestEqual(
+                TEXT("legacy external partial torque stays disabled"),
+                Controls.ExternalRearDriveTorquePerWheelNm,
+                0.0f);
 
             LaunchStartLocation = Mesh->GetComponentLocation();
             PhaseStartSeconds = FPlatformTime::Seconds();
@@ -109,7 +128,7 @@ public:
             Test->TestTrue(TEXT("key-off controls apply"),
                 FPinkCabChaosCockpitBridge::Apply(
                     Cockpit, *Movement, Controls, KeyOffProvider));
-            Test->TestFalse(TEXT("key-off disables mechanical engine sim"),
+            Test->TestTrue(TEXT("key-off keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
             Test->TestFalse(TEXT("key-off denies combustion"),
                 Controls.IsCombustionAllowed());
@@ -178,7 +197,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabVehicleEngineOffCoastRuntimeTest::RunTest(const FString& Parameters)
 {
     const bool bOpened = AutomationOpenMap(
-        TEXT("/Game/Dev/Maps/L_PinkCab_ChaosWeave"),
+        PinkCabPhysicsFixture::MapPath,
         true);
     TestTrue(TEXT("vehicle runtime map opens"), bOpened);
     if (!bOpened)

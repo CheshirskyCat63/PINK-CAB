@@ -25,9 +25,30 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("FIRST EURO boosted power target"), Profile.MaxPowerHp.Value, 250.0f);
     TestEqual(TEXT("FIRST EURO boosted torque target"), Profile.MaxTorqueNm.Value, 260.0f);
     TestEqual(TEXT("high-rev redline target"), Profile.EngineMaxRpm.Value, 8500.0f);
+    TestEqual(TEXT("warm idle authority"), Profile.EngineIdleRpm.Value, 925.0f);
+    TestEqual(TEXT("red-zone start preserves accepted limiter onset"),
+        Profile.EngineRedZoneStartRpm.Value, 8202.5f);
+    TestEqual(TEXT("hard limiter preserves accepted cut point"),
+        Profile.EngineLimiterHardCutRpm.Value, 8457.5f);
+    TestEqual(TEXT("damage overspeed follows 8500 operating profile"),
+        Profile.EngineDamageOverspeedRpm.Value, 8500.0f);
+    TestTrue(TEXT("profile RPM envelope is ordered and valid"),
+        Profile.GetEngineRpmEnvelope().IsValid());
     TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
     TestEqual(TEXT("P01 free-rev return is explicit and responsive"),
         Profile.EngineRevDownRate.Value, 1800.0f);
+    TestEqual(TEXT("P02 healthy clutch capacity candidate"),
+        Profile.ClutchMaxTorqueNm.Value, 390.0f);
+    TestEqual(TEXT("P02 clutch capacity is explicit calibration"),
+        Profile.ClutchMaxTorqueNm.Authority,
+        EPinkCabPhysicalParameterAuthority::Calibration);
+    TestEqual(TEXT("P02 effective inertia starts from accepted rev-up MOI seed"),
+        Profile.ClutchEffectiveEngineInertia.Value,
+        Profile.EngineRevUpMOI.Value);
+    TestEqual(TEXT("P02 clutch synchronization horizon is explicit"),
+        Profile.ClutchSynchronizationTimeSeconds.Value, 0.20f);
+    TestEqual(TEXT("P02 locked slip threshold is explicit"),
+        Profile.ClutchLockedSlipRpm.Value, 25.0f);
     const float RedlineTorqueFactor = Profile.NormalizedTorqueCurve.Value.Last().Y;
     const float RedlinePowerHp = Profile.MaxTorqueNm.Value * RedlineTorqueFactor * Profile.EngineMaxRpm.Value / 7127.0f;
     TestTrue(TEXT("redline stays around 250 honest horsepower"), FMath::IsNearlyEqual(RedlinePowerHp, 250.0f, 5.0f));
@@ -137,7 +158,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("P01 idle/rev-down calibration advances profile to v3"), Profile.CalibrationVersion, 3);
+    TestEqual(TEXT("PHY-010 RPM envelope advances profile to v5"), Profile.CalibrationVersion, 5);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
@@ -175,6 +196,16 @@ bool FPinkCabPhysicsProfileEnvelopeHashTest::RunTest(const FString& Parameters)
     FPinkCabChaosPhysicalProfile Mutated = NominalA;
     Mutated.EngineIdleRpm.Value += 1.0f;
     TestTrue(TEXT("physical parameter mutation changes deterministic hash"),
+        HashA != Mutated.GetDeterministicProfileHash());
+
+    Mutated = NominalA;
+    Mutated.EngineDamageOverspeedRpm.Value += 1.0f;
+    TestTrue(TEXT("RPM-envelope mutation changes deterministic hash"),
+        HashA != Mutated.GetDeterministicProfileHash());
+
+    Mutated = NominalA;
+    Mutated.ClutchMaxTorqueNm.Value += 1.0f;
+    TestTrue(TEXT("clutch calibration mutation changes deterministic hash"),
         HashA != Mutated.GetDeterministicProfileHash());
 
     Mutated = NominalA;

@@ -2,6 +2,7 @@
 
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 
 namespace
@@ -135,7 +136,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 3;
+    R.CalibrationVersion = 5;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -152,9 +153,24 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.bRearWheelDrive = P(true, A::DesignTarget);
     R.EngineMaxRpm = P(8500.0f, A::Calibration);
     R.EngineIdleRpm = P(925.0f, A::Calibration);
+    // PHY-010 materializes the already-accepted limiter behavior as explicit
+    // per-profile authority instead of hiding 96.5%/99.5% magic ratios in the
+    // actuation resolver.
+    R.EngineRedZoneStartRpm = P(8202.5f, A::Calibration);
+    R.EngineLimiterHardCutRpm = P(8457.5f, A::Calibration);
+    R.EngineDamageOverspeedRpm = P(8500.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
     R.EngineRevDownRate = P(1800.0f, A::Calibration);
+    // P02 candidate seeds. Max clutch capacity is deliberately above the
+    // accepted 260 Nm engine target so a healthy fully engaged clutch can hold
+    // peak combustion torque. Effective inertia starts from the already
+    // accepted Chaos rev-up MOI calibration and remains a candidate until the
+    // D3/D4 response measurements close it. These are not historical specs.
+    R.ClutchMaxTorqueNm = P(390.0f, A::Calibration);
+    R.ClutchEffectiveEngineInertia = P(R.EngineRevUpMOI.Value, A::Calibration);
+    R.ClutchSynchronizationTimeSeconds = P(0.20f, A::Calibration);
+    R.ClutchLockedSlipRpm = P(25.0f, A::Calibration);
     // Supercharged/high-rev design target: strong low/mid response and a broad
     // compressor-fed plateau with roughly 250 hp still available at the 8500 rpm
     // redline. This changes engine character only; pedal, gearbox, steering and
@@ -188,9 +204,16 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         bRearWheelDrive.Authority,
         EngineMaxRpm.Authority,
         EngineIdleRpm.Authority,
+        EngineRedZoneStartRpm.Authority,
+        EngineLimiterHardCutRpm.Authority,
+        EngineDamageOverspeedRpm.Authority,
         EngineBrakeEffect.Authority,
         EngineRevUpMOI.Authority,
         EngineRevDownRate.Authority,
+        ClutchMaxTorqueNm.Authority,
+        ClutchEffectiveEngineInertia.Authority,
+        ClutchSynchronizationTimeSeconds.Authority,
+        ClutchLockedSlipRpm.Authority,
         NormalizedTorqueCurve.Authority,
         bUseAutomaticGears.Authority,
         bUseAutoReverse.Authority,
@@ -207,6 +230,16 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         && HasWheelProvenanceTail(RearWheel);
 }
 
+FPinkCabEngineRpmEnvelope FPinkCabChaosPhysicalProfile::GetEngineRpmEnvelope() const
+{
+    FPinkCabEngineRpmEnvelope Result;
+    Result.IdleRpm = EngineIdleRpm.Value;
+    Result.RedZoneStartRpm = EngineRedZoneStartRpm.Value;
+    Result.LimiterHardCutRpm = EngineLimiterHardCutRpm.Value;
+    Result.DamageOverspeedRpm = EngineDamageOverspeedRpm.Value;
+    return Result;
+}
+
 void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     UChaosWheeledVehicleMovementComponent& Movement) const
 {
@@ -218,6 +251,20 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     Movement.EngineSetup.EngineBrakeEffect = EngineBrakeEffect.Value;
     Movement.EngineSetup.EngineRevUpMOI = EngineRevUpMOI.Value;
     Movement.EngineSetup.EngineRevDownRate = EngineRevDownRate.Value;
+
+    if (UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(&Movement))
+    {
+        FPinkCabClutchDrivelineConfig ClutchConfig;
+        ClutchConfig.EngineEffectiveInertia = ClutchEffectiveEngineInertia.Value;
+        ClutchConfig.MaxClutchTorqueNm = ClutchMaxTorqueNm.Value;
+        ClutchConfig.SynchronizationTimeSeconds = ClutchSynchronizationTimeSeconds.Value;
+        ClutchConfig.LockedSlipRpm = ClutchLockedSlipRpm.Value;
+        PinkCabMovement->ConfigurePinkCabClutch(ClutchConfig);
+        PinkCabMovement->ConfigurePinkCabEngineRpmEnvelope(
+            GetEngineRpmEnvelope());
+    }
+
     FRichCurve* TorqueCurve = Movement.EngineSetup.TorqueCurve.GetRichCurve();
     TorqueCurve->Reset();
     for (const FVector2D& Key : NormalizedTorqueCurve.Value)

@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 1,
   "concerns": [
     {
@@ -74,9 +74,9 @@
     {
       "id": "clutch",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
-      "implementation_root": "Source/PinkCabVehicle/Public/Vehicle/PinkCabDrivetrainCondition.h",
-      "test_prefix": "PinkCab.Vehicle.ControlRuntime"
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp",
+      "test_prefix": "PinkCab.Vehicle.Physics.P02.ClutchModel"
     },
     {
       "id": "throttle",
@@ -119,6 +119,13 @@
       "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
       "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
       "test_prefix": "PinkCab.Vehicle.ChaosBaseline"
+    },
+    {
+      "id": "chaos_physics_actuation",
+      "owner_domain": "Vehicle",
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.cpp",
+      "test_prefix": "PinkCab.Vehicle.Physics.P02"
     },
     {
       "id": "fare",

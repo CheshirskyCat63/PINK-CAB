@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Vehicle/PinkCabEngineRpmEnvelope.h"
 
 class UChaosVehicleWheel;
 class UChaosWheeledVehicleMovementComponent;
@@ -61,6 +62,7 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
     uint64 GetDeterministicProfileHash() const;
     bool HasCompleteProvenance() const;
     void ApplyToMovement(UChaosWheeledVehicleMovementComponent& Movement) const;
+    FPinkCabEngineRpmEnvelope GetEngineRpmEnvelope() const;
     void ApplyToFrontWheel(UChaosVehicleWheel& Wheel) const;
     void ApplyToRearWheel(UChaosVehicleWheel& Wheel) const;
 
@@ -87,9 +89,20 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
 
     TPinkCabPhysicalParameter<float> EngineMaxRpm;
     TPinkCabPhysicalParameter<float> EngineIdleRpm;
+    TPinkCabPhysicalParameter<float> EngineRedZoneStartRpm;
+    TPinkCabPhysicalParameter<float> EngineLimiterHardCutRpm;
+    TPinkCabPhysicalParameter<float> EngineDamageOverspeedRpm;
     TPinkCabPhysicalParameter<float> EngineBrakeEffect;
     TPinkCabPhysicalParameter<float> EngineRevUpMOI;
     TPinkCabPhysicalParameter<float> EngineRevDownRate;
+
+    // P02 clutch/driveline calibration. These are explicit candidate physical
+    // parameters with provenance; none are historical Tatra claims.
+    TPinkCabPhysicalParameter<float> ClutchMaxTorqueNm;
+    TPinkCabPhysicalParameter<float> ClutchEffectiveEngineInertia;
+    TPinkCabPhysicalParameter<float> ClutchSynchronizationTimeSeconds;
+    TPinkCabPhysicalParameter<float> ClutchLockedSlipRpm;
+
     TPinkCabPhysicalParameter<TArray<FVector2D>> NormalizedTorqueCurve;
     TPinkCabPhysicalParameter<bool> bUseAutomaticGears;
     TPinkCabPhysicalParameter<bool> bUseAutoReverse;

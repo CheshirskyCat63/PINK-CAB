@@ -13,6 +13,7 @@
 #include "Vehicle/PinkCabGearEngagementValidator.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabThrottleResponse.h"
+#include "Vehicle/PinkCabVehicleControlRuntime.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleMotionHysteresisTest,
@@ -503,13 +504,209 @@ bool FPinkCabContinuousClutchTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabContinuousClutchReleaseRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.ContinuousClutchRelease",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabContinuousClutchReleaseRuntimeTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabGearboxController Gearbox;
+    FPinkCabVehicleInputFrame Input;
+
+    Input.Clutch = 1.0f;
+    FPinkCabPreparedVehicleControlFrame Prepared =
+        Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.20f);
+    TestTrue(TEXT("Q press reaches fully disengaged clutch"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+
+    Input.Clutch = 0.0f;
+    float PreviousPedal = Prepared.Frame.Clutch;
+    float PreviousCoupling = Gearbox.ComputeClutchCoupling(PreviousPedal);
+    int32 DistinctPartialStates = 0;
+
+    for (int32 Step = 0; Step < 5; ++Step)
+    {
+        Prepared = Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+        const float Pedal = Prepared.Frame.Clutch;
+        const float Coupling = Gearbox.ComputeClutchCoupling(Pedal);
+
+        TestTrue(TEXT("clutch pedal releases monotonically"),
+            Pedal < PreviousPedal);
+        TestTrue(TEXT("driveline coupling rises monotonically during release"),
+            Coupling > PreviousCoupling);
+        TestTrue(TEXT("release remains bounded"),
+            Pedal >= 0.0f && Pedal <= 1.0f
+            && Coupling >= 0.0f && Coupling <= 1.0f);
+
+        if (Coupling > KINDA_SMALL_NUMBER
+            && Coupling < 1.0f - KINDA_SMALL_NUMBER)
+        {
+            ++DistinctPartialStates;
+        }
+
+        PreviousPedal = Pedal;
+        PreviousCoupling = Coupling;
+    }
+
+    TestTrue(TEXT("release exposes several distinct partial-coupling states"),
+        DistinctPartialStates >= 4);
+
+    // Default owner-selected release is 0.70 s. Two more 0.10 s steps must
+    // complete the continuous release without a binary snap.
+    Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.10f);
+    TestTrue(TEXT("player-selected release time reaches fully released pedal"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 0.0f, 1.e-4f));
+    TestTrue(TEXT("fully released pedal reaches full coupling"),
+        FMath::IsNearlyEqual(
+            Gearbox.ComputeClutchCoupling(Prepared.Frame.Clutch),
+            1.0f,
+            1.e-4f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchReleaseInterruptRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchReleaseInterrupt",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchReleaseInterruptRuntimeTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabGearboxController Gearbox;
+    FPinkCabVehicleInputFrame Input;
+
+    Input.Clutch = 1.0f;
+    FPinkCabPreparedVehicleControlFrame Prepared =
+        Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.20f);
+    TestTrue(TEXT("interrupt fixture starts fully disengaged"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+
+    Input.Clutch = 0.0f;
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.28f);
+    const float ReleasingPedal = Prepared.Frame.Clutch;
+    const float ReleasingCoupling =
+        Gearbox.ComputeClutchCoupling(ReleasingPedal);
+    TestTrue(TEXT("release fixture is genuinely mid-bite"),
+        ReleasingPedal > 0.0f && ReleasingPedal < 1.0f
+        && ReleasingCoupling > 0.0f && ReleasingCoupling < 1.0f);
+
+    // Q is pressed again while the pedal is still releasing. The very next
+    // runtime step must reverse direction; no queued release frame is allowed.
+    Input.Clutch = 1.0f;
+    Prepared = Runtime.PrepareInputFrame(
+        Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.05f);
+    const float InterruptedPedal = Prepared.Frame.Clutch;
+    const float InterruptedCoupling =
+        Gearbox.ComputeClutchCoupling(InterruptedPedal);
+
+    TestTrue(TEXT("Q mid-release immediately moves pedal back toward disengaged"),
+        InterruptedPedal > ReleasingPedal);
+    TestTrue(TEXT("Q mid-release immediately reduces transmitted coupling"),
+        InterruptedCoupling < ReleasingCoupling);
+
+    for (int32 Step = 0; Step < 3; ++Step)
+    {
+        Prepared = Runtime.PrepareInputFrame(
+            Input, 0, TOptional<FPinkCabVehicleTelemetry>(), Cockpit, 0.05f);
+    }
+
+    TestTrue(TEXT("continued Q press cleanly reaches fully disengaged clutch"),
+        FMath::IsNearlyEqual(Prepared.Frame.Clutch, 1.0f, 1.e-4f));
+    TestTrue(TEXT("fully disengaged clutch transfers zero coupling"),
+        FMath::IsNearlyEqual(
+            Gearbox.ComputeClutchCoupling(Prepared.Frame.Clutch),
+            0.0f,
+            1.e-4f));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabCentralRpmEnvelopeContractTest,
+    "PinkCab.Vehicle.Physics.P02.CentralRpmEnvelope",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosPhysicalProfile Physical =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+    FPinkCabGearboxController Gearbox;
+    Gearbox.SetEngineRpmEnvelope(Physical.GetEngineRpmEnvelope());
+
+    TestTrue(TEXT("shared RPM envelope is valid"),
+        Gearbox.GetEngineRpmEnvelope().IsValid());
+    TestEqual(TEXT("current operating profile max RPM is the accepted 8500 target"),
+        Physical.EngineMaxRpm.Value, 8500.0f);
+    TestTrue(TEXT("7000 RPM lies inside the accepted operating profile"),
+        7000.0f < Physical.EngineMaxRpm.Value);
+    TestEqual(
+        TEXT("gearbox dangerous-overrev boundary follows physical profile max RPM"),
+        Gearbox.GetDamageOverspeedRpm(),
+        Physical.EngineDamageOverspeedRpm.Value);
+
+    FPinkCabGearEngagementContext Context;
+    Context.ClutchPedal = 1.0f;
+    Context.EngineRpm = 3000.0f;
+    Context.Throttle = 0.0f;
+
+    const float FirstRpmPerKmh =
+        Gearbox.ExpectedEngineRpmForGear(1, 1.0f);
+    TestTrue(TEXT("first-gear RPM-per-kmh contract is positive"),
+        FirstRpmPerKmh > KINDA_SMALL_NUMBER);
+    if (FirstRpmPerKmh <= KINDA_SMALL_NUMBER)
+    {
+        return false;
+    }
+
+    // Legitimate high-rev operation below the profile ceiling must not trip
+    // the historical 6500-RPM gearbox-only damage guard.
+    Context.SpeedKmh = 7000.0f / FirstRpmPerKmh;
+    TestTrue(TEXT("first selected with clutch open at 7000 coupled RPM"),
+        Gearbox.RequestGear(1, Context));
+    Context.ClutchPedal = 0.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestNotEqual(
+        TEXT("7000 RPM coupled state is valid inside the 8500 operating profile"),
+        Gearbox.GetLastResult(),
+        EPinkCabGearEngagementResult::DangerousOverrev);
+
+    // A connected first-gear downshift beyond the profile ceiling must still
+    // remain physically dangerous after the stale 6500 constant is removed.
+    Context.ClutchPedal = 1.0f;
+    Context.SpeedKmh = 100.0f;
+    TestTrue(TEXT("first can be selected while clutch remains open"),
+        Gearbox.RequestGear(1, Context));
+    Context.ClutchPedal = 0.0f;
+    Gearbox.EvaluateCurrentEngagement(Context);
+    TestEqual(
+        TEXT("connected downshift above profile damage-overspeed remains dangerous"),
+        Gearbox.GetLastResult(),
+        EPinkCabGearEngagementResult::DangerousOverrev);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabDangerousDownshiftTest,
     "PinkCab.Vehicle.ControlRuntime.Gearbox.DangerousDownshift",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FPinkCabDangerousDownshiftTest::RunTest(const FString& Parameters)
 {
+    const FPinkCabChaosPhysicalProfile Physical =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
     FPinkCabGearboxController Gearbox;
+    Gearbox.SetEngineRpmEnvelope(Physical.GetEngineRpmEnvelope());
     FPinkCabGearEngagementContext Context;
     Context.ClutchPedal = 1.0f;
     Context.SpeedKmh = 100.0f;
@@ -524,7 +721,7 @@ bool FPinkCabDangerousDownshiftTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("releasing clutch into impossible downshift reports dangerous overrev"),
         Gearbox.GetLastResult(), EPinkCabGearEngagementResult::DangerousOverrev);
     TestTrue(TEXT("dangerous classification exposes overspeed rpm"),
-        Gearbox.GetExpectedCoupledRpm() > Gearbox.GetMaxSafeEngineRpm());
+        Gearbox.GetExpectedCoupledRpm() > Gearbox.GetDamageOverspeedRpm());
     return true;
 }
 

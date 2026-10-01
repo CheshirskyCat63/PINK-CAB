@@ -3,8 +3,10 @@
 #include "Misc/AutomationTest.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosEngineAdapter.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabEngineActuationResolver.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
@@ -23,7 +25,10 @@ FPinkCabEngineActuationInput ResolverInput(
     Input.bCombustionAllowed = bAllowed;
     Input.HealthClampedControlThrottle01 = Throttle;
     Input.EngineRpm = Rpm;
-    Input.MaxRpm = 8500.0f;
+    Input.RpmEnvelope =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal)
+            .GetEngineRpmEnvelope();
     Input.EngineTorqueCurveNm = 260.0f;
     return Input;
 }
@@ -91,7 +96,13 @@ bool FPinkCabCombustionPermissionResolverTest::RunTest(const FString& Parameters
     }
 
     const FPinkCabEngineActuationResult Limited =
-        FPinkCabEngineActuationResolver::Resolve(ResolverInput(true, 1.0f, 8500.0f));
+        FPinkCabEngineActuationResolver::Resolve(
+            ResolverInput(
+                true,
+                1.0f,
+                FPinkCabChaosPhysicalProfile::ForVariant(
+                    EPinkCabCalibrationVariant::Nominal)
+                    .EngineLimiterHardCutRpm.Value));
     TestEqual(TEXT("limiter remains authoritative after permission"), Limited.EngineThrottleFinal01, 0.0f);
     TestEqual(TEXT("limiter also removes available combustion torque"),
         Limited.RequestedEngineTorqueAfterLimiterHealthNm, 0.0f);
@@ -118,7 +129,7 @@ bool FPinkCabCombustionPermissionBridgeMatrixTest::RunTest(const FString& Parame
                 for (const float Coupling : {0.0f, 0.50f, 1.0f})
                 {
                     UChaosWheeledVehicleMovementComponent* Movement =
-                        NewObject<UChaosWheeledVehicleMovementComponent>();
+                        NewObject<UPinkCabChaosVehicleMovementComponent>();
                     Profile.ApplyToMovement(*Movement);
                     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
                     FPinkCabCockpitState Cockpit =
@@ -159,7 +170,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Parameters)
 {
     UChaosWheeledVehicleMovementComponent* Movement =
-        NewObject<UChaosWheeledVehicleMovementComponent>();
+        NewObject<UPinkCabChaosVehicleMovementComponent>();
     const FPinkCabChaosPhysicalProfile Profile =
         FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
     Profile.ApplyToMovement(*Movement);
@@ -179,10 +190,15 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         Partial.GetResolvedEngineThrottle01() > 0.0f);
     TestTrue(TEXT("running available torque is positive"),
         Partial.GetAvailableEngineTorqueNm() > 0.0f);
-    TestTrue(TEXT("partial clutch consumes shared available torque"),
-        FMath::Abs(Partial.ExternalRearDriveTorquePerWheelNm) > KINDA_SMALL_NUMBER);
-    TestEqual(TEXT("provider applies the exact resolved throttle"),
-        Movement->GetThrottleInput(), Partial.GetResolvedEngineThrottle01());
+    TestEqual(TEXT("partial clutch never uses legacy external wheel torque"),
+        Partial.ExternalRearDriveTorquePerWheelNm, 0.0f);
+    TestEqual(TEXT("partial clutch uses authoritative PinkCab driveline"),
+        Provider.GetLastCausalActuationTelemetry().DriveTorquePath,
+        EPinkCabCausalDriveTorquePath::PinkCabClutchDriveline);
+    TestEqual(TEXT("provider adapts authoritative throttle to Chaos square-law input"),
+        Movement->GetThrottleInput(),
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Partial.GetResolvedEngineThrottle01()));
 
     FPinkCabVehicleControlState Full;
     Full.SetThrottle(0.50f);
@@ -192,10 +208,15 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Full, Provider));
     TestTrue(TEXT("full coupling keeps shared available torque visible"),
         Full.GetAvailableEngineTorqueNm() > 0.0f);
-    TestEqual(TEXT("full coupling does not also inject external rear torque"),
+    TestEqual(TEXT("full coupling also keeps legacy external rear torque zero"),
         Full.ExternalRearDriveTorquePerWheelNm, 0.0f);
-    TestEqual(TEXT("full coupling applies the same resolved throttle to Chaos"),
-        Movement->GetThrottleInput(), Full.GetResolvedEngineThrottle01());
+    TestEqual(TEXT("full coupling stays on the same PinkCab driveline path"),
+        Provider.GetLastCausalActuationTelemetry().DriveTorquePath,
+        EPinkCabCausalDriveTorquePath::PinkCabClutchDriveline);
+    TestEqual(TEXT("full coupling uses the same Chaos square-law adapter"),
+        Movement->GetThrottleInput(),
+        FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
+            Full.GetResolvedEngineThrottle01()));
     return true;
 }
 
@@ -332,14 +353,21 @@ bool FPinkCabWarmIdleProfileTest::RunTest(const FString& Parameters)
         Profile.EngineIdleRpm.Value, 925.0f);
 
     UChaosWheeledVehicleMovementComponent* Movement =
-        NewObject<UChaosWheeledVehicleMovementComponent>();
+        NewObject<UPinkCabChaosVehicleMovementComponent>();
     Profile.ApplyToMovement(*Movement);
     TestEqual(TEXT("Chaos receives profile idle target"),
         Movement->EngineSetup.EngineIdleRPM, Profile.EngineIdleRpm.Value);
 
-    const FPinkCabGearboxControllerConfig GearboxDefaults;
-    TestEqual(TEXT("gearbox neutral rpm seed aligns until P02 centralization"),
-        GearboxDefaults.IdleRpm, Profile.EngineIdleRpm.Value);
+    const UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    TestNotNull(TEXT("custom movement retains profile RPM envelope"),
+        PinkCabMovement);
+    if (PinkCabMovement)
+    {
+        TestEqual(TEXT("movement envelope shares profile idle authority"),
+            PinkCabMovement->GetPinkCabEngineRpmEnvelope().IdleRpm,
+            Profile.EngineIdleRpm.Value);
+    }
     return true;
 }
 

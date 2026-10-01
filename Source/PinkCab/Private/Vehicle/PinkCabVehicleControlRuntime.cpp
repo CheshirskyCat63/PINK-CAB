@@ -292,12 +292,26 @@ void FPinkCabVehicleControlRuntime::ApplyHealthCapabilities(
 bool FPinkCabVehicleControlRuntime::ResetTransient(FPinkCabCockpitState& Cockpit)
 {
     bThrottleHeldLastFrame = false;
+
+    const int32 PreviousRequestedGear = GearboxController.GetRequestedGear();
     GearboxController.CancelPendingRequest();
-    Cockpit.SetSelectedGear(GearboxController.GetEngagedGear());
+    const int32 EngagedGear = GearboxController.GetEngagedGear();
+    const bool bPendingGearCanceled =
+        PreviousRequestedGear != GearboxController.GetRequestedGear();
+
+    Cockpit.SetSelectedGear(EngagedGear);
+    // Focus/menu cleanup must leave semantic output aligned immediately; no
+    // stale requested gear may survive until the next control tick.
+    ControlState.SetDriveline(
+        GearboxController.GetRequestedGear(),
+        EngagedGear,
+        ControlState.ClutchCoupling);
+
     if (MotionClassifier.GetMode() != EPinkCabVehicleMotionMode::Moving)
     {
-        return false;
+        return bPendingGearCanceled;
     }
+
     ResetHandbrake(0.0f, false, Cockpit);
     return true;
 }

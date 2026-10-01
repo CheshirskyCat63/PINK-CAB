@@ -7,18 +7,15 @@ namespace
 float ApplyPinkCabRevLimiter(
     const float RequestedEngineThrottle,
     const float EngineRpm,
-    const float MaxRpm)
+    const FPinkCabEngineRpmEnvelope& Envelope)
 {
-    if (MaxRpm <= KINDA_SMALL_NUMBER)
+    if (!Envelope.IsValid())
     {
         return RequestedEngineThrottle;
     }
 
-    // Preserve the existing PINK CAB control-boundary limiter exactly.
-    constexpr float SoftLimiterStartRatio = 0.965f;
-    constexpr float HardLimiterCutRatio = 0.995f;
-    const float SoftStartRpm = MaxRpm * SoftLimiterStartRatio;
-    const float HardCutRpm = MaxRpm * HardLimiterCutRatio;
+    const float SoftStartRpm = Envelope.RedZoneStartRpm;
+    const float HardCutRpm = Envelope.LimiterHardCutRpm;
     if (EngineRpm <= SoftStartRpm)
     {
         return RequestedEngineThrottle;
@@ -52,7 +49,7 @@ FPinkCabEngineActuationResult FPinkCabEngineActuationResolver::Resolve(
     Result.EngineThrottleFinal01 = ApplyPinkCabRevLimiter(
         Result.EngineThrottlePreLimiter01,
         Input.EngineRpm,
-        Input.MaxRpm);
+        Input.RpmEnvelope);
     Result.RequestedEngineTorqueAfterLimiterHealthNm =
         FMath::Max(Input.EngineTorqueCurveNm, 0.0f)
         * FMath::Clamp(Result.EngineThrottleFinal01, 0.0f, 1.0f);

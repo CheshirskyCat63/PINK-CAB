@@ -13,7 +13,7 @@ float FPinkCabGearEngagementValidator::ExpectedEngineRpmForGear(
     const int32 Gear,
     const float SpeedKmh)
 {
-    if (Gear == 0) return Config.IdleRpm;
+    if (Gear == 0) return Config.EngineRpmEnvelope.IdleRpm;
     float RpmPerKmh = Config.ReverseRpmPerKmh;
     if (Gear > 0 && Gear <= 5)
     {
@@ -86,7 +86,12 @@ bool FPinkCabGearEngagementValidator::IsDangerousOverrev(
     const FPinkCabGearEngagementContext& Context,
     const float ExpectedCoupledRpm)
 {
-    if (EngagedGear == 0) return false;
+    if (EngagedGear == 0 || !Config.EngineRpmEnvelope.IsValid())
+    {
+        return false;
+    }
     const float Coupling = ComputeClutchCoupling(Config, Context.ClutchPedal);
-    return Coupling > 0.75f && ExpectedCoupledRpm > Config.MaxSafeEngineRpm;
+    return Coupling > 0.75f
+        && ExpectedCoupledRpm
+            > Config.EngineRpmEnvelope.DamageOverspeedRpm;
 }

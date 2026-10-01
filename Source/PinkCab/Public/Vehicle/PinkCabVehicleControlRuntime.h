@@ -55,6 +55,10 @@ public:
         const FPinkCabVehicleControlRuntimeConfig& InConfig = {});
 
     void SetResponseConfig(const FPinkCabVehicleControlRuntimeConfig& InConfig);
+    void SetEngineRpmEnvelope(const FPinkCabEngineRpmEnvelope& InEnvelope)
+    {
+        GearboxController.SetEngineRpmEnvelope(InEnvelope);
+    }
 
     FPinkCabPreparedVehicleControlFrame PrepareInputFrame(
         const FPinkCabVehicleInputFrame& InputFrame,

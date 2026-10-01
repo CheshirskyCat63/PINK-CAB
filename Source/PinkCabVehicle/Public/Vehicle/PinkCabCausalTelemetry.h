@@ -13,7 +13,8 @@ enum class EPinkCabCausalDriveTorquePath : uint8
 {
     None,
     ExternalPartialClutch,
-    ChaosMechanical
+    ChaosMechanical,
+    PinkCabClutchDriveline
 };
 
 struct PINKCABVEHICLE_API FPinkCabCausalControlTelemetry
@@ -40,6 +41,7 @@ struct PINKCABVEHICLE_API FPinkCabCausalActuationTelemetry
     float HealthClampedControlThrottle01 = 0.0f;
     float EngineThrottlePreLimiter01 = 0.0f;
     float EngineThrottleFinal01 = 0.0f;
+    float ChaosThrottleInput01 = 0.0f;
     float EngineTorqueCurveNm = 0.0f;
     float RequestedEngineTorqueAfterLimiterHealthNm = 0.0f;
     float EffectiveGearRatio = 0.0f;
@@ -71,6 +73,7 @@ struct PINKCABVEHICLE_API FPinkCabCausalWheelTelemetry
     bool bABSConfigured = false;
     bool bABSActivated = false;
     bool bTractionControlConfigured = false;
+    bool bEngineDriven = false;
 
     // UE 5.8 public FWheelStatus does not expose exact tire normal load,
     // slip ratio, or longitudinal/lateral tire force. Keep absence explicit.
@@ -110,6 +113,14 @@ struct PINKCABVEHICLE_API FPinkCabCausalTelemetryFrame
     float EngineHealthFactor01 = 1.0f;
     float RequestedEngineTorqueAfterLimiterHealthNm = 0.0f;
     float PermissionGatedAvailableEngineTorqueNm = 0.0f;
+
+    // PHY-009 observability: this is measured/derived evidence only. It does not
+    // feed vehicle control. Driven-wheel RPM comes from live Chaos wheel state;
+    // wheel-derived engine RPM uses the engaged gear's effective combined ratio.
+    bool bHasDrivenWheelRpm = false;
+    float DrivenWheelRpmMean = 0.0f;
+    float WheelDerivedEngineRpm = 0.0f;
+    float EngineWheelRpmDelta = 0.0f;
 
     int32 RequestedGear = 0;
     int32 EngagedGear = 0;
