@@ -231,6 +231,59 @@ bool FPinkCabP03NoPostInputGhostSteeringTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03FrameRateIndependentSteeringTraceTest,
+    "PinkCab.Vehicle.Physics.P03.FrameRateIndependentSteeringTrace",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03FrameRateIndependentSteeringTraceTest::RunTest(const FString& Parameters)
+{
+    // PHY-014 criterion A: the device produces counts over time. Splitting the
+    // same timed trace into different frame cadences must not change the authored
+    // steering result.
+    auto RunTrace = [](const int32 Fps)
+    {
+        FPinkCabSteeringController Steering;
+        Steering.Reset();
+
+        const float DeltaSeconds = 1.0f / static_cast<float>(Fps);
+        const int32 PositiveFrames = FMath::RoundToInt(0.60f * Fps);
+        const int32 NegativeFrames = Fps - PositiveFrames;
+
+        for (int32 Index = 0; Index < PositiveFrames; ++Index)
+        {
+            Steering.Step(
+                560.0f * DeltaSeconds,
+                false,
+                60.0f,
+                EPinkCabVehicleMotionMode::Moving,
+                DeltaSeconds);
+        }
+        for (int32 Index = 0; Index < NegativeFrames; ++Index)
+        {
+            Steering.Step(
+                -280.0f * DeltaSeconds,
+                false,
+                60.0f,
+                EPinkCabVehicleMotionMode::Moving,
+                DeltaSeconds);
+        }
+
+        return FVector2D(Steering.GetTarget(), Steering.GetSteering());
+    };
+
+    const FVector2D Trace30 = RunTrace(30);
+    const FVector2D Trace60 = RunTrace(60);
+    const FVector2D Trace120 = RunTrace(120);
+
+    TestTrue(TEXT("30 and 60 FPS timed traces author comparable steering targets"),
+        Trace30.Equals(Trace60, 1.0e-5f));
+    TestTrue(TEXT("60 and 120 FPS timed traces author comparable steering targets"),
+        Trace60.Equals(Trace120, 1.0e-5f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleControlRuntimeGearboxTest,
     "PinkCab.Vehicle.ControlRuntime.Runtime.GearboxRequestedEngaged",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
