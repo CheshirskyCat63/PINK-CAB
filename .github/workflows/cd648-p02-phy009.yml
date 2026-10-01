@@ -267,6 +267,7 @@ jobs:
             'PinkCab.Vehicle.Physics.P02.PartialClutchWheelReaction',
             'PinkCab.Vehicle.Physics.P02.D3.HotWornCapacity',
             'PinkCab.Vehicle.Physics.P02.D5.RenderCadenceInvariance',
+            'PinkCab.Vehicle.Physics.P02.CentralRpmEnvelope',
             'PinkCab.Vehicle.Physics'
           )
           $completedTests=0
