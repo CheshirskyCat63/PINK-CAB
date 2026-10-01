@@ -516,6 +516,8 @@ bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
 
     TestEqual(TEXT("current operating profile max RPM is the accepted 8500 target"),
         Physical.EngineMaxRpm.Value, 8500.0f);
+    TestTrue(TEXT("7000 RPM lies inside the accepted operating profile"),
+        7000.0f < Physical.EngineMaxRpm.Value);
     TestEqual(
         TEXT("gearbox dangerous-overrev boundary follows physical profile max RPM"),
         Gearbox.GetMaxSafeEngineRpm(),
