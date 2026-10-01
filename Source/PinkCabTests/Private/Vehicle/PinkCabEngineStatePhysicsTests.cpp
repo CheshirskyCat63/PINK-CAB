@@ -358,9 +358,16 @@ bool FPinkCabWarmIdleProfileTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Chaos receives profile idle target"),
         Movement->EngineSetup.EngineIdleRPM, Profile.EngineIdleRpm.Value);
 
-    const FPinkCabGearboxControllerConfig GearboxDefaults;
-    TestEqual(TEXT("gearbox neutral rpm seed aligns until P02 centralization"),
-        GearboxDefaults.IdleRpm, Profile.EngineIdleRpm.Value);
+    const UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    TestNotNull(TEXT("custom movement retains profile RPM envelope"),
+        PinkCabMovement);
+    if (PinkCabMovement)
+    {
+        TestEqual(TEXT("movement envelope shares profile idle authority"),
+            PinkCabMovement->GetPinkCabEngineRpmEnvelope().IdleRpm,
+            Profile.EngineIdleRpm.Value);
+    }
     return true;
 }
 
