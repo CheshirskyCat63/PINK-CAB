@@ -205,6 +205,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
     const FPinkCabChaosPhysicalProfile Profile = FPinkCabChaosPhysicalProfile::ForVariant(
         EPinkCabCalibrationVariant::Nominal);
     Profile.ApplyToMovement(*Movement);
+    VehicleControlRuntime.SetEngineRpmEnvelope(
+        Profile.GetEngineRpmEnvelope());
 
     VehicleLoadState.SetFuelMassKg(TatraProfile.FullFuelMassKg);
     VehicleLoadState.SetCrew(TatraProfile.HeroineMassKg, TatraProfile.DaughterMassKg);
