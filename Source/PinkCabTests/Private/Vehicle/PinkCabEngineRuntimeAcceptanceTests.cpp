@@ -174,10 +174,13 @@ public:
                 return true;
             }
 
-            // Preserve the accepted P01 gravity-coast fixture: no service or
-            // parking brake is allowed to create an artificial static state.
-            Controls.SetThrottle(1.0f);
-            Controls.SetBrake(0.0f);
+            // Establish a deterministic physical initial condition: let the
+            // vehicle land and settle naturally on all four wheels while the
+            // normal production service-brake path holds it. The brake is
+            // released through the same authoritative control path before any
+            // coast measurement begins.
+            Controls.SetThrottle(0.0f);
+            Controls.SetBrake(1.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
             Test->TestTrue(TEXT("off neutral slope gravity state applies"),
@@ -191,10 +194,6 @@ public:
             Test->TestTrue(
                 TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
-            Test->TestTrue(
-                TEXT("slope brake-path evidence window starts"),
-                PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
-                    0.0f, static_cast<float>(BrakeEvidenceSeconds)));
 
             const FVector Downhill3D =
                 FVector::VectorPlaneProject(
@@ -210,7 +209,7 @@ public:
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             PhaseSimSeconds = 0.0;
-            SupportedContactSeconds = 0.0;
+            SupportedRestSeconds = 0.0;
             LastContactObservationSimSeconds = 0.0;
             bInitialized = true;
             return false;
@@ -262,6 +261,7 @@ public:
 
             const FVector BodyVelocity =
                 Mesh->GetPhysicsLinearVelocity();
+            const float BodyLinearSpeedCmPerSec = BodyVelocity.Size();
             const float NormalSpeedCmPerSec = FMath::Abs(
                 FVector::DotProduct(
                     BodyVelocity,
@@ -274,73 +274,89 @@ public:
             const float BodyAngularSpeedDegPerSec =
                 Mesh->GetPhysicsAngularVelocityInDegrees().Size();
 
-            float CurrentMaxAbsWheelAngularVelocity = 0.0f;
-            for (const UChaosVehicleWheel* Wheel : Movement->Wheels)
-            {
-                if (Wheel)
-                {
-                    CurrentMaxAbsWheelAngularVelocity = FMath::Max(
-                        CurrentMaxAbsWheelAngularVelocity,
-                        FMath::Abs(Wheel->GetWheelAngularVelocity()));
-                }
-            }
-            if (ContactWheels == Movement->GetNumWheels()
-                && TotalSpringForce > KINDA_SMALL_NUMBER)
-            {
-                MaxSupportedDownhillSpeedCmPerSec = FMath::Max(
-                    MaxSupportedDownhillSpeedCmPerSec,
-                    DownhillSpeedCmPerSec);
-                MaxSupportedWheelAngularVelocity = FMath::Max(
-                    MaxSupportedWheelAngularVelocity,
-                    CurrentMaxAbsWheelAngularVelocity);
-            }
-
-            const bool bSupportedRollingContact =
-                ContactWheels == Movement->GetNumWheels()
-                && TotalSpringForce > KINDA_SMALL_NUMBER
-                && NormalSpeedCmPerSec
-                    <= ContactNormalSpeedToleranceCmPerSec
-                && DownhillSpeedCmPerSec
-                    >= ContactDownhillSpeedMinimumCmPerSec;
-
             const double ObservationDeltaSeconds =
                 FMath::Max(
                     PhaseSimSeconds - LastContactObservationSimSeconds,
                     0.0);
             LastContactObservationSimSeconds = PhaseSimSeconds;
 
-            if (PhaseSimSeconds >= MinimumContactSettleSeconds
-                && bSupportedRollingContact)
+            if (!bBrakeReleased)
             {
-                SupportedContactSeconds += ObservationDeltaSeconds;
-            }
-            else
-            {
-                SupportedContactSeconds = 0.0;
-            }
+                const bool bSupportedRest =
+                    ContactWheels == Movement->GetNumWheels()
+                    && TotalSpringForce > KINDA_SMALL_NUMBER
+                    && BodyLinearSpeedCmPerSec
+                        <= RestLinearSpeedToleranceCmPerSec
+                    && BodyAngularSpeedDegPerSec
+                        <= RestAngularSpeedToleranceDegPerSec;
 
-            if (SupportedContactSeconds
-                < RequiredSupportedContactSeconds)
-            {
-                if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
+                if (PhaseSimSeconds >= MinimumContactSettleSeconds
+                    && bSupportedRest)
                 {
-                    return false;
+                    SupportedRestSeconds += ObservationDeltaSeconds;
+                }
+                else
+                {
+                    SupportedRestSeconds = 0.0;
                 }
 
-                Test->AddError(FString::Printf(
-                    TEXT("P01 slope fixture never reached sustained supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f max_supported_downhill_speed_cm_s=%.3f max_supported_wheel_rad_s=%.3f brake_input=%.3f handbrake_command=%.3f body_angular_deg_s=%.3f supported_contact_s=%.6f"),
-                    PhaseSimSeconds,
-                    ContactWheels,
-                    Movement->GetNumWheels(),
-                    TotalSpringForce,
-                    NormalSpeedCmPerSec,
-                    DownhillSpeedCmPerSec,
-                    MaxSupportedDownhillSpeedCmPerSec,
-                    MaxSupportedWheelAngularVelocity,
-                    Movement->GetBrakeInput(),
-                    PinkCabMovement->GetPendingPinkCabDrivelineCommand().Handbrake01,
-                    BodyAngularSpeedDegPerSec,
-                    SupportedContactSeconds));
+                if (SupportedRestSeconds < RequiredSupportedRestSeconds)
+                {
+                    if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
+                    {
+                        return false;
+                    }
+
+                    Test->AddError(FString::Printf(
+                        TEXT("P01 slope fixture never reached brake-held supported rest sim_s=%.3f contacts=%d/%d spring_force=%.3f body_speed_cm_s=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f supported_rest_s=%.6f"),
+                        PhaseSimSeconds,
+                        ContactWheels,
+                        Movement->GetNumWheels(),
+                        TotalSpringForce,
+                        BodyLinearSpeedCmPerSec,
+                        NormalSpeedCmPerSec,
+                        DownhillSpeedCmPerSec,
+                        BodyAngularSpeedDegPerSec,
+                        SupportedRestSeconds));
+                    return true;
+                }
+
+                Controls.SetBrake(0.0f);
+                Test->TestTrue(
+                    TEXT("slope service brake releases through production path"),
+                    ApplyEngineState(*Pawn, Cockpit, Controls));
+                Test->TestTrue(
+                    TEXT("slope release evidence window starts"),
+                    PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                        0.0f,
+                        static_cast<float>(BrakeReleaseProofSeconds)));
+                bBrakeReleased = true;
+                PhaseSimSeconds = 0.0;
+                LastContactObservationSimSeconds = 0.0;
+                return false;
+            }
+
+            if (PhaseSimSeconds < BrakeReleaseProofSeconds)
+            {
+                return false;
+            }
+
+            FPinkCabMechanicalEvidenceSnapshot ReleaseEvidence;
+            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
+                    ReleaseEvidence))
+            {
+                Test->AddError(
+                    TEXT("slope brake-release evidence read failed"));
+                return true;
+            }
+            Test->TestFalse(
+                TEXT("slope release has no parking brake state"),
+                ReleaseEvidence.bAnyParkingEnabled);
+            Test->TestTrue(
+                TEXT("slope release reaches zero wheel brake torque"),
+                ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
+            if (ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm > 1.0e-3f)
+            {
                 return true;
             }
 
@@ -350,33 +366,20 @@ public:
                 FVector2D(StartVelocity.X, StartVelocity.Y),
                 DownhillDirection2D);
 
-            FPinkCabMechanicalEvidenceSnapshot BrakeEvidence;
-            if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(
-                    BrakeEvidence))
-            {
-                Test->AddError(TEXT("slope brake-path evidence read failed"));
-                return true;
-            }
+            Test->TestTrue(
+                TEXT("slope measurement evidence window starts"),
+                PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    0.0f, static_cast<float>(BrakeEvidenceSeconds)));
+
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f supported_contact_s=%.6f mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f start=%s"),
+                TEXT("P01_SLOPE_RELEASED sim_s=%.3f contacts=%d/%d spring_force=%.3f start_downhill_speed_cm_s=%.3f mean_applied_brake_torque_nm=%.6f start=%s"),
                 PhaseSimSeconds,
                 ContactWheels,
                 Movement->GetNumWheels(),
                 TotalSpringForce,
-                NormalSpeedCmPerSec,
-                DownhillSpeedCmPerSec,
-                BodyAngularSpeedDegPerSec,
-                SupportedContactSeconds,
-                BrakeEvidence.MeanAppliedWheelBrakeTorqueNm,
-                BrakeEvidence.bAnyParkingEnabled ? 1 : 0,
-                BrakeEvidence.CompletedSampleSeconds,
+                PeakDownhillSpeedCmPerSec,
+                ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm,
                 *StartLocation.ToString()));
-            Test->TestFalse(
-                TEXT("slope physics thread has no parking brake state"),
-                BrakeEvidence.bAnyParkingEnabled);
-            Test->TestTrue(
-                TEXT("slope physics thread applies zero wheel brake torque"),
-                BrakeEvidence.MeanAppliedWheelBrakeTorqueNm <= 1.0e-3f);
 
             bContactReady = true;
             PhaseSimSeconds = 0.0;
@@ -493,25 +496,23 @@ private:
     // Measure a sustained supported coast, not one suspension-bounce phase.
     static constexpr double MeasurementSeconds = 2.40;
     static constexpr double BrakeEvidenceSeconds = 3.00;
-    static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
-    static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
-    // Readiness is physics-time based so async/render cadence cannot change
-    // which suspension phase starts the measurement window.
-    static constexpr double RequiredSupportedContactSeconds = 0.25;
+    static constexpr float RestLinearSpeedToleranceCmPerSec = 5.0f;
+    static constexpr float RestAngularSpeedToleranceDegPerSec = 2.0f;
+    static constexpr double RequiredSupportedRestSeconds = 0.25;
+    static constexpr double BrakeReleaseProofSeconds = 0.20;
 
     bool bCleanupPrepared = false;
     int32 CleanupFramesRemaining = 0;
     bool bInitialized = false;
+    bool bBrakeReleased = false;
     bool bContactReady = false;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
     double LastContactObservationSimSeconds = 0.0;
-    double SupportedContactSeconds = 0.0;
+    double SupportedRestSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
     FVector2D DownhillDirection2D = FVector2D::ZeroVector;
-    float MaxSupportedDownhillSpeedCmPerSec = 0.0f;
-    float MaxSupportedWheelAngularVelocity = 0.0f;
     float PeakDownhillSpeedCmPerSec = 0.0f;
 };
 
