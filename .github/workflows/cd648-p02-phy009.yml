@@ -191,6 +191,7 @@ jobs:
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineDeterminismRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineLaunchRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabDrivelineRuntimeTestUtils.h',
+            'Source/PinkCabTests/Private/Vehicle/PinkCabVehicleControlRuntimeTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabEngineRuntimeAcceptanceTests.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.cpp',
             'Source/PinkCabTests/Private/Vehicle/PinkCabPhysicsFixturePawn.h',
