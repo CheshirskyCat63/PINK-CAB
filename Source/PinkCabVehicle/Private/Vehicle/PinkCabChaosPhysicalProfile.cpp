@@ -136,7 +136,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 4;
+    R.CalibrationVersion = 5;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -153,6 +153,12 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.bRearWheelDrive = P(true, A::DesignTarget);
     R.EngineMaxRpm = P(8500.0f, A::Calibration);
     R.EngineIdleRpm = P(925.0f, A::Calibration);
+    // PHY-010 materializes the already-accepted limiter behavior as explicit
+    // per-profile authority instead of hiding 96.5%/99.5% magic ratios in the
+    // actuation resolver.
+    R.EngineRedZoneStartRpm = P(8202.5f, A::Calibration);
+    R.EngineLimiterHardCutRpm = P(8457.5f, A::Calibration);
+    R.EngineDamageOverspeedRpm = P(8500.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
     R.EngineRevDownRate = P(1800.0f, A::Calibration);
@@ -198,6 +204,9 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         bRearWheelDrive.Authority,
         EngineMaxRpm.Authority,
         EngineIdleRpm.Authority,
+        EngineRedZoneStartRpm.Authority,
+        EngineLimiterHardCutRpm.Authority,
+        EngineDamageOverspeedRpm.Authority,
         EngineBrakeEffect.Authority,
         EngineRevUpMOI.Authority,
         EngineRevDownRate.Authority,
@@ -221,6 +230,16 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         && HasWheelProvenanceTail(RearWheel);
 }
 
+FPinkCabEngineRpmEnvelope FPinkCabChaosPhysicalProfile::GetEngineRpmEnvelope() const
+{
+    FPinkCabEngineRpmEnvelope Result;
+    Result.IdleRpm = EngineIdleRpm.Value;
+    Result.RedZoneStartRpm = EngineRedZoneStartRpm.Value;
+    Result.LimiterHardCutRpm = EngineLimiterHardCutRpm.Value;
+    Result.DamageOverspeedRpm = EngineDamageOverspeedRpm.Value;
+    return Result;
+}
+
 void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     UChaosWheeledVehicleMovementComponent& Movement) const
 {
@@ -242,6 +261,8 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
         ClutchConfig.SynchronizationTimeSeconds = ClutchSynchronizationTimeSeconds.Value;
         ClutchConfig.LockedSlipRpm = ClutchLockedSlipRpm.Value;
         PinkCabMovement->ConfigurePinkCabClutch(ClutchConfig);
+        PinkCabMovement->ConfigurePinkCabEngineRpmEnvelope(
+            GetEngineRpmEnvelope());
     }
 
     FRichCurve* TorqueCurve = Movement.EngineSetup.TorqueCurve.GetRichCurve();
