@@ -1,5 +1,7 @@
 #include "Vehicle/PinkCabEngineRpmEnvelope.h"
 
+// Validation stays private so the public contract remains data-only and the
+// RPM envelope has one implementation boundary for every runtime consumer.
 bool FPinkCabEngineRpmEnvelope::IsValid() const
 {
     return FMath::IsFinite(IdleRpm)
