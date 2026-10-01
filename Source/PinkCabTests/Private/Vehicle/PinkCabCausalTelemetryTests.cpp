@@ -165,7 +165,10 @@ bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
     Input.bCombustionAllowed = true;
     Input.HealthClampedControlThrottle01 = 0.25f;
     Input.EngineRpm = 3000.0f;
-    Input.MaxRpm = 8500.0f;
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+    Input.RpmEnvelope = Profile.GetEngineRpmEnvelope();
     Input.EngineTorqueCurveNm = 220.0f;
 
     const FPinkCabEngineActuationResult Normal =
@@ -180,7 +183,7 @@ bool FPinkCabCausalActuationResolverTest::RunTest(const FString& Parameters)
             Input.EngineTorqueCurveNm * Normal.EngineThrottleFinal01,
             1.0e-5f));
 
-    Input.EngineRpm = Input.MaxRpm;
+    Input.EngineRpm = Input.RpmEnvelope.LimiterHardCutRpm;
     const FPinkCabEngineActuationResult Limited =
         FPinkCabEngineActuationResolver::Resolve(Input);
     TestEqual(TEXT("hard limiter cuts final engine throttle"), Limited.EngineThrottleFinal01, 0.0f);
