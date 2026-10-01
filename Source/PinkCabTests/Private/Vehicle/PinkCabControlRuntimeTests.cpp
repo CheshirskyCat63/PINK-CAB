@@ -513,6 +513,7 @@ bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
         FPinkCabChaosPhysicalProfile::ForVariant(
             EPinkCabCalibrationVariant::Nominal);
     FPinkCabGearboxController Gearbox;
+    Gearbox.SetEngineRpmEnvelope(Physical.GetEngineRpmEnvelope());
 
     TestEqual(TEXT("current operating profile max RPM is the accepted 8500 target"),
         Physical.EngineMaxRpm.Value, 8500.0f);
@@ -520,8 +521,8 @@ bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
         7000.0f < Physical.EngineMaxRpm.Value);
     TestEqual(
         TEXT("gearbox dangerous-overrev boundary follows physical profile max RPM"),
-        Gearbox.GetMaxSafeEngineRpm(),
-        Physical.EngineMaxRpm.Value);
+        Gearbox.GetDamageOverspeedRpm(),
+        Physical.EngineDamageOverspeedRpm.Value);
 
     FPinkCabGearEngagementContext Context;
     Context.ClutchPedal = 1.0f;
@@ -571,7 +572,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabDangerousDownshiftTest::RunTest(const FString& Parameters)
 {
+    const FPinkCabChaosPhysicalProfile Physical =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
     FPinkCabGearboxController Gearbox;
+    Gearbox.SetEngineRpmEnvelope(Physical.GetEngineRpmEnvelope());
     FPinkCabGearEngagementContext Context;
     Context.ClutchPedal = 1.0f;
     Context.SpeedKmh = 100.0f;
@@ -586,7 +591,7 @@ bool FPinkCabDangerousDownshiftTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("releasing clutch into impossible downshift reports dangerous overrev"),
         Gearbox.GetLastResult(), EPinkCabGearEngagementResult::DangerousOverrev);
     TestTrue(TEXT("dangerous classification exposes overspeed rpm"),
-        Gearbox.GetExpectedCoupledRpm() > Gearbox.GetMaxSafeEngineRpm());
+        Gearbox.GetExpectedCoupledRpm() > Gearbox.GetDamageOverspeedRpm());
     return true;
 }
 
