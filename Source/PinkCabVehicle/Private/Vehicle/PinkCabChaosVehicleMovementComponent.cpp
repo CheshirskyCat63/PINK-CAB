@@ -56,6 +56,25 @@ void UPinkCabChaosVehicleMovementComponent::ConfigurePinkCabEngineRpmEnvelope(
         });
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+bool UPinkCabChaosVehicleMovementComponent::ResetPinkCabFixtureKinetics()
+{
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return false;
+    }
+
+    return FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this](const FPhysicsActorHandle&)
+        {
+            return PinkCabSimulationPT
+                && PinkCabSimulationPT->ResetFixtureWheelKinetics();
+        });
+}
+#endif
+
 bool UPinkCabChaosVehicleMovementComponent::BeginPinkCabMechanicalEvidenceWindow(
     const float SettleSeconds,
     const float SampleSeconds)
