@@ -381,14 +381,16 @@ jobs:
           }
           if($exit -ne 0){ exit $exit }
 
-          $cookedRoot=Join-Path $env:GITHUB_WORKSPACE 'Saved\Cooked\Windows'
-          $cookedMap=@(
-            Get-ChildItem -LiteralPath $cookedRoot -Recurse -File -Filter 'L_PinkCab_L1_EndlessStraight.umap' -ErrorAction SilentlyContinue
-          )
-          if($cookedMap.Count -lt 1){
-            throw 'CD869_COOKED_ENDLESS_MAP_MISSING'
+          # UE 5.8 IoStore does not leave cooked map packages as loose .umap
+          # files. Prove that packaging produced real IoStore containers here;
+          # the following packaged smoke is the authoritative map-load gate.
+          $pakDir=Join-Path $archive 'Windows\PinkCab\Content\Paks'
+          $utoc=@(Get-ChildItem -LiteralPath $pakDir -File -Filter '*.utoc' -ErrorAction SilentlyContinue)
+          $ucas=@(Get-ChildItem -LiteralPath $pakDir -File -Filter '*.ucas' -ErrorAction SilentlyContinue)
+          if($utoc.Count -lt 1 -or $ucas.Count -lt 1){
+            throw "CD869_IOSTORE_CONTAINER_MISSING utoc=$($utoc.Count) ucas=$($ucas.Count)"
           }
-          $cookedMap | ForEach-Object { Write-Host "CD869_COOKED_ENDLESS_MAP=$($_.FullName)" }
+          Write-Host "CD869_IOSTORE_PACKAGE=PASS utoc=$($utoc.Count) ucas=$($ucas.Count)"
 
           $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           if(-not (Test-Path $inner)){ throw 'CD869_INNER_EXE_MISSING_AFTER_COOK' }
