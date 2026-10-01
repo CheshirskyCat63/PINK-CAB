@@ -3,6 +3,7 @@
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
 
@@ -40,7 +41,15 @@ bool FPinkCabChaosCockpitBridge::Apply(
     ActuationInput.bCombustionAllowed = bCombustionAllowed;
     ActuationInput.HealthClampedControlThrottle01 = Controls.Throttle;
     ActuationInput.EngineRpm = EngineRpm;
-    ActuationInput.MaxRpm = Movement.EngineSetup.MaxRPM;
+    const UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(&Movement);
+    if (!PinkCabMovement
+        || !PinkCabMovement->GetPinkCabEngineRpmEnvelope().IsValid())
+    {
+        return false;
+    }
+    ActuationInput.RpmEnvelope =
+        PinkCabMovement->GetPinkCabEngineRpmEnvelope();
     ActuationInput.EngineTorqueCurveNm = EngineTorqueCurveNm;
     const FPinkCabEngineActuationResult Actuation =
         FPinkCabEngineActuationResolver::Resolve(ActuationInput);
