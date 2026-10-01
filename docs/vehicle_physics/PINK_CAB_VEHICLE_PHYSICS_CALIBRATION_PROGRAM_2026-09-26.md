@@ -6,7 +6,7 @@
 **P01 accepted runtime baseline:** `269d8b4b5b79f33eb2160d177a282c3cec965772` (corrective stall + clean-delivery integration).  
 **PHY-001 frozen rollback baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`, run **36213319172**.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **P01 HUMAN ACCEPTED / FROZEN**. P02 is the next vehicle-physics stage, but remains NOT STARTED until explicitly executed; current road work may proceed independently under its own R-gates.  
+**Current execution point:** **P02 HUMAN ACCEPTED / INTEGRATED / FROZEN** on exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; PR #49 is squash-merged to canonical `main@104295ab6329e85b5998e8df298770255ad2dd05`. **P03 is READY** under CD-649 but implementation has not started; current road work may proceed independently under its own R-gates.  
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -40,7 +40,7 @@ This is the acceptance doctrine for P00–P11; it does not change the accepted c
 At exact audited `main`:
 
 - P01 exact main uses **IdleRPM 925**, **MaxRPM 8500**, **MaxTorque 260 Nm**, explicit **EngineRevDownRate 1800**, ~**250 hp** design test, final drive **3.2**, forward ratios **4.6/2.2/1.5/1.1/0.85**, reverse **4.6**. Current profile identity is schema/calibration **1/3**, hash `7A90D02ED12B1E93`.
-- The temporary gearbox idle seed is aligned to **925 RPM**, but `MaxSafeEngineRpm=6500` remains a known P02 blocker against the 8500-rpm physical profile; PHY-010 owns centralizing the full RPM envelope.
+- P02 / PHY-010 is **DONE**: idle, red-zone, limiter and damage-overspeed authority are centralized in the versioned physical profile; the stale independent 6500-RPM runtime ceiling is no longer runtime authority.
 - Current wheel/profile seed: radius **32.13 cm**, width **20.5 cm**, wheelbase **2980 mm**, tracks **1520/1520 mm**, reference service mass **1657 kg**; these are Tatra-613 donor/profile values and must not silently define final 603-I or 77 geometry.
 - Nominal suspension seed is spring **170**, damping ratio **0.38**, travel **160 mm front / 180 mm rear**; current values are calibration seeds, not accepted final ride targets.
 - `WheelLoadRatio = 0.38` on both axles deliberately weakens tire-force dependence on wheel load; it must be tested as a calibration choice, not treated as an invisible stability requirement.
@@ -123,30 +123,55 @@ Warm neutral idle is **925 RPM**. A 55% neutral throttle blip reached **4429.622
 
 ## P02 — Clutch + transmission energy continuity
 
-**Reuse owners:** CD-643 / CD-644 / CD-645 / CD-659.  
+**Status:** **HUMAN ACCEPTED · INTEGRATED · FROZEN**.
+
+**Accepted runtime HEAD:** `8d68e456d1944be295281535cf9fd103ecf05d52`  
+**Integrated main:** `104295ab6329e85b5998e8df298770255ad2dd05` via PR #49  
+**Evidence:** Vehicle Physics TDD #353 / run **36868646398** — SUCCESS; P02 exact-head #246 / run **36868646970** — SUCCESS; P01 slope determinism 5/5; zero-debt + writer guard; exact-head package/sign/smoke/install/launch — PASS; owner HUMAN gate — ACCEPTED 2026-10-01.
+
+**Reuse owners:** CD-643 / CD-644 / CD-645 / CD-659.
+
 ### PHY-009 — Unify final torque path
 
-**Change:** Partial-clutch external rear torque and fully-coupled Chaos torque must consume one authoritative available-engine-torque result containing ignition, limiter, health/damage, torque-capacity, sign and ratio rules. Include wheel→engine reaction/load rather than a one-way torque shortcut.  
-**Acceptance:** Coupling `0.5 → 0.999 → 1.0` has no discontinuity in delivered torque/RPM/energy, including limiter approach, 1st and R; repeat under hill load and hot/worn clutch.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE · HUMAN ACCEPTED**.
+
+**Change:** Partial/full coupling now uses one causal driveline path with authoritative engine torque permission and bidirectional engine↔shaft reaction/load; no one-way partial-clutch propulsion shortcut remains current authority.
+
+**Acceptance:** Coupling continuity, reverse, load/reaction, deterministic D3/D4 fixtures and accepted driving feel are green on the exact P02 candidate.
+
+**Evidence:** exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; Vehicle Physics TDD run **36868646398**; P02 run **36868646970**; PR #49; owner HUMAN ACCEPTED.
 
 ### PHY-010 — Central RPM envelope
 
-**Change:** Replace independent idle/redline/overrev constants with per-profile idle, red-zone, limiter and damage-overspeed fields.  
-**Acceptance:** 8500 operating profile cannot trip a stale 6500 damage check; dangerous connected downshift still can.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE**.
+
+**Change:** Idle, red-zone, limiter and damage-overspeed authority are centralized in the versioned physical profile; stale independent 6500-vs-8500 runtime authority is removed while dangerous mechanically connected overspeed remains valid.
+
+**Acceptance:** `CentralRpmEnvelope` and full focused regressions PASS on the accepted exact head.
+
+**Evidence:** exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; Vehicle Physics TDD run **36868646398**; P02 run **36868646970**.
 
 ### PHY-011 — Continuous bite/release
 
-**Change:** Calibrate coupling curve/torque capacity while preserving Q semantics and player-selected release time.  
-**Acceptance:** Distinct partial-coupling states are smooth; pressing Q mid-release interrupts cleanly.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE**.
+
+**Change:** Player-selected clutch release remains continuous and deterministic; pressing Q during release interrupts immediately without jump or stale release continuation.
+
+**Acceptance:** `ContinuousClutchRelease` and `ClutchReleaseInterrupt` PASS; owner accepted the exact packaged build.
+
+**Evidence:** exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; P02 run **36868646970**; owner HUMAN ACCEPTED.
 
 ### PHY-012 — One gear engagement validator
 
-**Change:** Every request path uses the same load/speed/clutch validator and accepted H topology; focus loss cancels pending gestures.  
-**Acceptance:** No software gate skipping; focus/menu loss cannot cause delayed engagement.  
-**Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
+**Status:** **DONE**.
+
+**Change:** Direct and delta gear requests use one engagement validator/refusal classification. Focus/menu cleanup cancels pending requests immediately and resynchronizes cockpit/control state to the actually engaged gear.
+
+**Acceptance:** `UnifiedEngagementValidator` and `FocusLossCancelsPendingEngagement` PASS; no software H-gate skip and no delayed engagement after focus return.
+
+**Evidence:** exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; P02 run **36868646970**; PR #49; owner HUMAN ACCEPTED.
+
+**P02 gate:** **CLOSED / FROZEN**. Historical RED, diagnostic and HUMAN_PENDING records remain evidence only. The next authorized stage is **P03 input-response calibration** under CD-649; P03 development is not started by this administrative closure.
 
 ## P03 — Steering + pedal feel without mechanic changes
 
@@ -427,7 +452,7 @@ Before final P07 tire acceptance, evidence must establish:
 
 `road/contact → PHY-021 wheel/body geometry → PHY-022/023 mass/CoM/inertia → PHY-025..028 suspension/load transfer → PHY-029 combined grip/slip`.
 
-This is a dependency constraint, not a global reorder of P02/P03/P04/P05/P06/P07. P02 drivetrain continuity remains required before interpreting torque-driven handling behavior.
+This is a dependency constraint, not a global reorder of P02/P03/P04/P05/P06/P07. P02 drivetrain continuity is HUMAN ACCEPTED / FROZEN and is now a completed prerequisite before interpreting torque-driven handling behavior.
 
 ### R6 candidate status
 
