@@ -337,33 +337,6 @@ public:
                 return true;
             }
 
-            if (!bKineticBaselineNormalized)
-            {
-                // The old fixture measured from whatever landing energy remained
-                // after a ~2 m drop onto the ramp. Normalize only the test
-                // initial state after proven 4-wheel support; production physics
-                // and all acceptance thresholds remain untouched.
-                Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-                Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-                Test->TestTrue(
-                    TEXT("slope fixture wheel kinetics reset on physics thread"),
-                    PinkCabMovement->ResetPinkCabFixtureKinetics());
-                PinkCabPhysicsFixture::KeepAwake(*Pawn);
-
-                StartLocation = Mesh->GetComponentLocation();
-                StartVelocity = Mesh->GetPhysicsLinearVelocity();
-                bKineticBaselineNormalized = true;
-                bContactReady = true;
-                PhaseSimSeconds = 0.0;
-
-                Test->AddInfo(FString::Printf(
-                    TEXT("P01_SLOPE_KINETIC_RESET start=%s linear_speed_cm_s=%.6f angular_speed_deg_s=%.6f"),
-                    *StartLocation.ToString(),
-                    StartVelocity.Size(),
-                    Mesh->GetPhysicsAngularVelocityInDegrees().Size()));
-                return false;
-            }
-
             StartLocation = Mesh->GetComponentLocation();
             StartVelocity = Mesh->GetPhysicsLinearVelocity();
 
@@ -498,7 +471,7 @@ private:
 
     static constexpr double MinimumContactSettleSeconds = 0.10;
     static constexpr double ContactReadyTimeoutSeconds = 3.00;
-    static constexpr double MeasurementSeconds = 1.20;
+    // Measure a sustained supported coast, not one suspension-bounce phase.\n    static constexpr double MeasurementSeconds = 2.40;
     static constexpr double BrakeEvidenceSeconds = 3.00;
     static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
     static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
@@ -508,7 +481,6 @@ private:
     int32 CleanupFramesRemaining = 0;
     bool bInitialized = false;
     bool bContactReady = false;
-    bool bKineticBaselineNormalized = false;
     int32 StableContactObservations = 0;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
