@@ -515,6 +515,8 @@ bool FPinkCabCentralRpmEnvelopeContractTest::RunTest(const FString& Parameters)
     FPinkCabGearboxController Gearbox;
     Gearbox.SetEngineRpmEnvelope(Physical.GetEngineRpmEnvelope());
 
+    TestTrue(TEXT("shared RPM envelope is valid"),
+        Gearbox.GetEngineRpmEnvelope().IsValid());
     TestEqual(TEXT("current operating profile max RPM is the accepted 8500 target"),
         Physical.EngineMaxRpm.Value, 8500.0f);
     TestTrue(TEXT("7000 RPM lies inside the accepted operating profile"),
