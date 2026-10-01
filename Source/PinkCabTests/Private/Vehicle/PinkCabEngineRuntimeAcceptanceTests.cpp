@@ -195,13 +195,16 @@ public:
                 TEXT("off slope keeps physical driveline simulation alive"),
                 Movement->bMechanicalSimEnabled);
 
-            const FVector Downhill3D =
+            DownhillDirection3D =
                 FVector::VectorPlaneProject(
                     FVector::DownVector,
                     Ramp->GetActorUpVector())
                     .GetSafeNormal();
             DownhillDirection2D =
-                FVector2D(Downhill3D.X, Downhill3D.Y).GetSafeNormal();
+                FVector2D(
+                    DownhillDirection3D.X,
+                    DownhillDirection3D.Y)
+                    .GetSafeNormal();
             Test->TestTrue(
                 TEXT("slope fixture exposes gravity-projected downhill direction"),
                 !DownhillDirection2D.IsNearlyZero());
@@ -360,24 +363,72 @@ public:
                 return true;
             }
 
+            FWheeledSnaphotData Seed = Movement->GetSnapshot();
+            const FVector SeedLinearVelocity =
+                DownhillDirection3D * SeedRollingSpeedCmPerSec;
+            const float SeedForwardSpeedMps =
+                FVector::DotProduct(
+                    SeedLinearVelocity * 0.01f,
+                    Pawn->GetActorForwardVector());
+
+            Seed.LinearVelocity = SeedLinearVelocity;
+            Seed.AngularVelocity = FVector::ZeroVector;
+            Seed.EngineRPM = 0.0f;
+            Seed.SelectedGear = 0;
+
+            float MaxSeedAbsWheelAngularVelocity = 0.0f;
+            for (int32 WheelIndex = 0;
+                 WheelIndex < Seed.WheelSnapshots.Num()
+                    && WheelIndex < Movement->Wheels.Num();
+                 ++WheelIndex)
+            {
+                const UChaosVehicleWheel* Wheel =
+                    Movement->Wheels[WheelIndex];
+                if (!Wheel)
+                {
+                    continue;
+                }
+
+                const float RadiusM =
+                    FMath::Max(
+                        Wheel->WheelRadius * 0.01f,
+                        KINDA_SMALL_NUMBER);
+                const float SeedWheelAngularVelocity =
+                    SeedForwardSpeedMps / RadiusM;
+                Seed.WheelSnapshots[WheelIndex].WheelAngularVelocity =
+                    SeedWheelAngularVelocity;
+                MaxSeedAbsWheelAngularVelocity = FMath::Max(
+                    MaxSeedAbsWheelAngularVelocity,
+                    FMath::Abs(SeedWheelAngularVelocity));
+            }
+
+            Movement->SetSnapshot(Seed);
+            Mesh->SetPhysicsLinearVelocity(SeedLinearVelocity);
+            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
+
             StartLocation = Mesh->GetComponentLocation();
-            StartVelocity = Mesh->GetPhysicsLinearVelocity();
+            StartVelocity = SeedLinearVelocity;
             PeakDownhillSpeedCmPerSec = FVector2D::DotProduct(
                 FVector2D(StartVelocity.X, StartVelocity.Y),
                 DownhillDirection2D);
 
+            Test->TestTrue(
+                TEXT("slope rolling seed includes wheel rotation"),
+                MaxSeedAbsWheelAngularVelocity > 0.05f);
             Test->TestTrue(
                 TEXT("slope measurement evidence window starts"),
                 PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
                     0.0f, static_cast<float>(BrakeEvidenceSeconds)));
 
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_RELEASED sim_s=%.3f contacts=%d/%d spring_force=%.3f start_downhill_speed_cm_s=%.3f mean_applied_brake_torque_nm=%.6f start=%s"),
+                TEXT("P01_SLOPE_SEEDED sim_s=%.3f contacts=%d/%d spring_force=%.3f seed_downhill_speed_cm_s=%.3f seed_max_abs_wheel_rad_s=%.3f mean_applied_brake_torque_nm=%.6f start=%s"),
                 PhaseSimSeconds,
                 ContactWheels,
                 Movement->GetNumWheels(),
                 TotalSpringForce,
                 PeakDownhillSpeedCmPerSec,
+                MaxSeedAbsWheelAngularVelocity,
                 ReleaseEvidence.MeanAppliedWheelBrakeTorqueNm,
                 *StartLocation.ToString()));
 
@@ -500,6 +551,7 @@ private:
     static constexpr float RestAngularSpeedToleranceDegPerSec = 2.0f;
     static constexpr double RequiredSupportedRestSeconds = 0.25;
     static constexpr double BrakeReleaseProofSeconds = 0.20;
+    static constexpr float SeedRollingSpeedCmPerSec = 50.0f;
 
     bool bCleanupPrepared = false;
     int32 CleanupFramesRemaining = 0;
@@ -512,6 +564,7 @@ private:
     double SupportedRestSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
+    FVector DownhillDirection3D = FVector::ZeroVector;
     FVector2D DownhillDirection2D = FVector2D::ZeroVector;
     float PeakDownhillSpeedCmPerSec = 0.0f;
 };
