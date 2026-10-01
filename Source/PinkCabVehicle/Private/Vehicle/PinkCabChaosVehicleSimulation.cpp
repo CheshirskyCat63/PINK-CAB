@@ -42,24 +42,6 @@ void FPinkCabChaosWheeledVehicleSimulation::SetDrivelineCommand(
     ClutchModel.SetConfig(Command.ClutchConfig);
 }
 
-#if WITH_DEV_AUTOMATION_TESTS
-bool FPinkCabChaosWheeledVehicleSimulation::ResetFixtureWheelKinetics()
-{
-    if (!PVehicle)
-    {
-        return false;
-    }
-
-    for (Chaos::FSimpleWheelSim& Wheel : PVehicle->Wheels)
-    {
-        Wheel.SetAngularVelocity(0.0f);
-        Wheel.SetDriveTorque(0.0f);
-        Wheel.SetBrakeTorque(0.0f, false);
-    }
-    return true;
-}
-#endif
-
 void FPinkCabChaosWheeledVehicleSimulation::ApplyInput(
     const FControlInputs& ControlInputs,
     const float DeltaTime)
