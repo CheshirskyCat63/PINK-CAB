@@ -471,7 +471,8 @@ private:
 
     static constexpr double MinimumContactSettleSeconds = 0.10;
     static constexpr double ContactReadyTimeoutSeconds = 3.00;
-    // Measure a sustained supported coast, not one suspension-bounce phase.\n    static constexpr double MeasurementSeconds = 2.40;
+    // Measure a sustained supported coast, not one suspension-bounce phase.
+    static constexpr double MeasurementSeconds = 2.40;
     static constexpr double BrakeEvidenceSeconds = 3.00;
     static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
     static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
