@@ -2,7 +2,7 @@
 
 // Validation stays private so the public contract remains data-only and the
 // RPM envelope has one implementation boundary for every runtime consumer.
-// This file is also the exact-head source trigger for the final P02 verification.
+// This private implementation participates in the exact-head P02 verification.
 bool FPinkCabEngineRpmEnvelope::IsValid() const
 {
     return FMath::IsFinite(IdleRpm)
