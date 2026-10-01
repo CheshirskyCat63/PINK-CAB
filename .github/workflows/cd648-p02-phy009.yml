@@ -93,6 +93,8 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
+          python -m unittest scripts.tests.test_p02_workflow_scope -v
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
           $physics=@($changed | Where-Object {
             $_.StartsWith('Source/PinkCabVehicle/') -or
