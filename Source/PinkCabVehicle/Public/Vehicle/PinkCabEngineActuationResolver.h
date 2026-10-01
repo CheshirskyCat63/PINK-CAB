@@ -1,13 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Vehicle/PinkCabEngineRpmEnvelope.h"
 
 struct PINKCABVEHICLE_API FPinkCabEngineActuationInput
 {
     bool bCombustionAllowed = false;
     float HealthClampedControlThrottle01 = 0.0f;
     float EngineRpm = 0.0f;
-    float MaxRpm = 0.0f;
+    FPinkCabEngineRpmEnvelope RpmEnvelope;
     float EngineTorqueCurveNm = 0.0f;
 };
 
