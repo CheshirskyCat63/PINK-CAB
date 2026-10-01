@@ -9,6 +9,8 @@ on:
     paths:
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h'
       - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h'
+      - 'Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h'
+      - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabSteeringController.cpp'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp'
       - 'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp'
@@ -180,6 +182,8 @@ jobs:
             'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabCausalTelemetry.h',
             'Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosEngineAdapter.h',
+            'Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h',
+            'Source/PinkCabVehicle/Private/Vehicle/PinkCabSteeringController.cpp',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabCausalTelemetry.cpp',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsTelemetry.cpp',
             'Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp',
