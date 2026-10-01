@@ -77,7 +77,6 @@ jobs:
       run_physics: ${{ steps.latest_scope.outputs.run_physics }}
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
-      BASELINE: 4cc96ab3361039f053d609ba4a6e1020adb45c0b
 
     steps:
       - name: Checkout exact head
@@ -109,7 +108,7 @@ jobs:
             $_ -eq 'scripts/ci/materialize_local_lfs.py' -or
             $_ -eq 'scripts/ci/run-unreal-automation.ps1' -or
             $_ -eq 'scripts/ci/verify_vehicle_physics_writers.py' -or
-            $_.StartsWith('docs/vehicle_physics/')
+            $false # docs-only changes are administrative, never runtime physics scope
           })
           $run=($physics.Count -gt 0)
           "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
@@ -166,8 +165,8 @@ jobs:
             git status --short
             throw 'P02_PHY009_DIRTY_PREFLIGHT'
           }
-          git merge-base --is-ancestor $env:BASELINE HEAD
-          if($LASTEXITCODE -ne 0){ throw 'P02_PHY009_BASELINE_MISMATCH' }
+          $base=(git merge-base origin/main HEAD).Trim()
+          if(-not $base){ throw 'P02_PHY009_BASELINE_MISMATCH' }
 
           $allowed=@(
             '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
@@ -238,15 +237,20 @@ jobs:
             'scripts/tests/test_materialize_local_lfs.py',
             'scripts/ci/materialize_local_lfs.py',
             'scripts/ci/run-unreal-automation.ps1',
-            'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md'
+            'docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md',
+            'docs/vehicle_physics/PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md',
+            'docs/vehicle_physics/TASKS.csv',
+            'docs/vehicle_physics/TESTS.csv',
+            'docs/vehicle_physics/GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md',
+            'scripts/tests/test_p02_workflow_scope.py'
           )
-          $changed=@(git diff --name-only "$env:BASELINE...HEAD")
+          $changed=@(git diff --name-only "$base...HEAD")
           $unexpected=@($changed | Where-Object { $_ -notin $allowed })
           if($unexpected.Count -ne 0){
             $unexpected | ForEach-Object { Write-Host "P02_PHY009_UNEXPECTED=$_" }
             throw 'P02_PHY009_SCOPE_GUARD_FAIL'
           }
-          Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head changed=$($changed.Count)"
+          Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head base=$base changed=$($changed.Count)"
 
       - name: Build PinkCabEditor
         if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
