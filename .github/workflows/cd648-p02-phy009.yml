@@ -58,6 +58,7 @@ on:
       - 'scripts/ci/materialize_local_lfs.py'
       - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
+      - 'scripts/tests/test_p02_workflow_scope.py'
       - '.github/workflows/cd648-p02-phy009.yml'
       - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
