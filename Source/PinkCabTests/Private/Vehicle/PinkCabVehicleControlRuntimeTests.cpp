@@ -226,6 +226,95 @@ bool FPinkCabVehicleControlRuntimeTransientResetTest::RunTest(const FString& Par
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabUnifiedEngagementValidatorRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.UnifiedEngagementValidator",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabUnifiedEngagementValidatorRuntimeTest::RunTest(
+    const FString& Parameters)
+{
+    FPinkCabGearEngagementContext Refused;
+    Refused.ClutchPedal = 0.0f;
+    Refused.EngineRpm = 4000.0f;
+    Refused.SpeedKmh = 60.0f;
+    Refused.Throttle = 0.8f;
+    Refused.Brake = 0.0f;
+    Refused.GearboxHealth = 1.0f;
+
+    FPinkCabGearboxController Direct;
+    FPinkCabGearboxController Delta;
+
+    TestFalse(TEXT("direct request is refused by engagement validator"),
+        Direct.RequestGear(1, Refused));
+    TestFalse(TEXT("delta request is refused by the same engagement validator"),
+        Delta.RequestGearByDelta(1, Refused));
+    TestEqual(TEXT("direct and delta paths classify refusal identically"),
+        Delta.GetLastResult(), Direct.GetLastResult());
+    TestEqual(TEXT("direct refusal keeps neutral engaged"),
+        Direct.GetEngagedGear(), 0);
+    TestEqual(TEXT("delta refusal keeps neutral engaged"),
+        Delta.GetEngagedGear(), 0);
+
+    FPinkCabGearEngagementContext Accepted = Refused;
+    Accepted.ClutchPedal = 1.0f;
+    Direct.EvaluateCurrentEngagement(Accepted);
+    Delta.EvaluateCurrentEngagement(Accepted);
+
+    TestEqual(TEXT("direct pending request retries through accepted validator"),
+        Direct.GetEngagedGear(), 1);
+    TestEqual(TEXT("delta pending request retries through accepted validator"),
+        Delta.GetEngagedGear(), 1);
+    TestEqual(TEXT("retry classification remains identical across request paths"),
+        Delta.GetLastResult(), Direct.GetLastResult());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabFocusLossCancelsPendingEngagementRuntimeTest,
+    "PinkCab.Vehicle.Physics.P02.FocusLossCancelsPendingEngagement",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabFocusLossCancelsPendingEngagementRuntimeTest::RunTest(
+    const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleHealthState Health;
+
+    Runtime.ForceGearState(2, 1, Cockpit);
+    TestEqual(TEXT("fixture starts with pending second"),
+        Runtime.GetRequestedGear(), 2);
+    TestEqual(TEXT("fixture starts physically engaged in first"),
+        Runtime.GetEngagedGear(), 1);
+    TestEqual(TEXT("control state exposes pending second before cleanup"),
+        Runtime.GetControlState().RequestedGear, 2);
+
+    const bool bChanged = Runtime.ResetTransient(Cockpit);
+    TestTrue(TEXT("canceling a stationary pending gear is a control change"),
+        bChanged);
+    TestEqual(TEXT("focus cleanup cancels pending request"),
+        Runtime.GetRequestedGear(), 1);
+    TestEqual(TEXT("focus cleanup returns cockpit selector to engaged gear"),
+        Cockpit.GetSelectedGear(), 1);
+    TestEqual(TEXT("focus cleanup immediately clears stale control-state request"),
+        Runtime.GetControlState().RequestedGear, 1);
+    TestEqual(TEXT("focus cleanup preserves actual engaged gear"),
+        Runtime.GetControlState().EngagedGear, 1);
+
+    Runtime.Update(
+        Digital(true, false, false, 0, 0.0f, 0.10f),
+        Telemetry(0.0f, 925.0f),
+        Cockpit,
+        Health);
+
+    TestEqual(TEXT("next frame cannot engage the canceled second"),
+        Runtime.GetEngagedGear(), 1);
+    TestEqual(TEXT("canceled request stays aligned with first after resume"),
+        Runtime.GetRequestedGear(), 1);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabVehicleControlRuntimeSteeringHoldTest,
     "PinkCab.Vehicle.ControlRuntime.Runtime.SteeringHoldDuringManipulation",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
