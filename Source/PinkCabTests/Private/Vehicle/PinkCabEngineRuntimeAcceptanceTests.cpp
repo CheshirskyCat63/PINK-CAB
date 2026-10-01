@@ -210,7 +210,8 @@ public:
             LastMechanicalStep =
                 PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
             PhaseSimSeconds = 0.0;
-            StableContactObservations = 0;
+            SupportedContactSeconds = 0.0;
+            LastContactObservationSimSeconds = 0.0;
             bInitialized = true;
             return false;
         }
@@ -302,18 +303,24 @@ public:
                 && DownhillSpeedCmPerSec
                     >= ContactDownhillSpeedMinimumCmPerSec;
 
+            const double ObservationDeltaSeconds =
+                FMath::Max(
+                    PhaseSimSeconds - LastContactObservationSimSeconds,
+                    0.0);
+            LastContactObservationSimSeconds = PhaseSimSeconds;
+
             if (PhaseSimSeconds >= MinimumContactSettleSeconds
                 && bSupportedRollingContact)
             {
-                ++StableContactObservations;
+                SupportedContactSeconds += ObservationDeltaSeconds;
             }
             else
             {
-                StableContactObservations = 0;
+                SupportedContactSeconds = 0.0;
             }
 
-            if (StableContactObservations
-                < RequiredContactObservations)
+            if (SupportedContactSeconds
+                < RequiredSupportedContactSeconds)
             {
                 if (PhaseSimSeconds < ContactReadyTimeoutSeconds)
                 {
@@ -321,7 +328,7 @@ public:
                 }
 
                 Test->AddError(FString::Printf(
-                    TEXT("P01 slope fixture never reached supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f max_supported_downhill_speed_cm_s=%.3f max_supported_wheel_rad_s=%.3f brake_input=%.3f handbrake_command=%.3f body_angular_deg_s=%.3f stable_observations=%d"),
+                    TEXT("P01 slope fixture never reached sustained supported downhill rolling sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f max_supported_downhill_speed_cm_s=%.3f max_supported_wheel_rad_s=%.3f brake_input=%.3f handbrake_command=%.3f body_angular_deg_s=%.3f supported_contact_s=%.6f"),
                     PhaseSimSeconds,
                     ContactWheels,
                     Movement->GetNumWheels(),
@@ -333,7 +340,7 @@ public:
                     Movement->GetBrakeInput(),
                     PinkCabMovement->GetPendingPinkCabDrivelineCommand().Handbrake01,
                     BodyAngularSpeedDegPerSec,
-                    StableContactObservations));
+                    SupportedContactSeconds));
                 return true;
             }
 
@@ -351,7 +358,7 @@ public:
                 return true;
             }
             Test->AddInfo(FString::Printf(
-                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f stable_observations=%d mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f start=%s"),
+                TEXT("P01_SLOPE_CONTACT_READY sim_s=%.3f contacts=%d/%d spring_force=%.3f normal_speed_cm_s=%.3f downhill_speed_cm_s=%.3f body_angular_deg_s=%.3f supported_contact_s=%.6f mean_applied_brake_torque_nm=%.6f parking_enabled=%d evidence_s=%.6f start=%s"),
                 PhaseSimSeconds,
                 ContactWheels,
                 Movement->GetNumWheels(),
@@ -359,7 +366,7 @@ public:
                 NormalSpeedCmPerSec,
                 DownhillSpeedCmPerSec,
                 BodyAngularSpeedDegPerSec,
-                StableContactObservations,
+                SupportedContactSeconds,
                 BrakeEvidence.MeanAppliedWheelBrakeTorqueNm,
                 BrakeEvidence.bAnyParkingEnabled ? 1 : 0,
                 BrakeEvidence.CompletedSampleSeconds,
@@ -488,15 +495,18 @@ private:
     static constexpr double BrakeEvidenceSeconds = 3.00;
     static constexpr float ContactNormalSpeedToleranceCmPerSec = 10.0f;
     static constexpr float ContactDownhillSpeedMinimumCmPerSec = 10.0f;
-    static constexpr int32 RequiredContactObservations = 3;
+    // Readiness is physics-time based so async/render cadence cannot change
+    // which suspension phase starts the measurement window.
+    static constexpr double RequiredSupportedContactSeconds = 0.25;
 
     bool bCleanupPrepared = false;
     int32 CleanupFramesRemaining = 0;
     bool bInitialized = false;
     bool bContactReady = false;
-    int32 StableContactObservations = 0;
     int64 LastMechanicalStep = -1;
     double PhaseSimSeconds = 0.0;
+    double LastContactObservationSimSeconds = 0.0;
+    double SupportedContactSeconds = 0.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector StartVelocity = FVector::ZeroVector;
     FVector2D DownhillDirection2D = FVector2D::ZeroVector;
