@@ -329,6 +329,34 @@ bool FPinkCabP03PedalDoseMonotonicityTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03LowInputThrottleDosabilityCandidateTest,
+    "PinkCab.Vehicle.Physics.P03.LowInputThrottleDosabilityCandidate",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03LowInputThrottleDosabilityCandidateTest::RunTest(const FString& Parameters)
+{
+    // Controlled B candidate for PHY-015. Preserve endpoints and monotonicity,
+    // but materially reduce the baseline pow(driver,0.55) low-input amplification.
+    const float SingleDetent = FPinkCabThrottleResponse::ToEngineThrottle(0.05f);
+    const float Quarter = FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float Half = FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+    const float Full = FPinkCabThrottleResponse::ToEngineThrottle(1.00f);
+
+    TestTrue(TEXT("B candidate makes the first five-percent detent dosable"),
+        SingleDetent >= 0.09f && SingleDetent <= 0.12f);
+    TestTrue(TEXT("B candidate keeps quarter pedal useful without baseline over-amplification"),
+        Quarter >= 0.33f && Quarter <= 0.38f);
+    TestTrue(TEXT("B candidate keeps half pedal progressive"),
+        Half >= 0.58f && Half <= 0.62f);
+    TestTrue(TEXT("B candidate remains strictly monotonic"),
+        0.0f < SingleDetent && SingleDetent < Quarter && Quarter < Half && Half < Full);
+    TestTrue(TEXT("B candidate cannot change full-throttle engine authority"),
+        FMath::IsNearlyEqual(Full, 1.0f, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP03PedalWheelPauseReversalTest,
     "PinkCab.Vehicle.Physics.P03.PedalWheelPauseReversal",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
