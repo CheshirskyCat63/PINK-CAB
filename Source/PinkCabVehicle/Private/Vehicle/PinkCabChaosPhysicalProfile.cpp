@@ -75,16 +75,17 @@ float VariantFriction(
     const EPinkCabCalibrationVariant Variant,
     const bool bFront)
 {
-    // Front axle stays planted/readable. Rear axle intentionally has a much
-    // smaller friction budget so RWD torque can produce progressive wheelspin
-    // instead of converting every extra Nm into rocket-like linear launch.
+    // Human-gate correction reuses the already-proven R6 physical-reference
+    // candidate: both dry axles stay near the surface reference and rear-heavy
+    // RWD breakaway must emerge from load + torque demand, not a permanent
+    // low-rear-grip shortcut.
     if (bFront)
     {
-        return Variant == EPinkCabCalibrationVariant::Low ? 1.80f
-            : Variant == EPinkCabCalibrationVariant::High ? 2.20f : 2.00f;
+        return Variant == EPinkCabCalibrationVariant::Low ? 0.95f
+            : Variant == EPinkCabCalibrationVariant::High ? 1.15f : 1.05f;
     }
-    return Variant == EPinkCabCalibrationVariant::Low ? 0.44f
-        : Variant == EPinkCabCalibrationVariant::High ? 0.56f : 0.50f;
+    return Variant == EPinkCabCalibrationVariant::Low ? 0.85f
+        : Variant == EPinkCabCalibrationVariant::High ? 1.05f : 0.95f;
 }
 
 float VariantSpring(const EPinkCabCalibrationVariant Variant)
@@ -116,7 +117,7 @@ FPinkCabChaosWheelPhysicalProfile MakeWheel(
     W.SuspensionMaxRaiseCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
     W.SuspensionMaxDropCm = P(bFront ? 8.0f : 9.0f, A::Calibration);
     W.SuspensionDampingRatio = P(0.38f, A::Calibration);
-    W.WheelLoadRatio = P(0.38f, A::Calibration);
+    W.WheelLoadRatio = P(1.0f, A::Calibration);
     W.RollbarScaling = P(0.08f, A::Calibration);
     W.bABSEnabled = P(false, A::DesignTarget);
     W.bTractionControlEnabled = P(false, A::DesignTarget);
@@ -136,7 +137,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 5;
+    R.CalibrationVersion = 6;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -161,7 +162,10 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.EngineDamageOverspeedRpm = P(8500.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
-    R.EngineRevDownRate = P(1800.0f, A::Calibration);
+    // Human gate rejected the previous snap-to-idle feel on clutch-open.
+    // Keep native Chaos engine authority but give the free-spinning V8 more
+    // rotational persistence; no autothrottle or rev-match is introduced.
+    R.EngineRevDownRate = P(900.0f, A::Calibration);
     // P02 candidate seeds. Max clutch capacity is deliberately above the
     // accepted 260 Nm engine target so a healthy fully engaged clutch can hold
     // peak combustion torque. Effective inertia starts from the already
