@@ -1117,8 +1117,10 @@ public:
             Controls = {};
             // RestGate must observe the canonical warm-idle state. Driver
             // throttle begins only after the spinning coupled state is seeded.
+            // Hold the ordinary service brake while the spawned chassis settles,
+            // matching the proven P02 sterile-fixture reset contract.
             Controls.SetThrottle(0.0f);
-            Controls.SetBrake(0.0f);
+            Controls.SetBrake(1.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
             Controls.SetDrivetrainTorqueCapacity(1.0f);
@@ -1199,6 +1201,7 @@ public:
             Mesh->WakeAllRigidBodies();
 
             Controls.SetThrottle(TestThrottle);
+            Controls.SetBrake(0.0f);
             Controls.SetDriveline(TestGear, TestGear, 1.0f);
             if (!FPinkCabChaosCockpitBridge::Apply(
                     Cockpit, *Movement, Controls, Provider))
