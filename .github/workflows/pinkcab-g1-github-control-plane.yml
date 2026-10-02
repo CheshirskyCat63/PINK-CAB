@@ -69,6 +69,12 @@ jobs:
           lfs: true
           clean: false
 
+      - name: Prepare pinned MetaRoad dependency
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
       - name: Exact-head preflight and zero-debt
         id: preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'

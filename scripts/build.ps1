@@ -38,6 +38,11 @@ if ($Version.MajorVersion -ne 5 -or $Version.MinorVersion -ne 8) {
 Write-Host "PINK CAB build authority: UE $($Version.MajorVersion).$($Version.MinorVersion).$($Version.PatchVersion) CL $($Version.Changelist)"
 Write-Host "Project: $Project"
 
+# A project-local, manifest-verified package wins over a mixed global Engine plugin.
+& python (Join-Path $RepoRoot 'scripts/ci/prepare_metaroad.py') --root $RepoRoot
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
 if ($GenerateProjectFiles) {
     if (-not (Test-Path $ProjectFilesBat)) { throw "GenerateProjectFiles.bat missing: $ProjectFilesBat" }
     & $ProjectFilesBat "-project=$Project" -game -engine

@@ -21,6 +21,8 @@ on:
       - 'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn*.cpp'
       - 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h'
       - 'scripts/tests/test_p02_workflow_scope.py'
+      - 'scripts/ci/prepare_metaroad.py'
+      - 'scripts/ci/metaroad.lock.json'
   push:
     branches: [main]
     paths:
@@ -41,6 +43,8 @@ on:
       - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
       - 'scripts/tests/test_p02_workflow_scope.py'
+      - 'scripts/ci/prepare_metaroad.py'
+      - 'scripts/ci/metaroad.lock.json'
   workflow_dispatch:
     inputs:
       freeze_baseline:
@@ -113,6 +117,8 @@ jobs:
             if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_DIFF_FAILED' }
           }
           $physics=@($changed | Where-Object {
+            $_ -eq 'scripts/ci/prepare_metaroad.py' -or
+            $_ -eq 'scripts/ci/metaroad.lock.json' -or
             $_.StartsWith('Source/PinkCabVehicle/') -or
             $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
             $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
@@ -132,6 +138,13 @@ jobs:
           Write-Host "PINKCAB_PHYSICS_CHANGE_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
           $changed | ForEach-Object { Write-Host "PINKCAB_PHYSICS_CHANGE_FILE=$_" }
           # PINKCAB_CHANGE_SCOPE_END
+
+      - name: Prepare pinned MetaRoad dependency
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Materialize verified local LFS fixtures
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}

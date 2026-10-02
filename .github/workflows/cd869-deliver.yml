@@ -41,6 +41,12 @@ jobs:
           clean: false
           ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
 
+      - name: Prepare pinned MetaRoad dependency
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
       - name: Materialize verified local LFS
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |

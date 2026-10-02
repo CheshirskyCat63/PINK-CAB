@@ -59,6 +59,8 @@ on:
       - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
       - 'scripts/tests/test_p02_workflow_scope.py'
+      - 'scripts/ci/prepare_metaroad.py'
+      - 'scripts/ci/metaroad.lock.json'
       - '.github/workflows/cd648-p02-phy009.yml'
       - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
@@ -131,6 +133,8 @@ jobs:
             if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_DIFF_FAILED' }
           }
           $physics=@($changed | Where-Object {
+            $_ -eq 'scripts/ci/prepare_metaroad.py' -or
+            $_ -eq 'scripts/ci/metaroad.lock.json' -or
             $_.StartsWith('Source/PinkCabVehicle/') -or
             $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
             $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
@@ -150,6 +154,13 @@ jobs:
           Write-Host "P02_PHY009_CHANGE_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
           $changed | ForEach-Object { Write-Host "P02_PHY009_CHANGE_FILE=$_" }
           # PINKCAB_CHANGE_SCOPE_END
+
+      - name: Prepare pinned MetaRoad dependency
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Materialize verified local LFS fixtures
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
@@ -205,6 +216,15 @@ jobs:
           if(-not $base){ throw 'P02_PHY009_BASELINE_MISMATCH' }
 
           $allowed=@(
+            # CD-559 reproducible, project-local vendor provisioning and runner lifecycle.
+            '.github/workflows/cd869-inline.yml',
+            '.github/workflows/pinkcab-g1-github-control-plane.yml',
+            '.gitignore',
+            'scripts/build.ps1',
+            'scripts/ci/prepare_metaroad.py',
+            'scripts/ci/metaroad.lock.json',
+            'scripts/ci/start-pinkcab-runner.ps1',
+            'scripts/tests/test_prepare_metaroad.py',
             '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
             '.github/workflows/cd648-p02-phy009.yml',
             '.github/workflows/cd869-deliver.yml',
