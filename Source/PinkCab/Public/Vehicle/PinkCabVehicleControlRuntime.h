@@ -19,7 +19,7 @@ struct FPinkCabVehicleHealthService;
 
 struct FPinkCabVehicleControlRuntimeConfig
 {
-    float ClutchPressSeconds = 0.16f;
+    float ClutchPressSeconds = 0.10f;
     float BrakePressSeconds = 0.20f;
     float BrakeReleaseSeconds = 0.28f;
     float ThrottlePressSeconds = 0.35f;

@@ -162,10 +162,10 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.EngineDamageOverspeedRpm = P(8500.0f, A::Calibration);
     R.EngineBrakeEffect = P(0.15f, A::Calibration);
     R.EngineRevUpMOI = P(0.17f, A::Calibration);
-    // Human gate rejected the previous snap-to-idle feel on clutch-open.
-    // Keep native Chaos engine authority but give the free-spinning V8 more
-    // rotational persistence; no autothrottle or rev-match is introduced.
-    R.EngineRevDownRate = P(1500.0f, A::Calibration);
+    // Preserve the accepted neutral blip-to-idle return. Q disengagement
+    // continuity belongs to the clutch press response, not slower native
+    // free-rev decay that breaks the warm-idle return window.
+    R.EngineRevDownRate = P(1800.0f, A::Calibration);
     // P02 candidate seeds. Max clutch capacity is deliberately above the
     // accepted 260 Nm engine target so a healthy fully engaged clutch can hold
     // peak combustion torque. Effective inertia starts from the already
