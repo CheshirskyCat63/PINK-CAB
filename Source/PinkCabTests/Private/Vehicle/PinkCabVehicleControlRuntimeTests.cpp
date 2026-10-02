@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 #include "Vehicle/PinkCabHGateGeometry.h"
 #include "Vehicle/PinkCabSteeringController.h"
@@ -472,6 +473,79 @@ bool FPinkCabP03NoHiddenThrottleInjectionTest::RunTest(const FString& Parameters
         FMath::IsNearlyZero(Runtime.GetThrottleTarget(), 1.0e-6f));
     TestTrue(TEXT("motion outcome cannot inject effective throttle"),
         FMath::IsNearlyZero(Runtime.GetControlState().Throttle, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03DirectMomentaryWithoutGripTest,
+    "PinkCab.Vehicle.Physics.P03.DirectMomentaryWithoutGrip",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03DirectMomentaryWithoutGripTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    TestNotNull(TEXT("interaction component fixture exists"), Interaction);
+    if (!Interaction)
+    {
+        return false;
+    }
+
+    Interaction->SetCurrentTarget(
+        UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Horn")));
+    TestFalse(TEXT("direct momentary precondition has no RMB/grip ownership"),
+        Interaction->IsGripActive());
+
+    const uint32 SerialBefore = Interaction->GetActuationSerial();
+    FPinkCabInteractionEvent Event;
+    TestTrue(TEXT("momentary-capable current target accepts direct LMB without RMB"),
+        Interaction->BeginMomentary(10.0, Event));
+    TestEqual(TEXT("direct LMB actuates the authored current target"),
+        Event.TargetId, FName(TEXT("Horn")));
+    TestEqual(TEXT("direct LMB uses momentary press/hold gesture"),
+        Event.Gesture, EPinkCabInteractionGesture::PressHold);
+    TestEqual(TEXT("one direct LMB creates exactly one actuation"),
+        Interaction->GetActuationSerial(), SerialBefore + 1);
+    TestFalse(TEXT("direct LMB does not invent grip ownership"),
+        Interaction->IsGripActive());
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03ReleasedQuickRecallClearsTargetTest,
+    "PinkCab.Vehicle.Physics.P03.ReleasedQuickRecallClearsTarget",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03ReleasedQuickRecallClearsTargetTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    TestNotNull(TEXT("interaction component fixture exists"), Interaction);
+    if (!Interaction)
+    {
+        return false;
+    }
+
+    const uint32 SerialBefore = Interaction->GetActuationSerial();
+    Interaction->SetQuickSlotHeld(2, true);
+
+    TestEqual(TEXT("quick recall 2 exposes the Horn target"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Horn")));
+    TestEqual(TEXT("quick recall itself never actuates the target"),
+        Interaction->GetActuationSerial(), SerialBefore);
+    TestFalse(TEXT("quick recall itself never creates RMB/grip ownership"),
+        Interaction->IsGripActive());
+    TestFalse(TEXT("quick recall itself never creates LMB/momentary ownership"),
+        Interaction->IsMomentaryActive());
+
+    Interaction->SetQuickSlotHeld(2, false);
+
+    TestTrue(TEXT("released quick key removes the ephemeral recalled target"),
+        Interaction->GetCurrentTargetId().IsNone());
+    TestEqual(TEXT("quick-key release cannot actuate the control"),
+        Interaction->GetActuationSerial(), SerialBefore);
 
     return true;
 }
