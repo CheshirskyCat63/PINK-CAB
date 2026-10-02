@@ -16,6 +16,11 @@ on:
       - 'scripts/ci/verify_vehicle_physics_writers.py'
       - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
       - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
+      - 'Source/PinkCab/Private/Vehicle/**'
+      - 'Source/PinkCab/Public/Vehicle/**'
+      - 'Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawn*.cpp'
+      - 'Source/PinkCab/Public/Runtime/PinkCabChaosTatraPawn.h'
+      - 'scripts/tests/test_p02_workflow_scope.py'
   push:
     branches: [main]
     paths:
@@ -31,6 +36,11 @@ on:
       - 'scripts/ci/verify_vehicle_physics_writers.py'
       - 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv'
       - 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
+      - 'Config/VehiclePhysicsRuntimeFixtures.json'
+      - 'scripts/ci/materialize_local_lfs.py'
+      - 'scripts/ci/run-unreal-automation.ps1'
+      - 'scripts/tests/test_materialize_local_lfs.py'
+      - 'scripts/tests/test_p02_workflow_scope.py'
   workflow_dispatch:
     inputs:
       freeze_baseline:
@@ -48,6 +58,7 @@ concurrency:
 
 jobs:
   physics-tdd:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
     name: Vehicle physics focused TDD gate
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 30
@@ -69,12 +80,38 @@ jobs:
           lfs: false
           clean: false
 
-      - name: Determine latest-commit physics scope
-        id: latest_scope
+      - name: Determine complete physics change scope
+        id: change_scope
+        env:
+          PINKCAB_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PINKCAB_PUSH_BEFORE: ${{ github.event.before }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
+          # PINKCAB_CHANGE_SCOPE_BEGIN
+          $forceRun=($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch')
+          $scopeBase=''
+          if($env:GITHUB_EVENT_NAME -eq 'pull_request'){
+            $scopeBase=$env:PINKCAB_PR_BASE_SHA
+          } elseif($env:GITHUB_EVENT_NAME -eq 'push'){
+            $scopeBase=$env:PINKCAB_PUSH_BEFORE
+            if($scopeBase -match '^0{40}$'){ $forceRun=$true }
+          } elseif(-not $forceRun){
+            throw "PINKCAB_SCOPE_UNSUPPORTED_EVENT=$env:GITHUB_EVENT_NAME"
+          }
+          if($forceRun){
+            $changed=@(git ls-files)
+            if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_FILE_LIST_FAILED' }
+          } else {
+            if($scopeBase -notmatch '^[0-9a-f]{40}$'){ throw 'PINKCAB_SCOPE_BASE_INVALID' }
+            git cat-file -e "$scopeBase^{commit}" 2>$null
+            if($LASTEXITCODE -ne 0){
+              git fetch --no-tags origin $scopeBase
+              if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_BASE_UNAVAILABLE' }
+            }
+            $changed=@(git diff --name-only $scopeBase HEAD)
+            if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_DIFF_FAILED' }
+          }
           $physics=@($changed | Where-Object {
             $_.StartsWith('Source/PinkCabVehicle/') -or
             $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
@@ -90,13 +127,14 @@ jobs:
             $_ -eq 'docs/vehicle_physics/STATE_WRITER_INVENTORY.csv' -or
             $_ -eq 'docs/vehicle_physics/STATE_WRITER_CONSUMER_MAP.md'
           })
-          $run=($physics.Count -gt 0)
-          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
-          Write-Host "PINKCAB_PHYSICS_LATEST_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
-          $changed | ForEach-Object { Write-Host "PINKCAB_PHYSICS_LATEST_FILE=$_" }
+          $run=($forceRun -or $physics.Count -gt 0)
+          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "PINKCAB_PHYSICS_CHANGE_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
+          $changed | ForEach-Object { Write-Host "PINKCAB_PHYSICS_CHANGE_FILE=$_" }
+          # PINKCAB_CHANGE_SCOPE_END
 
       - name: Materialize verified local LFS fixtures
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -136,7 +174,7 @@ jobs:
           Write-Host "PINKCAB_PHYSICS_LOCAL_LFS_MATERIALIZATION=PASS"
 
       - name: Exact-head and hygiene preflight
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -154,7 +192,7 @@ jobs:
           Write-Host "PINKCAB_PHYSICS_EXACT_HEAD=$head"
 
       - name: Build PinkCabEditor
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -167,7 +205,7 @@ jobs:
           Write-Host 'PINKCAB_PHYSICS_EDITOR_BUILD=PASS'
 
       - name: Run P02 clutch-model fail-fast
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -182,7 +220,7 @@ jobs:
           Write-Host 'PINKCAB_CLUTCH_MODEL_FAILFAST=PASS'
 
       - name: Run D4 fail-fast diagnostic
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -197,7 +235,7 @@ jobs:
           Write-Host 'PINKCAB_D4_FAILFAST=PASS'
 
       - name: Run remaining P02 runtime blockers fail-fast
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -231,7 +269,7 @@ jobs:
           Write-Host 'PINKCAB_RUNTIME_BLOCKERS_FAILFAST=PASS'
 
       - name: Run D3 causal matrix fail-fast
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -246,7 +284,7 @@ jobs:
           Write-Host 'PINKCAB_D3_CAUSAL_FAILFAST=PASS'
 
       - name: Run focused vehicle-physics tests
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -261,7 +299,7 @@ jobs:
           Write-Host 'PINKCAB_PHYSICS_TDD=PASS'
 
       - name: Build exact game executable for PHY-001 baseline
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -276,7 +314,7 @@ jobs:
           Write-Host 'PINKCAB_PHYSICS_GAME_BUILD=PASS'
 
       - name: Capture PHY-001 executable/profile/rollback baseline
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -298,7 +336,7 @@ jobs:
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Persist focused evidence on canonical runner
-        if: ${{ always() && steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ always() && steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'

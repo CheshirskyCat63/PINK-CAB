@@ -72,11 +72,12 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
     name: P02 PHY-009 evidence
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 60
     outputs:
-      run_physics: ${{ steps.latest_scope.outputs.run_physics }}
+      run_physics: ${{ steps.change_scope.outputs.run_physics }}
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
 
@@ -89,14 +90,40 @@ jobs:
           clean: true
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Determine latest-commit P02 scope
-        id: latest_scope
+      - name: Determine complete P02 change scope
+        id: change_scope
+        env:
+          PINKCAB_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PINKCAB_PUSH_BEFORE: ${{ github.event.before }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           python -m unittest scripts.tests.test_p02_workflow_scope -v
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-          $changed=@(git diff-tree --no-commit-id --name-only -r HEAD)
+          # PINKCAB_CHANGE_SCOPE_BEGIN
+          $forceRun=($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch')
+          $scopeBase=''
+          if($env:GITHUB_EVENT_NAME -eq 'pull_request'){
+            $scopeBase=$env:PINKCAB_PR_BASE_SHA
+          } elseif($env:GITHUB_EVENT_NAME -eq 'push'){
+            $scopeBase=$env:PINKCAB_PUSH_BEFORE
+            if($scopeBase -match '^0{40}$'){ $forceRun=$true }
+          } elseif(-not $forceRun){
+            throw "PINKCAB_SCOPE_UNSUPPORTED_EVENT=$env:GITHUB_EVENT_NAME"
+          }
+          if($forceRun){
+            $changed=@(git ls-files)
+            if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_FILE_LIST_FAILED' }
+          } else {
+            if($scopeBase -notmatch '^[0-9a-f]{40}$'){ throw 'PINKCAB_SCOPE_BASE_INVALID' }
+            git cat-file -e "$scopeBase^{commit}" 2>$null
+            if($LASTEXITCODE -ne 0){
+              git fetch --no-tags origin $scopeBase
+              if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_BASE_UNAVAILABLE' }
+            }
+            $changed=@(git diff --name-only $scopeBase HEAD)
+            if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_DIFF_FAILED' }
+          }
           $physics=@($changed | Where-Object {
             $_.StartsWith('Source/PinkCabVehicle/') -or
             $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
@@ -112,13 +139,14 @@ jobs:
             $_ -eq 'scripts/ci/verify_vehicle_physics_writers.py' -or
             $false # docs-only changes are administrative, never runtime physics scope
           })
-          $run=($physics.Count -gt 0)
-          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append
-          Write-Host "P02_PHY009_LATEST_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
-          $changed | ForEach-Object { Write-Host "P02_PHY009_LATEST_FILE=$_" }
+          $run=($forceRun -or $physics.Count -gt 0)
+          "run_physics=$($run.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "P02_PHY009_CHANGE_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
+          $changed | ForEach-Object { Write-Host "P02_PHY009_CHANGE_FILE=$_" }
+          # PINKCAB_CHANGE_SCOPE_END
 
       - name: Materialize verified local LFS fixtures
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -158,7 +186,7 @@ jobs:
           Write-Host "P02_LOCAL_LFS_MATERIALIZATION=PASS"
 
       - name: Exact-head preflight and scope guard
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -255,7 +283,7 @@ jobs:
           Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head base=$base changed=$($changed.Count)"
 
       - name: Build PinkCabEditor
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -264,7 +292,7 @@ jobs:
           Write-Host 'P02_PHY009_EDITOR_BUILD=PASS'
 
       - name: Focused telemetry and physics regressions
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -316,7 +344,7 @@ jobs:
           Write-Host "P02_PHY009_TEST_LOOP=PASS count=$completedTests"
 
       - name: Prove P01 slope fixture determinism
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
@@ -340,7 +368,7 @@ jobs:
           Write-Host 'P01_SLOPE_DETERMINISM=PASS repeats=5'
 
       - name: Zero-debt and writer guard
-        if: ${{ steps.latest_scope.outputs.run_physics == 'true' }}
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
