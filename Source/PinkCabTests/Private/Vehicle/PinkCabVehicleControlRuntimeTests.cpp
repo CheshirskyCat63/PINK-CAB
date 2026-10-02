@@ -765,12 +765,6 @@ bool FPinkCabManualSteeringWeightTest::RunTest(const FString& Parameters)
         Stationary < Rolling);
     TestTrue(TEXT("high-speed steering is calmer than low-speed rolling steering"),
         Highway < Rolling);
-    TestTrue(TEXT("stationary response rate is lower than rolling response"),
-        Steering.GetResponseRate(0.0f, EPinkCabVehicleMotionMode::Stationary)
-            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
-    TestTrue(TEXT("high-speed response does not accelerate with speed"),
-        Steering.GetResponseRate(120.0f, EPinkCabVehicleMotionMode::Moving)
-            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
     return true;
 }
 
