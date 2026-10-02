@@ -50,7 +50,7 @@ float FPinkCabSteeringController::Step(
     // Speed may shape how new mouse travel reaches the authored steering target,
     // but it must never rewrite an already-authored target merely because vehicle
     // speed changed. Full mechanical steering authority therefore remains available
-    // at every speed; high-speed calmness is owned by travel scale and response rate.
+    // at every speed; high-speed calmness comes only from the input travel scale above.
     Target = FMath::Clamp(
         FMath::Sign(VirtualCursor) * Curve,
         -1.0f,
@@ -78,23 +78,4 @@ float FPinkCabSteeringController::GetTarget() const
 float FPinkCabSteeringController::GetSteering() const
 {
     return Steering;
-}
-
-float FPinkCabSteeringController::GetResponseRate(
-    float SpeedKmh,
-    EPinkCabVehicleMotionMode MotionMode) const
-{
-    if (MotionMode == EPinkCabVehicleMotionMode::Stationary)
-    {
-        return Config.StationaryResponsePerSecond;
-    }
-
-    const float SpeedAlpha = FMath::Clamp(
-        FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
-        0.0f,
-        1.0f);
-    return FMath::Lerp(
-        Config.MovingResponseLowPerSecond,
-        Config.MovingResponseHighPerSecond,
-        SpeedAlpha);
 }

@@ -10,11 +10,7 @@ struct FPinkCabSteeringControllerConfig
     float StationaryTravelScale = 3.60f;
     float MovingTravelScaleLow = 1.35f;
     float MovingTravelScaleHigh = 2.20f;
-    float StationaryResponsePerSecond = 2.5f;
-    float MovingResponseLowPerSecond = 10.5f;
-    float MovingResponseHighPerSecond = 6.0f;
     float HighSpeedKmh = 120.0f;
-    float HighSpeedTargetGain = 0.55f;
 };
 
 class PINKCABVEHICLE_API FPinkCabSteeringController
@@ -33,7 +29,6 @@ public:
     float GetVirtualCursor() const;
     float GetTarget() const;
     float GetSteering() const;
-    float GetResponseRate(float SpeedKmh, EPinkCabVehicleMotionMode MotionMode) const;
 
 private:
     FPinkCabSteeringControllerConfig Config;
