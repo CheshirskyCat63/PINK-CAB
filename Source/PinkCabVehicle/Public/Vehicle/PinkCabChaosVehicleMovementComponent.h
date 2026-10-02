@@ -32,6 +32,8 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
 struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
 {
     bool bCombustionAllowed = false;
+    // Driver selection is retained for telemetry; only EngagedGear actuates physics.
+    int32 RequestedGear = 0;
     int32 EngagedGear = 0;
     float ClutchCoupling01 = 0.0f;
     float DrivetrainTorqueCapacity01 = 1.0f;

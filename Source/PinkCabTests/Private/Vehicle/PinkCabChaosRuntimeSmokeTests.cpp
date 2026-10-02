@@ -9,7 +9,79 @@
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "World/PinkCabChaosWeaveCourse.h"
+
+namespace
+{
+class FRuntimeWaitDeadline
+{
+public:
+    bool HasExpired(FAutomationTestBase& Test, const TCHAR* Phase)
+    {
+        const double Now = FPlatformTime::Seconds();
+        if (StartSeconds < 0.0)
+        {
+            StartSeconds = Now;
+        }
+        if (Now - StartSeconds < 30.0)
+        {
+            return false;
+        }
+        Test.AddError(FString::Printf(
+            TEXT("Runtime smoke timed out after 30 seconds: %s"), Phase));
+        return true;
+    }
+
+private:
+    double StartSeconds = -1.0;
+};
+
+bool AdvanceSmokeTime(
+    UChaosWheeledVehicleMovementComponent& Movement,
+    int64& LastStep,
+    double& SimulatedSeconds)
+{
+    const auto* PinkCabMovement = Cast<UPinkCabChaosVehicleMovementComponent>(&Movement);
+    if (!PinkCabMovement)
+    {
+        return false;
+    }
+    const int64 Step = PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+    if (LastStep >= 0 && Step > LastStep)
+    {
+        SimulatedSeconds += static_cast<double>(Step - LastStep)
+            * PinkCabMovement->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+    }
+    LastStep = Step;
+    return true;
+}
+
+bool ApplySmokeControls(
+    APinkCabChaosTatraPawn& Pawn,
+    FPinkCabVehicleControlState& Controls)
+{
+    UChaosWheeledVehicleMovementComponent* Movement = Pawn.GetChaosMovement();
+    if (!Movement)
+    {
+        return false;
+    }
+    // Actor tick is disabled in this controlled fixture, so the usual player
+    // input wake-up path is absent. Match the sterile physics fixture lifecycle.
+    Movement->SetSleeping(false);
+    if (USkeletalMeshComponent* Mesh = Pawn.GetMesh())
+    {
+        Mesh->WakeAllRigidBodies();
+    }
+    Controls.SetDriveline(Pawn.GetRequestedGear(), Pawn.GetEngagedGear(), Controls.ClutchCoupling);
+    auto& Provider = static_cast<FPinkCabChaosVehicleDynamicsProvider&>(
+        Pawn.GetPinkCabDynamicsProvider());
+    return FPinkCabChaosCockpitBridge::Apply(
+        Pawn.GetCockpitState(), *Movement, Controls, Provider);
+}
+}
 
 struct FPinkCabChaosRuntimeState
 {
@@ -18,7 +90,62 @@ struct FPinkCabChaosRuntimeState
     FVector StartLocation = FVector::ZeroVector;
     FRotator StartRotation = FRotator::ZeroRotator;
     bool bCockpitPrimed = false;
+    bool bGroundedRestObserved = false;
+    int64 RestStartMechanicalStep = -1;
+    int64 RestLastMechanicalStep = -1;
+    int32 StableRestObservations = 0;
 };
+
+namespace
+{
+bool HasGroundedRest(APinkCabChaosTatraPawn& Pawn, FPinkCabChaosRuntimeState& State)
+{
+    if (State.bGroundedRestObserved)
+    {
+        return true;
+    }
+    auto* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(Pawn.GetChaosMovement());
+    USkeletalMeshComponent* Mesh = Pawn.GetMesh();
+    if (!Movement || !Mesh)
+    {
+        return false;
+    }
+    Movement->SetSleeping(false);
+    Mesh->WakeAllRigidBodies();
+    const int64 Step = Movement->GetPinkCabMechanicalIntegrationStepCount();
+    if (State.RestStartMechanicalStep < 0)
+    {
+        State.RestStartMechanicalStep = Step;
+    }
+    if (Step == State.RestLastMechanicalStep)
+    {
+        return false;
+    }
+    State.RestLastMechanicalStep = Step;
+    int32 ContactCount = 0;
+    for (int32 WheelIndex = 0; WheelIndex < Movement->GetNumWheels(); ++WheelIndex)
+    {
+        ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
+    }
+    // As in the sterile physics fixture, do not confuse the initial free fall
+    // with a settled launch. No throttle or gear is applied before this gate.
+    const bool bStable = Step - State.RestStartMechanicalStep >= 20
+        && ContactCount == 4
+        && Mesh->GetPhysicsLinearVelocity().Size() <= 5.0f
+        && Mesh->GetPhysicsAngularVelocityInDegrees().Size() <= 2.0f
+        && Pawn.GetEngagedGear() == 0;
+    State.StableRestObservations = bStable ? State.StableRestObservations + 1 : 0;
+    if (State.StableRestObservations < 5)
+    {
+        return false;
+    }
+    State.StartLocation = Pawn.GetActorLocation();
+    State.StartRotation = Pawn.GetActorRotation();
+    State.bGroundedRestObserved = true;
+    return true;
+}
+}
+
 
 class FPinkCabDrivePhaseCommand final : public IAutomationLatentCommand
 {
@@ -33,6 +160,10 @@ public:
           Throttle(InThrottle), Steering(InSteering) {}
     virtual bool Update() override
     {
+        if (Deadline.HasExpired(*Test, TEXT("drive readiness")))
+        {
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World)
         {
@@ -68,13 +199,21 @@ public:
             return false;
         }
 
+        if (!HasGroundedRest(*Pawn, *State))
+        {
+            return false;
+        }
+
         if (!State->bCockpitPrimed)
         {
             UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
             Test->TestNotNull(TEXT("live cockpit has Chaos movement"), Movement);
             if (Movement)
             {
-                Test->TestFalse(TEXT("live cockpit begins with engine off"), Movement->bMechanicalSimEnabled);
+                Test->TestEqual(TEXT("live cockpit begins with ignition off"),
+                    Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Off);
+                Test->TestTrue(TEXT("mechanical simulation remains available with ignition off"),
+                    Movement->bMechanicalSimEnabled);
                 Test->TestFalse(TEXT("legacy bool handbrake path is never authoritative"), Movement->GetHandbrakeInput());
             }
             Test->TestTrue(TEXT("live cockpit begins with parking lever engaged"),
@@ -87,10 +226,11 @@ public:
             Test->TestEqual(TEXT("mouse actuator releases parking lever"),
                 Pawn->GetCockpitState().GetHandbrakeAmount(), 0.0f);
 
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
             const FPinkCabVehicleInputFrame ClutchFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+            Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
             Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
             const FPinkCabVehicleInputFrame CoupledFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
@@ -100,7 +240,7 @@ public:
             {
                 Test->TestTrue(TEXT("ignition enables live mechanical simulation"), Movement->bMechanicalSimEnabled);
                 Test->TestFalse(TEXT("legacy bool handbrake stays disabled after release"), Movement->GetHandbrakeInput());
-                Test->TestEqual(TEXT("physical H-gate plus clutch engages first"), Movement->GetTargetGear(), 1);
+                Test->TestEqual(TEXT("physical H-gate plus clutch engages first"), Pawn->GetEngagedGear(), 1);
             }
             State->bCockpitPrimed = true;
         }
@@ -110,7 +250,11 @@ public:
         Controls.SetSteering(Steering);
         Controls.SetBrake(0.0f);
         Controls.SetHandbrake(0.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        if (!ApplySmokeControls(*Pawn, Controls))
+        {
+            Test->AddError(TEXT("runtime smoke failed to apply authoritative cockpit controls"));
+            return true;
+        }
 
         if (PhaseStartSeconds < 0.0)
         {
@@ -128,26 +272,33 @@ public:
                 {
                     ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
                 }
-                if (Movement->GetCurrentGear() != 1 || ContactCount < 2)
+                if (Pawn->GetEngagedGear() != 1 || ContactCount < 2)
                 {
                     return false;
                 }
 
                 Test->AddInfo(FString::Printf(
                     TEXT("PIE phase ready: throttle=%.2f torqueMax=%.3f gear=%d rpm=%.1f contacts=%d"),
-                    Throttle, TorqueMax, Movement->GetCurrentGear(),
+                    Throttle, TorqueMax, Pawn->GetEngagedGear(),
                     Movement->GetEngineRotationSpeed(), ContactCount));
             }
             PhaseStartSeconds = FPlatformTime::Seconds();
         }
 
-        return (FPlatformTime::Seconds() - PhaseStartSeconds) >= DurationSeconds;
+        if (UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement())
+        {
+            AdvanceSmokeTime(*Movement, LastMechanicalStep, PhaseSimSeconds);
+        }
+        return PhaseSimSeconds >= DurationSeconds;
     }
 
 private:
+    FRuntimeWaitDeadline Deadline;
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabChaosRuntimeState> State;
     double PhaseStartSeconds = -1.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
     float DurationSeconds = 0.0f;
     float Throttle = 0.0f;
     float Steering = 0.0f;
@@ -197,6 +348,10 @@ public:
             RearLeft.bIsSkidding ? 1 : 0, RearLeft.DriveTorque,
             RearRight.bIsSlipping ? 1 : 0, RearRight.SlipMagnitude,
             RearRight.bIsSkidding ? 1 : 0, RearRight.DriveTorque));
+        Test->AddInfo(FString::Printf(
+            TEXT("drive contact diagnostics springs=(%.1f,%.1f,%.1f,%.1f) location=%s velocity=%s"),
+            FrontLeft.SpringForce, FrontRight.SpringForce, RearLeft.SpringForce, RearRight.SpringForce,
+            *EndLocation.ToString(), *Pawn->GetMesh()->GetPhysicsLinearVelocity().ToString()));
         Test->TestTrue(TEXT("quarter pedal moves the heavy car without demanding a launch trick"), ForwardTravelCm > 50.0f);
         Test->TestTrue(TEXT("positive semantic steering produces signed driver-right travel"),
             RightTravelCm > 1.0f);
@@ -211,7 +366,9 @@ public:
         FPinkCabVehicleTelemetry Telemetry;
         Test->TestTrue(TEXT("provider returns live PIE telemetry"),
             Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry));
-        Test->TestEqual(TEXT("telemetry mirrors live current gear"), Telemetry.CurrentGear, Movement->GetCurrentGear());
+        Test->TestEqual(TEXT("telemetry mirrors semantic engaged gear"), Telemetry.CurrentGear, Pawn->GetEngagedGear());
+        Test->TestEqual(TEXT("telemetry retains native transmission diagnostics"),
+            Telemetry.NativeCurrentGear, Movement->GetCurrentGear());
         Test->TestTrue(TEXT("fully coupled low-speed engine stays at or above idle rpm"),
             Telemetry.EngineRpm >= Movement->EngineSetup.EngineIdleRPM);
         Test->TestEqual(TEXT("telemetry exposes four wheel slots"), Telemetry.Wheels.Num(), 4);
@@ -228,7 +385,7 @@ public:
 
         FPinkCabVehicleControlState StopControls;
         StopControls.SetBrake(1.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+        ApplySmokeControls(*Pawn, StopControls);
         return true;
     }
 
@@ -268,6 +425,10 @@ public:
 
     virtual bool Update() override
     {
+        if (Deadline.HasExpired(*Test, TEXT("free rev")))
+        {
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World)
         {
@@ -302,7 +463,11 @@ public:
         FPinkCabVehicleControlState Controls;
         Controls.SetThrottle(1.0f);
         Controls.SetDriveline(0, 0, 0.0f);
-        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        if (!ApplySmokeControls(*LivePawn, Controls))
+        {
+            Test->AddError(TEXT("free rev failed to apply authoritative cockpit controls"));
+            return true;
+        }
         PeakRpm = FMath::Max(PeakRpm, Movement->GetEngineRotationSpeed());
 
         if (StartSeconds < 0.0)
@@ -312,30 +477,39 @@ public:
             StartSeconds = FPlatformTime::Seconds();
             return false;
         }
-        if ((FPlatformTime::Seconds() - StartSeconds) < 1.5)
+        AdvanceSmokeTime(*Movement, LastMechanicalStep, PhaseSimSeconds);
+        const float Rpm = Movement->GetEngineRotationSpeed();
+        if (PhaseSimSeconds < 5.0 && (PhaseSimSeconds < 1.5 || Rpm < Movement->EngineSetup.MaxRPM * 0.94f))
         {
             return false;
         }
 
-        const float Rpm = Movement->GetEngineRotationSpeed();
         PeakRpm = FMath::Max(PeakRpm, Rpm);
         Test->AddInfo(FString::Printf(
-            TEXT("full-throttle free-rev diagnostics rpm=%.1f peak=%.1f max=%.1f moi=%.2f"),
-            Rpm, PeakRpm, Movement->EngineSetup.MaxRPM, Movement->EngineSetup.EngineRevUpMOI));
+            TEXT("full-throttle free-rev diagnostics rpm=%.1f peak=%.1f max=%.1f moi=%.2f sim_s=%.3f"),
+            Rpm, PeakRpm, Movement->EngineSetup.MaxRPM, Movement->EngineSetup.EngineRevUpMOI,
+            PhaseSimSeconds));
         Test->TestTrue(TEXT("100 percent gas reaches the high-rev band in neutral"),
             Rpm >= Movement->EngineSetup.MaxRPM * 0.94f);
         Test->TestTrue(TEXT("high-rev engine remains inside limiter overshoot band"),
             PeakRpm <= Movement->EngineSetup.MaxRPM * 1.03f);
 
         Controls.SetThrottle(0.0f);
-        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        if (!ApplySmokeControls(*LivePawn, Controls))
+        {
+            Test->AddError(TEXT("free rev failed to apply authoritative cockpit controls"));
+            return true;
+        }
         return true;
     }
 
 private:
+    FRuntimeWaitDeadline Deadline;
     FAutomationTestBase* Test = nullptr;
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
     double StartSeconds = -1.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
     float PeakRpm = 0.0f;
 };
 
@@ -376,7 +550,8 @@ public:
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
         const FWheelStatus RearLeft = Movement->GetWheelState(2);
         const FWheelStatus RearRight = Movement->GetWheelState(3);
-        const float ForwardTravelCm = Pawn->GetActorLocation().X - State->StartLocation.X;
+        const float ForwardTravelCm = FVector::DotProduct(
+            Pawn->GetActorLocation() - State->StartLocation, State->StartRotation.Vector());
         Test->AddInfo(FString::Printf(
             TEXT("half-pedal power diagnostics: forward=%.1fcm speed=%.1fcm/s rearL[slip=%d mag=%.1f drive=%.1f] rearR[slip=%d mag=%.1f drive=%.1f]"),
             ForwardTravelCm, Movement->GetForwardSpeed(),
@@ -425,6 +600,10 @@ public:
 
     virtual bool Update() override
     {
+        if (Deadline.HasExpired(*Test, TEXT("reverse readiness")))
+        {
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World)
         {
@@ -454,6 +633,11 @@ public:
             return false;
         }
 
+        if (!HasGroundedRest(*Pawn, *State))
+        {
+            return false;
+        }
+
         if (!State->bCockpitPrimed)
         {
             Test->TestTrue(TEXT("reverse smoke ignition interaction succeeds"),
@@ -461,10 +645,11 @@ public:
             Pawn->ApplyPhysicalControlMouseDelta(TEXT("Handbrake"), true, 0.0f, 500.0f, 0.1f);
             Pawn->ApplyPhysicalControlMouseDelta(NAME_None, false, 0.0f, 0.0f, 0.1f);
 
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 320.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -140.0f, 0.05f);
             const FPinkCabVehicleInputFrame ClutchFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
+            Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 1280.0f, 0.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, -480.0f, 0.05f);
             Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
             const FPinkCabVehicleInputFrame CoupledFrame =
                 FPinkCabVehicleInputFrame::FromDigital(false, false, false, false);
@@ -480,7 +665,7 @@ public:
         {
             ContactCount += Movement->GetWheelState(WheelIndex).bInContact ? 1 : 0;
         }
-        if (Movement->GetCurrentGear() != -1 || ContactCount < 2)
+        if (Pawn->GetEngagedGear() != -1 || ContactCount < 2)
         {
             return false;
         }
@@ -489,14 +674,19 @@ public:
         Controls.SetThrottle(0.25f);
         Controls.SetBrake(0.0f);
         Controls.SetHandbrake(0.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        if (!ApplySmokeControls(*Pawn, Controls))
+        {
+            Test->AddError(TEXT("runtime smoke failed to apply authoritative cockpit controls"));
+            return true;
+        }
 
         if (PhaseStartSeconds < 0.0)
         {
             PhaseStartSeconds = FPlatformTime::Seconds();
             return false;
         }
-        if ((FPlatformTime::Seconds() - PhaseStartSeconds) < 2.0)
+        AdvanceSmokeTime(*Movement, LastMechanicalStep, PhaseSimSeconds);
+        if (PhaseSimSeconds < 2.0)
         {
             return false;
         }
@@ -507,11 +697,12 @@ public:
             TEXT("reverse diagnostics: travel=%.1fcm speed=%.1fcm/s gear=%d contacts=%d"),
             ForwardAxisTravelCm,
             Movement->GetForwardSpeed(),
-            Movement->GetCurrentGear(),
+            Pawn->GetEngagedGear(),
             ContactCount));
         Test->TestTrue(TEXT("reverse gear produces negative longitudinal travel"), ForwardAxisTravelCm < -30.0f);
         Test->TestTrue(TEXT("reverse gear produces negative live Chaos speed"), Movement->GetForwardSpeed() < -20.0f);
-        Test->TestEqual(TEXT("live Chaos remains in reverse"), Movement->GetCurrentGear(), -1);
+        Test->TestEqual(TEXT("semantic driveline remains in reverse"), Pawn->GetEngagedGear(), -1);
+        Test->TestEqual(TEXT("native Chaos transmission remains neutral"), Movement->GetCurrentGear(), 0);
         Test->TestTrue(TEXT("reverse drive keeps at least two wheels in contact"), ContactCount >= 2);
 
         FPinkCabVehicleTelemetry Telemetry;
@@ -523,14 +714,17 @@ public:
 
         FPinkCabVehicleControlState StopControls;
         StopControls.SetBrake(1.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+        ApplySmokeControls(*Pawn, StopControls);
         return true;
     }
 
 private:
+    FRuntimeWaitDeadline Deadline;
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabChaosRuntimeState> State;
     double PhaseStartSeconds = -1.0;
+    int64 LastMechanicalStep = -1;
+    double PhaseSimSeconds = 0.0;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

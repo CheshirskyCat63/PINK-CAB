@@ -13,5 +13,6 @@ struct PINKCABVEHICLE_API FPinkCabChaosCockpitBridge
         const FPinkCabCockpitState& Cockpit,
         UChaosWheeledVehicleMovementComponent& Movement,
         FPinkCabVehicleControlState& Controls,
-        FPinkCabChaosVehicleDynamicsProvider& Provider);
+        FPinkCabChaosVehicleDynamicsProvider& Provider,
+        bool bEngineHealthAllowsCombustion = true);
 };

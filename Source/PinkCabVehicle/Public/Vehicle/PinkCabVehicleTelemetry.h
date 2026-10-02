@@ -22,8 +22,11 @@ struct FPinkCabVehicleTelemetry
 {
     float SpeedKmh = 0.0f;
     float EngineRpm = 0.0f;
+    // Semantic gears belong to the PinkCab driveline, independently of Chaos.
     int32 CurrentGear = 0;
     int32 TargetGear = 0;
+    int32 NativeCurrentGear = 0;
+    int32 NativeTargetGear = 0;
     float NormalizedSteering = 0.0f;
     float NormalizedThrottle = 0.0f;
     float NormalizedBrake = 0.0f;

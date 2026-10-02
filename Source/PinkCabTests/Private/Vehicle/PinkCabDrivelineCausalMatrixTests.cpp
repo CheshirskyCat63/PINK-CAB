@@ -71,6 +71,16 @@ public:
 
     virtual bool Update() override
     {
+        const double Now = FPlatformTime::Seconds();
+        if (ConditionStartSeconds < 0.0) ConditionStartSeconds = Now;
+        if (Now - ConditionStartSeconds > 30.0)
+        {
+            Test->AddError(FString::Printf(
+                TEXT("D3 condition timed out after 30 seconds: completed=%d resetting=%d coupling=%.3f gear=%d throttle=%.2f repeat=%d"),
+                Runs.Num(), bResetting ? 1 : 0, CurrentCoupling(), CurrentGear(),
+                CurrentThrottle(), RepeatIndex + 1));
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World)
         {
@@ -290,6 +300,10 @@ public:
         Run.EndBodyLinearSpeedCmPerSec =
             Mesh->GetPhysicsLinearVelocity().Size();
         Runs.Add(Run);
+        if (Runs.Num() % 40 == 0)
+        {
+            UE_LOG(LogTemp, Display, TEXT("P02_D3_MATRIX_PROGRESS completed=%d/240"), Runs.Num());
+        }
 
         Test->AddInfo(FString::Printf(
             TEXT("P02_D3_MATRIX coupling=%.3f gear=%d throttle=%.2f repeat=%d reset_engine_rpm=%.3f reset_max_driven_wheel_rpm=%.3f reset_body_linear_cm_s=%.3f reset_body_angular_deg_s=%.3f reset_mechanical_steps=%lld reset_stable_steps=%d rear_torque_nm=%.3f initial_rear_torque_nm=%.3f engine_rpm=%.3f mechanical_dt_ms=%.6f effective_ratio=%.6f resolved_throttle=%.6f available_engine_torque_nm=%.3f mean_driven_wheel_rpm=%.3f end_body_linear_cm_s=%.3f chaos_current=%d chaos_target=%d"),
@@ -363,6 +377,7 @@ private:
 
     void BeginFreshRun(UWorld& World)
     {
+        ConditionStartSeconds = FPlatformTime::Seconds();
         // Destroy the previous physics vehicle instead of attempting to rewind
         // hidden Chaos engine state. The next latent tick spawns a completely
         // new production movement/profile/wheel stack for this matrix sample.
@@ -560,6 +575,7 @@ private:
     bool bInitialized = false;
     bool bResetting = false;
     int32 ResetPollCount = 0;
+    double ConditionStartSeconds = -1.0;
     FPinkCabPhysicsFixtureRestGate RestGate;
     float LastEffectiveGearRatio = 0.0f;
     float CurrentResetEngineRpm = 0.0f;

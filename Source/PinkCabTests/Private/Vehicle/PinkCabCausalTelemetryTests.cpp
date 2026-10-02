@@ -223,7 +223,9 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     Input.Vehicle.EngineRpm = 1200.0f;
     Input.Vehicle.SpeedKmh = 36.0f;
     Input.Vehicle.CurrentGear = 1;
-    Input.Vehicle.TargetGear = 0;
+    Input.Vehicle.TargetGear = 2;
+    Input.Vehicle.NativeCurrentGear = 0;
+    Input.Vehicle.NativeTargetGear = 0;
     Input.Vehicle.CausalActuation.RequestedEngineTorqueAfterLimiterHealthNm = 90.0f;
     Input.Vehicle.CausalActuation.EffectiveGearRatio = 3.0f;
     Input.Vehicle.CausalActuation.DriveTorquePath =
@@ -248,6 +250,7 @@ bool FPinkCabCausalFrameBuilderTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("running ignition permits combustion"), Frame.bCombustionPermission);
     TestEqual(TEXT("requested gear copied"), Frame.RequestedGear, 2);
     TestEqual(TEXT("engaged gear copied"), Frame.EngagedGear, 1);
+    TestEqual(TEXT("Chaos current gear remains independently visible"), Frame.ChaosCurrentGear, 0);
     TestEqual(TEXT("Chaos target gear remains independently visible"), Frame.ChaosTargetGear, 0);
     TestEqual(TEXT("engine rpm copied"), Frame.EngineRpm, 1200.0f);
     TestEqual(TEXT("expected coupled rpm copied"), Frame.ExpectedCoupledRpm, 1800.0f);

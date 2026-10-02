@@ -63,13 +63,6 @@ bool APinkCabChaosTatraPawn::ApplyVehicleHit(const FPinkCabVehicleHitEvent& Even
 {
     if (!VehicleHealthService.ApplyHit(GetMutableVehicleHealthState(), Event)) return false;
     SyncCockpitToChaos();
-    if (!VehicleHealthService.HasCapability(GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine))
-    {
-        if (UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement())
-        {
-            Movement->EnableMechanicalSim(false);
-        }
-    }
     return true;
 }
 

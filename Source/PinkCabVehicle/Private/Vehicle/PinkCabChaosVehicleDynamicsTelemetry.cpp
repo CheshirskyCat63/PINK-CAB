@@ -2,6 +2,7 @@
 
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 
 namespace
 {
@@ -75,8 +76,19 @@ bool FPinkCabChaosVehicleDynamicsProvider::ReadTelemetry(
 
     OutTelemetry.SpeedKmh = Movement->GetForwardSpeed() * 0.036f;
     OutTelemetry.EngineRpm = Movement->GetEngineRotationSpeed();
-    OutTelemetry.CurrentGear = Movement->GetCurrentGear();
-    OutTelemetry.TargetGear = Movement->GetTargetGear();
+    OutTelemetry.NativeCurrentGear = Movement->GetCurrentGear();
+    OutTelemetry.NativeTargetGear = Movement->GetTargetGear();
+    OutTelemetry.CurrentGear = OutTelemetry.NativeCurrentGear;
+    OutTelemetry.TargetGear = OutTelemetry.NativeTargetGear;
+    if (const auto* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement))
+    {
+        // Read the movement-owned command, not this provider handle's cache:
+        // fixture and observer handles can differ from the last command writer.
+        const auto& Command = PinkCabMovement->GetPendingPinkCabDrivelineCommand();
+        OutTelemetry.CurrentGear = Command.EngagedGear;
+        OutTelemetry.TargetGear = Command.RequestedGear;
+    }
     OutTelemetry.NormalizedSteering = LastControls.Steering;
     OutTelemetry.NormalizedThrottle = LastControls.Throttle;
     OutTelemetry.NormalizedBrake = LastControls.Brake;

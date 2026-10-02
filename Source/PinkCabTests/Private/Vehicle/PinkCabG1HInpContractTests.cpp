@@ -14,7 +14,9 @@ int32 GearFromNeutral(const float DriverRightCounts, const float DriverForwardCo
     FPinkCabHGateState State;
     FPinkCabHGateGeometry::ResetToGear(State, 0);
     FPinkCabHGateGeometry::ApplyDriverDelta(
-        State, DriverRightCounts, DriverForwardCounts);
+        State, DriverRightCounts, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(
+        State, 0.0f, DriverForwardCounts);
     return State.RequestedGear;
 }
 }
@@ -42,12 +44,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabG1HInpHGateSlotsTest::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("driver left + forward selects first"), GearFromNeutral(-160.0f, 140.0f), 1);
-    TestEqual(TEXT("driver left + back selects second"), GearFromNeutral(-160.0f, -140.0f), 2);
-    TestEqual(TEXT("driver center + forward selects third"), GearFromNeutral(0.0f, 140.0f), 3);
-    TestEqual(TEXT("driver center + back selects fourth"), GearFromNeutral(0.0f, -140.0f), 4);
-    TestEqual(TEXT("driver right + forward selects fifth"), GearFromNeutral(160.0f, 140.0f), 5);
-    TestEqual(TEXT("driver right + back selects reverse"), GearFromNeutral(160.0f, -140.0f), -1);
+    TestEqual(TEXT("driver left + forward selects first"), GearFromNeutral(-640.0f, 480.0f), 1);
+    TestEqual(TEXT("driver left + back selects second"), GearFromNeutral(-640.0f, -480.0f), 2);
+    TestEqual(TEXT("driver center + forward selects third"), GearFromNeutral(0.0f, 480.0f), 3);
+    TestEqual(TEXT("driver center + back selects fourth"), GearFromNeutral(0.0f, -480.0f), 4);
+    TestEqual(TEXT("driver right + forward selects fifth"), GearFromNeutral(320.0f, 480.0f), 5);
+    TestEqual(TEXT("driver right + back selects reverse"), GearFromNeutral(320.0f, -480.0f), -1);
     return true;
 }
 
@@ -61,19 +63,19 @@ bool FPinkCabG1HInpHGateNeutralCrossTest::RunTest(const FString& Parameters)
     FPinkCabHGateState State;
     FPinkCabHGateGeometry::ResetToGear(State, 5);
 
-    FPinkCabHGateGeometry::ApplyDriverDelta(State, -320.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, -960.0f, 0.0f);
     TestEqual(TEXT("lever cannot change column while still in fifth row"),
         State.RequestedGear, 5);
 
-    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -140.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -480.0f);
     TestEqual(TEXT("leaving fifth reaches neutral before bottom row"),
         State.RequestedGear, 0);
 
-    FPinkCabHGateGeometry::ApplyDriverDelta(State, -320.0f, 0.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, -960.0f, 0.0f);
     TestEqual(TEXT("neutral cross-gate can move to left column without selecting gear"),
         State.RequestedGear, 0);
 
-    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -140.0f);
+    FPinkCabHGateGeometry::ApplyDriverDelta(State, 0.0f, -480.0f);
     TestEqual(TEXT("left column bottom selects second only after neutral"),
         State.RequestedGear, 2);
     return true;

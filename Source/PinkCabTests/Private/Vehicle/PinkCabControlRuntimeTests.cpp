@@ -383,10 +383,10 @@ bool FPinkCabHGateTopologyTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("top-center is third"), Gearbox.MoveGate(0.0f, 1.0f));
     TestEqual(TEXT("third requested"), Gearbox.GetRequestedGear(), 3);
     TestTrue(TEXT("neutral before right column"), Gearbox.MoveGate(0.0f, 0.0f));
-    TestTrue(TEXT("top-right is fifth"), Gearbox.MoveGate(1.0f, 1.0f));
+    TestTrue(TEXT("top-right is fifth"), Gearbox.MoveGate(2.0f, 1.0f));
     TestEqual(TEXT("fifth requested"), Gearbox.GetRequestedGear(), 5);
-    TestTrue(TEXT("neutral before reverse"), Gearbox.MoveGate(1.0f, 0.0f));
-    TestTrue(TEXT("bottom-right is reverse"), Gearbox.MoveGate(1.0f, -1.0f));
+    TestTrue(TEXT("neutral before reverse"), Gearbox.MoveGate(2.0f, 0.0f));
+    TestTrue(TEXT("bottom-right is reverse"), Gearbox.MoveGate(2.0f, -1.0f));
     TestEqual(TEXT("reverse requested"), Gearbox.GetRequestedGear(), -1);
     return true;
 }
@@ -735,9 +735,9 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
 {
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
-        Gearbox.ApplyLeverDriverDelta(-160.0f, 0.0f));
+        Gearbox.ApplyLeverDriverDelta(-640.0f, 0.0f));
     TestTrue(TEXT("owner-calibrated positive driver-forward moves lever into first"),
-        Gearbox.ApplyLeverDriverDelta(0.0f, 140.0f));
+        Gearbox.ApplyLeverDriverDelta(0.0f, 480.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
     Gearbox.ApplyLeverDriverDelta(160.0f, 0.0f);
@@ -763,7 +763,7 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     TestFalse(TEXT("screen-space mouse right crosses neutral corridor toward reverse column"),
         Reverse.ApplyLeverDriverDelta(320.0f, 0.0f));
     TestTrue(TEXT("owner-calibrated negative driver-forward enters rear-right reverse slot"),
-        Reverse.ApplyLeverDriverDelta(0.0f, -140.0f));
+        Reverse.ApplyLeverDriverDelta(0.0f, -480.0f));
     TestEqual(TEXT("owner-calibrated H-gate reaches reverse"),
         Reverse.GetRequestedGear(), -1);
     return true;
@@ -778,14 +778,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGearboxHumanThrowTest::RunTest(const FString& Parameters)
 {
     FPinkCabGearboxController Gearbox;
-    TestFalse(TEXT("partial left cross-gate travel stays neutral"),
-        Gearbox.ApplyLeverDriverDelta(-90.0f, 0.0f));
+    TestFalse(TEXT("left cross-gate travel stays neutral"),
+        Gearbox.ApplyLeverDriverDelta(-640.0f, 0.0f));
     TestFalse(TEXT("short fast forward flick must not snap into first"),
         Gearbox.ApplyLeverDriverDelta(0.0f, 60.0f));
     TestEqual(TEXT("short physical throw remains in neutral"),
         Gearbox.GetRequestedGear(), 0);
     TestTrue(TEXT("deliberate continuation reaches first detent"),
-        Gearbox.ApplyLeverDriverDelta(0.0f, 45.0f));
+        Gearbox.ApplyLeverDriverDelta(0.0f, 300.0f));
     TestEqual(TEXT("full deliberate throw requests first"),
         Gearbox.GetRequestedGear(), 1);
     return true;

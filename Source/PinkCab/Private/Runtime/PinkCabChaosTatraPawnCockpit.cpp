@@ -100,11 +100,8 @@ void APinkCabChaosTatraPawn::SyncCockpitToChaos()
             CockpitState,
             *Movement,
             VehicleControlRuntime.GetMutableControlState(),
-            DynamicsProvider);
-        if (!VehicleHealthService.HasCapability(
-                GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine))
-        {
-            Movement->EnableMechanicalSim(false);
-        }
+            DynamicsProvider,
+            VehicleHealthService.HasCapability(
+                GetVehicleHealthState(), EPinkCabVehicleCapability::RunEngine));
     }
 }

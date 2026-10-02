@@ -6,6 +6,7 @@
 #include "Engine/SkinnedAsset.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosCockpitBridge.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabCockpitState.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
 #include "Vehicle/PinkCabChaosWheelRear.h"
@@ -210,7 +211,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
 {
-    UChaosWheeledVehicleMovementComponent* Movement = NewObject<UChaosWheeledVehicleMovementComponent>();
+    UPinkCabChaosVehicleMovementComponent* Movement = NewObject<UPinkCabChaosVehicleMovementComponent>();
     FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal)
         .ApplyToMovement(*Movement);
     FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
@@ -226,7 +227,9 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     Controls.SetHandbrake(0.37f);
     TestTrue(TEXT("default cockpit applies to Chaos"),
         FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider));
-    TestFalse(TEXT("engine off disables mechanical simulation"), Movement->bMechanicalSimEnabled);
+    TestTrue(TEXT("engine off preserves mechanical coast and back-drive simulation"), Movement->bMechanicalSimEnabled);
+    TestFalse(TEXT("engine off independently disables combustion"),
+        Movement->GetPendingPinkCabDrivelineCommand().bCombustionAllowed);
     TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
     TestEqual(TEXT("analog handbrake command remains continuous through provider"),
         Provider.GetLastControls().Handbrake, 0.37f);
@@ -245,16 +248,26 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
         Movement->bReverseAsBrake);
     TestFalse(TEXT("manual H-gate disables throttle-as-brake companion behavior"),
         Movement->bThrottleAsBrake);
-    TestEqual(TEXT("fully coupled engaged first reaches Chaos"), Movement->GetTargetGear(), 1);
+    TestEqual(TEXT("full coupling leaves native transmission neutral"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("engaged first reaches the authoritative clutch command"),
+        Movement->GetPendingPinkCabDrivelineCommand().EngagedGear, 1);
+    TestEqual(TEXT("full coupling reaches the same authoritative clutch command"),
+        Movement->GetPendingPinkCabDrivelineCommand().ClutchCoupling01, 1.0f);
+    TestTrue(TEXT("running ignition permits combustion independently of transmission"),
+        Movement->GetPendingPinkCabDrivelineCommand().bCombustionAllowed);
 
     Controls.SetClutch(0.5f);
     Controls.SetDriveline(1, 1, 0.5f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
     TestEqual(TEXT("partial coupling keeps Chaos transmission neutral"), Movement->GetTargetGear(), 0);
-    const float PoweredPartialTorque =
-        FMath::Abs(Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm);
-    TestTrue(TEXT("partial coupling produces continuous external rear torque"),
-        PoweredPartialTorque > 0.0f);
+    TestEqual(TEXT("partial coupling retains the same engaged gear"),
+        Movement->GetPendingPinkCabDrivelineCommand().EngagedGear, 1);
+    TestEqual(TEXT("partial coupling reaches the single driveline solver"),
+        Movement->GetPendingPinkCabDrivelineCommand().ClutchCoupling01, 0.5f);
+    TestEqual(TEXT("partial coupling cannot enable the legacy external torque path"),
+        Provider.GetLastControls().ExternalRearDriveTorquePerWheelNm, 0.0f);
+    TestEqual(TEXT("driver throttle remains available to the physics-thread solver"),
+        Movement->GetPendingPinkCabDrivelineCommand().HealthClampedControlThrottle01, 0.6f);
 
     // Owner authority forbids hidden launch assistance. Zero pedal command must
     // never synthesize rear-wheel drive torque, even at the clutch bite point.
@@ -268,7 +281,9 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     Controls.SetClutch(1.0f);
     Controls.SetDriveline(1, 1, 0.0f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
-    TestEqual(TEXT("fully pressed clutch carries zero transmission gear"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("fully pressed clutch leaves native transmission neutral"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("fully pressed clutch opens the authoritative coupling"),
+        Movement->GetPendingPinkCabDrivelineCommand().ClutchCoupling01, 0.0f);
     return true;
 }
 

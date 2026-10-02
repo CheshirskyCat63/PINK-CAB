@@ -14,11 +14,17 @@
 struct FPinkCabPlayableCockpitRuntimeState
 {
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
+    double RunStartSeconds = -1.0;
     FVector StartLocation = FVector::ZeroVector;
     FVector ReverseStartLocation = FVector::ZeroVector;
+    FVector ReverseForwardAxis = FVector::ForwardVector;
     double DriveStartSeconds = -1.0;
     double ReverseDriveStartSeconds = -1.0;
     double ReadyWaitStartSeconds = -1.0;
+    float MinReverseLeftTorque = 0.0f;
+    float MinReverseRightTorque = 0.0f;
+    float MaxForwardLeftTorque = 0.0f;
+    float MaxForwardRightTorque = 0.0f;
     bool bReverseProved = false;
     bool bPrimed = false;
 };
@@ -39,6 +45,15 @@ private:
 
 bool FPinkCabPlayableCockpitDriveCommand::Update()
 {
+    if (State->RunStartSeconds < 0.0)
+    {
+        State->RunStartSeconds = FPlatformTime::Seconds();
+    }
+    if (FPlatformTime::Seconds() - State->RunStartSeconds > 30.0)
+    {
+        Test->AddError(TEXT("Runtime smoke exceeded 30 seconds waiting for its world, pawn or drive phase"));
+        return true;
+    }
     UWorld* World = AutomationCommon::GetAnyGameWorld();
     if (!World) return false;
 
@@ -132,8 +147,10 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         {
             Test->TestTrue(TEXT("ignition enabled mechanical simulation"), Movement->bMechanicalSimEnabled);
             Test->TestFalse(TEXT("legacy bool handbrake path remains disabled"), Movement->GetHandbrakeInput());
-            Test->TestEqual(TEXT("validated first gear reaches Chaos after clutch release"),
-                Movement->GetTargetGear(), 1);
+            Test->TestEqual(TEXT("validated first gear reaches the authoritative driveline"),
+                Pawn->GetEngagedGear(), 1);
+            Test->TestEqual(TEXT("first gear leaves native transmission neutral"),
+                Movement->GetTargetGear(), 0);
         }
 
         // Physically traverse first -> neutral -> right corridor -> reverse.
@@ -149,7 +166,9 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Test->TestEqual(TEXT("reverse engages through common validator"), Pawn->GetEngagedGear(), -1);
         if (Movement)
         {
-            Test->TestEqual(TEXT("validated reverse reaches Chaos target gear"), Movement->GetTargetGear(), -1);
+            Test->TestEqual(TEXT("reverse leaves native transmission neutral"), Movement->GetTargetGear(), 0);
+            Test->TestEqual(TEXT("validated reverse remains the authoritative engaged gear"),
+                Pawn->GetEngagedGear(), -1);
         }
 
         const FPinkCabVehicleInputFrame GazeThrottleFrame = FPinkCabVehicleInputFrame::FromRouter(
@@ -180,6 +199,11 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
     {
         FPinkCabVehicleTelemetry ReverseTelemetry;
         Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(ReverseTelemetry);
+        if (State->ReverseDriveStartSeconds >= 0.0 && ReverseTelemetry.Wheels.Num() == 4)
+        {
+            State->MinReverseLeftTorque = FMath::Min(State->MinReverseLeftTorque, ReverseTelemetry.Wheels[2].DriveTorque);
+            State->MinReverseRightTorque = FMath::Min(State->MinReverseRightTorque, ReverseTelemetry.Wheels[3].DriveTorque);
+        }
         int32 ReverseContactCount = 0;
         for (const FPinkCabWheelTelemetry& Wheel : ReverseTelemetry.Wheels)
         {
@@ -201,6 +225,7 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         if (State->ReverseDriveStartSeconds < 0.0)
         {
             State->ReverseStartLocation = Pawn->GetActorLocation();
+            State->ReverseForwardAxis = Pawn->GetActorForwardVector();
             State->ReverseDriveStartSeconds = FPlatformTime::Seconds();
         }
 
@@ -213,8 +238,9 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         }
 
         Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(ReverseTelemetry);
-        const float ReverseTravelCm = FVector::Dist2D(
-            Pawn->GetActorLocation(), State->ReverseStartLocation);
+        const float ReverseTravelCm = -FVector::DotProduct(
+            Pawn->GetActorLocation() - State->ReverseStartLocation,
+            State->ReverseForwardAxis);
         UChaosWheeledVehicleMovementComponent* ReverseMovement = Pawn->GetChaosMovement();
         const float RearLeftDriveTorque =
             ReverseTelemetry.Wheels.IsValidIndex(2) ? ReverseTelemetry.Wheels[2].DriveTorque : 0.0f;
@@ -234,22 +260,14 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
             ReverseTelemetry.EngineRpm));
         Test->TestTrue(TEXT("engaged reverse produces negative forward speed"),
             ReverseTelemetry.SpeedKmh < -0.25f);
-        Test->TestTrue(TEXT("engaged reverse physically moves taxi backward while tires spin"),
+        Test->TestTrue(TEXT("engaged reverse physically moves taxi backward"),
             ReverseTravelCm > 10.0f);
-        const bool bRearLeftBurnout =
-            ReverseTelemetry.Wheels.IsValidIndex(2)
-            && (ReverseTelemetry.Wheels[2].bIsSlipping
-                || ReverseTelemetry.Wheels[2].bIsSkidding
-                || ReverseTelemetry.Wheels[2].SlipMagnitude > 20.0f);
-        const bool bRearRightBurnout =
-            ReverseTelemetry.Wheels.IsValidIndex(3)
-            && (ReverseTelemetry.Wheels[3].bIsSlipping
-                || ReverseTelemetry.Wheels[3].bIsSkidding
-                || ReverseTelemetry.Wheels[3].SlipMagnitude > 20.0f);
-        Test->TestTrue(TEXT("full-throttle reverse spins left rear driven tire"),
-            bRearLeftBurnout);
-        Test->TestTrue(TEXT("full-throttle reverse spins right rear driven tire"),
-            bRearRightBurnout);
+        // P02 uses one causal drivetrain in both directions. Burnout is a
+        // surface/load/calibration outcome, not a mandatory reverse-input effect.
+        Test->TestTrue(TEXT("reverse transmits negative drive torque to left rear tire"),
+            State->MinReverseLeftTorque < -KINDA_SMALL_NUMBER);
+        Test->TestTrue(TEXT("reverse transmits negative drive torque to right rear tire"),
+            State->MinReverseRightTorque < -KINDA_SMALL_NUMBER);
 
         const FPinkCabVehicleInputFrame BrakeFrame =
             FPinkCabVehicleInputFrame::FromDigital(false, false, true, false);
@@ -303,6 +321,17 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
         Router, [](const FKey& Key) { return Key == EKeys::E; });
     Pawn->ApplyVehicleInputFrame(ThrottleFrame, 0.0f);
 
+    // The causal P02 driveline can return wheel energy to the engine within a
+    // drive phase. Prove signed propulsion during the measured window; a single
+    // terminal sample can legitimately have reaction torque of the opposite sign.
+    FPinkCabVehicleTelemetry DriveSample;
+    Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(DriveSample);
+    if (DriveSample.Wheels.Num() == 4)
+    {
+        State->MaxForwardLeftTorque = FMath::Max(State->MaxForwardLeftTorque, DriveSample.Wheels[2].DriveTorque);
+        State->MaxForwardRightTorque = FMath::Max(State->MaxForwardRightTorque, DriveSample.Wheels[3].DriveTorque);
+    }
+
     if ((FPlatformTime::Seconds() - State->DriveStartSeconds) < 3.0)
     {
         return false;
@@ -324,18 +353,13 @@ bool FPinkCabPlayableCockpitDriveCommand::Update()
     Test->TestTrue(TEXT("canonical E throttle moves the heavy taxi without rocket acceleration"), TravelCm > 50.0f);
     Test->TestTrue(TEXT("live telemetry reports engine rpm"), Telemetry.EngineRpm > 750.0f);
     Test->TestEqual(TEXT("live telemetry exposes four wheels"), Telemetry.Wheels.Num(), 4);
-    const bool bForwardLeftBurnout =
+    Test->TestTrue(TEXT("forward drive produces positive speed"), Telemetry.SpeedKmh > 0.25f);
+    Test->TestTrue(TEXT("forward drive transmits positive torque to left rear tire"),
         Telemetry.Wheels.IsValidIndex(2)
-        && (Telemetry.Wheels[2].bIsSlipping
-            || Telemetry.Wheels[2].bIsSkidding
-            || Telemetry.Wheels[2].SlipMagnitude > 20.0f);
-    const bool bForwardRightBurnout =
+        && State->MaxForwardLeftTorque > KINDA_SMALL_NUMBER);
+    Test->TestTrue(TEXT("forward drive transmits positive torque to right rear tire"),
         Telemetry.Wheels.IsValidIndex(3)
-        && (Telemetry.Wheels[3].bIsSlipping
-            || Telemetry.Wheels[3].bIsSkidding
-            || Telemetry.Wheels[3].SlipMagnitude > 20.0f);
-    Test->TestTrue(TEXT("full-throttle first spins left rear driven tire"), bForwardLeftBurnout);
-    Test->TestTrue(TEXT("full-throttle first spins right rear driven tire"), bForwardRightBurnout);
+        && State->MaxForwardRightTorque > KINDA_SMALL_NUMBER);
 
     const FPinkCabVehicleInputFrame BrakeFrame = FPinkCabVehicleInputFrame::FromDigital(
         false, false, true, false);

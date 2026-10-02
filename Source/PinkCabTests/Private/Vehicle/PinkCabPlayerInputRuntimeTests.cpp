@@ -46,6 +46,12 @@ public:
 
     virtual bool Update() override
     {
+        if (RunStartSeconds < 0.0) RunStartSeconds = FPlatformTime::Seconds();
+        if (FPlatformTime::Seconds() - RunStartSeconds > 30.0)
+        {
+            Test->AddError(FString::Printf(TEXT("Player input scenario exceeded 30 seconds in phase %d"), State->Phase));
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World) return false;
 
@@ -109,8 +115,8 @@ public:
             Test->TestEqual(TEXT("engine stays running with clutch disengaged"),
                 Pawn->GetCockpitState().GetIgnitionState(), EPinkCabIgnitionState::Running);
 
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -160.0f, 0.0f, 0.05f);
-            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 140.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, -640.0f, 0.0f, 0.05f);
+            Pawn->ApplyPhysicalControlMouseDelta(TEXT("Gearbox"), true, 0.0f, 480.0f, 0.05f);
             State->PhaseStartSeconds = FPlatformTime::Seconds();
             State->Phase = 2;
             return false;
@@ -268,6 +274,7 @@ public:
     }
 
 private:
+    double RunStartSeconds = -1.0;
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabPlayerInputRuntimeState> State;
 };
@@ -300,6 +307,12 @@ public:
 
     virtual bool Update() override
     {
+        if (RunStartSeconds < 0.0) RunStartSeconds = FPlatformTime::Seconds();
+        if (FPlatformTime::Seconds() - RunStartSeconds > 30.0)
+        {
+            Test->AddError(FString::Printf(TEXT("Player input scenario exceeded 30 seconds in phase %d"), State->Phase));
+            return true;
+        }
         UWorld* World = AutomationCommon::GetAnyGameWorld();
         if (!World) return false;
         if (!State->Pawn.IsValid())
@@ -362,12 +375,13 @@ public:
             Test->TestEqual(TEXT("4 quick recall selects handbrake"),
                 Interaction->GetCurrentTargetId(), FName(TEXT("Handbrake")));
             State->InitialHandbrake = Pawn->GetCockpitState().GetHandbrakeAmount();
-            InjectKey(*PC, EKeys::Four, IE_Released, 0.0f);
+            // Keep quick selection held until RMB has captured the control.
             InjectKey(*PC, EKeys::Q, IE_Pressed);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
             State->Phase = 2;
             return false;
         case 2:
+            InjectKey(*PC, EKeys::Four, IE_Released, 0.0f);
             Test->TestTrue(TEXT("Q may coexist while recalled handbrake stays selected"),
                 PC->IsInputKeyDown(EKeys::Q));
             Test->TestEqual(TEXT("Q staging never steals recalled handbrake from RMB"),
@@ -414,11 +428,11 @@ public:
         case 6:
             Test->TestEqual(TEXT("3 quick recall selects gearbox"),
                 Interaction->GetCurrentTargetId(), FName(TEXT("Gearbox")));
-            InjectKey(*PC, EKeys::Three, IE_Released, 0.0f);
             InjectKey(*PC, EKeys::RightMouseButton, IE_Pressed);
             State->Phase = 7;
             return false;
         case 7:
+            InjectKey(*PC, EKeys::Three, IE_Released, 0.0f);
             Test->TestEqual(TEXT("RMB grips recalled gearbox"),
                 Interaction->GetActiveGripTargetId(), FName(TEXT("Gearbox")));
             State->SteeringBeforeRmb = Pawn->GetSteeringCommand();
@@ -442,7 +456,7 @@ public:
                 Pawn->GetRequestedGear()));
             State->SteeringAtManipulationStart = Pawn->GetSteeringCommand();
             InjectKey(*PC, EKeys::LeftMouseButton, IE_Pressed);
-            InjectKey(*PC, EKeys::MouseX, IE_Axis, -90.0f);
+            InjectKey(*PC, EKeys::MouseX, IE_Axis, -640.0f);
             State->Phase = 9;
             return false;
         case 9:
@@ -457,7 +471,7 @@ public:
             Test->TestTrue(TEXT("lever manipulation holds the existing steering command"),
                 FMath::IsNearlyEqual(
                     Pawn->GetSteeringCommand(), State->SteeringAtManipulationStart, 0.02f));
-            InjectKey(*PC, EKeys::MouseY, IE_Axis, 45.0f);
+            InjectKey(*PC, EKeys::MouseY, IE_Axis, 300.0f);
             State->Phase = 11;
             return false;
         case 11:
@@ -596,6 +610,7 @@ public:
     }
 
 private:
+    double RunStartSeconds = -1.0;
     FAutomationTestBase* Test = nullptr;
     TSharedRef<FPinkCabPhysicalPlayerInputState> State;
 };

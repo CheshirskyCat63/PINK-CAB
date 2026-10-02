@@ -87,10 +87,9 @@ inline FPinkCabVehicleTelemetry BuildTelemetry(
     USkeletalMeshComponent& Mesh)
 {
     FPinkCabVehicleTelemetry Telemetry;
+    FPinkCabChaosVehicleDynamicsProvider Provider(&Movement);
+    Provider.ReadTelemetry(Telemetry);
     Telemetry.SpeedKmh = HorizontalSpeedCmPerSec(Mesh) * 0.036f;
-    Telemetry.EngineRpm = Movement.GetEngineRotationSpeed();
-    Telemetry.CurrentGear = Movement.GetCurrentGear();
-    Telemetry.TargetGear = Movement.GetTargetGear();
     Telemetry.NormalizedThrottle = Movement.GetThrottleInput();
     Telemetry.NormalizedBrake = Movement.GetBrakeInput();
     return Telemetry;

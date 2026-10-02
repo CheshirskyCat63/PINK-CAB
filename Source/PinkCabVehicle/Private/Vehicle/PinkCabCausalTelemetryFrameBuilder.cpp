@@ -31,8 +31,8 @@ FPinkCabCausalTelemetryFrame FPinkCabCausalTelemetryFrameBuilder::Build(
 
     Frame.RequestedGear = Input.Controls.RequestedGear;
     Frame.EngagedGear = Input.Controls.EngagedGear;
-    Frame.ChaosCurrentGear = Input.Vehicle.CurrentGear;
-    Frame.ChaosTargetGear = Input.Vehicle.TargetGear;
+    Frame.ChaosCurrentGear = Input.Vehicle.NativeCurrentGear;
+    Frame.ChaosTargetGear = Input.Vehicle.NativeTargetGear;
 
     Frame.ForwardSpeedKmh = Input.Vehicle.SpeedKmh;
     Frame.WorldSpeedMps = FMath::Max(Input.WorldSpeedMps, 0.0f);

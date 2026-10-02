@@ -23,10 +23,12 @@ bool FPinkCabChaosCockpitBridge::Apply(
     const FPinkCabCockpitState& Cockpit,
     UChaosWheeledVehicleMovementComponent& Movement,
     FPinkCabVehicleControlState& Controls,
-    FPinkCabChaosVehicleDynamicsProvider& Provider)
+    FPinkCabChaosVehicleDynamicsProvider& Provider,
+    const bool bEngineHealthAllowsCombustion)
 {
     const bool bCombustionAllowed =
-        Cockpit.GetIgnitionState() == EPinkCabIgnitionState::Running;
+        bEngineHealthAllowsCombustion
+        && Cockpit.GetIgnitionState() == EPinkCabIgnitionState::Running;
     // Mechanical simulation is the physical driveline path and must remain
     // alive while ignition is Off/Stalled. Combustion permission is carried
     // independently so key-off can coast and mechanically back-drive without

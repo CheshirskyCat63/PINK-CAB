@@ -74,6 +74,7 @@ FPinkCabChaosDrivelineCommand BuildDrivelineCommand(
 {
     FPinkCabChaosDrivelineCommand Command;
     Command.bCombustionAllowed = Controls.IsCombustionAllowed();
+    Command.RequestedGear = Controls.RequestedGear;
     Command.EngagedGear = Controls.EngagedGear;
     Command.ClutchCoupling01 = Controls.ClutchCoupling;
     Command.DrivetrainTorqueCapacity01 =

@@ -60,12 +60,17 @@ bool FPinkCabContextualGestureTest::RunTest(const FString& Parameters)
     const FPinkCabInteractionControlSpec Horn(FName(TEXT("Horn")), false, true, false);
     State.SetCurrentTarget(Horn);
     const uint32 BeforeHorn = State.GetActuationSerial();
-    TestFalse(TEXT("horn does not require RMB grip"), State.TryBeginGrip());
-    TestTrue(TEXT("horn accepts LMB press"), State.TryMomentaryPress(true));
+    TestFalse(TEXT("horn starts without RMB retain"), State.IsGripActive());
+    TestTrue(TEXT("horn accepts LMB press without RMB retain"), State.TryMomentaryPress(true));
     TestTrue(TEXT("horn remains held"), State.IsMomentaryHeld());
     TestTrue(TEXT("horn release is accepted"), State.TryMomentaryPress(false));
     TestFalse(TEXT("horn release clears hold"), State.IsMomentaryHeld());
     TestTrue(TEXT("horn actuation increments serial"), State.GetActuationSerial() > BeforeHorn);
+    const uint32 BeforeRetain = State.GetActuationSerial();
+    TestTrue(TEXT("optional universal RMB retain accepts horn"), State.TryBeginGrip());
+    TestTrue(TEXT("optional retain holds the selected horn target"), State.IsGripActive());
+    TestFalse(TEXT("retaining horn alone does not press it"), State.IsMomentaryHeld());
+    TestEqual(TEXT("retaining horn alone does not actuate"), State.GetActuationSerial(), BeforeRetain);
 
     const FPinkCabInteractionControlSpec Gearbox(FName(TEXT("Gearbox")), true, false, false);
     State.SetCurrentTarget(Gearbox);

@@ -3,7 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
-#include "ChaosWheeledVehicleMovementComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -13,8 +13,11 @@
 struct FCoreCodeCompleteRuntimeState
 {
     TWeakObjectPtr<APinkCabChaosTatraPawn> Pawn;
+    double RunStartSeconds = -1.0;
     FVector StartLocation = FVector::ZeroVector;
-    double PhaseStartSeconds = -1.0;
+    int64 LastMechanicalStep = -1;
+    double SimulatedSeconds = 0.0;
+    bool bSteeringGestureApplied = false;
     bool bCockpitPrimed = false;
     bool bSawLiveTelemetry = false;
     float MaxObservedSpeedKmh = 0.0f;
@@ -37,6 +40,15 @@ private:
 
 bool FCoreCodeCompleteRuntimeProbeCommand::Update()
 {
+    if (State->RunStartSeconds < 0.0)
+    {
+        State->RunStartSeconds = FPlatformTime::Seconds();
+    }
+    if (FPlatformTime::Seconds() - State->RunStartSeconds > 30.0)
+    {
+        Test->AddError(TEXT("Runtime smoke exceeded 30 seconds waiting for its world, pawn or drive phase"));
+        return true;
+    }
     UWorld* World = AutomationCommon::GetAnyGameWorld();
     if (!World) return false;
 
@@ -61,7 +73,8 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
     APinkCabChaosTatraPawn* Pawn = State->Pawn.Get();
     if (!Pawn) return false;
 
-    UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
+    UPinkCabChaosVehicleMovementComponent* Movement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(Pawn->GetChaosMovement());
     Test->TestNotNull(TEXT("native Tatra exposes live Chaos movement"), Movement);
     if (!Movement) return true;
     if (!State->bCockpitPrimed)
@@ -80,29 +93,43 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
             FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Gearbox")), true, -160.0f, 0.0f, 0.05f);
+            FName(TEXT("Gearbox")), true, -640.0f, 0.0f, 0.05f);
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Gearbox")), true, 0.0f, 140.0f, 0.05f);
+            FName(TEXT("Gearbox")), true, 0.0f, 480.0f, 0.05f);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyVehicleInputFrame(
             FPinkCabVehicleInputFrame::FromDigital(false, false, false, false), 0.0f);
 
         Test->TestTrue(TEXT("mechanical simulation enabled"), Movement->bMechanicalSimEnabled);
         Test->TestFalse(TEXT("legacy bool handbrake path stays disabled"), Movement->GetHandbrakeInput());
-        Test->TestEqual(TEXT("physical H-gate engages first"), Movement->GetTargetGear(), 1);
+        Test->TestEqual(TEXT("physical H-gate engages authoritative first"), Pawn->GetEngagedGear(), 1);
+        Test->TestEqual(TEXT("single driveline leaves native transmission neutral"), Movement->GetTargetGear(), 0);
         State->bCockpitPrimed = true;
     }
 
-    if (State->PhaseStartSeconds < 0.0)
-        State->PhaseStartSeconds = FPlatformTime::Seconds();
-    const double Elapsed = FPlatformTime::Seconds() - State->PhaseStartSeconds;
+    const int64 MechanicalStep = Movement->GetPinkCabMechanicalIntegrationStepCount();
+    const float DeltaSeconds = State->LastMechanicalStep < 0
+        ? 1.0f / 60.0f
+        : static_cast<float>(MechanicalStep - State->LastMechanicalStep)
+            * Movement->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+    State->LastMechanicalStep = MechanicalStep;
+    if (DeltaSeconds <= KINDA_SMALL_NUMBER) return false;
+    State->SimulatedSeconds += DeltaSeconds;
+    const double Elapsed = State->SimulatedSeconds;
 
-    FPinkCabVehicleControlState Controls;
-    Controls.SetThrottle(1.0f);
-    Controls.SetSteering(Elapsed < 2.5 ? 0.0f : 0.35f);
-    Controls.SetBrake(0.0f);
-    Controls.SetHandbrake(0.0f);
-    Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+    // One deliberate gesture has fixed travel regardless of latent polling rate.
+    // The calibrated stationary steering scale needs thousands of mouse counts;
+    // one count per poll barely moved the wheel and did not exercise a real turn.
+    const bool bApplySteeringGesture = Elapsed >= 2.5 && !State->bSteeringGestureApplied;
+    const float SteeringMouseDelta = bApplySteeringGesture ? 2400.0f : 0.0f;
+    State->bSteeringGestureApplied |= bApplySteeringGesture;
+
+    // Keep ignition, engagement and coupling on the production cockpit bridge.
+    // A fresh provider-only control struct would silently replace them with N.
+    const FPinkCabVehicleInputFrame DriveFrame =
+        FPinkCabVehicleInputFrame::FromDigital(false, false, false, true);
+    Movement->SetSleeping(false);
+    Pawn->ApplyVehicleInputFrame(DriveFrame, SteeringMouseDelta, DeltaSeconds);
 
     FPinkCabVehicleTelemetry Telemetry;
     if (Pawn->GetPinkCabDynamicsProvider().ReadTelemetry(Telemetry))
@@ -117,15 +144,18 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
     const float ForwardTravelCm = EndLocation.X - State->StartLocation.X;
     const float LateralTravelCm = FMath::Abs(EndLocation.Y - State->StartLocation.Y);
     Test->AddInfo(FString::Printf(
-        TEXT("core PIE diagnostics forward=%.1fcm lateral=%.1fcm maxSpeed=%.2fkmh nativeForward=%.1fcm/s"),
+        TEXT("core PIE diagnostics forward=%.1fcm lateral=%.1fcm maxSpeed=%.2fkmh nativeForward=%.1fcm/s steering=%.3f simulated=%.3fs"),
         ForwardTravelCm,
         LateralTravelCm,
         State->MaxObservedSpeedKmh,
-        Movement->GetForwardSpeed()));
-    // Full pedal is now traction-limited by design: the heavy RWD taxi should
-    // advance and steer while wasting substantial torque as rear wheelspin,
-    // not satisfy the old rocket-launch distance/speed thresholds.
+        Movement->GetForwardSpeed(),
+        Pawn->GetSteeringCommand(),
+        Elapsed));
+    // This runtime smoke proves forward movement and steering. Specific slip
+    // behavior belongs to the fixed-load/surface physics calibration fixtures.
     Test->TestTrue(TEXT("exact-head heavy Chaos Tatra moved forward"), ForwardTravelCm > 50.0f);
+    Test->TestTrue(TEXT("deliberate mouse gesture produces meaningful right steering"),
+        Pawn->GetSteeringCommand() > 0.2f);
     Test->TestTrue(TEXT("exact-head steering produced lateral motion"), LateralTravelCm > 1.0f);
     Test->TestTrue(TEXT("live provider telemetry was observed"), State->bSawLiveTelemetry);
     Test->TestTrue(TEXT("live telemetry observed meaningful speed"),
@@ -144,9 +174,8 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
     Test->TestTrue(TEXT("live engine rpm is running"), FinalTelemetry.EngineRpm > 750.0f);
     Test->TestEqual(TEXT("live telemetry has four wheel slots"), FinalTelemetry.Wheels.Num(), 4);
 
-    FPinkCabVehicleControlState StopControls;
-    StopControls.SetBrake(1.0f);
-    Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+    Pawn->ApplyVehicleInputFrame(
+        FPinkCabVehicleInputFrame::FromDigital(false, false, true, false), 0.0f);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
