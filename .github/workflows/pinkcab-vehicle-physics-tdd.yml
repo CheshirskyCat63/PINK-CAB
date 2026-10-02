@@ -1,5 +1,9 @@
 name: PINK CAB Vehicle Physics TDD
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
   pull_request:
     branches: [main]

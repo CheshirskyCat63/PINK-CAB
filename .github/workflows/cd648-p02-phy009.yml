@@ -1,6 +1,10 @@
 name: CD-648 P02 PHY-009 Drivetrain Continuity
 # Scope-regression coverage is mandatory for this frozen P02 gate.
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
   pull_request:
     branches:
