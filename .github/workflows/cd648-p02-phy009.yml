@@ -62,6 +62,12 @@ on:
       - '.github/workflows/cd648-p02-phy009.yml'
       - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
+    inputs:
+      deliver_human:
+        description: 'Deliver and launch this exact candidate after successful verification'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -384,7 +390,7 @@ jobs:
   human-delivery:
     name: Exact-head HUMAN delivery
     needs: verify
-    if: ${{ needs.verify.outputs.run_physics == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.deliver_human && needs.verify.outputs.run_physics == 'true' }}
     uses: ./.github/workflows/cd869-deliver.yml
     with:
       candidate_sha: ${{ github.event.pull_request.head.sha || github.sha }}

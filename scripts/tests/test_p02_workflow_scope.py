@@ -87,6 +87,15 @@ class WorkflowTrustTests(unittest.TestCase):
                         self.assertIn('["OWNER","MEMBER","COLLABORATOR"]', guard.group(1))
                         self.assertNotIn('"CONTRIBUTOR"', guard.group(1))
 
+    def test_human_delivery_requires_explicit_dispatch(self):
+        delivery = (WORKFLOWS / "cd869-deliver.yml").read_text(encoding="utf-8")
+        triggers = delivery.split("\npermissions:", 1)[0]
+        self.assertNotIn("  pull_request:", triggers)
+        self.assertIn("  workflow_dispatch:", triggers)
+        p02 = (WORKFLOWS / "cd648-p02-phy009.yml").read_text(encoding="utf-8")
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.deliver_human", p02)
+        self.assertIn("default: false", p02)
+
     def test_general_verification_covers_all_pull_requests_on_hosted_runner(self):
         text = (WORKFLOWS / "pinkcab-repository-verification.yml").read_text(encoding="utf-8")
         trigger = text.split("  pull_request:\n", 1)[1].split("  push:", 1)[0]
