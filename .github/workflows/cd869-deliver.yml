@@ -28,6 +28,7 @@ concurrency:
 
 jobs:
   deliver:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
     name: Reuse package, smoke, deliver, launch
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 30
