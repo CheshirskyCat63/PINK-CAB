@@ -44,8 +44,12 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
 if ($GenerateProjectFiles) {
-    if (-not (Test-Path $ProjectFilesBat)) { throw "GenerateProjectFiles.bat missing: $ProjectFilesBat" }
-    & $ProjectFilesBat "-project=$Project" -game -engine
+    if (Test-Path $ProjectFilesBat) {
+        & $ProjectFilesBat "-project=$Project" -game -engine
+    } else {
+        # Launcher installs omit GenerateProjectFiles.bat; Build.bat forwards to UBT.
+        & $BuildBat -projectfiles "-project=$Project" -game -engine
+    }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

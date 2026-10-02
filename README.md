@@ -48,6 +48,8 @@ The accepted historical executable has build/runtime/package evidence. Current p
 
 ## Development entry
 
+Local build, pinned dependencies, runner identity and acceptance boundaries: [Project setup](docs/PROJECT_SETUP.md).
+
 Current work keeps full Mechanics Freeze governance separate from the frozen working vehicle baseline. `main` is the sole active integration branch; use one short-lived Jira-keyed task branch and one PR per change. The merged recovery history is evidence only, not a continuing execution lane. Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
 
 Historical PRE-FGEAR material remains in the repository for audit context only; it must not be interpreted as the next production step.

@@ -4,7 +4,19 @@
 **Product:** `CD-519`
 **BASE-100:** `CD-746..753`; Confluence `11239425`
 **Readiness:** `CD-660/CD-661`
-**Repository:** `CheshirskyCat63/PINK-CAB` ? sole active PINK CAB technical truth.
+**Repository:** `CheshirskyCat63/PINK-CAB` — sole active PINK CAB technical truth.
+
+## Development entry · 2026-10-03
+
+Canonical working copy: `E:\CHESHIRE_DIVISION\Games\PINK-CAB`. Integration target: protected `main`. Other restored copies and historical worktrees are not current build evidence. Preserve unmerged work before changing branches.
+
+Run `python scripts/ci/prepare_metaroad.py` before building. The repository pins MetaRoad 3.2.0 to 533 authored-file SHA256 values in `scripts/ci/metaroad.lock.json`. Set `PINKCAB_METAROAD_PACKAGE` to an authorized local package root when using another workstation. The payload is installed in ignored `Plugins/MetaRoad`; it is not published to Git and the shared engine installation is not modified. Missing, modified or mixed source files fail verification.
+
+Build or generate the IDE project with `.\scripts\build.ps1 -GenerateProjectFiles`; package with `.\scripts\build.ps1 -Package`. Launcher and source-engine project generation are supported. Engine family is pinned to UE 5.8; the prepared workstation reports 5.8.3 / CL 58210709. Override the engine path with `-EngineRoot` or `PINKCAB_UE_ROOT`.
+
+CI runner: `DESKTOP-C7VAU4V-PINKCAB`, scoped to this repository. `scripts/ci/start-pinkcab-runner.ps1` checks registration identity and avoids a second listener. Required integration check: `Repository verification`, including administrators; merge requires an up-to-date PR and resolved conversations. Ordinary verification cannot deliver or launch a replacement HUMAN build.
+
+Accepted runtime remains P02 `8d68e456d1944be295281535cf9fd103ecf05d52` / run `36868646970`. P03 is corrective work in PR #52; P04 remains blocked. CD-559 owns reproducibility/regression/package evidence; CD-649/CD-659 own renewed P03 acceptance. Results from different source trees must not be combined as a full-suite pass. Authoring tests that save tracked road assets must run in an isolated checkout.
 
 ## Read first
 
@@ -21,7 +33,7 @@
 
 The old <=20% / ~59% estimates and previous 240-question/20-question-pack methodology are SUPERSEDED.
 
-Current BASE-100 is code/logic/technical readiness for the complete 12-month FIRST EURO single-player product. Current normalized START-90 score is **66.6% (130.5/196)** with 84 LOCKED / 3 CALIBRATION / 87 PROPOSED DEFAULT / 22 OPEN.
+BASE-100 is code/logic/technical specification readiness for the complete 12-month FIRST EURO single-player product. The earlier 66.6% census is historical, not live administrative or runtime readiness. Current execution status comes from Jira CD-519/CD-648/CD-559 and `docs/AUTHORITY.yaml`; do not use a historical percentage to accept a build.
 
 Administrative/specification work is allowed before START-90. Broad production should not rely on unresolved owner decisions.
 
@@ -32,7 +44,7 @@ PF-00 bootstrap is VERIFIED on the canonical UE 5.8.2 build/package path and PF-
 ## Engine / plugin direction
 
 - engine family: Unreal Engine 5;
-- `A01 LOCKED`: production engine line is Unreal Engine 5.8; bootstrap machine currently has UE 5.8.2 (`++UE5+Release-5.8`, CL 56702186); changing the production engine line requires an explicit migration/compatibility decision;
+- `A01 LOCKED`: production engine line is Unreal Engine 5.8; the historical bootstrap used 5.8.2 / CL 56702186, while the current prepared workstation has 5.8.3 / CL 58210709; changing the production engine line requires an explicit migration/compatibility decision;
 - **Chaos Vehicles / native Unreal physics** = sole production hero-Tatra road-dynamics solver;
 - **Native bounded damage/destruction** = authored damage-state swaps, detachable parts, pooled debris and selective Chaos events;
 - FGear/VDS remain archived research only; any future vendor system must remain behind a PINK CAB adapter and requires a new explicit migration decision;
@@ -68,7 +80,7 @@ Exact module count/names remain Pack A03. General lock:
 - mouse = steering by default;
 - hold Space = gaze/free-look and bounded target search;
 - `1–4` = quick recall of saved physical targets/hand poses for `1 signals / 2 horn / 3 gearbox / 4 handbrake`; recall alone never actuates;
-- RMB = bring/retain the right hand on the current target where that control requires a grip;
+- RMB = optional acquire/retain on an authored target; direct LMB/wheel actions do not require a universal RMB-first gesture;
 - LMB = press/hold momentary controls; e.g. tap horn for a short signal or hold for a long signal;
 - mouse wheel = contextual detent/rotary/incremental adjustment where the current control supports it;
 - Q clutch, W brake, E throttle;
@@ -97,7 +109,7 @@ World identity is `CityCode + GeneratorVersion + ContentSetVersion + persistent 
 
 ## Vehicle baseline
 
-Hero Tatra: bespoke early/Gen-1 603-family; rear-mounted air-cooled V8; RWD; no ABS/ESP; base 1450 kg; full fuel 1550 kg; heroine 58 kg; daughter 49 kg; 1657 kg benchmark; 2107 kg max fixture; current 180 hp / 240 Nm / 195 km/h target.
+Hero Tatra: bespoke early/Gen-1 603-family; rear-mounted air-cooled V8; RWD; no ABS/ESP. The executable profile and current vehicle release contract own mass/power/ratio calibration. Earlier 180 hp / 240 Nm values are historical, not current locks. Accepted P02 uses approximately 250 hp / 260 Nm / 8500 RPM with healthy warm idle centered at 925 RPM; P04 owns final causal power/ratio/acceleration calibration after P03 acceptance.
 
 Level1 residual magnetism is linear by authoritative mass: 5.0 s @1657 kg → 4.0 s @2107 kg; lighter legal states cap at 5.0 s.
 
