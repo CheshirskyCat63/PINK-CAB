@@ -115,6 +115,54 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03HumanFeelCorrectionContractTest,
+    "PinkCab.Vehicle.Physics.P03.HumanFeelCorrectionContract",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03HumanFeelCorrectionContractTest::RunTest(const FString&)
+{
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+
+    // Human-gate rejection 2026-10-02: the permanent 2.00/0.50 axle split
+    // and WheelLoadRatio=0.38 are no longer an admissible way to manufacture
+    // oversteer. Reuse the already-proven R6 physical-reference candidate.
+    TestEqual(TEXT("human correction advances calibration identity"),
+        Profile.CalibrationVersion, 6);
+    TestEqual(TEXT("front load sensitivity uses physical reference"),
+        Profile.FrontWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("rear load sensitivity uses physical reference"),
+        Profile.RearWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("front dry grip returns near surface reference"),
+        Profile.FrontWheel.FrictionForceMultiplier.Value, 1.05f);
+    TestEqual(TEXT("rear dry grip stays close to front instead of wheelspin shortcut"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.95f);
+    TestTrue(TEXT("axle grip balance cannot be cliff-like"),
+        Profile.RearWheel.FrictionForceMultiplier.Value
+            / Profile.FrontWheel.FrictionForceMultiplier.Value >= 0.85f);
+
+    // Q/clutch-open must feel like a free-spinning carbureted engine shedding
+    // rotational energy, not like a tachometer snapping to the 925 rpm floor.
+    TestEqual(TEXT("free-rev decay is deliberately slower after human rejection"),
+        Profile.EngineRevDownRate.Value, 900.0f);
+    TestEqual(TEXT("warm idle remains canonical"),
+        Profile.EngineIdleRpm.Value, 925.0f);
+
+    // Correctness must come from the physical profile, never hidden assists.
+    TestEqual(TEXT("steering lock remains fully available"),
+        Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
+    TestFalse(TEXT("ABS remains disabled"),
+        Profile.FrontWheel.bABSEnabled.Value
+            || Profile.RearWheel.bABSEnabled.Value);
+    TestFalse(TEXT("traction control remains disabled"),
+        Profile.FrontWheel.bTractionControlEnabled.Value
+            || Profile.RearWheel.bTractionControlEnabled.Value);
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPhysicalProfileVariantTest,
     "PinkCab.Vehicle.ChaosCalibration.Profile.Variants",
