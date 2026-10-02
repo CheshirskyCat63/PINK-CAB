@@ -184,6 +184,25 @@ class WorkflowExecutionTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, result.stdout)
                 self.assertIn("PINKCAB_SCOPE_BASE_INVALID", result.stdout)
 
+    def test_p02_preflight_accepts_reviewed_admin_files_but_rejects_unrelated_runtime(self):
+        self.git("update-ref", "refs/remotes/origin/main", self.base)
+        for path in (
+            "README.md", "docs/AUTHORITY.yaml", "docs/PROJECT_SETUP.md", "docs/README.md",
+            "scripts/ci/package_g1_recovery.py",
+            "scripts/tests/test_ci_powershell_environment.py",
+        ):
+            self.write(path, "administrative fixture")
+        self.commit("reviewed admin change set")
+        script = marked_script(WORKFLOWS / "cd648-p02-phy009.yml", "PINKCAB_P02_PREFLIGHT")
+        accepted = self.execute(script)
+        self.assertEqual(accepted.returncode, 0, accepted.stdout)
+        self.assertIn("P02_PHY009_PREFLIGHT=PASS", accepted.stdout)
+        self.write("Source/PinkCabVehicle/Private/UnrelatedRuntime.cpp", "// unrelated change")
+        self.commit("unreviewed runtime scope")
+        rejected = self.execute(script)
+        self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
+        self.assertIn("P02_PHY009_SCOPE_GUARD_FAIL", rejected.stdout)
+
     def cooked_package(self):
         package = pathlib.Path(self.temp.name) / "package"
         package.mkdir(exist_ok=True)

@@ -210,6 +210,7 @@ jobs:
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
+          # PINKCAB_P02_PREFLIGHT_BEGIN
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
           if(@(git status --porcelain --untracked-files=all).Count -ne 0){
@@ -221,6 +222,12 @@ jobs:
 
           $allowed=@(
             # CD-559 reproducible, project-local vendor provisioning and runner lifecycle.
+            'README.md',
+            'docs/AUTHORITY.yaml',
+            'docs/PROJECT_SETUP.md',
+            'docs/README.md',
+            'scripts/ci/package_g1_recovery.py',
+            'scripts/tests/test_ci_powershell_environment.py',
             '.github/workflows/cd869-inline.yml',
             '.github/workflows/pinkcab-g1-github-control-plane.yml',
             '.gitignore',
@@ -311,6 +318,7 @@ jobs:
             throw 'P02_PHY009_SCOPE_GUARD_FAIL'
           }
           Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head base=$base changed=$($changed.Count)"
+          # PINKCAB_P02_PREFLIGHT_END
 
       - name: Build PinkCabEditor
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
