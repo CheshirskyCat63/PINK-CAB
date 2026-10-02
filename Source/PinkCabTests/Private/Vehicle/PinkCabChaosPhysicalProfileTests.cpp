@@ -36,7 +36,7 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
         Profile.GetEngineRpmEnvelope().IsValid());
     TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
     TestEqual(TEXT("human correction gives clutch-open free revs more persistence"),
-        Profile.EngineRevDownRate.Value, 900.0f);
+        Profile.EngineRevDownRate.Value, 1100.0f);
     TestEqual(TEXT("P02 healthy clutch capacity candidate"),
         Profile.ClutchMaxTorqueNm.Value, 390.0f);
     TestEqual(TEXT("P02 clutch capacity is explicit calibration"),
@@ -154,7 +154,7 @@ bool FPinkCabP03HumanFeelCorrectionContractTest::RunTest(const FString&)
     // Q/clutch-open must feel like a free-spinning carbureted engine shedding
     // rotational energy, not like a tachometer snapping to the 925 rpm floor.
     TestEqual(TEXT("free-rev decay is deliberately slower after human rejection"),
-        Profile.EngineRevDownRate.Value, 900.0f);
+        Profile.EngineRevDownRate.Value, 1100.0f);
     TestEqual(TEXT("warm idle remains canonical"),
         Profile.EngineIdleRpm.Value, 925.0f);
 
