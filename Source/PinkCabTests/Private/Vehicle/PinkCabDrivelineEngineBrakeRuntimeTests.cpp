@@ -65,7 +65,10 @@ public:
         {
             if (!RestGate.Update(*Pawn)) return false;
             Controls = {};
-            Controls.SetThrottle(0.60f);
+            // D4 is an engine-braking/stall test, not a pedal-linkage calibration
+            // test. Use the invariant full-throttle endpoint to establish speed so
+            // P03 response-curve tuning cannot silently change this precondition.
+            Controls.SetThrottle(1.0f);
             Controls.SetDriveline(1, 1, 0.75f);
             Controls.SetDrivetrainTorqueCapacity(1.0f);
             ResetPhaseClock(*PinkCabMovement);
@@ -94,7 +97,7 @@ public:
                 return true;
             }
 
-            Controls.SetThrottle(0.60f);
+            Controls.SetThrottle(1.0f);
             Controls.SetBrake(0.0f);
             Controls.SetDriveline(1, 1, 1.0f);
             ResetPhaseClock(*PinkCabMovement);
