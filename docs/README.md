@@ -1,11 +1,11 @@
 # PINK CAB · Documentation Index
 
-**Status:** CURRENT / DEVELOPMENT-READY CONTROL PLANE  
+**Status:** CURRENT / PROTECTED INTEGRATION / P03 CORRECTION OPEN
 **Active product:** Jira `CD-519`  
 **Canonical Git:** `CheshirskyCat63/PINK-CAB` → `main`  
 **Current mechanics owner:** `CD-848`  
 **Control-plane cleanup:** `CD-868` — DONE  
-**Owner-accepted runtime baseline:** `8168d72406af6934ab20eace583c2b895f0620b7` / Actions run `35809749568`
+**Owner-accepted runtime baseline:** `8d68e456d1944be295281535cf9fd103ecf05d52` / Actions run `36868646970`
 
 ## Start here
 
@@ -25,7 +25,7 @@
 The recovery/admin freeze is over. Gameplay work is allowed.
 
 - `main` is the only integration branch.
-- There are no active implementation PRs at this baseline.
+- PR #52 is the active P03 corrective implementation; PR #47 remains a separate draft tire diagnostic.
 - New work uses one short-lived Jira-keyed task branch → one PR → verification → merge.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
@@ -37,12 +37,22 @@ The recovery/admin freeze is over. Gameplay work is allowed.
 The canonical workflow is `.github/workflows/pinkcab-g1-github-control-plane.yml`.
 
 - **fast** — normal engineering iteration: exact-head preflight, zero-debt checks, standalone Game build/sign, cooked-base overlay, packaged Windows runtime/input smoke.
-- **human_gate** — same lightweight code-only dev-build path, delivered as `PINKCAB Latest.lnk`; no full recook and no machine-level signing requirement. If the latest merge changes cook-sensitive `Content/`, `Config/`, `Plugins/` or `.uproject`, this lane fails closed and requires `release_gate`. Result is technical PASS + `HUMAN_PENDING`.
+- **human_gate** — same lightweight code-only dev-build path, delivered as `PINKCAB Latest.lnk`; no full recook and no machine-level signing requirement. If any change since the proven cooked base changes cook-sensitive `Content/`, `Config/`, `Plugins/` or `.uproject`, this lane fails closed and requires `release_gate`. Result is technical PASS + `HUMAN_PENDING`.
 - **release_gate** — expensive release evidence only: Editor modules, full automation, fresh cook/package and packaged runtime. Windows machine-level trust / external trusted signing belongs here, not in ordinary development.
 
 Smart App Control / UMCI is therefore a **release-host infrastructure boundary**, not a gameplay acceptance criterion for everyday PINK-CAB development.
 
-## FIRST EURO execution corridor
+## Current execution checkpoint
+
+- Integration: protected `main`; exact current SHA is read from GitHub, not inferred from an old document.
+- Accepted runtime: P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. P00-P02 and road R1-R5 remain frozen.
+- Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
+- PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
+- Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
+- Preserved preparation branches: `fix/CD-559-development-bootstrap-20261002` at `4554285` and `fix/CD-659-p03-readiness-20261002` at `95dafd4`. They are unmerged evidence/candidates, not competing integration branches. Reconcile them into PR #52 before a new gameplay acceptance.
+- Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
+
+## Broader FIRST EURO execution corridor (after current physics priorities)
 
 The current finite Mechanics Freeze queue is owned by `CD-848`:
 

@@ -1,11 +1,11 @@
-﻿# PINK CAB — Engineering Start Here
+# PINK CAB — Engineering Start Here
 
 This page is the five-minute entry point for changing PINK CAB code. It describes the current exact repository shape; `Config/ArchitectureOwnership.json` is the machine-readable ownership source and `scripts/code-health.ps1` rejects stale paths or missing rows.
 
 ## 1. First five minutes
 
 1. Run `git rev-parse --show-toplevel`, `git branch --show-current`, `git status` and `git log -5 --oneline` before editing.
-2. Project file is `PinkCab.uproject`; production engine line is Unreal Engine 5.8, currently verified on 5.8.2.
+2. Project file is `PinkCab.uproject`; production engine line is Unreal Engine 5.8, currently installed and locally built on 5.8.3.
 3. Read `docs/AUTHORITY.yaml` for source-of-truth pointers and `docs/PINK_CAB_CONTROL_MECHANICS_RELEASE_CONTRACT.md` before changing controls/vehicle mechanics.
 4. Find the concern in the table below. Change the listed owner, not a convenient caller.
 5. Run the concern's test prefix, then `scripts/code-health.ps1`, then the affected domain suite.
@@ -24,7 +24,7 @@ Architecture/code-health gate:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\code-health.ps1
 ```
 
-Full automation uses the project runner pattern with `-Multiprocess`:
+Full automation uses the project runner pattern with `-Multiprocess`. Run it only in an isolated disposable checkout: authoring tests can rewrite tracked maps and road assets. The current selected preparation results are not a green full regression.
 
 ```powershell
 $UE = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe'

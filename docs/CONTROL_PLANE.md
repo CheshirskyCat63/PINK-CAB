@@ -1,58 +1,22 @@
 # PINK-CAB Control Plane
 
-Status: **WORKING BASELINE FROZEN / ADMIN CLEAN**  
-Date: **2026-09-23**
+Status: **PROTECTED INTEGRATION / P03 CORRECTION OPEN**
 
-## Canonical production truth
+## Current execution checkpoint
 
-- Product root: Jira **CD-519**
-- Mechanics / continuing FIRST EURO owner: Jira **CD-848**
-- Administrative cleanup gate: Jira **CD-868 — DONE**
-- Canonical Git branch: **main**
-- Active implementation PRs: **none**
-- Accepted working runtime SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
-- Accepted GitHub Actions run: **35809749568**
-- Accepted job: **PINK-CAB code-only standalone human build — SUCCESS**
-- Accepted local delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CODEONLY_8168d72_RUN35809749568`
-- Desktop handoff: `PINKCAB Latest.lnk`
-- Integration merge commit: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
-- Production vehicle technology: **Unreal Engine 5.8.2 native Chaos Vehicles**
-- FGear / Vehicle Damage System: **archived research only**
+- Integration: protected `main`; exact current SHA is read from GitHub, not inferred from an old document.
+- Accepted runtime: P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. P00-P02 and road R1-R5 remain frozen.
+- Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
+- PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
+- Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
+- Preserved preparation branches: `fix/CD-559-development-bootstrap-20261002` at `4554285` and `fix/CD-659-p03-readiness-20261002` at `95dafd4`. They are unmerged evidence/candidates, not competing integration branches. Reconcile them into PR #52 before a new gameplay acceptance.
+- Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
 
-The accepted SHA remains immutable executable evidence. Administrative descendants on `main` do not retroactively change that binary.
+## Accepted executable and rollback
 
-PR #7 is merged/closed. PRs #3–#6 are historical/closed.
+`PINKCAB Latest.lnk` was verified on 2026-10-02 to point to `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970`. The accepted executable is `8d68e456d1944be295281535cf9fd103ecf05d52`, not whichever branch is currently checked out. Keep the accepted build available when explicitly delivering an unaccepted candidate.
 
-The refs `fix/CD-848-recovery-r1-input-contract`, `fix/CD-848-sac-safe-runtime-gate`, and `chore/CD-868-final-control-plane-cleanup` are retained only as inactive compatibility aliases because the connected GitHub API does not expose delete-ref. Both must always point to the same SHA as `main` and are never execution lanes. New work follows:
-
-`main → one Jira-keyed task branch → one PR → verify → merge`
-
-## Accepted runtime evidence
-
-Owner acceptance freezes `8168d724...` as the current **working baseline**, not as a claim that all FIRST EURO scope is finished.
-
-Observed runtime evidence from the accepted build:
-
-- PinkCab monolithic Win64 Development target built successfully;
-- code-health zero-debt preflight passed in the standalone lane;
-- game process remained running after smoke;
-- UE 5.8.2 initialized on Windows;
-- D3D12 selected the NVIDIA GeForce RTX 4090 Laptop GPU;
-- Chaos physics initialized;
-- `/Game/Dev/Maps/L_PinkCab_ChaosWeave` loaded and entered play;
-- the owner-supplied runtime log fragment contains no fatal/assert/ensure/unhandled-exception evidence.
-
-Non-blocking log noise for this baseline:
-
-- PIX capture DLL absent when not launched through PIX;
-- RenderDoc not attached;
-- stable PSO cache absent;
-- AudioCapture implementation absent;
-- ru-RU localization falls back to English;
-- PlayerStart fallback warning;
-- render-thread safety warning for `r.MotionVectorSimulation`.
-
-These items are not promoted to gameplay blockers by this baseline acceptance. Performance/content work may address them later where a specific gate requires it.
+Historical 2026-09-23 baseline `8168d724` / run `35809749568` remains retained evidence. It was superseded by later accepted road/vehicle integrations; it is not the latest accepted P02 binary.
 
 ## Current input / cockpit contract
 
@@ -125,10 +89,12 @@ PINK-CAB remains **FREE-FIRST / RESOURCE-CONSTRAINED**.
 - Production must not depend on paid Jira audit logs, Rovo/AI, advanced permission editing or high automation quotas.
 - Any new paid SaaS/plugin/tool requires explicit owner approval and a concrete blocker.
 
-## Freeze rule
+## Integration and delivery controls
 
-The accepted working build remains:
+Every main change requires a PR, an up-to-date branch, the GitHub-hosted `Repository verification` check and resolved conversations. Rules include administrators; force-push and deletion are prohibited. Required reviewer count is zero for the current single-owner team; this does not claim independent review.
 
-`8168d72406af6934ab20eace583c2b895f0620b7 / run 35809749568`
+Self-hosted PR jobs accept only same-repository OWNER/MEMBER/COLLABORATOR branches. Fork checks run on GitHub-hosted machines. The dedicated runner is `DESKTOP-C7VAU4V-PINKCAB`; KUKURUZA has a separate registration.
 
-Do not rewrite its history or relabel a later administrative commit as the accepted executable. Future gameplay changes start from canonical `main`, receive a new exact SHA and new evidence, and supersede the working baseline only after a new human acceptance.
+Ordinary PR verification does not deliver or launch a human build. P02 delivery requires an explicit workflow dispatch with `deliver_human=true` after verification succeeds. Delivery is HUMAN_PENDING until the owner accepts that exact candidate.
+
+Never mark CD-559 Done from script checks alone: clean-checkout build/assets, full exact-source regression, fresh package/runtime smoke and retained provenance remain its acceptance requirements. Known gameplay regressions and the P03 human gate stay visible under their existing owners.

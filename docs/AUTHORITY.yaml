@@ -5,8 +5,47 @@ repository_status: active-dedicated-pink-cab
 working_branch: main
 clean_repository_target: PINK-CAB
 clean_repository_status: complete
-snapshot_date: 2026-09-23
+snapshot_date: 2026-10-02
 control_plane_cleanup:
+  status: PROTECTED_INTEGRATION_WITH_EXPLICIT_OPEN_GATES
+  owner: CD-559
+  historical_cleanup_owner: CD-868
+  canonical_target_branch: main
+  active_gameplay_pr: 52
+  active_gameplay_branch: feat/cd649-p03-steering-transfer
+  diagnostic_pr: 47
+  gameplay_gate: P03_HUMAN_REJECTED_CORRECTIVE_WORK
+  next_stage: P04_BLOCKED
+  required_status_check: Repository verification
+  require_up_to_date_branch: true
+  enforce_admins: true
+  require_pull_request: true
+  required_approving_reviews: 0
+  require_conversation_resolution: true
+  allow_force_push: false
+  allow_branch_deletion: false
+  runner_name: DESKTOP-C7VAU4V-PINKCAB
+  runner_repository: CheshirskyCat63/PINK-CAB
+  human_delivery: explicit_workflow_dispatch_or_verified_reusable_call_only
+  p02_human_delivery_input: deliver_human_true
+  delivery_does_not_equal_acceptance: true
+  infrastructure_gate: CD-559_IN_PROGRESS
+  current_workflow_lanes: [fast, human_gate, release_gate]
+  accepted_working_baseline:
+    stage: P02
+    source_sha: 8d68e456d1944be295281535cf9fd103ecf05d52
+    actions_run: 36868646970
+    owner_acceptance: ACCEPTED_2026_10_01
+    runtime_integration_pr: 49
+    runtime_integration_sha: 104295ab6329e85b5998e8df298770255ad2dd05
+    delivery_root: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970
+  preparation_candidates:
+    bootstrap: {branch: fix/CD-559-development-bootstrap-20261002, sha: 45542854b8e3c9f9695ec33db93833cb284b49ca, gate: SELECTED_436_PASS_10_FAIL}
+    p03: {branch: fix/CD-659-p03-readiness-20261002, sha: 95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef, gate: SELECTED_77_PASS_HUMAN_NOT_ACCEPTED}
+  evidence_rule: never_combine_results_from_different_source_trees_as_full_suite_proof
+  resume_rule: existing_PR52_then_exact_head_verification_then_explicit_delivery_then_owner_acceptance_then_merge
+
+historical_control_plane_cleanup_20260923:
   remaining_admin_gates:
     stale_remote_branch_refs:
       count: 0
@@ -69,7 +108,7 @@ maturity:
   canon: defined
   specification: partial
   implementation: core_code_complete_primitive_only
-  verification: owner_accepted_working_baseline_8168d724
+  verification: owner_accepted_P02_8d68e456_with_P03_correction_open
   truth_rule: CANON_to_SPECIFIED_to_IMPLEMENTED_to_VERIFIED
   documentation_never_equals_runtime_verification: true
 
@@ -80,6 +119,7 @@ source_of_truth:
   executable_truth: exact_commit_build_runtime_evidence
 
 readiness:
+  snapshot_kind: historical_specification_census_not_live_runtime_readiness
   methodology: code_only_first_euro_specification_readiness
   jira_ledger: CD-660
   jira_governance: CD-661
@@ -765,7 +805,7 @@ qa_mirrors:
 legacy_rule:
   deadrace_pursuit_combat_requires_explicit_re_adoption: true
   old_fixed_magnet_5s_all_loads: SUPERSEDED
-  old_rmb_passive_lmb_manipulate: RECOVERY_R1_CURRENT_RMB_GRIP_PLUS_LMB_MANIPULATION
+  old_rmb_passive_lmb_manipulate: SUPERSEDED_RMB_OPTIONAL_DIRECT_CONTEXTUAL_LMB_ALLOWED
   old_two_hour_workday_as_locked_duration: READOPTED_BY_I08_AS_12_INGAME_HOURS_120_REAL_MINUTES
   old_three_tier_first_euro: SUPERSEDED_L1_L2_ONLY
   old_damage_depth_open: SUPERSEDED_CD-600_DONE
