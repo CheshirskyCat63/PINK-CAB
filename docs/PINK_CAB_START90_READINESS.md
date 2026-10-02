@@ -26,7 +26,7 @@ FIRST EURO is the first 12 months / PC / single-player / full L1+L2 product. Pos
 
 Reason: a proposed default has implementation shape but is not owner authority; it therefore cannot count as a fully closed decision.
 
-## Fresh owner-pack census
+## Historical owner-pack census (2026-09-23 reconciliation)
 
 - LOCKED: **105**
 - CALIBRATION: **3**
@@ -34,7 +34,7 @@ Reason: a proposed default has implementation shape but is not owner authority; 
 - OPEN: **19**
 - TOTAL: **196**
 
-Current score: `105 + 3 + 69*0.5 = 142.5`; `142.5 / 196 = 72.7%`.
+Score at that planning checkpoint: `105 + 3 + 69*0.5 = 142.5`; `142.5 / 196 = 72.7%`. This is not a 2026-10-03 recount or a current product-completion percentage.
 
 **START-90 planning score: 72.7%.** This score remains useful for unresolved specification inventory, but it no longer blocks ordinary development because an owner-accepted executable baseline and finite CD-848 execution queue now exist.
 
@@ -56,7 +56,7 @@ SCOPE is reported separately so a locked delivery boundary cannot hide weak runt
 
 If all 69 PROPOSED DEFAULT rows are owner-accepted, score becomes `177 / 196 = 90.31%` and crosses START-90 without consuming any of the remaining 19 OPEN rows. This is a mathematical observation, not permission to ignore structural priority.
 
-## Current genuine OPEN owner rows
+## OPEN owner rows at that historical checkpoint
 
 `F18 J11 J12 K04 K06 K08 K11 K12 K13 N05 N06 N07 N09 O02 O03 P03 P05 P09 P11`
 
