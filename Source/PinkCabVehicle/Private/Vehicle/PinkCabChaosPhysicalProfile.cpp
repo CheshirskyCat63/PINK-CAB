@@ -165,7 +165,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     // Human gate rejected the previous snap-to-idle feel on clutch-open.
     // Keep native Chaos engine authority but give the free-spinning V8 more
     // rotational persistence; no autothrottle or rev-match is introduced.
-    R.EngineRevDownRate = P(1100.0f, A::Calibration);
+    R.EngineRevDownRate = P(1500.0f, A::Calibration);
     // P02 candidate seeds. Max clutch capacity is deliberately above the
     // accepted 260 Nm engine target so a healthy fully engaged clutch can hold
     // peak combustion torque. Effective inertia starts from the already
