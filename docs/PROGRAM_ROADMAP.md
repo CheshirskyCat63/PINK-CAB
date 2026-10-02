@@ -14,15 +14,25 @@ PINK-CAB is no longer in recovery/bootstrap mode. New implementation follows:
 
 No parallel recovery lane, second vehicle solver, or feature-specific CI ecosystem is allowed.
 
+## Current execution checkpoint
+
+- Integration: protected `main`; exact current SHA is read from GitHub, not inferred from an old document.
+- Accepted runtime: P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. P00-P02 and road R1-R5 remain frozen.
+- Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
+- PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
+- Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
+- Preserved preparation branches: `fix/CD-559-development-bootstrap-20261002` at `4554285` and `fix/CD-659-p03-readiness-20261002` at `95dafd4`. They are unmerged evidence/candidates, not competing integration branches. Reconcile them into PR #52 before a new gameplay acceptance.
+- Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
+
 ## Production technology
 
-- Unreal Engine 5.8 / current installed 5.8.2 line.
+- Unreal Engine 5.8 / current installed 5.8.3 line.
 - Native Chaos Vehicles behind the PINK-CAB dynamics provider is the sole hero-car road-dynamics owner.
 - Vehicle Health + bounded authored/native damage owns functional damage consequences.
 - FGear/VDS material is archived research only.
 - Presentation/model geometry cannot own physics, control, persistence or economy state.
 
-## Current finite Mechanics Freeze queue
+## Broader finite Mechanics Freeze queue (not the immediate next physics task)
 
 ### R01 · CD-869 — L1 → L2 → L1 route + streaming closure
 One representative forward/return route; deterministic CityCode reconstruction; bounded active/recent chunks; no voids, duplicate persistent deltas or forced reset.
