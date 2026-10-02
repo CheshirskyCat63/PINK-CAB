@@ -800,11 +800,14 @@ bool FPinkCabThrottleResponseTest::RunTest(const FString& Parameters)
 {
     TestEqual(TEXT("released pedal remains zero"), FPinkCabThrottleResponse::ToEngineThrottle(0.0f), 0.0f);
     TestEqual(TEXT("full pedal remains full"), FPinkCabThrottleResponse::ToEngineThrottle(1.0f), 1.0f);
+    const float SingleDetent = FPinkCabThrottleResponse::ToEngineThrottle(0.05f);
     const float Quarter = FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
     const float Half = FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
-    TestTrue(TEXT("quarter pedal reaches useful low-rpm linkage"), Quarter > 0.45f && Quarter < 0.49f);
-    TestTrue(TEXT("half pedal reaches deliberate power-oversteer range"), Half > 0.66f && Half < 0.70f);
-    TestTrue(TEXT("pedal response remains monotonic"), Quarter < Half && Half < 1.0f);
+    TestTrue(TEXT("five-percent pedal remains dosable"), SingleDetent >= 0.09f && SingleDetent <= 0.12f);
+    TestTrue(TEXT("quarter pedal remains useful without low-input over-amplification"), Quarter >= 0.33f && Quarter <= 0.38f);
+    TestTrue(TEXT("half pedal remains progressive"), Half >= 0.58f && Half <= 0.62f);
+    TestTrue(TEXT("pedal response remains monotonic"),
+        0.0f < SingleDetent && SingleDetent < Quarter && Quarter < Half && Half < 1.0f);
     TestEqual(TEXT("negative input clamps to zero"), FPinkCabThrottleResponse::ToEngineThrottle(-1.0f), 0.0f);
     TestEqual(TEXT("over-range input clamps to full"), FPinkCabThrottleResponse::ToEngineThrottle(2.0f), 1.0f);
     return true;
