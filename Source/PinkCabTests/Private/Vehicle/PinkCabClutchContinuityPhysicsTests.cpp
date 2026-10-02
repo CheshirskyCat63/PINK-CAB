@@ -1115,7 +1115,9 @@ public:
                 TEXT("clutch-open RPM fixture starts engine"),
                 Cockpit.StartEngine());
             Controls = {};
-            Controls.SetThrottle(TestThrottle);
+            // RestGate must observe the canonical warm-idle state. Driver
+            // throttle begins only after the spinning coupled state is seeded.
+            Controls.SetThrottle(0.0f);
             Controls.SetBrake(0.0f);
             Controls.SetHandbrake(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
@@ -1196,6 +1198,7 @@ public:
             Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
             Mesh->WakeAllRigidBodies();
 
+            Controls.SetThrottle(TestThrottle);
             Controls.SetDriveline(TestGear, TestGear, 1.0f);
             if (!FPinkCabChaosCockpitBridge::Apply(
                     Cockpit, *Movement, Controls, Provider))
