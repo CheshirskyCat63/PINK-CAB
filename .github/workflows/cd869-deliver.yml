@@ -1,12 +1,6 @@
 name: CD-869 Fast Human Delivery
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/cd869-deliver.yml'
-      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapGenerator.cpp'
-      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp'
   workflow_dispatch:
     inputs:
       candidate_sha:
@@ -28,6 +22,7 @@ concurrency:
 
 jobs:
   deliver:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
     name: Reuse package, smoke, deliver, launch
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 30
