@@ -15,14 +15,67 @@ Native Chaos remains the sole road-dynamics owner. The current Epic SportsCar sk
 
 ## 2. Donor source recovery and current tooling
 
-The original intake path below is historical and is **not present** on the
-studio host as of 2026-10-03. Do not treat it as a working import command:
+### Controlled source custody · 2026-10-03
+
+The selected internal source intake is now retained outside Desktop, game
+`Saved` directories and temporary worktrees:
+
+`E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\intake-37103855369\`
+
+The source-intake step of the CD-951 acceptance run verified this set as
+`SOURCE_INTAKE_VERIFIED`. Its source custody and authored-scene export checks
+are separate from the subsequent worktree-restoration and studio-installation
+steps. Consult CD-951 for the overall operation result; do not infer it from
+this source-intake result alone.
+
+| Retained location | Role |
+| --- | --- |
+| `original-donor/` | Original recovered donor archive, glTF and required external buffer, plus accompanying source/license files; original names and bytes retained. |
+| `authored/TATRA613.blend` | The reviewed input to the scene-preserved export, SHA-256 `493e1caea8b672b9896ef80ccfc5042da713981d2d6400bb86cc8a9c50132dd1`. |
+| `historical-working-variants/` | Preserved intermediate material from the dirty CD-855 worktree; not a new canonical game checkout. |
+| `historical-export/` | The prior scene-preserved export and report, kept distinct from the new validation output. |
+| `recipe-snapshot/` | Exact existing source/export/import recipes and this contract as captured from PINK-CAB commit `ecbedf4419a8b3b24f224d9ab200dd970318cd9e`. |
+| `manifest.json` | Original-to-retained path mapping, source SHA-256 values, tool receipts, unresolved rights and intake result. |
+| `export-contract.json` | Actual input identity, recipe revision/settings, Blender version/build and produced GLB identity. |
+| `verification/` | Isolated source dependency inspection, export and GLB reimport evidence; not production game content. |
+
+The preserved native Blender scene was inspected with automatic embedded
+scripts disabled. No unpacked external Blender dependency was required by the
+verified intake. The exact existing `scripts/export_tatra_scene_preserved.py`
+recipe was then run from a new isolated project layout against that retained
+`.blend`; the generated GLB header/length and source/runtime mesh report were
+validated, and the generated GLB was independently reimported into Blender.
+The authored source hash and canonical game checkout remained unchanged.
+
+For a custom receipt directory, invoke the versioned `Blender.ps1` entrypoint
+with one explicit `-OutputRoot`. The installed `BLENDER_STUDIO.cmd` convenience
+wrapper already supplies `-OutputRoot`; passing it again is a parameter error.
+Record the actual tool version and executable hash from each receipt rather
+than assuming a Steam-managed Blender version is pinned permanently.
+
+This accepts **source custody and the authored-blend-to-GLB transport only**.
+It does not reconstruct the donor-to-authored-blend editing history, execute
+or accept the game-specific Unreal importer, validate in-game scale/axes/
+pivots/materials, approve final presentation, or clear modification and
+redistribution rights. Those gates remain owned by CD-855. The preserved
+source payload is internal: do not publish it to GitHub to make a path resolve.
+
+The source set, recipes, provenance and recovery receipts have an indefinite
+source/evidence hold under the studio retention contract. A same-drive copy
+is not off-device disaster recovery. Earlier retained or failed intake
+receipts are historical evidence, not competing current source authorities.
+
+### Historical recovery locations and surviving recipes
+
+The original intake path below is historical and was **not present** on the
+studio host at the 2026-10-03 read-only recovery checkpoint. Do not treat it as
+a working import command:
 
 `C:\Users\CheCat\Downloads\tatra_613_1975-1996\scene.gltf`
 
-The donor bytes were recovered at both of these existing locations. Neither
-location is a new canonical source-art checkout; retain both until the CD-855
-source intake and CD-951 worktree preservation work is complete:
+The donor bytes were recovered at both of these existing locations. They are
+historical source evidence, not canonical source-art checkouts; their cleanup
+must follow the source-preserving disposition in CD-951:
 
 - `E:\Development\дедкорн\DESKTOP_SNAPSHOT\DEADRACE\ZAGLUSHKA_TATRA_613\tatra_613_1975-1996\`
 - `E:\CHESHIRE_DIVISION\Games\PINK-CAB\.worktrees\cd855-tatra-playable-foundation\Saved\Temp\Tatra613_Work\gltf\`
@@ -37,12 +90,13 @@ completeness, license clearance or equivalence to the later authored scene.
 | `scene.gltf` | `c3b0a12daf610607bb3ea13c315f519f61fbadd6921ad3d5887ce229f0045e17` |
 | `scene.bin` | `b3f78f5d4757897b7aba90dde5c693caca4b8d96c01fa2a993f18965897f219e` |
 
-The authored scene used by the scene-preserved export report is still present
-at `C:\Users\CheCat\Desktop\TATRA613.blend` (4,579,522 bytes, SHA-256
+The original authored scene was found at
+`C:\Users\CheCat\Desktop\TATRA613.blend` (4,579,522 bytes, SHA-256
 `493e1caea8b672b9896ef80ccfc5042da713981d2d6400bb86cc8a9c50132dd1`).
-Blender 5.2.2 LTS opened it in background mode with automatic scripts disabled:
-136 mesh objects were read and its source hash was unchanged. That is source
-readability evidence, not model or handling acceptance.
+The initial Blender 5.2.2 LTS inspection read 136 mesh objects in background
+mode with automatic scripts disabled and left the source hash unchanged.
+Use the controlled `authored/` input above for the retained export contract;
+source readability does not constitute model or handling acceptance.
 
 Current tracked authoring/import entrypoints are:
 
@@ -58,13 +112,13 @@ Current tracked authoring/import entrypoints are:
   the separate V12 wheel route; inspect their required environment variables
   before invoking them.
 
-The preserved export exists under
+The historical export was found under
 `E:\CHESHIRE_DIVISION\Games\PINK-CAB\.worktrees\cd855-tatra-playable-foundation\Saved\Tatra613ScenePreserved\Tatra613_ScenePreserved.glb`
 (SHA-256 `50c0a07715257ffcd504490e696855e2e9b217b373ded5f3a993bb03a0e48482`).
-The corresponding main-checkout `Saved/Tatra613ScenePreserved/` export is
-absent. Do not delete these worktree `Saved/` files as disposable cache or claim
-the current main checkout can reimport without preparing the reviewed source
-and output route. No donor was regenerated or reimported during this audit.
+The corresponding main-checkout `Saved/Tatra613ScenePreserved/` export was
+absent at the read-only checkpoint. Do not delete retained worktree `Saved/`
+files as disposable cache or claim that game-main reimport was accepted by the
+later isolated Blender-only export test.
 
 Three entrypoints named by the earlier revision are absent from the current
 checkout: `scripts/import_tatra_v12_clean.py`,
