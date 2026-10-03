@@ -1,4 +1,4 @@
-name: CD-559 Normalize Exact P04 Checkout and Entry
+name: CD-559 Recovered P04 Source Qualification
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,95 +9,34 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  reconcile:
+  qualification:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 5
-    env:
-      GIT_OPTIONAL_LOCKS: '0'
-      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+    runs-on: windows-latest
+    timeout-minutes: 10
     steps:
-      - name: Preserve EOL-only residual and verify normalized exact source
-        shell: powershell
-        run: |
-          $ErrorActionPreference='Stop'
-          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
-          $report=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Recovery' ('CD559_'+$env:GITHUB_RUN_ID+'_ATTEMPT'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $report){throw 'Recovery destination exists'}
-          New-Item -ItemType Directory -Path $report | Out-Null
-          "RECOVERY_REPORT=$report" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          $env:RECOVERY_REPORT=$report
-          $processes=@(Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool')} | Select-Object Name,ProcessId,ExecutablePath,CommandLine)
-          ConvertTo-Json -InputObject $processes -Depth 4 | Set-Content (Join-Path $report 'engine-processes.json') -Encoding UTF8
-          if(@($processes | Where-Object {$_.CommandLine -and $_.CommandLine.IndexOf($root,[StringComparison]::OrdinalIgnoreCase) -ge 0}).Count){throw 'PINKCAB checkout is in use; no process stopped'}
-          $script=@'
-          import ast, difflib, hashlib, json, os, subprocess
-          from pathlib import Path
-          root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
-          out=Path(os.environ['RECOVERY_REPORT'])
-          old='52a27ff510f2d9540eb97667e4608c4bbe354f32'
-          new='52239b61bc80e5a63716b9b09b87c520fa09fd05'
-          rel='scripts/tests/test_fast_delivery_retirement.py'
-          def git(*args):
-              return subprocess.run(['git',*args],cwd=root,check=True,capture_output=True).stdout
-          head=git('rev-parse','HEAD').decode().strip()
-          if head not in (old,new): raise RuntimeError('Unexpected checkout HEAD: '+head)
-          status=git('status','--porcelain=v1','--untracked-files=all').decode().splitlines()
-          (out/'status-before.txt').write_text('\n'.join(status),encoding='utf-8')
-          if status not in ([],[' M '+rel]): raise RuntimeError('Unexpected local changes; nothing overwritten: '+repr(status))
-          original=(root/rel).read_bytes()
-          committed=git('show','HEAD:'+rel)
-          (out/'working-original.py').write_bytes(original)
-          (out/'committed-original.py').write_bytes(committed)
-          git('fetch','--no-tags','origin',new)
-          changes=git('diff','--name-only',old,new).decode().splitlines()
-          if changes != [rel]: raise RuntimeError('Normalization commit changes unexpected paths: '+repr(changes))
-          fixed=git('show',new+':'+rel)
-          if hashlib.sha1(b'blob '+str(len(fixed)).encode()+b'\0'+fixed).hexdigest() != 'b0184119777cbdd19d7b0842e1ed44c331720a65': raise RuntimeError('Normalized blob mismatch')
-          if original.replace(b'\r\n',b'\n') != fixed: raise RuntimeError('Local change is not the exact EOL normalization; preserved but not overwritten')
-          if ast.dump(ast.parse(original)) != ast.dump(ast.parse(fixed)): raise RuntimeError('Python meaning differs')
-          receipt={'old_head':head,'new_head':new,'path':rel,'old_sha256':hashlib.sha256(original).hexdigest(),'new_sha256':hashlib.sha256(fixed).hexdigest(),'working_crlf':original.count(b'\r\n'),'committed_crlf':committed.count(b'\r\n'),'normalized_crlf':fixed.count(b'\r\n'),'eol_only':True,'game_source_changed':False,'processes_stopped':False}
-          (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
-          git('checkout','--force','--detach',new)
-          after=git('status','--porcelain=v1','--untracked-files=all').decode()
-          (out/'status-after.txt').write_text(after,encoding='utf-8')
-          if after.strip(): raise RuntimeError('Normalized checkout not clean: '+after)
-          result=subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha',new],cwd=root,capture_output=True,text=True)
-          (out/'workspace-check.txt').write_text(result.stdout+result.stderr,encoding='utf-8')
-          result.check_returncode()
-          receipt['workspace_gate']='PASS'
-          (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
-          print(json.dumps(receipt))
-          '@
-          python -c $script
-          if($LASTEXITCODE -ne 0){throw 'Exact normalized checkout qualification failed; inspect retained evidence'}
-      - name: Rename only known accepted desktop entry to exact owner spelling
-        shell: powershell
-        run: |
-          $ErrorActionPreference='Stop'
-          $desktop='C:\Users\CheCat\Desktop'
-          $old=Join-Path $desktop 'PINKCAB.lnk'
-          $new=Join-Path $desktop 'PINCKCAB.lnk'
-          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $ws=New-Object -ComObject WScript.Shell
-          if(Test-Path -LiteralPath $new){
-            $s=$ws.CreateShortcut($new)
-            if($s.TargetPath -ne $accepted -or (Test-Path -LiteralPath $old)){throw 'Unexpected or duplicate desktop entry; left unchanged'}
-          } else {
-            if(-not (Test-Path -LiteralPath $old)){throw 'Known accepted desktop entry missing'}
-            $s=$ws.CreateShortcut($old)
-            if($s.TargetPath -ne $accepted -or -not (Test-Path -LiteralPath $accepted)){throw 'Accepted desktop target mismatch'}
-            Copy-Item -LiteralPath $old -Destination (Join-Path $env:RECOVERY_REPORT 'PINKCAB-before.lnk')
-            Move-Item -LiteralPath $old -Destination $new
-          }
-          $s=$ws.CreateShortcut($new)
-          if($s.TargetPath -ne $accepted -or -not (Test-Path -LiteralPath $accepted)){throw 'Renamed shortcut failed verification'}
-          @{path=$new;target=$s.TargetPath;arguments=$s.Arguments;acceptedRuntime='edf75e1b';targetExists=$true} | ConvertTo-Json | Tee-Object -FilePath (Join-Path $env:RECOVERY_REPORT 'desktop.json')
-      - name: Preserve recovery evidence outside the game checkout
-        if: always() && env.RECOVERY_REPORT != ''
-        uses: actions/upload-artifact@v4
+      - name: Checkout exact normalized P04 source on isolated hosted Windows
+        uses: actions/checkout@v4
         with:
-          name: p04-runner-recovery-${{ github.run_id }}
-          path: ${{ env.RECOVERY_REPORT }}
-          if-no-files-found: error
-          retention-days: 30
+          ref: 52239b61bc80e5a63716b9b09b87c520fa09fd05
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove normalization and complete script regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m pip install --disable-pip-version-check PyYAML==6.0.2
+          if($LASTEXITCODE -ne 0){throw 'Workflow parser install failed'}
+          python scripts/ci/acceptance_contract.py workspace --sha 52239b61bc80e5a63716b9b09b87c520fa09fd05
+          if($LASTEXITCODE -ne 0){throw 'Fresh exact source is not clean'}
+          python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+          if($LASTEXITCODE -ne 0){throw 'Complete script regression failed'}
+          python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
+          if($LASTEXITCODE -ne 0){throw 'Code health failed'}
+          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/RECOVERY_WRITERS.json
+          if($LASTEXITCODE -ne 0){throw 'Vehicle authority inventory failed'}
+          Write-Host 'RECOVERED_P04_SOURCE_QUALIFICATION=PASS; Unreal and human acceptance are separate'
