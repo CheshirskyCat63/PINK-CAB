@@ -1,4 +1,4 @@
-name: CD-559 Accepted PINK CAB Desktop Entry
+name: CD-559 Accepted PINCKCAB Desktop Entry
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -14,7 +14,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 5
     steps:
-      - name: Keep one accepted PLAY entry and archive redundant game shortcuts
+      - name: Expose exactly PINCKCAB and retain previous links reversibly
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -26,58 +26,51 @@ jobs:
           if((Get-Content (Join-Path $package 'CANDIDATE_SHA.txt') -Raw).Trim() -ne 'edf75e1b91742237d14ba9dfe76284993da77d17'){throw 'Accepted package identity mismatch'}
           if((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0d06f81c2f83ab983ce7709569c04682e5ae3eba5b4d07fc43397947fafce9cc'){throw 'Accepted executable hash mismatch'}
           $out=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\DesktopEntry' ($env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $out){throw 'Evidence directory already exists'}
+          if(Test-Path -LiteralPath $out){throw 'Evidence already exists'}
           New-Item -ItemType Directory -Path $out | Out-Null
           "DESKTOP_ENTRY_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
           $ws=New-Object -ComObject WScript.Shell
-          $play=Join-Path $desktop 'PINK CAB - ИГРАТЬ.lnk'
-          $before=@()
-          $plan=@()
-          $foreignBefore=@{}
+          $play=Join-Path $desktop 'PINCKCAB.lnk'
+          $pattern='^(?:PINK\s?CAB|PINCKCAB)(?:[ _-]|\.)'
+          $plan=@(); $foreign=@{}
           foreach($file in @(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File)){
             $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            if($file.Name -notmatch '^PINK\s?CAB(?:[ _-]|\.)'){$foreignBefore[$file.FullName]=$hash;continue}
+            if($file.Name -notmatch $pattern){$foreign[$file.FullName]=$hash;continue}
             $link=$ws.CreateShortcut($file.FullName)
-            $row=@{name=$file.Name;path=$file.FullName;target=$link.TargetPath;arguments=$link.Arguments;sha256=$hash}
-            $before+=$row
-            if($file.FullName -eq $play){continue}
-            if($link.TargetPath.StartsWith('E:\CHESHIRE_DIVISION\Builds\PINKCAB\',[StringComparison]::OrdinalIgnoreCase) -and [IO.Path]::GetFileName($link.TargetPath) -match '^PinkCab(?:-Win64-(?:Shipping|Development))?\.exe$'){$plan+=$row}
+            if(-not $link.TargetPath.StartsWith('E:\CHESHIRE_DIVISION\Builds\PINKCAB\',[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($link.TargetPath) -notmatch '^PinkCab(?:-Win64-(?:Shipping|Development))?\.exe$'){throw ('Unrecognized shortcut; no changes: '+$file.Name)}
+            if($file.FullName -eq $play -and $link.TargetPath -ne $exe){throw 'PINCKCAB already targets a different package; do not replace it'}
+            $plan+=@{name=$file.Name;path=$file.FullName;target=$link.TargetPath;sha256=$hash}
           }
-          $before | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'before.json') -Encoding utf8
-          $archive=Join-Path $desktop ('CHESHIRE_STUDIO\PINKCAB\Архив ярлыков\'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $archive){throw 'Shortcut archive already exists'}
+          $plan | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'before.json') -Encoding utf8
+          $archive=Join-Path $desktop ('CHESHIRE_STUDIO\PINKCAB\ShortcutArchive\'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
           New-Item -ItemType Directory -Path $archive | Out-Null
-          if(Test-Path -LiteralPath $play){
-            $existing=$ws.CreateShortcut($play)
-            if($existing.TargetPath -ne $exe){throw 'Existing PLAY targets another package; preserve it unchanged'}
-            Copy-Item -LiteralPath $play -Destination (Join-Path $archive 'PINK CAB - ИГРАТЬ.previous.lnk')
+          foreach($row in $plan){
+            $backup=Join-Path $archive $row.name
+            Copy-Item -LiteralPath $row.path -Destination $backup
+            if((Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Shortcut backup verification failed'}
           }
           $new=$ws.CreateShortcut($play)
           $new.TargetPath=$exe
           $new.WorkingDirectory=Split-Path $exe
           $new.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900'
           $new.IconLocation=$exe+',0'
-          $new.Description='PINK CAB: принятая версия 2. P03 edf75e1b, принят владельцем 03.10.2026.'
+          $new.Description='PINCKCAB - owner-accepted V2, P03 edf75e1b, delivery 37117735294'
           $new.Save()
-          if(-not (Test-Path -LiteralPath $play) -or $ws.CreateShortcut($play).TargetPath -ne $exe){throw 'PLAY shortcut readback failed; old shortcuts untouched'}
-          $moved=@()
+          if(-not (Test-Path -LiteralPath $play) -or $ws.CreateShortcut($play).TargetPath -ne $exe){throw 'PINCKCAB readback failed; previous desktop links retained'}
           foreach($row in $plan){
-            if((Get-FileHash -LiteralPath $row.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Shortcut changed concurrently; remaining links untouched'}
-            $dest=Join-Path $archive $row.name
-            if(Test-Path -LiteralPath $dest){throw 'Archive collision'}
-            Copy-Item -LiteralPath $row.path -Destination (Join-Path $out $row.name)
-            if((Get-FileHash -LiteralPath (Join-Path $out $row.name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Backup hash mismatch'}
-            Move-Item -LiteralPath $row.path -Destination $dest
-            if((Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Archived shortcut hash mismatch'}
-            $moved+=@{original=$row.path;archive=$dest;target=$row.target;sha256=$row.sha256}
+            if($row.path -eq $play){continue}
+            if((Get-FileHash -LiteralPath $row.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Shortcut changed concurrently'}
+            $retained=Join-Path $archive ('original-'+$row.name)
+            Move-Item -LiteralPath $row.path -Destination $retained
+            if((Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Retained shortcut hash mismatch'}
           }
-          foreach($path in $foreignBefore.Keys){if(-not (Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $foreignBefore[$path]){throw 'Unrelated shortcut changed during operation'}}
-          $after=@(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File | Where-Object {$_.Name -match '^PINK\s?CAB(?:[ _-]|\.)'} | ForEach-Object {@{name=$_.Name;target=$ws.CreateShortcut($_.FullName).TargetPath}})
-          $receipt=@{status='PLAY_READY_OLD_SHORTCUTS_ARCHIVED';desktop=$desktop;play=$play;acceptedSource='edf75e1b91742237d14ba9dfe76284993da77d17';package=$package;archive=$archive;archived=$moved;remainingDesktopEntries=$after;unrelatedShortcutsUnchanged=$true;buildsDeleted=0;gameProcessesStopped=0;newCandidateDelivered=$false}
-          $receipt | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'DESKTOP_ENTRY.json') -Encoding utf8
-          $receipt | ConvertTo-Json -Depth 8 | Write-Host
-          if($after.Count -ne 1 -or $after[0].name -ne 'PINK CAB - ИГРАТЬ.lnk'){throw 'Unrecognized PINKCAB entries remain; see receipt, no unverified shortcut removed'}
-      - name: Preserve shortcut inventory and reversible backups
+          foreach($path in $foreign.Keys){if(-not (Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $foreign[$path]){throw 'Unrelated shortcut changed'}}
+          $after=@(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File | Where-Object {$_.Name -match $pattern})
+          $receipt=@{status='PINCKCAB_READY';desktop=$desktop;shortcut=$play;target=$exe;archive=$archive;archivedCount=@($plan | Where-Object {$_.path -ne $play}).Count;remaining=@($after.Name);unrelatedShortcutsUnchanged=$true;buildsDeleted=0;gameProcessesStopped=0;newP04Delivered=$false}
+          $receipt | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $out 'DESKTOP_ENTRY.json') -Encoding utf8
+          $receipt | ConvertTo-Json -Depth 6 | Write-Host
+          if($after.Count -ne 1 -or $after[0].Name -ne 'PINCKCAB.lnk'){throw 'Desktop convergence incomplete'}
+      - name: Preserve desktop verification receipt
         if: always() && env.DESKTOP_ENTRY_EVIDENCE != ''
         uses: actions/upload-artifact@v4
         with:
