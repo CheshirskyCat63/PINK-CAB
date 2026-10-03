@@ -14,62 +14,110 @@ jobs:
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 10
     steps:
-      - name: Checkout isolated preparation directory only
-        uses: actions/checkout@v4
-        with:
-          ref: ops/CD-559-restore-playable-entry-20261003
-          path: p03-preparation-${{ github.run_id }}
-          fetch-depth: 0
-          lfs: false
-          persist-credentials: true
-      - name: Merge known source candidates without updating main or PR52
+      - name: Isolated reviewed merge and host ownership diagnostics
         shell: pwsh
         env:
           GIT_LFS_SKIP_SMUDGE: '1'
+          GIT_TERMINAL_PROMPT: '0'
+          GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference='Stop'
-          $work=Join-Path $env:GITHUB_WORKSPACE ('p03-preparation-'+$env:GITHUB_RUN_ID)
-          $out=Join-Path $env:RUNNER_TEMP ('p03-candidate-'+$env:GITHUB_RUN_ID)
+          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V'){throw 'Unexpected host'}
+          $out=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\P03Preparation' $env:GITHUB_RUN_ID
           New-Item -ItemType Directory -Path $out | Out-Null
           "P03_PREPARATION_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
+          $hostProcesses=@(Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|AutomationTool|UnrealBuildTool|Runner.Worker|PinkCab)\.exe$'} | ForEach-Object {
+            $project=[regex]::Match([string]$_.CommandLine,'(?i)(?:"[^\"]+\.uproject"|[^\s\"]+\.uproject)').Value
+            @{name=$_.Name;pid=$_.ProcessId;parentPid=$_.ParentProcessId;created=$_.CreationDate;executable=$_.ExecutablePath;project=$project;session=$_.SessionId}
+          })
+          $hostProcesses | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'host-processes.json')
+          $hostProcesses | ConvertTo-Json -Depth 5 | Write-Host
+          $prior=Join-Path $env:GITHUB_WORKSPACE 'p03-preparation-37116327640'
+          if(Test-Path -LiteralPath (Join-Path $prior '.git')){
+            $priorHead=(git -C $prior rev-parse HEAD).Trim()
+            if($priorHead -ne '95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef'){throw 'Prior isolated scratch identity changed; preserve in place'}
+            git -C $prior config --local --unset-all http.https://github.com/.extraheader
+            $global:LASTEXITCODE=0
+            Move-Item -LiteralPath $prior -Destination (Join-Path $out 'prior-failed-merge-source')
+            Write-Host 'PRIOR_OWN_SCRATCH_PRESERVED_OUTSIDE_RUNNER_WORKSPACE'
+          }
+          $work=Join-Path $env:RUNNER_TEMP ('P03Source-'+$env:GITHUB_RUN_ID)
+          git clone --no-checkout https://github.com/CheshirskyCat63/PINK-CAB $work
+          if($LASTEXITCODE -ne 0){throw 'Isolated clone failed'}
           Set-Location $work
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin main feat/cd649-p03-steering-transfer fix/CD-659-p03-readiness-20261002
-          if($LASTEXITCODE -ne 0){throw 'Fetch failed'}
           $main=(git rev-parse origin/main).Trim()
           $p03=(git rev-parse origin/feat/cd649-p03-steering-transfer).Trim()
           $ready=(git rev-parse origin/fix/CD-659-p03-readiness-20261002).Trim()
-          if($main -ne '7f783644add29bc8ad43e740a40c6cf79600b311' -or $p03 -ne '64971f3828a3ffd9200f7aa6b1fa7e38dbe0cbcb' -or $ready -ne '95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef'){throw "Concurrent source change: main=$main p03=$p03 ready=$ready"}
+          if($main -ne '7f783644add29bc8ad43e740a40c6cf79600b311' -or $p03 -ne '64971f3828a3ffd9200f7aa6b1fa7e38dbe0cbcb' -or $ready -ne '95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef'){throw 'Concurrent source change; do not overwrite'}
           git merge-base --is-ancestor $p03 $ready
           if($LASTEXITCODE -ne 0){throw 'Retained fix is not a descendant of PR52'}
           git switch --detach $ready
           if($LASTEXITCODE -ne 0){throw 'Isolated checkout failed'}
-          git -c core.hooksPath=NUL merge --no-ff -m 'fix(CD-649): consolidate retained P03 correction with current build and acceptance infrastructure' $main
-          if($LASTEXITCODE -ne 0){
-            git status --porcelain=v1 | Set-Content (Join-Path $out 'merge-conflicts.txt')
-            git diff --cc | Set-Content (Join-Path $out 'merge-conflicts.diff')
-            throw 'Merge conflicts require explicit review; no remote candidate was pushed'
+          git -c core.hooksPath=NUL merge --no-commit --no-ff $main
+          $mergeResult=$LASTEXITCODE
+          $conflicts=@(git diff --name-only --diff-filter=U)
+          $reviewed=@('.github/workflows/cd648-p02-phy009.yml','.github/workflows/pinkcab-vehicle-physics-tdd.yml')
+          if($mergeResult -ne 0 -and (@($conflicts | Where-Object {$_ -notin $reviewed}).Count -gt 0 -or $conflicts.Count -ne 2)){throw 'Unexpected conflict set'}
+          foreach($relative in $conflicts){
+            $file=Join-Path $work $relative
+            $text=[IO.File]::ReadAllText($file)
+            $pattern='(?ms)^<<<<<<< HEAD\r?\n.*?^=======\r?\n(.*?)^>>>>>>>[^\r\n]*\r?\n'
+            if([regex]::Matches($text,$pattern).Count -ne 1){throw 'Unexpected conflict structure'}
+            $resolved=[regex]::Replace($text,$pattern,'$1')
+            [IO.File]::WriteAllText($file,$resolved,[Text.UTF8Encoding]::new($false))
+            git add -- $relative
           }
+          $tdd=Join-Path $work '.github/workflows/pinkcab-vehicle-physics-tdd.yml'
+          $text=[IO.File]::ReadAllText($tdd)
+          $needle='      - name: Run focused vehicle-physics tests'
+          if(([regex]::Matches($text,[regex]::Escape($needle))).Count -ne 1){throw 'Unexpected TDD insertion anchor'}
+          $extra=@'
+                - name: Run complete P03 control-runtime regression
+                  if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
+                  shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+                  run: |
+                    $ErrorActionPreference='Stop'
+                    & .\scripts\ci\run-unreal-automation.ps1 `
+                      -EngineRoot $env:UE_ROOT `
+                      -ProjectPath "$env:GITHUB_WORKSPACE\PinkCab.uproject" `
+                      -TestName 'PinkCab.Vehicle.ControlRuntime' `
+                      -LogPath "$env:GITHUB_WORKSPACE\Saved\GitHubGate\P03_CONTROL_RUNTIME.log" `
+                      -TimeoutSeconds 300
+                    Write-Host 'PINKCAB_P03_CONTROL_RUNTIME=PASS'
+
+          '@
+          [IO.File]::WriteAllText($tdd,$text.Replace($needle,$extra+$needle),[Text.UTF8Encoding]::new($false))
+          git add -- .github/workflows/pinkcab-vehicle-physics-tdd.yml
+          git diff --cached --check
+          if($LASTEXITCODE -ne 0){throw 'Staged merge hygiene failed'}
+          git -c core.hooksPath=NUL commit -m 'fix(CD-649): consolidate retained P03 correction and current evidence gates; preserve complete control regression'
+          if($LASTEXITCODE -ne 0){throw 'Merge commit failed'}
           $candidate=(git rev-parse HEAD).Trim()
-          git diff --check $main HEAD
-          if($LASTEXITCODE -ne 0){throw 'Diff hygiene failed'}
           $changed=@(git diff --name-only $main HEAD)
           git diff --binary $main HEAD | Set-Content (Join-Path $out 'candidate.diff') -Encoding utf8
           git diff --stat $main HEAD | Set-Content (Join-Path $out 'candidate-stat.txt') -Encoding utf8
-          git archive --format=zip --output=(Join-Path $out 'candidate-source.zip') HEAD Source Config scripts .github docs/vehicle_physics PinkCab.uproject
-          if($LASTEXITCODE -ne 0){throw 'Candidate source archive failed'}
+          $archive=Join-Path $out 'candidate-source.zip'
+          git archive --format=zip "--output=$archive" HEAD Source Config scripts .github docs/vehicle_physics PinkCab.uproject
+          if($LASTEXITCODE -ne 0){throw 'Source archive failed'}
           $branch='prep/CD-649-consolidated-'+$env:GITHUB_RUN_ID
-          git push origin ('HEAD:refs/heads/'+$branch)
-          if($LASTEXITCODE -ne 0){throw 'Candidate staging-ref push failed'}
-          $receipt=@{main=$main;previousP03=$p03;retainedFix=$ready;candidate=$candidate;branch=$branch;changedFiles=$changed;runtimeTested=$false;humanAccepted=$false;mainModified=$false;PR52Modified=$false;sourceArchiveSha256=(Get-FileHash (Join-Path $out 'candidate-source.zip') -Algorithm SHA256).Hash.ToLowerInvariant()}
+          $basic=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('x-access-token:'+$env:GH_TOKEN))
+          Write-Host ('::add-mask::'+$basic)
+          git -c ('http.https://github.com/.extraheader=AUTHORIZATION: basic '+$basic) push origin ('HEAD:refs/heads/'+$branch)
+          if($LASTEXITCODE -ne 0){throw 'Candidate staging push failed; source evidence retained'}
+          $receipt=@{main=$main;previousP03=$p03;retainedFix=$ready;candidate=$candidate;branch=$branch;changedFiles=$changed;runtimeTested=$false;humanAccepted=$false;mainModified=$false;PR52Modified=$false;sourceArchiveSha256=(Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()}
           $receipt | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'candidate.json') -Encoding utf8
           $receipt | ConvertTo-Json -Depth 5 | Write-Host
-      - name: Retain candidate or conflict evidence
+      - name: Retain reviewed candidate evidence
         if: always() && env.P03_PREPARATION_EVIDENCE != ''
         uses: actions/upload-artifact@v4
         with:
           name: p03-consolidation-${{ github.run_id }}
-          path: ${{ env.P03_PREPARATION_EVIDENCE }}
+          path: |
+            ${{ env.P03_PREPARATION_EVIDENCE }}/*.json
+            ${{ env.P03_PREPARATION_EVIDENCE }}/*.diff
+            ${{ env.P03_PREPARATION_EVIDENCE }}/*.txt
+            ${{ env.P03_PREPARATION_EVIDENCE }}/candidate-source.zip
           retention-days: 30
           if-no-files-found: error
