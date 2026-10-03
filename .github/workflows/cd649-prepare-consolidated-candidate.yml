@@ -1,0 +1,75 @@
+name: CD-649 Prepare Consolidated Candidate
+on:
+  push:
+    branches: [ops/CD-559-restore-playable-entry-20261003]
+    paths: [.github/workflows/cd649-prepare-consolidated-candidate.yml]
+permissions:
+  contents: write
+concurrency:
+  group: pinkcab-p03-candidate-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated preparation directory only
+        uses: actions/checkout@v4
+        with:
+          ref: ops/CD-559-restore-playable-entry-20261003
+          path: p03-preparation-${{ github.run_id }}
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: true
+      - name: Merge known source candidates without updating main or PR52
+        shell: pwsh
+        env:
+          GIT_LFS_SKIP_SMUDGE: '1'
+        run: |
+          $ErrorActionPreference='Stop'
+          $work=Join-Path $env:GITHUB_WORKSPACE ('p03-preparation-'+$env:GITHUB_RUN_ID)
+          $out=Join-Path $env:RUNNER_TEMP ('p03-candidate-'+$env:GITHUB_RUN_ID)
+          New-Item -ItemType Directory -Path $out | Out-Null
+          "P03_PREPARATION_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
+          Set-Location $work
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main feat/cd649-p03-steering-transfer fix/CD-659-p03-readiness-20261002
+          if($LASTEXITCODE -ne 0){throw 'Fetch failed'}
+          $main=(git rev-parse origin/main).Trim()
+          $p03=(git rev-parse origin/feat/cd649-p03-steering-transfer).Trim()
+          $ready=(git rev-parse origin/fix/CD-659-p03-readiness-20261002).Trim()
+          if($main -ne '7f783644add29bc8ad43e740a40c6cf79600b311' -or $p03 -ne '64971f3828a3ffd9200f7aa6b1fa7e38dbe0cbcb' -or $ready -ne '95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef'){throw "Concurrent source change: main=$main p03=$p03 ready=$ready"}
+          git merge-base --is-ancestor $p03 $ready
+          if($LASTEXITCODE -ne 0){throw 'Retained fix is not a descendant of PR52'}
+          git switch --detach $ready
+          if($LASTEXITCODE -ne 0){throw 'Isolated checkout failed'}
+          git -c core.hooksPath=NUL merge --no-ff -m 'fix(CD-649): consolidate retained P03 correction with current build and acceptance infrastructure' $main
+          if($LASTEXITCODE -ne 0){
+            git status --porcelain=v1 | Set-Content (Join-Path $out 'merge-conflicts.txt')
+            git diff --cc | Set-Content (Join-Path $out 'merge-conflicts.diff')
+            throw 'Merge conflicts require explicit review; no remote candidate was pushed'
+          }
+          $candidate=(git rev-parse HEAD).Trim()
+          git diff --check $main HEAD
+          if($LASTEXITCODE -ne 0){throw 'Diff hygiene failed'}
+          $changed=@(git diff --name-only $main HEAD)
+          git diff --binary $main HEAD | Set-Content (Join-Path $out 'candidate.diff') -Encoding utf8
+          git diff --stat $main HEAD | Set-Content (Join-Path $out 'candidate-stat.txt') -Encoding utf8
+          git archive --format=zip --output=(Join-Path $out 'candidate-source.zip') HEAD Source Config scripts .github docs/vehicle_physics PinkCab.uproject
+          if($LASTEXITCODE -ne 0){throw 'Candidate source archive failed'}
+          $branch='prep/CD-649-consolidated-'+$env:GITHUB_RUN_ID
+          git push origin ('HEAD:refs/heads/'+$branch)
+          if($LASTEXITCODE -ne 0){throw 'Candidate staging-ref push failed'}
+          $receipt=@{main=$main;previousP03=$p03;retainedFix=$ready;candidate=$candidate;branch=$branch;changedFiles=$changed;runtimeTested=$false;humanAccepted=$false;mainModified=$false;PR52Modified=$false;sourceArchiveSha256=(Get-FileHash (Join-Path $out 'candidate-source.zip') -Algorithm SHA256).Hash.ToLowerInvariant()}
+          $receipt | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'candidate.json') -Encoding utf8
+          $receipt | ConvertTo-Json -Depth 5 | Write-Host
+      - name: Retain candidate or conflict evidence
+        if: always() && env.P03_PREPARATION_EVIDENCE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: p03-consolidation-${{ github.run_id }}
+          path: ${{ env.P03_PREPARATION_EVIDENCE }}
+          retention-days: 30
+          if-no-files-found: error
