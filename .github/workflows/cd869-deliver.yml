@@ -1,5 +1,9 @@
 name: CD-869 Fast Human Delivery
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
   workflow_dispatch:
     inputs:
@@ -40,6 +44,12 @@ jobs:
           lfs: false
           clean: false
           ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+
+      - name: Prepare pinned MetaRoad dependency
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Materialize verified local LFS
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'

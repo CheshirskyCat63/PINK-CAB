@@ -49,7 +49,7 @@ Smart App Control / UMCI is therefore a **release-host infrastructure boundary**
 - Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
 - PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
 - Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
-- Preserved preparation branches: `fix/CD-559-development-bootstrap-20261002` at `4554285` and `fix/CD-659-p03-readiness-20261002` at `95dafd4`. They are unmerged evidence/candidates, not competing integration branches. Reconcile them into PR #52 before a new gameplay acceptance.
+- Preserved preparation branches: the bootstrap branch contains integrated local candidate `86c2da3`; earlier test snapshot `4554285` and separate P03 snapshot `95dafd4` remain historical evidence. These candidates are unaccepted and must be reconciled into existing PR #52 before renewed gameplay acceptance. Pure build/CI preparation is maintained separately from gameplay changes.
 - Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
 
 ## Broader FIRST EURO execution corridor (after current physics priorities)

@@ -5,7 +5,7 @@ repository_status: active-dedicated-pink-cab
 working_branch: main
 clean_repository_target: PINK-CAB
 clean_repository_status: complete
-snapshot_date: 2026-10-02
+snapshot_date: 2026-10-03
 control_plane_cleanup:
   status: PROTECTED_INTEGRATION_WITH_EXPLICIT_OPEN_GATES
   owner: CD-559
@@ -26,6 +26,11 @@ control_plane_cleanup:
   allow_branch_deletion: false
   runner_name: DESKTOP-C7VAU4V-PINKCAB
   runner_repository: CheshirskyCat63/PINK-CAB
+  runner_start_script: scripts/ci/start-pinkcab-runner.ps1
+  metaroad_lock: scripts/ci/metaroad.lock.json
+  metaroad_version: 3.2.0
+  metaroad_pinned_files: 533
+  metaroad_payload: authorized_local_package_not_public_git
   human_delivery: explicit_workflow_dispatch_or_verified_reusable_call_only
   p02_human_delivery_input: deliver_human_true
   delivery_does_not_equal_acceptance: true
@@ -40,7 +45,8 @@ control_plane_cleanup:
     runtime_integration_sha: 104295ab6329e85b5998e8df298770255ad2dd05
     delivery_root: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970
   preparation_candidates:
-    bootstrap: {branch: fix/CD-559-development-bootstrap-20261002, sha: 45542854b8e3c9f9695ec33db93833cb284b49ca, gate: SELECTED_436_PASS_10_FAIL}
+    bootstrap: {branch: fix/CD-559-development-bootstrap-20261002, sha: 86c2da3bffd162a61665dce2180f509e40f35233, gate: LOCAL_INTEGRATED_CANDIDATE_NOT_HUMAN_ACCEPTED}
+    historical_bootstrap_test_snapshot: {sha: 45542854b8e3c9f9695ec33db93833cb284b49ca, gate: SELECTED_436_PASS_10_FAIL}
     p03: {branch: fix/CD-659-p03-readiness-20261002, sha: 95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef, gate: SELECTED_77_PASS_HUMAN_NOT_ACCEPTED}
   evidence_rule: never_combine_results_from_different_source_trees_as_full_suite_proof
   resume_rule: existing_PR52_then_exact_head_verification_then_explicit_delivery_then_owner_acceptance_then_merge

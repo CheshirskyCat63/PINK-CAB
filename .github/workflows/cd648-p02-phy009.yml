@@ -1,6 +1,10 @@
 name: CD-648 P02 PHY-009 Drivetrain Continuity
 # Scope-regression coverage is mandatory for this frozen P02 gate.
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
   pull_request:
     branches:
@@ -59,6 +63,8 @@ on:
       - 'scripts/ci/run-unreal-automation.ps1'
       - 'scripts/tests/test_materialize_local_lfs.py'
       - 'scripts/tests/test_p02_workflow_scope.py'
+      - 'scripts/ci/prepare_metaroad.py'
+      - 'scripts/ci/metaroad.lock.json'
       - '.github/workflows/cd648-p02-phy009.yml'
       - '.github/workflows/cd869-deliver.yml'
   workflow_dispatch:
@@ -131,6 +137,8 @@ jobs:
             if($LASTEXITCODE -ne 0){ throw 'PINKCAB_SCOPE_DIFF_FAILED' }
           }
           $physics=@($changed | Where-Object {
+            $_ -eq 'scripts/ci/prepare_metaroad.py' -or
+            $_ -eq 'scripts/ci/metaroad.lock.json' -or
             $_.StartsWith('Source/PinkCabVehicle/') -or
             $_.StartsWith('Source/PinkCabTests/Private/Vehicle/') -or
             $_.StartsWith('Source/PinkCab/Private/Vehicle/') -or
@@ -150,6 +158,13 @@ jobs:
           Write-Host "P02_PHY009_CHANGE_SCOPE run=$run changed=$($changed.Count) physics=$($physics.Count)"
           $changed | ForEach-Object { Write-Host "P02_PHY009_CHANGE_FILE=$_" }
           # PINKCAB_CHANGE_SCOPE_END
+
+      - name: Prepare pinned MetaRoad dependency
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Materialize verified local LFS fixtures
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
@@ -195,6 +210,7 @@ jobs:
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
+          # PINKCAB_P02_PREFLIGHT_BEGIN
           $ErrorActionPreference='Stop'
           $head=(git rev-parse HEAD).Trim()
           if(@(git status --porcelain --untracked-files=all).Count -ne 0){
@@ -205,6 +221,21 @@ jobs:
           if(-not $base){ throw 'P02_PHY009_BASELINE_MISMATCH' }
 
           $allowed=@(
+            # CD-559 reproducible, project-local vendor provisioning and runner lifecycle.
+            'README.md',
+            'docs/AUTHORITY.yaml',
+            'docs/PROJECT_SETUP.md',
+            'docs/README.md',
+            'scripts/ci/package_g1_recovery.py',
+            'scripts/tests/test_ci_powershell_environment.py',
+            '.github/workflows/cd869-inline.yml',
+            '.github/workflows/pinkcab-g1-github-control-plane.yml',
+            '.gitignore',
+            'scripts/build.ps1',
+            'scripts/ci/prepare_metaroad.py',
+            'scripts/ci/metaroad.lock.json',
+            'scripts/ci/start-pinkcab-runner.ps1',
+            'scripts/tests/test_prepare_metaroad.py',
             '.github/workflows/pinkcab-vehicle-physics-tdd.yml',
             '.github/workflows/cd648-p02-phy009.yml',
             '.github/workflows/cd869-deliver.yml',
@@ -278,6 +309,7 @@ jobs:
             'docs/vehicle_physics/TASKS.csv',
             'docs/vehicle_physics/TESTS.csv',
             'docs/vehicle_physics/GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md',
+            'scripts/tests/test_package_g1_recovery.py',
             'scripts/tests/test_p02_workflow_scope.py'
           )
           $changed=@(git diff --name-only "$base...HEAD")
@@ -287,6 +319,7 @@ jobs:
             throw 'P02_PHY009_SCOPE_GUARD_FAIL'
           }
           Write-Host "P02_PHY009_PREFLIGHT=PASS head=$head base=$base changed=$($changed.Count)"
+          # PINKCAB_P02_PREFLIGHT_END
 
       - name: Build PinkCabEditor
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
