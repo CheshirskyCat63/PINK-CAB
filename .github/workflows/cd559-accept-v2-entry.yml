@@ -1,4 +1,4 @@
-name: CD-559 Read-only Delivered P04 Verification
+name: CD-952 P04 Owner Acceptance and Closeout Inspection
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,101 +9,85 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  verify_handoff:
+  acceptance:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 5
     env:
+      GIT_OPTIONAL_LOCKS: '0'
       PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
     steps:
-      - name: Read installed candidate, single desktop entry and same-run physics receipts
+      - name: Verify accepted payload and preserve additive owner decision
+        shell: python
+        run: |
+          import datetime, hashlib, json, os, subprocess
+          from pathlib import Path
+          base=Path(r'E:\CHESHIRE_DIVISION')
+          root=base/'GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB'
+          main=base/'Games/PINK-CAB'
+          delivery=base/'Builds/PINKCAB/CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1'
+          fallback=base/'Builds/PINKCAB/CD869_ENDLESS_edf75e1b_RUN37117735294'
+          sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
+          report=base/'Artifacts/PINKCAB/Acceptance'/('CD952_'+os.environ['GITHUB_RUN_ID']+'_'+os.environ['GITHUB_RUN_ATTEMPT'])
+          report.mkdir(parents=True,exist_ok=False)
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as stream: stream.write('ACCEPTANCE_REPORT='+str(report)+'\n')
+          def digest(path):
+              with path.open('rb') as stream: return hashlib.file_digest(stream,'sha256').hexdigest()
+          manifest=json.loads((delivery/'PACKAGE_MANIFEST.json').read_text(encoding='utf-8-sig'))
+          assert manifest['candidateSha']==sha and str(manifest['deliveryRun'])=='37149462470'
+          payload=delivery/'Windows'
+          expected={item['path']:item for item in manifest['files']}
+          actual={p.relative_to(payload).as_posix():p for p in payload.rglob('*') if p.is_file() and 'saved' not in [s.lower() for s in p.relative_to(payload).parts]}
+          assert len(expected)==len(manifest['files'])==53 and set(expected)==set(actual)
+          for name,path in actual.items():
+              assert path.stat().st_size==expected[name]['bytes'] and digest(path)==expected[name]['sha256'], name
+          fallback_exe=fallback/'Windows/PinkCab/Binaries/Win64/PinkCab.exe'
+          assert fallback_exe.is_file()
+          original=root/'Saved/GitHubGate/Delivery_37149462470_1'
+          for name in ('HANDOFF.json','PACKAGE_MANIFEST.json','PINCKCAB.previous.lnk','HUMAN_LAUNCH.log'):
+              p=original/name
+              if p.is_file(): (report/name).write_bytes(p.read_bytes())
+          record={'schema':1,'status':'HUMAN_ACCEPTED','scope':'P04 measured gearing candidate, not full vehicle or release acceptance','candidate_sha':sha,'delivery_run':'37149462470','delivery_attempt':1,'pull_request':62,'administrative_issue':'CD-952','owner_decision_date':'2026-10-03','owner_statement':'\u043e\u0447\u0435\u043d\u044c \u0445\u043e\u0440\u043e\u0448\u043e! \u043f\u0440\u0438\u043d\u0438\u043c\u0430\u044e! 100% \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u0438\u0432\u043a\u0438 \u0437\u0430\u043a\u0440\u044b\u0442\u044c \u043d\u0443\u0436\u043d\u043e','recorded_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'installed_package':str(delivery),'package_manifest_sha256':digest(delivery/'PACKAGE_MANIFEST.json'),'payload_files':len(actual),'previous_accepted_sha':'edf75e1b91742237d14ba9dfe76284993da77d17','previous_accepted_package':str(fallback),'previous_exe_sha256':digest(fallback_exe),'human_accepted':True,'full_p04_complete':False,'full_vehicle_complete':False,'release_accepted':False,'original_handoff_unchanged':True}
+          sidecar=delivery/'OWNER_ACCEPTANCE.json'
+          if sidecar.exists():
+              existing=json.loads(sidecar.read_text(encoding='utf-8'))
+              assert existing['candidate_sha']==sha and existing['human_accepted'] is True
+              record=existing
+          else:
+              with sidecar.open('x',encoding='utf-8',newline='\n') as stream: json.dump(record,stream,ensure_ascii=False,indent=2)
+          (report/'OWNER_ACCEPTANCE.json').write_bytes(sidecar.read_bytes())
+          inventory=[]
+          for label,repo in [('primary',main),('runner',root)]:
+              def git(*args): return subprocess.run(['git','-C',str(repo),*args],check=True,capture_output=True).stdout
+              head=git('rev-parse','HEAD').decode().strip()
+              branch=git('branch','--show-current').decode().strip()
+              status=git('status','--porcelain=v1','--untracked-files=all').decode('utf-8',errors='replace')
+              (report/(label+'-status.txt')).write_text(status,encoding='utf-8')
+              (report/(label+'-diff.stat')).write_bytes(git('diff','--stat'))
+              inventory.append({'kind':label,'path':str(repo),'head':head,'branch':branch,'status_entries':len(status.splitlines()),'status':status})
+          (report/'WORKSPACES.json').write_text(json.dumps(inventory,indent=2),encoding='utf-8')
+          names=[str(p) for rootdir in (base/'Config',base/'Builds/PINKCAB') for p in rootdir.iterdir() if 'accept' in p.name.lower() or 'current' in p.name.lower()]
+          (report/'EXISTING_ACCEPTANCE_POINTERS.json').write_text(json.dumps(names,indent=2),encoding='utf-8')
+          print(json.dumps({'owner_accepted':True,'candidate':sha,'payload_files':53,'receipt':str(sidecar),'workspaces':[{k:v for k,v in row.items() if k!='status'} for row in inventory]}))
+      - name: Read desktop targets and project-owned active processes without changing them
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          $sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
-          $run='37149462470'
-          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
-          $delivery='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1'
-          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $gate=Join-Path $root 'Saved\GitHubGate'
-          $handoffPath=Join-Path $gate 'Delivery_37149462470_1\HANDOFF.json'
-          $report=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Recovery' ('POST_HANDOFF_'+$env:GITHUB_RUN_ID+'_ATTEMPT'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $report){throw 'Audit destination already exists'}
-          New-Item -ItemType Directory -Path $report | Out-Null
-          "AUDIT_REPORT=$report" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          $env:AUDIT_REPORT=$report
-          $h=Get-Content -LiteralPath $handoffPath -Raw | ConvertFrom-Json
-          if($h.status -ne 'DELIVERED_HUMAN_PENDING' -or $h.candidate -ne $sha -or $h.target -ne $inner -or $h.humanAccepted -ne $false -or -not $h.wheels4 -or -not $h.roadMaterials -or $h.criticalCount -ne 0 -or $h.windowHandle -le 0){throw 'Unexpected handoff receipt; nothing modified'}
-          Copy-Item -LiteralPath $handoffPath -Destination (Join-Path $report 'HANDOFF.json')
-          Copy-Item -LiteralPath (Join-Path $delivery 'PACKAGE_MANIFEST.json') -Destination (Join-Path $report 'PACKAGE_MANIFEST.json')
-          if(-not (Test-Path -LiteralPath $inner) -or -not (Test-Path -LiteralPath $accepted)){throw 'Candidate or accepted fallback missing'}
           $ws=New-Object -ComObject WScript.Shell
-          $shortcuts=@(foreach($desktop in @('C:\Users\CheCat\Desktop','C:\Users\Public\Desktop')){
-            foreach($file in @(Get-ChildItem -LiteralPath $desktop -File -Force -Filter '*.lnk' -ErrorAction SilentlyContinue | Where-Object {$_.BaseName -match '^(?i:PIN[CK ]*CAB)'})){
-              $link=$ws.CreateShortcut($file.FullName)
-              [pscustomobject]@{path=$file.FullName;target=$link.TargetPath;arguments=$link.Arguments;exists=(Test-Path -LiteralPath $link.TargetPath)}
+          $links=@(foreach($desktop in @('C:\Users\CheCat\Desktop','C:\Users\Public\Desktop','C:\Users\CheCat\Desktop\CHESHIRE_STUDIO')){
+            foreach($f in @(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File -ErrorAction SilentlyContinue | Where-Object {$_.BaseName -match '(?i)PIN[CK ]*CAB'})){
+              $s=$ws.CreateShortcut($f.FullName)
+              [pscustomobject]@{path=$f.FullName;target=$s.TargetPath;arguments=$s.Arguments;description=$s.Description}
             }
           })
-          ConvertTo-Json -InputObject $shortcuts -Depth 4 | Set-Content (Join-Path $report 'DESKTOP_ENTRIES.json') -Encoding utf8
-          if($shortcuts.Count -ne 1 -or $shortcuts[0].path -ne 'C:\Users\CheCat\Desktop\PINCKCAB.lnk' -or $shortcuts[0].target -ne $inner -or -not $shortcuts[0].exists){throw 'Single PINCKCAB desktop contract failed; all links left untouched'}
-          $previous=$ws.CreateShortcut([string]$h.previousShortcutBackup)
-          if($previous.TargetPath -ne $accepted){throw 'Prior desktop fallback is not accepted V2'}
-          $proc=Get-Process -Id ([int]$h.pid) -ErrorAction SilentlyContinue
-          $live=@{recordedPid=$h.pid;currentlyRunning=($null -ne $proc);currentlyVisible=($proc -and $proc.MainWindowHandle -ne 0);acceptedV2Exists=$true}
-          $live | ConvertTo-Json | Set-Content (Join-Path $report 'CURRENT_RUNTIME.json') -Encoding utf8
-          $script=@'
-          import hashlib, json, os, re
-          from pathlib import Path
-          root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
-          delivery=Path(r'E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1')
-          out=Path(os.environ['AUDIT_REPORT'])
-          sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
-          run='37149462470'
-          def digest(path):
-              h=hashlib.sha256()
-              with path.open('rb') as source:
-                  for block in iter(lambda:source.read(1024*1024),b''): h.update(block)
-              return h.hexdigest()
-          m=json.loads((delivery/'PACKAGE_MANIFEST.json').read_text(encoding='utf-8-sig'))
-          assert m['candidateSha']==sha and str(m['deliveryRun'])==run and str(m['attempt'])=='1'
-          assert m['humanAccepted'] is False
-          payload=delivery/'Windows'
-          expected={item['path']:item for item in m['files']}
-          assert len(expected)==len(m['files']) and len(expected)>2
-          actual={path.relative_to(payload).as_posix():path for path in payload.rglob('*')
-                  if path.is_file() and 'saved' not in [part.lower() for part in path.relative_to(payload).parts]}
-          assert set(actual)==set(expected), 'Installed payload path set differs'
-          for name,path in actual.items():
-              assert path.stat().st_size==expected[name]['bytes'], 'Size mismatch '+name
-              assert digest(path)==expected[name]['sha256'], 'Hash mismatch '+name
-          gate=root/'Saved/GitHubGate'
-          pm=json.loads((gate/'P02_PHYSICS_ACCEPTANCE.json').read_text(encoding='utf-8-sig'))
-          assert pm['candidate_sha']==sha and str(pm['run_id'])==run and str(pm['run_attempt'])=='1'
-          assert pm['result']=='success' and pm['d3_unique_samples']==240 and len(pm['passed_tests'])==63
-          assert digest(gate/'P02_PHYSICS_FULL.log')==pm['log_sha256']
-          (out/'P02_PHYSICS_ACCEPTANCE.json').write_bytes((gate/'P02_PHYSICS_ACCEPTANCE.json').read_bytes())
-          (out/'P02_PHYSICS_FULL.log').write_bytes((gate/'P02_PHYSICS_FULL.log').read_bytes())
-          for repeat in range(1,6):
-              source=gate/f'P01_SLOPE_REPEAT_{repeat}.log'
-              text=source.read_text(encoding='utf-8-sig',errors='replace')
-              assert re.search(r'Test Completed\. Result=\{Success\}.*Path=\{PinkCab\.Vehicle\.Physics\.EngineState\.LiveOffNeutralSlope\}',text)
-              assert 'Test Completed. Result={Fail}' not in text
-              (out/source.name).write_bytes(source.read_bytes())
-          result={'candidate':sha,'deliveryRun':run,'payloadFiles':len(actual),'payloadBytes':sum(p.stat().st_size for p in actual.values()),
-                  'allPayloadHashesVerified':True,'physicsPassed':63,'matrixCases':240,'slopeRepeats':5,'humanAccepted':False,
-                  'mutatedGameOrShortcut':False,'auditUtc':__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
-          (out/'POST_HANDOFF_AUDIT.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-          print(json.dumps(result))
-          '@
-          python -c $script
-          if($LASTEXITCODE -ne 0){throw 'Installed payload or same-run physics proof failed'}
-          Write-Host 'PINKCAB_POST_HANDOFF_READ_ONLY_AUDIT=PASS'
-      - name: Retain read-only handoff audit
-        if: always() && env.AUDIT_REPORT != ''
+          ConvertTo-Json -InputObject $links -Depth 4 | Set-Content (Join-Path $env:ACCEPTANCE_REPORT 'DESKTOP.json') -Encoding UTF8
+          Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|PinkCab|Kukuruza)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool')} | Select-Object Name,ProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:ACCEPTANCE_REPORT 'PROCESSES.json') -Encoding UTF8
+          Write-Host 'P04_OWNER_ACCEPTANCE_RECORDED; workspace cleanup and integration remain separate'
+      - name: Retain acceptance and closeout inspection
+        if: always() && env.ACCEPTANCE_REPORT != ''
         uses: actions/upload-artifact@v4
         with:
-          name: p04-delivered-audit-${{ github.run_id }}
-          path: ${{ env.AUDIT_REPORT }}
+          name: p04-owner-acceptance-${{ github.run_id }}
+          path: ${{ env.ACCEPTANCE_REPORT }}
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
