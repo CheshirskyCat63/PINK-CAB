@@ -115,5 +115,25 @@ class CanonicalHumanDeliveryContractTests(unittest.TestCase):
         self.assertIs(self.document['concurrency']['cancel-in-progress'], False)
 
 
+    @unittest.skipUnless(POWERSHELL, 'PowerShell executes the real publication primitive')
+    def test_real_atomic_publication_call_accepts_null_backup_on_windows_powershell(self):
+        import re
+        text = self.script('Verify visible candidate and replace only PINCKCAB entry')
+        calls = re.findall(r'^\s*(\[IO.File\]::Replace\([^\r\n]+)\s*$', text, re.MULTILINE)
+        self.assertEqual(len(calls), 1)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, target = root / 'new.lnk', root / 'PINCKCAB.lnk'
+            source.write_bytes(b'candidate')
+            target.write_bytes(b'accepted')
+            script = root / 'publication.ps1'
+            script.write_text("$ErrorActionPreference='Stop'\n$temp=$env:TEST_SOURCE\n$linkPath=$env:TEST_TARGET\n" + calls[0], encoding='utf-8')
+            result = subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-File', str(script)],
+                                    env={**os.environ, 'TEST_SOURCE': str(source), 'TEST_TARGET': str(target)},
+                                    capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(target.read_bytes(), b'candidate')
+            self.assertFalse(source.exists())
+
 if __name__ == '__main__':
     unittest.main()
