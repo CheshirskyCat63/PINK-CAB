@@ -429,8 +429,11 @@ bool FPinkCabP04ProfileTableTest::RunTest(const FString&)
 class FPinkCabP04BaselineCommand final : public IAutomationLatentCommand
 {
 public:
-    explicit FPinkCabP04BaselineCommand(FAutomationTestBase* InTest, bool bInRatioProbe = false)
-        : Test(InTest), WallStart(FPlatformTime::Seconds()), bRatioProbe(bInRatioProbe) {}
+    explicit FPinkCabP04BaselineCommand(
+        FAutomationTestBase* InTest, bool bInRatioProbe = false,
+        bool bInEngineCoherence = false)
+        : Test(InTest), WallStart(FPlatformTime::Seconds())
+        , bRatioProbe(bInRatioProbe), bEngineCoherence(bInEngineCoherence) {}
     virtual bool Update() override
     {
         using namespace PinkCabDrivelineRuntimeTest;
@@ -491,6 +494,13 @@ public:
             Controls.SetBrake(0.0f);
             Controls.SetThrottle(Dose());
             Controls.SetDriveline(Gear(), Gear(), 0.0f);
+            if (bEngineCoherence
+                && !Movement->BeginPinkCabMechanicalEvidenceWindow(0.0f, 4.0f))
+            {
+                Test->AddError(TEXT("P04 engine coherence evidence unavailable"));
+                Cleanup(*World);
+                return true;
+            }
             return false;
         }
         const double PreviousTime = Elapsed;
@@ -553,9 +563,25 @@ public:
             bRatioProbe ? TEXT("P04_RATIO_PROBE") : TEXT("P04_ACCEL_BASELINE"),
             Movement->TransmissionSetup.ForwardGearRatios[0], Gear(), Dose(), CaseIndex % 3 + 1, BodyMassKg, DriveEndTime, EndDriveSpeed, EndDriveRpm,
             Time30, Time60, PeakRpm, PeakRearTorque, PeakSlipSpeedMps, DirectionalSpeed, Torque));
-        if (++CaseIndex == 18)
+        if (bEngineCoherence)
         {
-            Test->AddInfo(bRatioProbe
+            FPinkCabMechanicalEvidenceSnapshot Evidence;
+            const bool bRead = Movement->ReadPinkCabMechanicalEvidenceWindow(Evidence);
+            Test->TestTrue(TEXT("P04 engine coherence window completed"), bRead && Evidence.bComplete);
+            Test->AddInfo(FString::Printf(
+                TEXT("P04_ENGINE_COHERENCE repeat=%d steps=%d max_input_state_error_rpm=%.6f speed_end_kmh=%.3f"),
+                CaseIndex + 1, Evidence.CompletedSampleSteps,
+                Evidence.MaxEngineInputStateErrorRpm, EndDriveSpeed));
+            Test->TestTrue(
+                TEXT("P04 clutch predictor consumes the actual same-step engine angular state"),
+                bRead && Evidence.bComplete
+                    && Evidence.MaxEngineInputStateErrorRpm <= 1.0f);
+        }
+        if (++CaseIndex == (bEngineCoherence ? 3 : 18))
+        {
+            Test->AddInfo(bEngineCoherence
+                ? TEXT("P04_ENGINE_COHERENCE_COMPLETE cases=3 physics_changed=0")
+                : bRatioProbe
                 ? TEXT("P04_RATIO_PROBE_COMPLETE cases=18 production_profile_changed=0 tuning_accepted=0")
                 : TEXT("P04_BASELINE_COMPLETE cases=18 profile_changed=0 tuning_accepted=0"));
             Cleanup(*World);
@@ -568,6 +594,7 @@ private:
     int32 Gear() const { return bRatioProbe || CaseIndex < 9 ? 1 : -1; }
     float Dose() const
     {
+        if (bEngineCoherence) return 0.50f;
         if (bRatioProbe) return (CaseIndex / 3) % 2 == 0 ? 0.50f : 1.00f;
         const float Values[] = {0.25f, 0.50f, 1.00f}; return Values[(CaseIndex / 3) % 3];
     }
@@ -609,6 +636,7 @@ private:
     int32 TorqueSamples = 0, MinimumContacts = 4;
     bool bInitialized = false, bSettling = true, bCoasting = false;
     const bool bRatioProbe;
+    const bool bEngineCoherence;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04BaselineRuntimeTest,
@@ -629,6 +657,18 @@ bool FPinkCabP04RatioProbeRuntimeTest::RunTest(const FString&)
 {
     if (!TestTrue(TEXT("P04 comparison fixture map opens"), AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, true));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04EngineStateCoherenceTest,
+    "PinkCab.Vehicle.Physics.P04.EngineStateCoherence",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04EngineStateCoherenceTest::RunTest(const FString&)
+{
+    if (!TestTrue(TEXT("P04 engine coherence fixture opens"),
+        AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, false, true));
     return true;
 }
 

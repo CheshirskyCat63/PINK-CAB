@@ -131,6 +131,9 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
         Engine.GetEngineRPM();
     const float EngineOmegaBeforeNative =
         Engine.GetEngineOmega();
+    LastEngineInputStateErrorRpm = FMath::Abs(
+        EngineRpmBeforeNative
+        - EngineOmegaBeforeNative / PinkCabChaosRpmToRadPerSecond);
     AdvanceAcceptedNativeEngine(Transmission, DeltaTime);
     const float EngineOmegaAfterNative =
         Engine.GetEngineOmega();
