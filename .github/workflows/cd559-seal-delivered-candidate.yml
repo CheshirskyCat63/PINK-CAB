@@ -1,0 +1,128 @@
+name: CD-559 Seal Delivered P03 Candidate
+on:
+  push:
+    branches: [ops/CD-559-restore-playable-entry-20261003]
+    paths: [.github/workflows/cd559-seal-delivered-candidate.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: pinkcab-delivered-candidate-seal
+  cancel-in-progress: false
+jobs:
+  seal:
+    if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 10
+    steps:
+      - name: Preserve delivery evidence and restore only owned generated runner changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V' -or $env:USERNAME -ne 'CheCat'){throw 'Unexpected execution host'}
+          if(@(Get-Process UnrealEditor,UnrealEditor-Cmd,AutomationTool,UnrealBuildTool -ErrorAction SilentlyContinue).Count -gt 0 -or @(Get-Process Runner.Worker -ErrorAction SilentlyContinue).Count -gt 1){throw 'Host busy; no process or source changed'}
+          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json'}
+          $api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
+          $run=Invoke-RestMethod -Headers $headers -Uri "$api/actions/runs/37117735294"
+          if($run.status -ne 'completed' -or $run.conclusion -ne 'success' -or $run.head_sha -ne 'f341b0a58d539fcb989fa9683d80b4df282d535e'){throw 'Verified delivery is not complete'}
+          $expected='edf75e1b91742237d14ba9dfe76284993da77d17'
+          $work='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          if([IO.Path]::GetFullPath($env:GITHUB_WORKSPACE).TrimEnd('\') -ne $work){throw 'Unexpected workspace'}
+          $parent='E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Delivery\37117735294'
+          $pre=Get-Content (Join-Path $parent 'preflight.json') -Raw | ConvertFrom-Json
+          $handoff=Get-Content (Join-Path $parent 'handoff-attempt-1\HANDOFF.json') -Raw | ConvertFrom-Json
+          if(-not $pre.workspaceInitiallyClean -or $pre.candidate -ne $expected -or $handoff.candidate -ne $expected -or $handoff.status -ne 'DELIVERED_HUMAN_PENDING'){throw 'Missing exact preflight/handoff authority'}
+          $recorded=@(Get-Content (Join-Path $parent 'handoff-attempt-1\runner-after-authoring.txt'))
+          $current=@(git -C $work status --porcelain --untracked-files=all)
+          if($recorded.Count -ne $current.Count -or @(Compare-Object $recorded $current).Count -gt 0){throw 'Runner changes differ from delivery receipt; no restore authorised'}
+          $out=Join-Path $parent ('closeout-'+$env:GITHUB_RUN_ID)
+          if(Test-Path -LiteralPath $out){throw 'Closeout evidence already exists'}
+          New-Item -ItemType Directory -Path $out | Out-Null
+          "SEAL_ROOT=$out" | Out-File $env:GITHUB_ENV -Append
+          $logs=Join-Path $out 'Logs'
+          New-Item -ItemType Directory -Path $logs | Out-Null
+          $gate=Join-Path $work 'Saved\GitHubGate'
+          $required=@('P03_CONTROL_RUNTIME.log','VEHICLE_PHYSICS_TDD.log','PHYSICS_ACCEPTANCE.json','CD869_FAST_DELIVERY_SMOKE.log')
+          $required+=@(1..5 | ForEach-Object {"P01_SLOPE_REPEAT_$_.log"})
+          $minimum=[DateTime]::Parse('2026-10-03T10:36:50Z').ToUniversalTime()
+          foreach($name in $required){
+            $file=Get-Item -LiteralPath (Join-Path $gate $name)
+            if($file.LastWriteTimeUtc -lt $minimum){throw ('Stale evidence: '+$name)}
+          }
+          $receipts=@()
+          foreach($file in @(Get-ChildItem -LiteralPath $gate -File | Where-Object {$_.LastWriteTimeUtc -ge $minimum -and $_.Name -match '^(P03_CONTROL_RUNTIME|P01_SLOPE_REPEAT_|VEHICLE_PHYSICS_|PHYSICS_ACCEPTANCE|CD869_).*\.(log|json|txt)$'})){
+            $target=Join-Path $logs $file.Name
+            Copy-Item -LiteralPath $file.FullName -Destination $target
+            $hash=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+            if($hash -ne (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()){throw 'Evidence copy mismatch'}
+            $receipts+=@{file=$file.Name;sha256=$hash;bytes=$file.Length}
+          }
+          $receipts | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'log-manifest.json') -Encoding utf8
+          $response=Invoke-RestMethod -Headers $headers -Uri "$api/contents/scripts/ops/seal-owned-delivery-workspace.py?ref=325500dabfe855b5f11d2dd4934123651255373a"
+          $script=Join-Path $out 'seal-owned-delivery-workspace.py'
+          [IO.File]::WriteAllBytes($script,[Convert]::FromBase64String($response.content))
+          if((Get-FileHash -LiteralPath $script -Algorithm SHA256).Hash.ToLowerInvariant() -ne '685e55a58b6ade847d6a524940104e64577328978a398f743621407db617a234'){throw 'Reviewed preservation script hash mismatch'}
+          python $script $work (Join-Path $out 'RunnerSource') $expected
+          if($LASTEXITCODE -ne 0){throw 'Owned runner restoration failed; retained evidence and packages unchanged'}
+          python (Join-Path $work 'scripts\ci\acceptance_contract.py') workspace --root $work --sha $expected
+          if($LASTEXITCODE -ne 0){throw 'Restored warm-workspace verification failed'}
+          $manifest=Get-Content (Join-Path $parent 'handoff-attempt-1\PACKAGE_MANIFEST.json') -Raw | ConvertFrom-Json
+          $exe=Join-Path $handoff.delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $entry=@($manifest.files | Where-Object {$_.path -eq 'PinkCab/Binaries/Win64/PinkCab.exe'})
+          if($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry[0].sha256){throw 'Delivered executable changed'}
+          $ws=New-Object -ComObject WScript.Shell
+          $links=@()
+          foreach($name in @('PINKCAB P03 TEST.lnk','PINKCAB Latest.lnk','PINKCAB PLAY - P02 ACCEPTED.lnk','CHESHIRE_STUDIO\PINKCAB_Test.lnk')){
+            $path=Join-Path $pre.desktop $name
+            if(-not (Test-Path -LiteralPath $path)){throw ('Missing playable shortcut: '+$name)}
+            $link=$ws.CreateShortcut($path)
+            if(-not (Test-Path -LiteralPath $link.TargetPath)){throw ('Broken playable shortcut: '+$name)}
+            $expectedRoot=if($name -eq 'PINKCAB PLAY - P02 ACCEPTED.lnk'){$pre.acceptedP02}else{$handoff.delivery}
+            if(-not $link.TargetPath.StartsWith($expectedRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw ('Shortcut points to a different candidate: '+$name)}
+            $links+=@{name=$name;target=$link.TargetPath;arguments=$link.Arguments}
+          }
+          $canonical='E:\CHESHIRE_DIVISION\Games\PINK-CAB'
+          $canonicalHead=(git -C $canonical rev-parse HEAD).Trim()
+          $canonicalStatus=@(git -C $canonical status --porcelain --untracked-files=all)
+          $processes=@(Get-Process PinkCab -ErrorAction SilentlyContinue | ForEach-Object {@{pid=$_.Id;session=$_.SessionId;path=$_.Path;windowHandle=$_.MainWindowHandle.ToInt64()}})
+          $engine=Get-Content 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\Build.version' -Raw | ConvertFrom-Json
+          @{candidate=$expected;ciRun='37116996219';deliveryRun='37117735294';delivery=$handoff.delivery;runnerClean=$true;canonicalHead=$canonicalHead;canonicalStatus=$canonicalStatus;canonicalMutated=$false;engine=$engine;logs=$receipts;shortcuts=$links;processes=$processes;humanAccepted=$false} | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'CLOSEOUT.json') -Encoding utf8
+          Write-Host ('P03_DELIVERY_CLOSEOUT=PASS '+$out)
+      - name: Preserve small verification receipts and logs
+        if: always() && env.SEAL_ROOT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: p03-delivery-closeout-${{ github.run_id }}
+          path: |
+            ${{ env.SEAL_ROOT }}/*.json
+            ${{ env.SEAL_ROOT }}/Logs/
+            ${{ env.SEAL_ROOT }}/RunnerSource/*.json
+          retention-days: 30
+          if-no-files-found: error
+      - name: Retire this task's temporary workflows without removing history
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json'}
+          $api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
+          $runs=@{
+            '37116393701'='.github/workflows/cd559-restore-playable-entry.yml'
+            '37116587519'='.github/workflows/cd649-prepare-consolidated-candidate.yml'
+            '37117735294'='.github/workflows/cd559-verified-p03-handoff.yml'
+          }
+          $runs[$env:GITHUB_RUN_ID]='.github/workflows/cd559-seal-delivered-candidate.yml'
+          foreach($id in $runs.Keys){
+            $run=Invoke-RestMethod -Headers $headers -Uri "$api/actions/runs/$id"
+            if($run.path -ne $runs[$id] -or $run.head_branch -ne 'ops/CD-559-restore-playable-entry-20261003'){throw 'Refusing to retire a non-task workflow'}
+            $main=Invoke-WebRequest -Headers $headers -Uri ($api+'/contents/'+$run.path+'?ref=main') -SkipHttpErrorCheck
+            if($main.StatusCode -ne 404){throw 'Workflow belongs to main or absence could not be verified'}
+            Invoke-RestMethod -Method Put -Headers $headers -Uri ($api+'/actions/workflows/'+$run.workflow_id+'/disable') | Out-Null
+            $read=Invoke-RestMethod -Headers $headers -Uri ($api+'/actions/workflows/'+$run.workflow_id)
+            if($read.state -ne 'disabled_manually'){throw 'Temporary workflow retirement readback failed'}
+            Write-Host ('TEMPORARY_WORKFLOW_RETIRED='+$run.path+' id='+$run.workflow_id)
+          }
