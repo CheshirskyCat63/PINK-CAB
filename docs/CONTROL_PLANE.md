@@ -91,7 +91,7 @@ PINK-CAB remains **FREE-FIRST / RESOURCE-CONSTRAINED**.
 
 ## Integration and delivery controls
 
-Every main change requires a PR, an up-to-date branch, the GitHub-hosted `Repository verification` check and resolved conversations. Rules include administrators; force-push and deletion are prohibited. Required reviewer count is zero for the current single-owner team; this does not claim independent review.
+Every main change requires a PR, an up-to-date branch, both GitHub Actions checks `Repository verification` and `Gameplay acceptance gate`, and resolved conversations. Both required checks are pinned to the GitHub Actions app; strict up-to-date enforcement is enabled. Rules include administrators; force-push and deletion are prohibited. Required reviewer count is zero for the current single-owner team; this does not claim independent review.
 
 The automatic coordinator is `pinkcab-repository-verification.yml`. It classifies the complete PR merge-base range (or the complete push before/after range). Only known documentation/administrative paths may skip Unreal; code, content, configuration, CI, the executable writer inventory and unknown paths require runtime checks. Missing scope/history fails closed.
 
@@ -99,7 +99,7 @@ For runtime changes, the existing TDD workflow runs the full physics suite once,
 
 Use **Re-run all jobs** for a failed coordinated run. Re-running only a downstream failed job creates a new run attempt without a matching TDD receipt and intentionally fails closed; previous-attempt evidence is not silently reused.
 
-`Gameplay acceptance gate` always evaluates the static, TDD and P02 results. Runtime changes require successful results from every needed job; failed, cancelled, skipped or missing runtime evidence cannot pass. Administrative-only changes explicitly report N/A for gameplay. Activate this check in branch protection only after a successful exact-candidate run; until the repository setting is updated it is an implemented gate, not a claimed enforced setting.
+`Gameplay acceptance gate` always evaluates the static, TDD and P02 results. Runtime changes require successful results from every needed job; failed, cancelled, skipped or missing runtime evidence cannot pass. Administrative-only changes explicitly report N/A for gameplay. Both required contexts were activated and read back from GitHub on 2026-10-03 after PR #57 candidate `4f25b8e1ecbdd98808787035df07b8fc566a90df` passed run `37094358590`: 71 script tests, 47 physics tests, the exact 240-case D3 grid and five independent slope repeats. That coordinated run took 12 minutes 50 seconds from its first job start through the aggregate gate. It proves the automated candidate checks; it does not certify a new packaged delivery or P03 human acceptance.
 
 Self-hosted checkouts retain Unreal caches. Before building, exact SHA, tracked/untracked cleanliness, ignored authored input roots and the pinned MetaRoad package are checked. The normal UBT build still runs; cached output is never itself accepted as evidence. Unexpected authored leftovers fail and must be investigated instead of silently removed. Clean-checkout reproducibility remains a separate CD-559 obligation.
 
