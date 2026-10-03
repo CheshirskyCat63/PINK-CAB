@@ -16,7 +16,6 @@ control_plane_cleanup:
   diagnostic_pr: 47
   gameplay_gate: P03_HUMAN_REJECTED_CORRECTIVE_WORK
   next_stage: P04_BLOCKED
-  required_status_check: Repository verification
   required_status_checks: [Repository verification, Gameplay acceptance gate]
   acceptance_gate_activation: ENABLED_2026_10_03_AFTER_EXACT_CANDIDATE_PASS
   acceptance_gate_evidence: {pr: 57, sha: 4f25b8e1ecbdd98808787035df07b8fc566a90df, actions_run: 37094358590}
