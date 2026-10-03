@@ -11,11 +11,13 @@ control_plane_cleanup:
   owner: CD-559
   historical_cleanup_owner: CD-868
   canonical_target_branch: main
-  active_gameplay_pr: 52
-  active_gameplay_branch: feat/cd649-p03-steering-transfer
+  active_gameplay_pr: null
+  accepted_gameplay_pr: 62
+  administrative_closeout_owner: CD-952
+  active_gameplay_branch: main
   diagnostic_pr: 47
-  gameplay_gate: P03_HUMAN_REJECTED_CORRECTIVE_WORK
-  next_stage: P04_BLOCKED
+  gameplay_gate: P04_BOUNDED_GEARING_HUMAN_ACCEPTED_INTEGRATED
+  next_stage: P04_REMAINING_PERFORMANCE_CALIBRATION_THEN_P05
   required_status_checks: [Repository verification, Gameplay acceptance gate]
   acceptance_gate_activation: ENABLED_2026_10_03_AFTER_EXACT_CANDIDATE_PASS
   acceptance_gate_evidence: {pr: 57, sha: 4f25b8e1ecbdd98808787035df07b8fc566a90df, actions_run: 37094358590}
@@ -40,21 +42,40 @@ control_plane_cleanup:
   p02_human_delivery_input: deliver_human_true
   delivery_does_not_equal_acceptance: true
   infrastructure_gate: CD-559_IN_PROGRESS
-  current_workflow_lanes: [fast, human_gate, release_gate]
+  current_workflow_lanes: [repository_verification, p02_explicit_human_delivery]
+  auxiliary_historical_g1_lanes: [fast, human_gate, release_gate]
   accepted_working_baseline:
-    stage: P02
-    source_sha: 8d68e456d1944be295281535cf9fd103ecf05d52
-    actions_run: 36868646970
-    owner_acceptance: ACCEPTED_2026_10_01
-    runtime_integration_pr: 49
-    runtime_integration_sha: 104295ab6329e85b5998e8df298770255ad2dd05
-    delivery_root: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970
-  preparation_candidates:
+    stage: P04_BOUNDED_MEASURED_GEARING
+    source_sha: 52239b61bc80e5a63716b9b09b87c520fa09fd05
+    actions_run: 37149462470
+    actions_attempt: 1
+    owner_acceptance: ACCEPTED_2026_10_03
+    owner_acceptance_receipt: OWNER_ACCEPTANCE.json
+    owner_acceptance_record_run: 37152180059
+    runtime_integration_pr: 62
+    runtime_integration_sha: 4a313d38f0674a3e5048f832a07428defa31ab62
+    delivery_root: E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1
+    desktop_entry: PINCKCAB.lnk
+    payload_files_verified: 53
+    verification_run: 37148042881
+    installed_audit_run: 37151172013
+    full_p04_complete: false
+    full_product_release_accepted: false
+  previous_accepted_baselines:
+    p03_v2:
+      source_sha: edf75e1b91742237d14ba9dfe76284993da77d17
+      actions_run: 37117735294
+      status: RETAINED
+    p02:
+      source_sha: 8d68e456d1944be295281535cf9fd103ecf05d52
+      actions_run: 36868646970
+      status: RETAINED
+  historical_preparation_candidates:
     bootstrap: {branch: fix/CD-559-development-bootstrap-20261002, sha: 86c2da3bffd162a61665dce2180f509e40f35233, gate: LOCAL_INTEGRATED_CANDIDATE_NOT_HUMAN_ACCEPTED}
     historical_bootstrap_test_snapshot: {sha: 45542854b8e3c9f9695ec33db93833cb284b49ca, gate: SELECTED_436_PASS_10_FAIL}
     p03: {branch: fix/CD-659-p03-readiness-20261002, sha: 95dafd4cfbe89d4ab6921b1901b0e3ab97b869ef, gate: SELECTED_77_PASS_HUMAN_NOT_ACCEPTED}
   evidence_rule: never_combine_results_from_different_source_trees_as_full_suite_proof
-  resume_rule: existing_PR52_then_exact_head_verification_then_explicit_delivery_then_owner_acceptance_then_merge
+  resume_rule: main_then_one_task_PR_then_exact_checks_then_required_owner_gate_then_merge
 
 historical_control_plane_cleanup_20260923:
   remaining_admin_gates:
@@ -119,7 +140,7 @@ maturity:
   canon: defined
   specification: partial
   implementation: core_code_complete_primitive_only
-  verification: owner_accepted_P02_8d68e456_with_P03_correction_open
+  verification: owner_accepted_P04_bounded_52239b61_remaining_performance_and_release_open
   truth_rule: CANON_to_SPECIFIED_to_IMPLEMENTED_to_VERIFIED
   documentation_never_equals_runtime_verification: true
 

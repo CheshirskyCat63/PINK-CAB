@@ -6,7 +6,7 @@
 **P01 accepted runtime baseline:** `269d8b4b5b79f33eb2160d177a282c3cec965772` (corrective stall + clean-delivery integration).  
 **PHY-001 frozen rollback baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`, run **36213319172**.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point:** **P02 HUMAN ACCEPTED / INTEGRATED / FROZEN** on exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; PR #49 is squash-merged to canonical `main@104295ab6329e85b5998e8df298770255ad2dd05`. **P03 is READY** under CD-649 but implementation has not started; current road work may proceed independently under its own R-gates.  
+**Current execution point (2026-10-03):** bounded P04 gearing HUMAN ACCEPTED / INTEGRATED, source52239b61 / delivery37149462470 attempt1 / PR62 integration4a313d38. P03/V2edf75e1b and P02 retained. CD952 owns administrative closeout; CD641 retains remaining PHY017..020; P05-P11 and full release are not complete.
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
 ## Non-negotiable player-mechanic locks
@@ -35,9 +35,9 @@ Accessibility comes from the car and the input mapping, not from trajectory resc
 
 This is the acceptance doctrine for P00–P11; it does not change the accepted control grammar.
 
-## Verified current-code facts that force this program
+## Historical audited-code facts that motivated this program
 
-At exact audited `main`:
+At the historical exact audit checkpoint, not current P04. P02 centralized RPM/torque ownership, accepted P03 removed speed-driven held-target steering shrink, and accepted P04 uses first/reverse4.0 with calibration7. Dated values below are provenance, not current-profile overrides:
 
 - P01 exact main uses **IdleRPM 925**, **MaxRPM 8500**, **MaxTorque 260 Nm**, explicit **EngineRevDownRate 1800**, ~**250 hp** design test, final drive **3.2**, forward ratios **4.6/2.2/1.5/1.1/0.85**, reverse **4.6**. Current profile identity is schema/calibration **1/3**, hash `7A90D02ED12B1E93`.
 - P02 / PHY-010 is **DONE**: idle, red-zone, limiter and damage-overspeed authority are centralized in the versioned physical profile; the stale independent 6500-RPM runtime ceiling is no longer runtime authority.
@@ -49,7 +49,9 @@ At exact audited `main`:
 - Throttle response currently uses `pow(driver, 0.55)`; 25% driver input becomes roughly 47% engine command and 50% becomes roughly 68%, so dosability must be checked independently from power changes.
 - P01 now resolves one authoritative combustion permission and one post-health/post-limiter engine actuation result shared by native Chaos throttle and the partial-clutch external torque path. Engine Off/Stalled positive propulsion is runtime-proven zero. P02 still owns energy continuity and wheel→engine reaction across the partial/full coupling boundary.
 
-## Current authority conflicts to resolve, not paper over
+## Original authority-conflict register and current disposition
+
+Items2/3 were addressed by accepted P01/P02 and held-target steering in item6 by accepted P03. Remaining load/grip/performance concerns stay with their stage owners. The original list below is historical and does not reopen resolved defects.
 
 1. Confluence drivetrain page 27 still carries historical **180 hp / 240 Nm / idle 850 / 6000 redline / 6200 limiter** plus old ratios, while executable code/tests currently lock a boosted **250 hp / 260 Nm / 8500** profile.
 2. Code has **750 idle**, while the owner requirement for the next calibration is a warm carbureted **900–950 RPM**; **925 RPM** is the proposed center for A/B, not a claim that the final tune is already accepted.
@@ -171,9 +173,11 @@ Warm neutral idle is **925 RPM**. A 55% neutral throttle blip reached **4429.622
 
 **Evidence:** exact runtime HEAD `8d68e456d1944be295281535cf9fd103ecf05d52`; P02 run **36868646970**; PR #49; owner HUMAN ACCEPTED.
 
-**P02 gate:** **CLOSED / FROZEN**. Historical RED, diagnostic and HUMAN_PENDING records remain evidence only. The next authorized stage is **P03 input-response calibration** under CD-649; P03 development is not started by this administrative closure.
+**P02 gate:** CLOSED / FROZEN. P03/V2 and the bounded P04 candidate were subsequently accepted; current checkpoint above supersedes the former P03-next routing. Historical evidence remains retained.
 
 ## P03 — Steering + pedal feel without mechanic changes
+
+**Status:** recorded P03/V2 scope HUMAN ACCEPTED / INTEGRATED, sourceedf75e1b / delivery37117735294 / PR52. Exact P04 coordinator37148042881 preserves complete ControlRuntime and all13 P03 physics regressions. Scenario-level evidence remains in TESTS.csv; unmeasured broader scenarios are not promoted to PASS.
 
 **Reuse owners:** CD-649 / CD-611 / CD-825.  
 ### PHY-013 — Steering transfer calibration
@@ -201,6 +205,10 @@ Warm neutral idle is **925 RPM**. A 55% neutral throttle blip reached **4429.622
 **Evidence:** exact SHA + profile id/version + fixture/load + telemetry/log/test result; human-gate note if feel changes.
 
 ## P04 — Acceleration + gearing
+
+**Status:** first/reverse4.0 and profile-derived defaults HUMAN ACCEPTED; source52239b61, coordinator37148042881, delivery37149462470, installed audit37151172013, additive owner receipt37152180059. Other gears, engine output, controls, mass, tyres and suspension unchanged.
+
+**Remaining:** full PHY017..020 requirements below. Native probes and18 launch/coast cases are not packaged 0-30/0-60 or195km/h evidence. Half-input endpoint speed below quarter-input is an unresolved observation, not an established cause. Continue declared comparable measurements under CD641, not another migration or placeholder polish.
 
 **Reuse owners:** CD-641..647 / CD-648.  
 ### PHY-017 — Torque curve + engine inertia

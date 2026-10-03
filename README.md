@@ -11,7 +11,7 @@
 - Administrative / Design Reconciliation gate: `CD-841` — DONE
 - Broader Mechanics Freeze: `CD-848` — independent of the hero-model handoff
 - Pre-model vehicle / asset handoff gate: `CD-856`
-- Native Unreal Chaos vehicle program: `CD-785..CD-792`
+- Current Native Chaos vehicle program: `CD-648` / P00-P11; terminal gate `CD-921`; administrative closeout `CD-952`
 - Repository cut-over gate: `CD-558`
 - BASE-100 program: `CD-746`; scope owner: `CD-753`
 - Confluence authority index: `6586369`
@@ -28,13 +28,13 @@
 
 Documentation never implies runtime verification. Exact executable evidence wins for implementation/verification status.
 
-Current working vehicle/control baseline is P02, owner-accepted at exact source SHA `8d68e456d1944be295281535cf9fd103ecf05d52` / GitHub Actions run `36868646970`. P03 PR #52 remains HUMAN REJECTED / CORRECTIVE WORK IN PROGRESS. This acceptance proves the working baseline the owner tested; it does not imply every broader QA-01..QA-20 or FIRST EURO feature is complete.
+Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
 
 ## FIRST EURO
 
 First 12 months: **PC / single-player / Level 1 + approved Level 2 foundation and gameplay scope**. Full Mechanics Freeze remains a separate gate; unresolved world/content scope does not reopen the verified hero-vehicle pre-model contract.
 
-The hero-vehicle lane is frozen for asset substitution under `CD-856`. After that terminal handoff is synchronized across Git/Jira/Confluence, `CD-855` consumes the pre-model vehicle freeze and Tatra import contract without changing Chaos/input/gameplay authority.
+The current Tatra is a replaceable placeholder. CD-855 polish/replacement is deferred until vehicle calibration; only test-blocking defects justify immediate work. CD-856 contracts remain binding; public asset rights stay separate.
 
 ## Vehicle stack authority
 
@@ -44,7 +44,7 @@ The hero-vehicle lane is frozen for asset substitution under `CD-856`. After tha
 - Required third-party vehicle/damage dependency spend: **EUR 0**.
 - FGear/VDS evaluation material is archived fallback research only and is not production authority.
 
-The accepted historical executable has build/runtime/package evidence. Current preparation branches have selected passing tests and unresolved failures; they are not a newly verified replacement. Any future external solver adoption requires an explicit new decision and migration gate.
+Accepted P04 has exact-source tests, fresh package, installed-payload and owner-acceptance evidence. Full clean-source/full-product/packaged-input qualification remains CD-559 engineering; one candidate does not certify the entire product. External solver adoption requires a new explicit decision.
 
 ## Development entry
 
