@@ -1,93 +1,47 @@
-name: CD-559 Desktop Publication Contract Verification
+name: CD-559 Read-only P04 Recovery Diagnosis
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
     paths: [.github/workflows/cd559-accept-v2-entry.yml]
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  verify:
+  diagnose:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 5
+    env:
+      GIT_OPTIONAL_LOCKS: '0'
     steps:
-      - name: Export already-tested source repair without changing branches or trees
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Read workspace provenance, runtime processes and PINCKCAB targets
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          $api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
-          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json'}
-          $root=Join-Path $env:RUNNER_TEMP ('PINCKCAB-Patch-'+[Guid]::NewGuid().ToString('N'))
-          New-Item -ItemType Directory -Path $root | Out-Null
-          "PATCH_REPORT=$root" | Out-File $env:GITHUB_ENV -Append
-          function Get-TextBlob([string]$sha){
-            $blob=Invoke-RestMethod -Headers $headers -Uri "$api/git/blobs/$sha"
-            if($blob.sha -ne $sha -or $blob.encoding -ne 'base64'){throw 'Unexpected Git blob'}
-            return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($blob.content))
+          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          if(-not (Test-Path -LiteralPath (Join-Path $root '.git'))){throw 'Expected runner checkout missing'}
+          Write-Host ('DIAGNOSTIC_TIME_UTC='+[DateTime]::UtcNow.ToString('o'))
+          Write-Host 'WORKSPACE_HEAD'
+          git -C $root rev-parse HEAD
+          if($LASTEXITCODE -ne 0){throw 'Cannot read checkout HEAD'}
+          Write-Host 'WORKSPACE_PORCELAIN_BEGIN'
+          git -C $root status --porcelain=v1 --untracked-files=all
+          if($LASTEXITCODE -ne 0){throw 'Cannot inspect checkout status'}
+          Write-Host 'WORKSPACE_PORCELAIN_END'
+          Write-Host 'WORKSPACE_DIFF_STAT'
+          git -C $root diff --stat
+          Write-Host 'GAME_ENGINE_PROCESSES'
+          Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$'} | Select-Object Name,ProcessId,ParentProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Depth 3
+          $ws=New-Object -ComObject WScript.Shell
+          Write-Host 'PINKCAB_SHORTCUTS'
+          foreach($desktop in @('C:\Users\CheCat\Desktop','C:\Users\Public\Desktop')){
+            Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File -ErrorAction SilentlyContinue | Where-Object {$_.BaseName -match '(?i)pin[ck]*\s*cab|pink.*cab'} | ForEach-Object {
+              $link=$ws.CreateShortcut($_.FullName)
+              [pscustomobject]@{path=$_.FullName;target=$link.TargetPath;arguments=$link.Arguments;targetExists=(Test-Path -LiteralPath $link.TargetPath)} | ConvertTo-Json -Compress
+            }
           }
-          $text=Get-TextBlob '596ec7ac4580a8e5ba670e94ba5d934b051a2b1a'
-          $old='[IO.File]::Replace($temp,$linkPath,$null)'
-          $new='[IO.File]::Replace($temp,$linkPath,[System.Management.Automation.Language.NullString]::Value)'
-          if(([regex]::Matches($text,[regex]::Escape($old))).Count -ne 1){throw 'Expected one exact replacement'}
-          $fixed=$text.Replace($old,$new)
-          if($fixed.Replace($new,$old) -cne $text -or ($fixed -split "`n").Count -lt 550){throw 'Non-local source mutation'}
-          $tests=Get-TextBlob 'b758a730cbc041632f05ae9ef88ba5d4663444a4'
-          $anchor="if __name__ == '__main__':"
-          if(([regex]::Matches($tests,[regex]::Escape($anchor))).Count -ne 1){throw 'Unexpected test anchor'}
-          $addition=@'
-              @unittest.skipUnless(POWERSHELL, 'PowerShell executes the real publication primitive')
-              def test_real_atomic_publication_call_accepts_null_backup_on_windows_powershell(self):
-                  import re
-                  text = self.script('Verify visible candidate and replace only PINCKCAB entry')
-                  calls = re.findall(r'^\s*(\[IO.File\]::Replace\([^\r\n]+)\s*$', text, re.MULTILINE)
-                  self.assertEqual(len(calls), 1)
-                  with tempfile.TemporaryDirectory() as directory:
-                      root = Path(directory)
-                      source, target = root / 'new.lnk', root / 'PINCKCAB.lnk'
-                      source.write_bytes(b'candidate')
-                      target.write_bytes(b'accepted')
-                      script = root / 'publication.ps1'
-                      script.write_text("$ErrorActionPreference='Stop'\n$temp=$env:TEST_SOURCE\n$linkPath=$env:TEST_TARGET\n" + calls[0], encoding='utf-8')
-                      result = subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-File', str(script)],
-                                              env={**os.environ, 'TEST_SOURCE': str(source), 'TEST_TARGET': str(target)},
-                                              capture_output=True, text=True, timeout=30)
-                      self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                      self.assertEqual(target.read_bytes(), b'candidate')
-                      self.assertFalse(source.exists())
-
-
-          '@
-          $testsFixed=$tests.Replace($anchor,$addition+$anchor)
-          $wfDir=Join-Path $root '.github\workflows';$testDir=Join-Path $root 'scripts\tests'
-          New-Item -ItemType Directory -Path $wfDir,$testDir | Out-Null
-          [IO.File]::WriteAllText((Join-Path $wfDir 'cd869-deliver.yml'),$fixed,[Text.UTF8Encoding]::new($false))
-          [IO.File]::WriteAllText((Join-Path $testDir 'test_fast_delivery_retirement.py'),$testsFixed,[Text.UTF8Encoding]::new($false))
-          python -m pip install --disable-pip-version-check pyyaml
-          if($LASTEXITCODE -ne 0){throw 'Parser installation failed'}
-          Push-Location $root
-          try {python -m unittest scripts.tests.test_fast_delivery_retirement.CanonicalHumanDeliveryContractTests -v;if($LASTEXITCODE -ne 0){throw 'Actual canonical publication regression failed'}} finally {Pop-Location}
-          $blobs=@()
-          foreach($item in @(@{path='.github/workflows/cd869-deliver.yml';text=$fixed},@{path='scripts/tests/test_fast_delivery_retirement.py';text=$testsFixed})){
-            $request=@{content=$item.text;encoding='utf-8'} | ConvertTo-Json -Compress
-            $blob=Invoke-RestMethod -Method Post -Headers $headers -Uri "$api/git/blobs" -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($request))
-            $blobs+=@{path=$item.path;sha=$blob.sha}
-          }
-          @{base='7d624d0e81139647ed3914734e6e7f5436fa0aed';baseTree='6718b37464aab868e5d085dc0aae48dc684d2e4d';blobs=$blobs;canonicalPublicationTests=5;psVersion=$PSVersionTable.PSVersion.ToString();branchUpdated=$false;treeCreated=$false;userHostTouched=$false} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $root 'PATCH.json') -Encoding UTF8
-          Get-Content (Join-Path $root 'PATCH.json') -Raw | Write-Host
-      - name: Preserve validated repair report and exact text inputs
-        if: always() && env.PATCH_REPORT != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: pinckcab-publication-repair-${{ github.run_id }}
-          path: |
-            ${{ env.PATCH_REPORT }}/PATCH.json
-            ${{ env.PATCH_REPORT }}/.github/workflows/cd869-deliver.yml
-            ${{ env.PATCH_REPORT }}/scripts/tests/test_fast_delivery_retirement.py
-          include-hidden-files: true
-          retention-days: 30
-          if-no-files-found: error
+          Write-Host 'RECENT_BUILD_DIRECTORIES'
+          Get-ChildItem -LiteralPath 'E:\CHESHIRE_DIVISION\Builds\PINKCAB' -Directory | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 8 Name,LastWriteTimeUtc | Format-Table -AutoSize
+          Write-Host 'READ_ONLY_DIAGNOSIS_COMPLETE'
