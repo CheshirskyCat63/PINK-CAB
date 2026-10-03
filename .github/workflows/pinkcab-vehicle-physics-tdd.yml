@@ -145,6 +145,19 @@ jobs:
 
 
 
+      - name: Run complete P03 control-runtime regression
+        if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          & .\scripts\ci\run-unreal-automation.ps1 `
+            -EngineRoot $env:UE_ROOT `
+            -ProjectPath "$env:GITHUB_WORKSPACE\PinkCab.uproject" `
+            -TestName 'PinkCab.Vehicle.ControlRuntime' `
+            -LogPath "$env:GITHUB_WORKSPACE\Saved\GitHubGate\P03_CONTROL_RUNTIME.log" `
+            -TimeoutSeconds 300
+          Write-Host 'PINKCAB_P03_CONTROL_RUNTIME=PASS'
+
       - name: Run focused vehicle-physics tests
         if: ${{ steps.change_scope.outputs.run_physics == 'true' }}
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'

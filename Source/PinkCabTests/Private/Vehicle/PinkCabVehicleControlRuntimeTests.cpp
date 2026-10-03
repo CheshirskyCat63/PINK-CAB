@@ -1,9 +1,11 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Vehicle/PinkCabVehicleControlRuntime.h"
 #include "Vehicle/PinkCabHGateGeometry.h"
 #include "Vehicle/PinkCabSteeringController.h"
+#include "Vehicle/PinkCabThrottleResponse.h"
 
 namespace
 {
@@ -148,6 +150,403 @@ bool FPinkCabVehicleControlRuntimeSteeringTest::RunTest(const FString& Parameter
     FPinkCabVehicleHealthState Health;
     Runtime.Update(Digital(false, false, false, 0, 400.0f, 0.2f), Telemetry(40.0f), Cockpit, Health);
     TestTrue(TEXT("positive driver-right mouse produces positive steering"), Runtime.GetSteeringCommand() > 0.0f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03SteeringTargetAuthorityTest,
+    "PinkCab.Vehicle.Physics.P03.SteeringTargetAuthority",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03SteeringTargetAuthorityTest::RunTest(const FString& Parameters)
+{
+    FPinkCabSteeringController Steering;
+
+    Steering.Reset();
+    Steering.Step(
+        420.0f,
+        false,
+        10.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+    const float AuthoredTarget = Steering.GetTarget();
+    TestTrue(TEXT("fixture authors a positive nonzero steering target"),
+        AuthoredTarget > KINDA_SMALL_NUMBER);
+
+    Steering.Step(
+        0.0f,
+        false,
+        120.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+
+    TestTrue(TEXT("vehicle speed alone cannot shrink an already-authored steering target"),
+        FMath::IsNearlyEqual(Steering.GetTarget(), AuthoredTarget, 1.0e-6f));
+
+    Steering.Reset();
+    Steering.Step(
+        10000.0f,
+        false,
+        120.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+
+    TestTrue(TEXT("deliberate high-speed input retains access to full mechanical steering authority"),
+        Steering.GetTarget() > 0.99f);
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03NoPostInputGhostSteeringTest,
+    "PinkCab.Vehicle.Physics.P03.NoPostInputGhostSteering",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03NoPostInputGhostSteeringTest::RunTest(const FString& Parameters)
+{
+    // PHY-014 criterion B: device input ending must end command motion unless
+    // a separate declared physical/self-aligning source owns that motion.
+    FPinkCabSteeringController Steering;
+
+    Steering.Reset();
+    Steering.Step(
+        420.0f,
+        false,
+        60.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+    const float CommandAtInputEnd = Steering.GetSteering();
+    TestTrue(TEXT("fixture produces a nonzero steering command"),
+        FMath::Abs(CommandAtInputEnd) > KINDA_SMALL_NUMBER);
+
+    Steering.Step(
+        0.0f,
+        false,
+        60.0f,
+        EPinkCabVehicleMotionMode::Moving,
+        1.0f / 60.0f);
+
+    TestTrue(TEXT("zero new mouse input cannot keep moving the steering command"),
+        FMath::IsNearlyEqual(Steering.GetSteering(), CommandAtInputEnd, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03FrameRateIndependentSteeringTraceTest,
+    "PinkCab.Vehicle.Physics.P03.FrameRateIndependentSteeringTrace",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03FrameRateIndependentSteeringTraceTest::RunTest(const FString& Parameters)
+{
+    // PHY-014 criterion A: the device produces counts over time. Splitting the
+    // same timed trace into different frame cadences must not change the authored
+    // steering result.
+    auto RunTrace = [](const int32 Fps)
+    {
+        FPinkCabSteeringController Steering;
+        Steering.Reset();
+
+        const float DeltaSeconds = 1.0f / static_cast<float>(Fps);
+        const int32 PositiveFrames = FMath::RoundToInt(0.60f * Fps);
+        const int32 NegativeFrames = Fps - PositiveFrames;
+
+        for (int32 Index = 0; Index < PositiveFrames; ++Index)
+        {
+            Steering.Step(
+                560.0f * DeltaSeconds,
+                false,
+                60.0f,
+                EPinkCabVehicleMotionMode::Moving,
+                DeltaSeconds);
+        }
+        for (int32 Index = 0; Index < NegativeFrames; ++Index)
+        {
+            Steering.Step(
+                -280.0f * DeltaSeconds,
+                false,
+                60.0f,
+                EPinkCabVehicleMotionMode::Moving,
+                DeltaSeconds);
+        }
+
+        return FVector2D(Steering.GetTarget(), Steering.GetSteering());
+    };
+
+    const FVector2D Trace30 = RunTrace(30);
+    const FVector2D Trace60 = RunTrace(60);
+    const FVector2D Trace120 = RunTrace(120);
+
+    TestTrue(TEXT("30 and 60 FPS timed traces author comparable steering targets"),
+        Trace30.Equals(Trace60, 1.0e-5f));
+    TestTrue(TEXT("60 and 120 FPS timed traces author comparable steering targets"),
+        Trace60.Equals(Trace120, 1.0e-5f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03PedalDoseMonotonicityTest,
+    "PinkCab.Vehicle.Physics.P03.PedalDoseMonotonicity",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03PedalDoseMonotonicityTest::RunTest(const FString& Parameters)
+{
+    auto AuthoredThrottleForSteps = [](const int32 Steps)
+    {
+        FPinkCabVehicleControlRuntime Runtime;
+        FPinkCabCockpitState Cockpit;
+        FPinkCabVehicleHealthState Health;
+        Runtime.Update(
+            Digital(false, false, true, Steps, 0.0f, 1.0f / 60.0f),
+            Telemetry(0.0f, 925.0f),
+            Cockpit,
+            Health);
+        return Runtime.GetThrottleTarget();
+    };
+
+    const float Quarter = AuthoredThrottleForSteps(5);
+    const float Half = AuthoredThrottleForSteps(10);
+    const float Full = AuthoredThrottleForSteps(20);
+
+    TestTrue(TEXT("five detents author exactly 25 percent throttle"),
+        FMath::IsNearlyEqual(Quarter, 0.25f, 1.0e-6f));
+    TestTrue(TEXT("ten detents author exactly 50 percent throttle"),
+        FMath::IsNearlyEqual(Half, 0.50f, 1.0e-6f));
+    TestTrue(TEXT("twenty detents author exactly 100 percent throttle"),
+        FMath::IsNearlyEqual(Full, 1.00f, 1.0e-6f));
+    TestTrue(TEXT("25/50/100 authored states remain distinct and monotonic"),
+        Quarter < Half && Half < Full);
+
+    const float BaselineQuarter = FPinkCabThrottleResponse::ToEngineThrottle(Quarter);
+    const float BaselineHalf = FPinkCabThrottleResponse::ToEngineThrottle(Half);
+    const float BaselineFull = FPinkCabThrottleResponse::ToEngineThrottle(Full);
+    TestTrue(TEXT("current linkage remains monotonic from authored pedal to engine command"),
+        BaselineQuarter < BaselineHalf && BaselineHalf < BaselineFull);
+    TestTrue(TEXT("full authored throttle remains full engine throttle"),
+        FMath::IsNearlyEqual(BaselineFull, 1.0f, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03LowInputThrottleDosabilityCandidateTest,
+    "PinkCab.Vehicle.Physics.P03.LowInputThrottleDosabilityCandidate",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03LowInputThrottleDosabilityCandidateTest::RunTest(const FString& Parameters)
+{
+    // Controlled B candidate for PHY-015. Preserve endpoints and monotonicity,
+    // but materially reduce the baseline pow(driver,0.55) low-input amplification.
+    const float SingleDetent = FPinkCabThrottleResponse::ToEngineThrottle(0.05f);
+    const float Quarter = FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
+    const float Half = FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
+    const float Full = FPinkCabThrottleResponse::ToEngineThrottle(1.00f);
+
+    TestTrue(TEXT("B candidate makes the first five-percent detent dosable"),
+        SingleDetent >= 0.09f && SingleDetent <= 0.12f);
+    TestTrue(TEXT("B candidate keeps quarter pedal useful without baseline over-amplification"),
+        Quarter >= 0.33f && Quarter <= 0.38f);
+    TestTrue(TEXT("B candidate keeps half pedal progressive"),
+        Half >= 0.58f && Half <= 0.62f);
+    TestTrue(TEXT("B candidate remains strictly monotonic"),
+        0.0f < SingleDetent && SingleDetent < Quarter && Quarter < Half && Half < Full);
+    TestTrue(TEXT("B candidate cannot change full-throttle engine authority"),
+        FMath::IsNearlyEqual(Full, 1.0f, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03PedalWheelPauseReversalTest,
+    "PinkCab.Vehicle.Physics.P03.PedalWheelPauseReversal",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03PedalWheelPauseReversalTest::RunTest(const FString& Parameters)
+{
+    FPinkCabPedalDosingController Pedals;
+    FPinkCabLaunchController Launch;
+    FPinkCabCockpitState Cockpit;
+    TestTrue(TEXT("fixture starts a stationary launch attempt"), Launch.BeginLaunchAttempt());
+
+    TestEqual(TEXT("single throttle detent has exactly one recipient"),
+        Pedals.ApplyWheelSteps(false, false, true, 1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Throttle);
+    TestTrue(TEXT("single detent is exactly five percent"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), 0.05f, 1.0e-6f));
+
+    TestEqual(TEXT("zero-step pause has no recipient"),
+        Pedals.ApplyWheelSteps(false, false, true, 0, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::None);
+    TestTrue(TEXT("pause cannot carry hidden wheel acceleration"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), 0.05f, 1.0e-6f));
+
+    TestEqual(TEXT("reversal remains owned by throttle only"),
+        Pedals.ApplyWheelSteps(false, false, true, -1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Throttle);
+    TestTrue(TEXT("one reverse detent exactly cancels one forward detent"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), 0.0f, 1.0e-6f));
+
+    TestEqual(TEXT("fresh forward detent after reversal remains one exact step"),
+        Pedals.ApplyWheelSteps(false, false, true, 1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Throttle);
+    TestTrue(TEXT("reversal cannot leave hidden burst state"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), 0.05f, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03PedalSingleRecipientTest,
+    "PinkCab.Vehicle.Physics.P03.PedalSingleRecipient",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03PedalSingleRecipientTest::RunTest(const FString& Parameters)
+{
+    FPinkCabPedalDosingController Pedals;
+    FPinkCabLaunchController Launch;
+    FPinkCabCockpitState Cockpit;
+    Launch.BeginLaunchAttempt();
+
+    const float BrakeBefore = Pedals.GetBrakeTarget();
+    const float ClutchBefore = Cockpit.GetClutchReleaseSeconds();
+    TestEqual(TEXT("E owns a shared Q/W/E wheel detent"),
+        Pedals.ApplyWheelSteps(true, true, true, 1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Throttle);
+    TestTrue(TEXT("E-owned detent changes throttle"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), 0.05f, 1.0e-6f));
+    TestTrue(TEXT("E-owned detent cannot also change brake"),
+        FMath::IsNearlyEqual(Pedals.GetBrakeTarget(), BrakeBefore, 1.0e-6f));
+    TestTrue(TEXT("E-owned detent cannot also change clutch release"),
+        FMath::IsNearlyEqual(Cockpit.GetClutchReleaseSeconds(), ClutchBefore, 1.0e-6f));
+
+    const float ThrottleBeforeBrake = Launch.GetThrottleTarget();
+    const float ClutchBeforeBrake = Cockpit.GetClutchReleaseSeconds();
+    TestEqual(TEXT("W owns wheel when E is absent"),
+        Pedals.ApplyWheelSteps(true, true, false, -1, Launch, Cockpit),
+        EPinkCabPedalWheelRecipient::Brake);
+    TestTrue(TEXT("W-owned detent cannot change authored throttle"),
+        FMath::IsNearlyEqual(Launch.GetThrottleTarget(), ThrottleBeforeBrake, 1.0e-6f));
+    TestTrue(TEXT("W-owned detent cannot also change clutch release"),
+        FMath::IsNearlyEqual(Cockpit.GetClutchReleaseSeconds(), ClutchBeforeBrake, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03NoHiddenThrottleInjectionTest,
+    "PinkCab.Vehicle.Physics.P03.NoHiddenThrottleInjection",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03NoHiddenThrottleInjectionTest::RunTest(const FString& Parameters)
+{
+    FPinkCabVehicleControlRuntime Runtime;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleHealthState Health;
+
+    Runtime.Update(
+        Digital(false, false, true, 0, 0.0f, 0.10f),
+        Telemetry(0.0f, 925.0f),
+        Cockpit,
+        Health);
+    TestTrue(TEXT("fresh launch without wheel dose keeps authored throttle at zero"),
+        FMath::IsNearlyZero(Runtime.GetThrottleTarget(), 1.0e-6f));
+    TestTrue(TEXT("fresh launch without wheel dose keeps effective throttle at zero"),
+        FMath::IsNearlyZero(Runtime.GetControlState().Throttle, 1.0e-6f));
+
+    Runtime.Update(
+        Digital(false, false, true, 0, 0.0f, 0.10f),
+        Telemetry(0.0f, 5000.0f),
+        Cockpit,
+        Health);
+    TestTrue(TEXT("RPM change cannot inject authored throttle"),
+        FMath::IsNearlyZero(Runtime.GetThrottleTarget(), 1.0e-6f));
+    TestTrue(TEXT("RPM change cannot inject effective throttle"),
+        FMath::IsNearlyZero(Runtime.GetControlState().Throttle, 1.0e-6f));
+
+    Runtime.Update(
+        Digital(false, false, true, 0, 0.0f, 0.20f),
+        Telemetry(8.0f, 2500.0f),
+        Cockpit,
+        Health);
+    TestTrue(TEXT("motion outcome cannot inject authored throttle"),
+        FMath::IsNearlyZero(Runtime.GetThrottleTarget(), 1.0e-6f));
+    TestTrue(TEXT("motion outcome cannot inject effective throttle"),
+        FMath::IsNearlyZero(Runtime.GetControlState().Throttle, 1.0e-6f));
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03DirectMomentaryWithoutGripTest,
+    "PinkCab.Vehicle.Physics.P03.DirectMomentaryWithoutGrip",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03DirectMomentaryWithoutGripTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    TestNotNull(TEXT("interaction component fixture exists"), Interaction);
+    if (!Interaction)
+    {
+        return false;
+    }
+
+    Interaction->SetCurrentTarget(
+        UPinkCabCockpitInteractionComponent::SpecForTargetId(TEXT("Horn")));
+    TestFalse(TEXT("direct momentary precondition has no RMB/grip ownership"),
+        Interaction->IsGripActive());
+
+    const uint32 SerialBefore = Interaction->GetActuationSerial();
+    FPinkCabInteractionEvent Event;
+    TestTrue(TEXT("momentary-capable current target accepts direct LMB without RMB"),
+        Interaction->BeginMomentary(10.0, Event));
+    TestEqual(TEXT("direct LMB actuates the authored current target"),
+        Event.TargetId, FName(TEXT("Horn")));
+    TestEqual(TEXT("direct LMB uses momentary press/hold gesture"),
+        Event.Gesture, EPinkCabInteractionGesture::PressHold);
+    TestEqual(TEXT("one direct LMB creates exactly one actuation"),
+        Interaction->GetActuationSerial(), SerialBefore + 1);
+    TestFalse(TEXT("direct LMB does not invent grip ownership"),
+        Interaction->IsGripActive());
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03ReleasedQuickRecallClearsTargetTest,
+    "PinkCab.Vehicle.Physics.P03.ReleasedQuickRecallClearsTarget",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03ReleasedQuickRecallClearsTargetTest::RunTest(const FString& Parameters)
+{
+    UPinkCabCockpitInteractionComponent* Interaction =
+        NewObject<UPinkCabCockpitInteractionComponent>();
+    TestNotNull(TEXT("interaction component fixture exists"), Interaction);
+    if (!Interaction)
+    {
+        return false;
+    }
+
+    const uint32 SerialBefore = Interaction->GetActuationSerial();
+    Interaction->SetQuickSlotHeld(2, true);
+
+    TestEqual(TEXT("quick recall 2 exposes the Horn target"),
+        Interaction->GetCurrentTargetId(), FName(TEXT("Horn")));
+    TestEqual(TEXT("quick recall itself never actuates the target"),
+        Interaction->GetActuationSerial(), SerialBefore);
+    TestFalse(TEXT("quick recall itself never creates RMB/grip ownership"),
+        Interaction->IsGripActive());
+    TestFalse(TEXT("quick recall itself never creates LMB/momentary ownership"),
+        Interaction->IsMomentaryActive());
+
+    Interaction->SetQuickSlotHeld(2, false);
+
+    TestTrue(TEXT("released quick key removes the ephemeral recalled target"),
+        Interaction->GetCurrentTargetId().IsNone());
+    TestEqual(TEXT("quick-key release cannot actuate the control"),
+        Interaction->GetActuationSerial(), SerialBefore);
+
     return true;
 }
 
@@ -366,12 +765,6 @@ bool FPinkCabManualSteeringWeightTest::RunTest(const FString& Parameters)
         Stationary < Rolling);
     TestTrue(TEXT("high-speed steering is calmer than low-speed rolling steering"),
         Highway < Rolling);
-    TestTrue(TEXT("stationary response rate is lower than rolling response"),
-        Steering.GetResponseRate(0.0f, EPinkCabVehicleMotionMode::Stationary)
-            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
-    TestTrue(TEXT("high-speed response does not accelerate with speed"),
-        Steering.GetResponseRate(120.0f, EPinkCabVehicleMotionMode::Moving)
-            < Steering.GetResponseRate(10.0f, EPinkCabVehicleMotionMode::Moving));
     return true;
 }
 

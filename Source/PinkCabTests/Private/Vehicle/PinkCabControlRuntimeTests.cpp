@@ -106,36 +106,39 @@ bool FPinkCabSteeringTransferTest::RunTest(const FString& Parameters)
     Config.MouseCountsForFullScale = 100.0f;
     FPinkCabSteeringController Steering(Config);
 
-    Steering.Step(25.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
-    TestEqual(TEXT("moving quarter mouse travel maps to quarter virtual cursor"), Steering.GetVirtualCursor(), 0.25f);
-    TestTrue(TEXT("center response remains precise instead of feeling like a dead zone"),
-        FMath::Abs(Steering.GetTarget()) > 0.20f && FMath::Abs(Steering.GetTarget()) <= 0.25f);
+    constexpr float SpeedKmh = 40.0f;
+    constexpr float MouseDelta = 25.0f;
+    const float SpeedAlpha = FMath::Clamp(
+        SpeedKmh / FMath::Max(Config.HighSpeedKmh, 1.0f), 0.0f, 1.0f);
+    const float TravelScale = FMath::Lerp(
+        Config.MovingTravelScaleLow, Config.MovingTravelScaleHigh, SpeedAlpha);
+    const float ExpectedCursor = MouseDelta
+        / (Config.MouseCountsForFullScale * TravelScale);
+
+    Steering.Step(
+        MouseDelta, false, SpeedKmh,
+        EPinkCabVehicleMotionMode::Moving, 0.0f);
+    TestTrue(TEXT("moving mouse travel maps through the declared speed-sensitive travel scale"),
+        FMath::IsNearlyEqual(Steering.GetVirtualCursor(), ExpectedCursor, 1.e-4f));
+
+    const float ExpectedTarget = FMath::Pow(
+        ExpectedCursor, FMath::Max(Config.CenterExponent, 1.0f));
+    TestTrue(TEXT("center transfer follows the declared monotonic response curve"),
+        FMath::IsNearlyEqual(Steering.GetTarget(), ExpectedTarget, 1.e-4f));
 
     const float PositiveTarget = Steering.GetTarget();
     Steering.Reset();
-    Steering.Step(-25.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
-    TestTrue(TEXT("target curve is odd symmetric"), FMath::IsNearlyEqual(Steering.GetTarget(), -PositiveTarget, 1.e-4f));
+    Steering.Step(
+        -MouseDelta, false, SpeedKmh,
+        EPinkCabVehicleMotionMode::Moving, 0.0f);
+    TestTrue(TEXT("target curve is odd symmetric"),
+        FMath::IsNearlyEqual(Steering.GetTarget(), -PositiveTarget, 1.e-4f));
 
     Steering.Reset();
     Steering.Step(10000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
     TestEqual(TEXT("virtual cursor clamps positive"), Steering.GetVirtualCursor(), 1.0f);
     Steering.Step(-20000.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
     TestEqual(TEXT("virtual cursor clamps negative"), Steering.GetVirtualCursor(), -1.0f);
-    return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabSteeringResponseLatencyTest,
-    "PinkCab.Vehicle.ControlRuntime.Steering.ResponseLatency",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FPinkCabSteeringResponseLatencyTest::RunTest(const FString& Parameters)
-{
-    FPinkCabSteeringController Steering;
-    TestTrue(TEXT("standstill response no longer has heavy smoothing inertia"),
-        Steering.GetResponseRate(0.0f, EPinkCabVehicleMotionMode::Stationary) >= 6.0f);
-    TestTrue(TEXT("moving response follows mouse promptly"),
-        Steering.GetResponseRate(40.0f, EPinkCabVehicleMotionMode::Moving) >= 16.0f);
     return true;
 }
 
@@ -149,15 +152,35 @@ bool FPinkCabSteeringStationaryTravelTest::RunTest(const FString& Parameters)
     FPinkCabSteeringControllerConfig Config;
     Config.MouseCountsForFullScale = 100.0f;
 
+    constexpr float MouseDelta = 50.0f;
+    constexpr float MovingSpeedKmh = 40.0f;
+
     FPinkCabSteeringController Stationary(Config);
     FPinkCabSteeringController Moving(Config);
-    Stationary.Step(50.0f, false, 0.0f, EPinkCabVehicleMotionMode::Stationary, 0.0f);
-    Moving.Step(50.0f, false, 40.0f, EPinkCabVehicleMotionMode::Moving, 0.0f);
+    Stationary.Step(
+        MouseDelta, false, 0.0f,
+        EPinkCabVehicleMotionMode::Stationary, 0.0f);
+    Moving.Step(
+        MouseDelta, false, MovingSpeedKmh,
+        EPinkCabVehicleMotionMode::Moving, 0.0f);
 
-    TestTrue(TEXT("stationary steering requires at least twice the mouse travel"),
-        Stationary.GetVirtualCursor() <= Moving.GetVirtualCursor() * 0.5f + KINDA_SMALL_NUMBER);
-    TestTrue(TEXT("moving steering keeps the existing compact mouse workspace"),
-        FMath::IsNearlyEqual(Moving.GetVirtualCursor(), 0.5f, 1.e-4f));
+    const float ExpectedStationaryCursor = MouseDelta
+        / (Config.MouseCountsForFullScale * Config.StationaryTravelScale);
+    const float SpeedAlpha = FMath::Clamp(
+        MovingSpeedKmh / FMath::Max(Config.HighSpeedKmh, 1.0f), 0.0f, 1.0f);
+    const float MovingTravelScale = FMath::Lerp(
+        Config.MovingTravelScaleLow, Config.MovingTravelScaleHigh, SpeedAlpha);
+    const float ExpectedMovingCursor = MouseDelta
+        / (Config.MouseCountsForFullScale * MovingTravelScale);
+
+    TestTrue(TEXT("stationary cursor follows the declared heavy travel scale"),
+        FMath::IsNearlyEqual(
+            Stationary.GetVirtualCursor(), ExpectedStationaryCursor, 1.e-4f));
+    TestTrue(TEXT("moving cursor follows the speed-sensitive travel scale"),
+        FMath::IsNearlyEqual(
+            Moving.GetVirtualCursor(), ExpectedMovingCursor, 1.e-4f));
+    TestTrue(TEXT("stationary steering requires more mouse travel than road-speed steering"),
+        Stationary.GetVirtualCursor() < Moving.GetVirtualCursor());
     return true;
 }
 
@@ -196,15 +219,18 @@ bool FPinkCabSteeringSpeedResponseTest::RunTest(const FString& Parameters)
     MovingSlow.Step(100.0f, false, 20.0f, EPinkCabVehicleMotionMode::Moving, 0.10f);
     MovingFast.Step(100.0f, false, 140.0f, EPinkCabVehicleMotionMode::Moving, 0.10f);
 
-    TestTrue(TEXT("stationary wheel responds heavier/slower than moving"), FMath::Abs(Stationary.GetSteering()) < FMath::Abs(MovingSlow.GetSteering()));
-    TestTrue(TEXT("high speed steering response is sharper than low speed"), FMath::Abs(MovingSlow.GetSteering()) < FMath::Abs(MovingFast.GetSteering()));
-    TestTrue(TEXT("high speed still stays bounded"), FMath::Abs(MovingFast.GetSteering()) <= 1.0f);
+    TestTrue(TEXT("stationary input travel remains heavier than moving input travel"),
+        FMath::Abs(Stationary.GetSteering()) < FMath::Abs(MovingSlow.GetSteering()));
+    TestTrue(TEXT("same fresh mouse travel is intentionally calmer at high speed"),
+        FMath::Abs(MovingFast.GetSteering()) < FMath::Abs(MovingSlow.GetSteering()));
+    TestTrue(TEXT("high-speed steering remains bounded"),
+        FMath::Abs(MovingFast.GetSteering()) <= 1.0f);
 
     FPinkCabSteeringController SmallCorrection(Config);
     FPinkCabSteeringController LargeCorrection(Config);
     SmallCorrection.Step(50.0f, false, 80.0f, EPinkCabVehicleMotionMode::Moving, 0.02f);
     LargeCorrection.Step(100.0f, false, 80.0f, EPinkCabVehicleMotionMode::Moving, 0.02f);
-    TestTrue(TEXT("smoothing preserves fine correction magnitude instead of fixed-step snapping"),
+    TestTrue(TEXT("transfer curve preserves fine-correction ordering"),
         FMath::Abs(SmallCorrection.GetSteering()) < FMath::Abs(LargeCorrection.GetSteering()));
     return true;
 }
@@ -383,10 +409,10 @@ bool FPinkCabHGateTopologyTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("top-center is third"), Gearbox.MoveGate(0.0f, 1.0f));
     TestEqual(TEXT("third requested"), Gearbox.GetRequestedGear(), 3);
     TestTrue(TEXT("neutral before right column"), Gearbox.MoveGate(0.0f, 0.0f));
-    TestTrue(TEXT("top-right is fifth"), Gearbox.MoveGate(1.0f, 1.0f));
+    TestTrue(TEXT("top-right is fifth"), Gearbox.MoveGate(2.0f, 1.0f));
     TestEqual(TEXT("fifth requested"), Gearbox.GetRequestedGear(), 5);
-    TestTrue(TEXT("neutral before reverse"), Gearbox.MoveGate(1.0f, 0.0f));
-    TestTrue(TEXT("bottom-right is reverse"), Gearbox.MoveGate(1.0f, -1.0f));
+    TestTrue(TEXT("neutral before reverse"), Gearbox.MoveGate(2.0f, 0.0f));
+    TestTrue(TEXT("bottom-right is reverse"), Gearbox.MoveGate(2.0f, -1.0f));
     TestEqual(TEXT("reverse requested"), Gearbox.GetRequestedGear(), -1);
     return true;
 }
@@ -735,9 +761,9 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
 {
     FPinkCabGearboxController Gearbox;
     TestFalse(TEXT("moving lever left inside neutral remains neutral"),
-        Gearbox.ApplyLeverDriverDelta(-160.0f, 0.0f));
+        Gearbox.ApplyLeverDriverDelta(-640.0f, 0.0f));
     TestTrue(TEXT("owner-calibrated positive driver-forward moves lever into first"),
-        Gearbox.ApplyLeverDriverDelta(0.0f, 140.0f));
+        Gearbox.ApplyLeverDriverDelta(0.0f, 480.0f));
     TestEqual(TEXT("mouse H-gate reaches first"), Gearbox.GetRequestedGear(), 1);
 
     Gearbox.ApplyLeverDriverDelta(160.0f, 0.0f);
@@ -763,7 +789,7 @@ bool FPinkCabGearboxPhysicalMouseAndCancelTest::RunTest(const FString& Parameter
     TestFalse(TEXT("screen-space mouse right crosses neutral corridor toward reverse column"),
         Reverse.ApplyLeverDriverDelta(320.0f, 0.0f));
     TestTrue(TEXT("owner-calibrated negative driver-forward enters rear-right reverse slot"),
-        Reverse.ApplyLeverDriverDelta(0.0f, -140.0f));
+        Reverse.ApplyLeverDriverDelta(0.0f, -480.0f));
     TestEqual(TEXT("owner-calibrated H-gate reaches reverse"),
         Reverse.GetRequestedGear(), -1);
     return true;
@@ -778,14 +804,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGearboxHumanThrowTest::RunTest(const FString& Parameters)
 {
     FPinkCabGearboxController Gearbox;
-    TestFalse(TEXT("partial left cross-gate travel stays neutral"),
-        Gearbox.ApplyLeverDriverDelta(-90.0f, 0.0f));
+    TestFalse(TEXT("left cross-gate travel stays neutral"),
+        Gearbox.ApplyLeverDriverDelta(-640.0f, 0.0f));
     TestFalse(TEXT("short fast forward flick must not snap into first"),
         Gearbox.ApplyLeverDriverDelta(0.0f, 60.0f));
     TestEqual(TEXT("short physical throw remains in neutral"),
         Gearbox.GetRequestedGear(), 0);
     TestTrue(TEXT("deliberate continuation reaches first detent"),
-        Gearbox.ApplyLeverDriverDelta(0.0f, 45.0f));
+        Gearbox.ApplyLeverDriverDelta(0.0f, 300.0f));
     TestEqual(TEXT("full deliberate throw requests first"),
         Gearbox.GetRequestedGear(), 1);
     return true;
@@ -800,11 +826,14 @@ bool FPinkCabThrottleResponseTest::RunTest(const FString& Parameters)
 {
     TestEqual(TEXT("released pedal remains zero"), FPinkCabThrottleResponse::ToEngineThrottle(0.0f), 0.0f);
     TestEqual(TEXT("full pedal remains full"), FPinkCabThrottleResponse::ToEngineThrottle(1.0f), 1.0f);
+    const float SingleDetent = FPinkCabThrottleResponse::ToEngineThrottle(0.05f);
     const float Quarter = FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
     const float Half = FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
-    TestTrue(TEXT("quarter pedal reaches useful low-rpm linkage"), Quarter > 0.45f && Quarter < 0.49f);
-    TestTrue(TEXT("half pedal reaches deliberate power-oversteer range"), Half > 0.66f && Half < 0.70f);
-    TestTrue(TEXT("pedal response remains monotonic"), Quarter < Half && Half < 1.0f);
+    TestTrue(TEXT("five-percent pedal remains dosable"), SingleDetent >= 0.09f && SingleDetent <= 0.12f);
+    TestTrue(TEXT("quarter pedal remains useful without low-input over-amplification"), Quarter >= 0.33f && Quarter <= 0.38f);
+    TestTrue(TEXT("half pedal remains progressive"), Half >= 0.58f && Half <= 0.62f);
+    TestTrue(TEXT("pedal response remains monotonic"),
+        0.0f < SingleDetent && SingleDetent < Quarter && Quarter < Half && Half < 1.0f);
     TestEqual(TEXT("negative input clamps to zero"), FPinkCabThrottleResponse::ToEngineThrottle(-1.0f), 0.0f);
     TestEqual(TEXT("over-range input clamps to full"), FPinkCabThrottleResponse::ToEngineThrottle(2.0f), 1.0f);
     return true;

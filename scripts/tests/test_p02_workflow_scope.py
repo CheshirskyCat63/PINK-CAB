@@ -28,6 +28,69 @@ class P02WorkflowScopeTests(unittest.TestCase):
         from scripts.ci.acceptance_contract import runtime_required
         self.assertTrue(runtime_required(['scripts/tests/test_p02_workflow_scope.py']))
 
+    def test_runtime_scope_guard_admits_canonical_p03_steering_owner(self):
+        required = (
+            "Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h",
+            "Source/PinkCabVehicle/Private/Vehicle/PinkCabSteeringController.cpp",
+        )
+        allowed_match = re.search(
+            r"\$allowed=@\((?P<body>.*?)\n\s*\)",
+            self.text,
+            flags=re.S,
+        )
+        self.assertIsNotNone(allowed_match, "scope-guard allowlist block not found")
+        allowed = allowed_match.group("body")
+        for path in required:
+            with self.subTest(path=path):
+                self.assertIn(
+                    path,
+                    allowed,
+                    "frozen P02 regression gate must admit the explicit canonical P03 steering owner without admitting arbitrary files",
+                )
+                from scripts.ci.acceptance_contract import runtime_required
+                self.assertTrue(
+                    runtime_required([path]),
+                    "canonical P03 steering owner must also trigger the frozen P02 regression suite",
+                )
+
+    def test_runtime_scope_guard_admits_canonical_p03_pedal_linkage_owner(self):
+        required = (
+            "Source/PinkCabVehicle/Public/Vehicle/PinkCabThrottleResponse.h",
+            "Source/PinkCabVehicle/Private/Vehicle/PinkCabThrottleResponse.cpp",
+        )
+        allowed_match = re.search(
+            r"\$allowed=@\((?P<body>.*?)\n\s*\)",
+            self.text,
+            flags=re.S,
+        )
+        self.assertIsNotNone(allowed_match, "scope-guard allowlist block not found")
+        allowed = allowed_match.group("body")
+        for path in required:
+            with self.subTest(path=path):
+                self.assertIn(
+                    path,
+                    allowed,
+                    "frozen P02 regression gate must admit the explicit canonical P03 pedal-linkage owner without admitting arbitrary files",
+                )
+                from scripts.ci.acceptance_contract import runtime_required
+                self.assertTrue(
+                    runtime_required([path]),
+                    "canonical P03 pedal-linkage owner must also trigger the frozen P02 regression suite",
+                )
+
+    def test_p03_control_regression_is_enabled_for_runtime_candidates(self):
+        import yaml
+        tdd_path = WORKFLOW.parent / "pinkcab-vehicle-physics-tdd.yml"
+        tdd = yaml.safe_load(tdd_path.read_text(encoding="utf-8"))
+        matches = [step for job in tdd["jobs"].values()
+                   for step in job.get("steps", [])
+                   if step.get("name") == "Run complete P03 control-runtime regression"]
+        self.assertEqual(len(matches), 1)
+        step = matches[0]
+        self.assertEqual(step.get("if"), "${{ steps.change_scope.outputs.run_physics == 'true' }}")
+        self.assertIn("-TestName 'PinkCab.Vehicle.ControlRuntime'", step["run"])
+        self.assertIn("run-unreal-automation.ps1", step["run"])
+
     def test_runtime_scope_guard_allows_canonical_p02_admin_documents(self):
         required = (
             "docs/vehicle_physics/P02_DRIVELINE_ARCHITECTURE_2026-09-28.md",

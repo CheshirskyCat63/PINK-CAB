@@ -183,7 +183,7 @@ private:
     bool bCockpitMirrorsAvailable = true;
 
     UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
-    float ClutchPressSeconds = 0.16f;
+    float ClutchPressSeconds = 0.10f;
     UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))
     float BrakePressSeconds = 0.20f;
     UPROPERTY(EditAnywhere, Category = "PinkCab|Input|Pedals", meta=(ClampMin="0.05"))

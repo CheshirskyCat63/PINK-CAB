@@ -35,7 +35,7 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestTrue(TEXT("profile RPM envelope is ordered and valid"),
         Profile.GetEngineRpmEnvelope().IsValid());
     TestEqual(TEXT("high-rev engine spins up quickly"), Profile.EngineRevUpMOI.Value, 0.17f);
-    TestEqual(TEXT("P01 free-rev return is explicit and responsive"),
+    TestEqual(TEXT("neutral free-rev decay keeps the proven warm-idle invariant"),
         Profile.EngineRevDownRate.Value, 1800.0f);
     TestEqual(TEXT("P02 healthy clutch capacity candidate"),
         Profile.ClutchMaxTorqueNm.Value, 390.0f);
@@ -62,8 +62,14 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestTrue(TEXT("rear drive axle has lower grip than front for power oversteer"),
         Profile.RearWheel.FrictionForceMultiplier.Value
             < Profile.FrontWheel.FrictionForceMultiplier.Value);
-    TestEqual(TEXT("nominal rear grip targets progressive throttle wheelspin"),
-        Profile.RearWheel.FrictionForceMultiplier.Value, 0.50f);
+    TestEqual(TEXT("nominal dry front grip stays near the surface reference"),
+        Profile.FrontWheel.FrictionForceMultiplier.Value, 1.05f);
+    TestEqual(TEXT("nominal dry rear grip stays close to front"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.95f);
+    TestEqual(TEXT("front load sensitivity uses physical reference"),
+        Profile.FrontWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("rear load sensitivity uses physical reference"),
+        Profile.RearWheel.WheelLoadRatio.Value, 1.0f);
     // Use a conservative rear-heavy 60% static load budget. The actual Tatra
     // is rear-engined, so a 50/50 estimate would understate rear grip and make
     // the 50% wheelspin threshold look easier than it is in runtime.
@@ -80,14 +86,15 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
         FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
     const float HalfPedalEngineThrottle =
         FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
-    // Static-load math is only a conservative sanity band. Runtime wheel/contact
-    // tests are authoritative for the desired 25% clean / 50% wheelspin split.
-    TestTrue(TEXT("25 percent pedal stays near the rear static grip budget after linkage response"),
-        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 1.20f);
-    TestTrue(TEXT("50 percent pedal can cross rear static grip budget after linkage response"),
-        AxleDriveForceAt2000N * HalfPedalEngineThrottle > RearGripBudgetN);
-    TestTrue(TEXT("full throttle substantially exceeds rear grip for burnout"),
-        AxleDriveForceAt2000N > RearGripBudgetN * 1.8f);
+    // The player must be able to meter ordinary acceleration without the rear
+    // axle being permanently under-gripped. Full throttle may still exceed the
+    // static budget and create power oversteer naturally.
+    TestTrue(TEXT("25 percent pedal stays comfortably below rear static grip budget"),
+        AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 0.75f);
+    TestTrue(TEXT("50 percent pedal is dosable instead of guaranteed by profile math to spin"),
+        AxleDriveForceAt2000N * HalfPedalEngineThrottle < RearGripBudgetN * 0.95f);
+    TestTrue(TEXT("full throttle can still exceed rear static grip budget"),
+        AxleDriveForceAt2000N > RearGripBudgetN * 1.15f);
     TestEqual(TEXT("front steering lock target"), Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
     TestFalse(TEXT("front ABS disabled"), Profile.FrontWheel.bABSEnabled.Value);
     TestFalse(TEXT("rear ABS disabled"), Profile.RearWheel.bABSEnabled.Value);
@@ -115,6 +122,54 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP03HumanFeelCorrectionContractTest,
+    "PinkCab.Vehicle.Physics.P03.HumanFeelCorrectionContract",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabP03HumanFeelCorrectionContractTest::RunTest(const FString&)
+{
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(
+            EPinkCabCalibrationVariant::Nominal);
+
+    // Human-gate rejection 2026-10-02: the permanent 2.00/0.50 axle split
+    // and WheelLoadRatio=0.38 are no longer an admissible way to manufacture
+    // oversteer. Reuse the already-proven R6 physical-reference candidate.
+    TestEqual(TEXT("human correction advances calibration identity"),
+        Profile.CalibrationVersion, 6);
+    TestEqual(TEXT("front load sensitivity uses physical reference"),
+        Profile.FrontWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("rear load sensitivity uses physical reference"),
+        Profile.RearWheel.WheelLoadRatio.Value, 1.0f);
+    TestEqual(TEXT("front dry grip returns near surface reference"),
+        Profile.FrontWheel.FrictionForceMultiplier.Value, 1.05f);
+    TestEqual(TEXT("rear dry grip stays close to front instead of wheelspin shortcut"),
+        Profile.RearWheel.FrictionForceMultiplier.Value, 0.95f);
+    TestTrue(TEXT("axle grip balance cannot be cliff-like"),
+        Profile.RearWheel.FrictionForceMultiplier.Value
+            / Profile.FrontWheel.FrictionForceMultiplier.Value >= 0.85f);
+
+    // Q/clutch-open must feel like a free-spinning carbureted engine shedding
+    // rotational energy, not like a tachometer snapping to the 925 rpm floor.
+    TestEqual(TEXT("neutral rev-down remains on the proven profile authority"),
+        Profile.EngineRevDownRate.Value, 1800.0f);
+    TestEqual(TEXT("warm idle remains canonical"),
+        Profile.EngineIdleRpm.Value, 925.0f);
+
+    // Correctness must come from the physical profile, never hidden assists.
+    TestEqual(TEXT("steering lock remains fully available"),
+        Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
+    TestFalse(TEXT("ABS remains disabled"),
+        Profile.FrontWheel.bABSEnabled.Value
+            || Profile.RearWheel.bABSEnabled.Value);
+    TestFalse(TEXT("traction control remains disabled"),
+        Profile.FrontWheel.bTractionControlEnabled.Value
+            || Profile.RearWheel.bTractionControlEnabled.Value);
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabChaosPhysicalProfileVariantTest,
     "PinkCab.Vehicle.ChaosCalibration.Profile.Variants",
@@ -135,6 +190,10 @@ bool FPinkCabChaosPhysicalProfileVariantTest::RunTest(const FString& Parameters)
         Low.FrontWheel.FrictionForceMultiplier.Value < Nominal.FrontWheel.FrictionForceMultiplier.Value);
     TestTrue(TEXT("friction calibration rises nominal to high"),
         Nominal.FrontWheel.FrictionForceMultiplier.Value < High.FrontWheel.FrictionForceMultiplier.Value);
+    TestTrue(TEXT("rear friction calibration rises low to nominal"),
+        Low.RearWheel.FrictionForceMultiplier.Value < Nominal.RearWheel.FrictionForceMultiplier.Value);
+    TestTrue(TEXT("rear friction calibration rises nominal to high"),
+        Nominal.RearWheel.FrictionForceMultiplier.Value < High.RearWheel.FrictionForceMultiplier.Value);
     TestTrue(TEXT("spring calibration rises low to nominal"),
         Low.FrontWheel.SpringRate.Value < Nominal.FrontWheel.SpringRate.Value);
     TestTrue(TEXT("spring calibration rises nominal to high"),
@@ -158,7 +217,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("PHY-010 RPM envelope advances profile to v5"), Profile.CalibrationVersion, 5);
+    TestEqual(TEXT("human handling correction advances profile to v6"), Profile.CalibrationVersion, 6);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),

@@ -2,6 +2,9 @@
 
 #include "Misc/AutomationTest.h"
 #include "Vehicle/PinkCabClutchDrivelineModel.h"
+#include "Vehicle/PinkCabGearEngagementValidator.h"
+#include "Vehicle/PinkCabVehicleInputResponse.h"
+#include "Vehicle/PinkCabVehicleControlRuntime.h"
 
 namespace
 {
@@ -433,6 +436,83 @@ bool FPinkCabClutchDrivelineTimestepConsistencyTest::RunTest(const FString&)
             At30.MeanClutchTorqueNm,
             At120.MeanClutchTorqueNm)
             <= 0.01f);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchPressReactionBudgetTest,
+    "PinkCab.Vehicle.Physics.P03.ClutchPressReactionBudget",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchPressReactionBudgetTest::RunTest(const FString&)
+{
+    // Human gate 2026-10-02: pressing Q while the engine is spinning above
+    // shaft speed must unload the clutch promptly. A long disengagement ramp
+    // lets equal/opposite clutch reaction pull RPM toward the shaft before the
+    // plates are actually open, which feels like a false snap to idle.
+    const FPinkCabVehicleControlRuntimeConfig ControlConfig;
+    TestTrue(TEXT("Q press disengages within the bounded physical-response window"),
+        ControlConfig.ClutchPressSeconds <= 0.10f);
+
+    FPinkCabClutchDrivelineConfig ClutchConfig;
+    ClutchConfig.EngineEffectiveInertia = 0.17f;
+    ClutchConfig.MaxClutchTorqueNm = 390.0f;
+    ClutchConfig.SynchronizationTimeSeconds = 0.20f;
+    ClutchConfig.LockedSlipRpm = 25.0f;
+    FPinkCabClutchDrivelineModel Model(ClutchConfig);
+
+    FPinkCabGearboxControllerConfig GearboxConfig;
+    float Pedal = 0.0f;
+    float EngineRpm = 3000.0f;
+    constexpr float ShaftRpm = 1500.0f;
+    constexpr float Dt = 1.0f / 60.0f;
+    constexpr int32 MaxSteps = 16;
+    float TotalReactionDropRpm = 0.0f;
+    int32 Steps = 0;
+
+    while (Pedal < 1.0f - KINDA_SMALL_NUMBER && Steps < MaxSteps)
+    {
+        Pedal = FPinkCabVehicleInputResponse::StepAxis(
+            Pedal,
+            1.0f,
+            Dt,
+            ControlConfig.ClutchPressSeconds,
+            1.0f);
+        const float Coupling =
+            FPinkCabGearEngagementValidator::ComputeClutchCoupling(
+                GearboxConfig,
+                Pedal);
+
+        FPinkCabClutchDrivelineInput Input;
+        Input.DeltaSeconds = Dt;
+        Input.EngineRpm = EngineRpm;
+        Input.ShaftEquivalentEngineRpm = ShaftRpm;
+        Input.AvailableEngineTorqueNm = 0.0f;
+        Input.EngineDragTorqueNm = 0.0f;
+        Input.ClutchCoupling01 = Coupling;
+        Input.DrivetrainTorqueCapacity01 = 1.0f;
+        Input.EffectiveGearRatio = 1.0f;
+        Input.TransmissionEfficiency = 0.90f;
+
+        const FPinkCabClutchDrivelineOutput Out = Model.Step(Input);
+        if (Out.EngineReactionDeltaRpm < 0.0f)
+        {
+            TotalReactionDropRpm += -Out.EngineReactionDeltaRpm;
+        }
+        EngineRpm += Out.EngineReactionDeltaRpm;
+        ++Steps;
+    }
+
+    TestTrue(TEXT("Q press reaches fully open clutch in bounded mechanical steps"),
+        Pedal >= 1.0f - KINDA_SMALL_NUMBER && Steps <= 6);
+    TestTrue(
+        *FString::Printf(
+            TEXT("Q disengagement limits transient clutch-driven RPM loss total_drop_rpm=%.3f final_rpm=%.3f steps=%d"),
+            TotalReactionDropRpm,
+            EngineRpm,
+            Steps),
+        TotalReactionDropRpm <= 1050.0f);
     return true;
 }
 

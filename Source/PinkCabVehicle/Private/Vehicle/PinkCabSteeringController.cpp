@@ -47,26 +47,21 @@ float FPinkCabSteeringController::Step(
     const float Curve = FMath::Pow(
         AbsCursor,
         FMath::Max(Config.CenterExponent, 1.0f));
-    const float Gain = MotionMode == EPinkCabVehicleMotionMode::Moving
-        ? FMath::Lerp(1.0f, Config.HighSpeedTargetGain, SpeedAlpha)
-        : 1.0f;
+    // Speed may shape how new mouse travel reaches the authored steering target,
+    // but it must never rewrite an already-authored target merely because vehicle
+    // speed changed. Full mechanical steering authority therefore remains available
+    // at every speed; high-speed calmness comes only from the input travel scale above.
     Target = FMath::Clamp(
-        FMath::Sign(VirtualCursor) * Curve * Gain,
+        FMath::Sign(VirtualCursor) * Curve,
         -1.0f,
         1.0f);
 
-    if (DeltaSeconds <= 0.0f)
-    {
-        return Steering;
-    }
-
-    const float ResponseRate = FMath::Max(GetResponseRate(SpeedKmh, MotionMode), 0.0f);
-    const float ResponseAlpha = FMath::Clamp(
-        1.0f - FMath::Exp(-ResponseRate * DeltaSeconds),
-        0.0f,
-        1.0f);
-    Steering = FMath::Lerp(Steering, Target, ResponseAlpha);
-    Steering = FMath::Clamp(Steering, -1.0f, 1.0f);
+    // Mouse delta already authors the persistent steering target through
+    // VirtualCursor. A second temporal interpolation layer would keep moving the
+    // command after the device delta has ended, which is undeclared ghost steering.
+    // Standstill/high-speed feel remains in the device travel scale above.
+    (void)DeltaSeconds;
+    Steering = Target;
     return Steering;
 }
 
@@ -83,23 +78,4 @@ float FPinkCabSteeringController::GetTarget() const
 float FPinkCabSteeringController::GetSteering() const
 {
     return Steering;
-}
-
-float FPinkCabSteeringController::GetResponseRate(
-    float SpeedKmh,
-    EPinkCabVehicleMotionMode MotionMode) const
-{
-    if (MotionMode == EPinkCabVehicleMotionMode::Stationary)
-    {
-        return Config.StationaryResponsePerSecond;
-    }
-
-    const float SpeedAlpha = FMath::Clamp(
-        FMath::Abs(SpeedKmh) / FMath::Max(Config.HighSpeedKmh, 1.0f),
-        0.0f,
-        1.0f);
-    return FMath::Lerp(
-        Config.MovingResponseLowPerSecond,
-        Config.MovingResponseHighPerSecond,
-        SpeedAlpha);
 }

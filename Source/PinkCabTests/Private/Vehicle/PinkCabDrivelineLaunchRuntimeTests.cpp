@@ -114,7 +114,7 @@ public:
             ? SignedTravel > 100.0f
             : SignedTravel < -100.0f;
 
-        if (!bReached && PhaseSimSeconds < 6.0)
+        if ((!bReached || Speed <= 100.0f) && PhaseSimSeconds < 6.0)
         {
             return false;
         }

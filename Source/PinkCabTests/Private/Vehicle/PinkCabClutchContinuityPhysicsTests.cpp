@@ -1068,4 +1068,289 @@ bool FPinkCabPartialClutchWheelReactionRuntimeTest::RunTest(const FString& Param
     return true;
 }
 
+
+class FPinkCabClutchOpenRpmContinuityCommand final : public IAutomationLatentCommand
+{
+public:
+    explicit FPinkCabClutchOpenRpmContinuityCommand(
+        FAutomationTestBase* InTest)
+        : Test(InTest)
+    {
+    }
+
+    virtual bool Update() override
+    {
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World)
+        {
+            return false;
+        }
+
+        AActor* FixtureFloor =
+            PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
+        APinkCabPhysicsFixturePawn* Pawn =
+            PinkCabPhysicsFixture::FindOrSpawnPawn(*World);
+        if (!FixtureFloor || !Pawn)
+        {
+            Test->AddError(TEXT("clutch-open RPM fixture failed to spawn"));
+            return true;
+        }
+        PinkCabPhysicsFixture::KeepAwake(*Pawn);
+
+        UChaosWheeledVehicleMovementComponent* Movement =
+            Pawn->GetChaosMovement();
+        UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+        USkeletalMeshComponent* Mesh = Pawn->GetMesh();
+        if (!Movement || !PinkCabMovement || !Mesh)
+        {
+            Test->AddError(TEXT("clutch-open RPM fixture is incomplete"));
+            return true;
+        }
+
+        if (!bInitialized)
+        {
+            UGameplayStatics::SetGamePaused(World, false);
+            Test->TestTrue(
+                TEXT("clutch-open RPM fixture starts engine"),
+                Cockpit.StartEngine());
+            Controls = {};
+            // RestGate must observe the canonical warm-idle state. Driver
+            // throttle begins only after the spinning coupled state is seeded.
+            // Hold the ordinary service brake while the spawned chassis settles,
+            // matching the proven P02 sterile-fixture reset contract.
+            Controls.SetThrottle(0.0f);
+            Controls.SetBrake(1.0f);
+            Controls.SetHandbrake(0.0f);
+            Controls.SetDriveline(0, 0, 0.0f);
+            Controls.SetDrivetrainTorqueCapacity(1.0f);
+            bInitialized = true;
+            return false;
+        }
+
+        FPinkCabChaosVehicleDynamicsProvider Provider(Movement);
+        if (!FPinkCabChaosCockpitBridge::Apply(
+                Cockpit, *Movement, Controls, Provider))
+        {
+            Test->AddError(TEXT("clutch-open RPM actuation refresh failed"));
+            return true;
+        }
+
+        if (Phase == EPhase::Resting)
+        {
+            if (!RestGate.Update(*Pawn))
+            {
+                if (++RestPollCount < RestPollLimit)
+                {
+                    return false;
+                }
+                Test->AddError(TEXT("clutch-open RPM fixture did not settle"));
+                return true;
+            }
+
+            const float EffectiveRatio =
+                FMath::Abs(Movement->TransmissionSetup.GetGearRatio(TestGear));
+            Test->TestTrue(
+                TEXT("clutch-open RPM fixture has a real forward ratio"),
+                EffectiveRatio > KINDA_SMALL_NUMBER);
+            if (EffectiveRatio <= KINDA_SMALL_NUMBER)
+            {
+                return true;
+            }
+
+            const float WheelRpm = SeedEngineRpm / EffectiveRatio;
+            float SpeedMps = 0.0f;
+            int32 SpeedSamples = 0;
+
+            FWheeledSnaphotData Seed = Movement->GetSnapshot();
+            Seed.EngineRPM = SeedEngineRpm;
+            Seed.SelectedGear = 0;
+            Seed.AngularVelocity = FVector::ZeroVector;
+
+            for (int32 WheelIndex = 0;
+                 WheelIndex < Seed.WheelSnapshots.Num()
+                    && WheelIndex < Movement->Wheels.Num();
+                 ++WheelIndex)
+            {
+                const UChaosVehicleWheel* Wheel = Movement->Wheels[WheelIndex];
+                if (!Wheel)
+                {
+                    continue;
+                }
+                const float RadiusM =
+                    FMath::Max(Wheel->WheelRadius * 0.01f, KINDA_SMALL_NUMBER);
+                const float Omega =
+                    WheelRpm * (2.0f * PI / 60.0f);
+                Seed.WheelSnapshots[WheelIndex].WheelAngularVelocity = Omega;
+                SpeedMps += Omega * RadiusM;
+                ++SpeedSamples;
+            }
+
+            if (SpeedSamples <= 0)
+            {
+                Test->AddError(TEXT("clutch-open RPM fixture has no wheels"));
+                return true;
+            }
+
+            SpeedMps /= static_cast<float>(SpeedSamples);
+            Seed.LinearVelocity =
+                Pawn->GetActorForwardVector() * (SpeedMps * 100.0f);
+            Movement->SetSnapshot(Seed);
+            Mesh->SetPhysicsLinearVelocity(Seed.LinearVelocity);
+            Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+            Mesh->WakeAllRigidBodies();
+
+            Controls.SetThrottle(TestThrottle);
+            Controls.SetBrake(0.0f);
+            Controls.SetDriveline(TestGear, TestGear, 1.0f);
+            if (!FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, Provider))
+            {
+                Test->AddError(TEXT("clutch-open RPM coupled setup failed"));
+                return true;
+            }
+
+            LastMechanicalStep =
+                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+            CoupledStepsRemaining = CoupledSettleSteps;
+            Phase = EPhase::Coupled;
+            return false;
+        }
+
+        const int64 MechanicalStep =
+            PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+        if (MechanicalStep == LastMechanicalStep)
+        {
+            return false;
+        }
+        if (MechanicalStep < LastMechanicalStep)
+        {
+            Test->AddError(TEXT("clutch-open RPM mechanical step went backwards"));
+            return true;
+        }
+        LastMechanicalStep = MechanicalStep;
+
+        if (Phase == EPhase::Coupled)
+        {
+            if (--CoupledStepsRemaining > 0)
+            {
+                return false;
+            }
+
+            RpmBeforeOpen = Movement->GetEngineRotationSpeed();
+            IdleRpm = Movement->EngineSetup.EngineIdleRPM;
+            Test->TestTrue(
+                TEXT("clutch-open RPM precondition is materially above idle"),
+                RpmBeforeOpen >= IdleRpm + MinPreOpenHeadroomRpm);
+
+            Controls.SetDriveline(TestGear, TestGear, 0.0f);
+            if (!FPinkCabChaosCockpitBridge::Apply(
+                    Cockpit, *Movement, Controls, Provider))
+            {
+                Test->AddError(TEXT("clutch-open RPM disengagement command failed"));
+                return true;
+            }
+            Phase = EPhase::Opened;
+            OpenSamples = 0;
+            PreviousRpm = RpmBeforeOpen;
+            MinimumRpm = RpmBeforeOpen;
+            MaximumPositiveReboundRpm = 0.0f;
+            return false;
+        }
+
+        const float CurrentRpm = Movement->GetEngineRotationSpeed();
+        if (OpenSamples == 0)
+        {
+            FirstOpenRpm = CurrentRpm;
+        }
+        MinimumRpm = FMath::Min(MinimumRpm, CurrentRpm);
+        MaximumPositiveReboundRpm = FMath::Max(
+            MaximumPositiveReboundRpm,
+            CurrentRpm - PreviousRpm);
+        PreviousRpm = CurrentRpm;
+        ++OpenSamples;
+
+        if (OpenSamples < OpenObservationSteps)
+        {
+            return false;
+        }
+
+        const float FirstStepDropRpm = RpmBeforeOpen - FirstOpenRpm;
+        Test->AddInfo(FString::Printf(
+            TEXT("P03_CLUTCH_OPEN_RPM before=%.3f first=%.3f min=%.3f idle=%.3f first_drop=%.3f max_positive_rebound=%.3f throttle=%.3f"),
+            RpmBeforeOpen,
+            FirstOpenRpm,
+            MinimumRpm,
+            IdleRpm,
+            FirstStepDropRpm,
+            MaximumPositiveReboundRpm,
+            TestThrottle));
+
+        Test->TestTrue(
+            TEXT("opening clutch cannot teleport a spinning engine to idle in one physics step"),
+            FirstStepDropRpm <= MaxFirstStepDropRpm);
+        Test->TestTrue(
+            TEXT("opening clutch cannot hit the idle floor immediately while the engine still has rotational energy"),
+            FirstOpenRpm >= IdleRpm + MinFirstOpenHeadroomRpm);
+        return true;
+    }
+
+private:
+    enum class EPhase : uint8
+    {
+        Resting,
+        Coupled,
+        Opened
+    };
+
+    FAutomationTestBase* Test = nullptr;
+    FPinkCabCockpitState Cockpit;
+    FPinkCabVehicleControlState Controls;
+    FPinkCabPhysicsFixtureRestGate RestGate;
+    EPhase Phase = EPhase::Resting;
+    bool bInitialized = false;
+    int32 RestPollCount = 0;
+    int32 CoupledStepsRemaining = 0;
+    int32 OpenSamples = 0;
+    int64 LastMechanicalStep = -1;
+    float RpmBeforeOpen = 0.0f;
+    float FirstOpenRpm = 0.0f;
+    float PreviousRpm = 0.0f;
+    float MinimumRpm = 0.0f;
+    float MaximumPositiveReboundRpm = 0.0f;
+    float IdleRpm = 0.0f;
+
+    static constexpr int32 TestGear = 3;
+    static constexpr int32 RestPollLimit = 2400;
+    static constexpr int32 CoupledSettleSteps = 4;
+    static constexpr int32 OpenObservationSteps = 8;
+    static constexpr float SeedEngineRpm = 3000.0f;
+    static constexpr float TestThrottle = 0.25f;
+    static constexpr float MinPreOpenHeadroomRpm = 900.0f;
+    static constexpr float MinFirstOpenHeadroomRpm = 400.0f;
+    static constexpr float MaxFirstStepDropRpm = 300.0f;
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchOpenRpmContinuityRuntimeTest,
+    "PinkCab.Vehicle.Physics.P03.ClutchOpenRpmContinuity",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchOpenRpmContinuityRuntimeTest::RunTest(
+    const FString& Parameters)
+{
+    const bool bOpened = AutomationOpenMap(
+        PinkCabPhysicsFixture::MapPath,
+        true);
+    TestTrue(TEXT("P03 clutch-open RPM runtime map opens"), bOpened);
+    if (!bOpened)
+    {
+        return false;
+    }
+
+    ADD_LATENT_AUTOMATION_COMMAND(
+        FPinkCabClutchOpenRpmContinuityCommand(this));
+    return true;
+}
+
 #endif
