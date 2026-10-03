@@ -310,6 +310,9 @@ jobs:
             'docs/vehicle_physics/TESTS.csv',
             'docs/vehicle_physics/GATE1_ROAD_HANDLING_INTEGRATION_2026-09-28.md',
             'scripts/tests/test_package_g1_recovery.py',
+            'scripts/fast-delivery.ps1',
+            'scripts/tests/test_fast_delivery_retirement.py',
+            'docs/FAST_DELIVERY_ENTRYPOINT.md',
             'scripts/tests/test_p02_workflow_scope.py'
           )
           $changed=@(git diff --name-only "$base...HEAD")
