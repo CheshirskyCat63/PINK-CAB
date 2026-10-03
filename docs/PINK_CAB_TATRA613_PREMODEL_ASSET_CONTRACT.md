@@ -74,17 +74,20 @@ available commands. Use the existing tracked routes above; do not create a
 competing importer. CD-855 still owns source/provenance closure and the final
 game-specific recipe acceptance.
 
-The original V12 pre-model layout below is historical context. Current scene
-presentation uses the scene-preserved root above; the surviving V12 clean wheel
-route must not be mistaken for a complete body/steering reconstruction.
+Current scene presentation uses the scene-preserved root above together with
+the **active V12Clean wheel asset** below. `PinkCabVehicleVisualProfile.cpp`
+uses its `WheelPath` for all four wheels in `Tatra613ScenePreserved()`; the
+asset-contract automation and `Config/DefaultGame.ini` cook rule require this
+wheel subtree. It must remain available for runtime and packaged builds.
 
-`/Game/Dev/Vehicles/Tatra613ArchiveV12Clean`
+- current required wheel: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel`
 
-Originally documented V12 asset paths:
+The original V12 body and steering paths below are historical context, not the
+current scene-preserved body/steering route. The surviving V12 wheel tools must
+not be mistaken for a complete body/steering reconstruction:
 
-- body: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Body/StaticMeshes/Tatra613_V12_Body.Tatra613_V12_Body`
-- wheel: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel`
-- steering: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Steering/StaticMeshes/Tatra613_V12_Steering.Tatra613_V12_Steering`
+- historical body: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Body/StaticMeshes/Tatra613_V12_Body.Tatra613_V12_Body`
+- historical steering: `/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Steering/StaticMeshes/Tatra613_V12_Steering.Tatra613_V12_Steering`
 
 ## 3. Coordinate and scale contract
 
