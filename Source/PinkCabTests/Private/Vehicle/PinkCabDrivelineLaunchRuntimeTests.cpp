@@ -431,9 +431,11 @@ class FPinkCabP04BaselineCommand final : public IAutomationLatentCommand
 public:
     explicit FPinkCabP04BaselineCommand(
         FAutomationTestBase* InTest, bool bInRatioProbe = false,
-        bool bInEngineCoherence = false)
+        bool bInEngineCoherence = false, bool bInStableTraction = false)
         : Test(InTest), WallStart(FPlatformTime::Seconds())
-        , bRatioProbe(bInRatioProbe), bEngineCoherence(bInEngineCoherence) {}
+        , bRatioProbe(bInRatioProbe)
+        , bEngineCoherence(bInEngineCoherence || bInStableTraction)
+        , bStableTraction(bInStableTraction) {}
     virtual bool Update() override
     {
         using namespace PinkCabDrivelineRuntimeTest;
@@ -495,7 +497,8 @@ public:
             Controls.SetThrottle(Dose());
             Controls.SetDriveline(Gear(), Gear(), 0.0f);
             if (bEngineCoherence
-                && !Movement->BeginPinkCabMechanicalEvidenceWindow(0.0f, 4.0f))
+                && !Movement->BeginPinkCabMechanicalEvidenceWindow(
+                    bStableTraction ? 2.0f : 0.0f, bStableTraction ? 2.0f : 4.0f))
             {
                 Test->AddError(TEXT("P04 engine coherence evidence unavailable"));
                 Cleanup(*World);
@@ -576,6 +579,26 @@ public:
                 TEXT("P04 clutch predictor consumes the actual same-step engine angular state"),
                 bRead && Evidence.bComplete
                     && Evidence.MaxEngineInputStateErrorRpm <= 1.0f);
+            if (bStableTraction)
+            {
+                // This steady, level, no-brake window must not alternate
+                // propulsion and braking every physics step at constant input.
+                Test->TestTrue(TEXT("P04 steady half-throttle carries positive traction"),
+                    Evidence.MeanSignedDrivenWheelTorqueNm > 1.0f);
+                Test->TestTrue(TEXT("P04 steady traction has no spurious opposing impulse"),
+                    Evidence.MeanDrivenWheelTorqueNm
+                        <= Evidence.MeanSignedDrivenWheelTorqueNm * 1.01f + 1.0f);
+                Test->TestTrue(TEXT("P04 clutch and tyre exchange use resolved substeps"),
+                    Evidence.MaxDeltaSeconds <= 1.0f / 240.0f + 1.0e-6f);
+                Test->TestTrue(TEXT("P04 no brake or parking injection masks the defect"),
+                    Evidence.MeanAppliedWheelBrakeTorqueNm <= 0.1f
+                        && !Evidence.bAnyParkingEnabled);
+                Test->AddInfo(FString::Printf(
+                    TEXT("P04_STABLE_TRACTION repeat=%d abs_rear_nm=%.6f signed_rear_nm=%.6f max_step_ms=%.6f speed_end_kmh=%.3f"),
+                    CaseIndex + 1, Evidence.MeanDrivenWheelTorqueNm,
+                    Evidence.MeanSignedDrivenWheelTorqueNm,
+                    Evidence.MaxDeltaSeconds * 1000.0f, EndDriveSpeed));
+            }
         }
         if (++CaseIndex == (bEngineCoherence ? 3 : 18))
         {
@@ -637,6 +660,7 @@ private:
     bool bInitialized = false, bSettling = true, bCoasting = false;
     const bool bRatioProbe;
     const bool bEngineCoherence;
+    const bool bStableTraction;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04BaselineRuntimeTest,
@@ -669,6 +693,18 @@ bool FPinkCabP04EngineStateCoherenceTest::RunTest(const FString&)
     if (!TestTrue(TEXT("P04 engine coherence fixture opens"),
         AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, false, true));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04StableTractionTest,
+    "PinkCab.Vehicle.Physics.P04.StableHalfThrottleTraction",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04StableTractionTest::RunTest(const FString&)
+{
+    if (!TestTrue(TEXT("P04 steady traction fixture opens"),
+        AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, false, false, true));
     return true;
 }
 

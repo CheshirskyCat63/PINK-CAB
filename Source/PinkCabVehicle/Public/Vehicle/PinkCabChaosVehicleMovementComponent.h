@@ -25,6 +25,7 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float MeanClutchSlipRpm = 0.0f;
     float MeanAppliedWheelBrakeTorqueNm = 0.0f;
     float MeanDeltaSeconds = 0.0f;
+    float MaxDeltaSeconds = 0.0f;
     // Max phase mismatch between clutch input RPM and the same-step shaft omega.
     float MaxEngineInputStateErrorRpm = 0.0f;
     bool bAnyParkingEnabled = false;
