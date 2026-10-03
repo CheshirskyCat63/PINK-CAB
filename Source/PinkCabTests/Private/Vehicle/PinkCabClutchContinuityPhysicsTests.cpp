@@ -242,10 +242,10 @@ public:
             return false;
         }
         const int64 Delta = MechanicalStep - LastMechanicalStep;
-        if (Delta != 1)
+        if (Delta <= 0)
         {
             Test->AddError(FString::Printf(
-                TEXT("P02 boundary lost mechanical-step alignment coupling=%.3f repeat=%d previous=%lld current=%lld delta=%lld"),
+                TEXT("P02 boundary observed non-monotonic mechanical clock coupling=%.3f repeat=%d previous=%lld current=%lld delta=%lld"),
                 CurrentCoupling(),
                 RepeatIndex + 1,
                 static_cast<long long>(LastMechanicalStep),
@@ -255,8 +255,11 @@ public:
         }
         LastMechanicalStep = MechanicalStep;
 
-        const float MechanicalDeltaSeconds =
-            PinkCabMovement->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
+        // Torque/RPM means are already sampled on the physics thread.
+        // Kinematic interpolation and command observations span every substep
+        // since the preceding game-thread observation, not just one substep.
+        const double MechanicalDeltaSeconds = static_cast<double>(Delta)
+            * PinkCabMovement->GetPinkCabLastMechanicalIntegrationDeltaSeconds();
         if (!FMath::IsFinite(MechanicalDeltaSeconds)
             || MechanicalDeltaSeconds <= KINDA_SMALL_NUMBER)
         {
@@ -389,7 +392,7 @@ public:
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
-            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d constitutive_rear_torque_nm=%.3f mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f measurement_steps=%d evidence_s=%.6f evidence_steps=%d"),
+            TEXT("P02_PHY009_BOUNDARY coupling=%.3f repeat=%d constitutive_rear_torque_nm=%.3f mean_rear_drive_torque_nm=%.3f mean_engine_rpm=%.3f mean_resolved_throttle=%.6f mean_authoritative_available_engine_torque_nm=%.3f chaos_engine_torque_nm=%.3f chaos_transmission_torque_nm=%.3f chaos_transmission_rpm=%.3f end_speed_cm_s=%.3f end_ke_j=%.3f measurement_s=%.6f observation_frames=%d evidence_s=%.6f evidence_steps=%d"),
             Result.Coupling,
             RepeatIndex + 1,
             Result.ConstitutiveRearDriveTorqueNm,
@@ -788,94 +791,42 @@ public:
                 return true;
             }
 
-            LastMechanicalStep =
-                PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
-            MeasurementSettleStepsRemaining =
-                MeasurementSettleMechanicalSteps;
-            EngineRpmSum = 0.0f;
-            DrivenWheelRpmSumSamples = 0.0f;
-            WheelDerivedEngineRpmSum = 0.0f;
-            SampleCount = 0;
+            if (!PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(
+                    MeasurementSettleSeconds, MeasurementSampleSeconds))
+            {
+                Test->AddError(TEXT("P02 reaction physics evidence could not start"));
+                return true;
+            }
             bMeasuring = true;
             return false;
         }
 
-        const int64 MechanicalStep =
-            PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
-        if (MechanicalStep == LastMechanicalStep)
+        // Observe every physics integration through the existing timed window.
+        // The old three-settle/twelve-sample contract was 0.05/0.20 seconds
+        // at nominal 60 Hz; retain those durations rather than aliasing frames.
+        FPinkCabMechanicalEvidenceSnapshot Evidence;
+        if (!PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence))
         {
-            return false;
-        }
-        const int64 Delta = MechanicalStep - LastMechanicalStep;
-        if (Delta != 1)
-        {
-            Test->AddError(FString::Printf(
-                TEXT("P02 reaction lost mechanical-step alignment coupling=%.3f repeat=%d previous=%lld current=%lld delta=%lld"),
-                CurrentCoupling(),
-                RepeatIndex + 1,
-                static_cast<long long>(LastMechanicalStep),
-                static_cast<long long>(MechanicalStep),
-                static_cast<long long>(Delta)));
+            Test->AddError(TEXT("P02 reaction physics evidence could not be read"));
             return true;
         }
-        LastMechanicalStep = MechanicalStep;
-
-        if (MeasurementSettleStepsRemaining > 0)
-        {
-            --MeasurementSettleStepsRemaining;
-            return false;
-        }
-
-        float DrivenWheelRpmSum = 0.0f;
-        int32 DrivenWheelCount = 0;
-        for (int32 WheelIndex = 0;
-             WheelIndex < Movement->Wheels.Num();
-             ++WheelIndex)
-        {
-            const UChaosVehicleWheel* Wheel =
-                Movement->Wheels[WheelIndex];
-            if (!Wheel || !Wheel->bAffectedByEngine)
-            {
-                continue;
-            }
-            DrivenWheelRpmSum += FMath::Abs(
-                Wheel->GetWheelAngularVelocity()
-                    * (60.0f / (2.0f * PI)));
-            ++DrivenWheelCount;
-        }
-
-        if (DrivenWheelCount > 0)
-        {
-            const float MeanWheelRpm =
-                DrivenWheelRpmSum
-                / static_cast<float>(DrivenWheelCount);
-            DrivenWheelRpmSumSamples += MeanWheelRpm;
-            const float EffectiveRatio =
-                FMath::Abs(
-                    Movement->TransmissionSetup.GetGearRatio(1));
-            WheelDerivedEngineRpmSum +=
-                MeanWheelRpm * EffectiveRatio;
-        }
-        EngineRpmSum += Movement->GetEngineRotationSpeed();
-        ++SampleCount;
-
-        if (SampleCount < MeasurementSampleMechanicalSteps)
-        {
-            return false;
-        }
+        if (!Evidence.bComplete) return false;
+        Test->TestTrue(TEXT("P02 reaction observes the complete original time window"),
+            Evidence.CompletedSampleSteps > 0
+                && FMath::IsNearlyEqual(Evidence.CompletedSampleSeconds,
+                    MeasurementSampleSeconds, 1.0e-4f));
 
         FPinkCabPartialClutchReactionRun Result;
         Result.Coupling01 = CurrentCoupling();
-        Result.SeedWheelDerivedEngineRpm =
-            CurrentSeedWheelDerivedEngineRpm;
-        Result.MeanEngineRpm =
-            EngineRpmSum / static_cast<float>(SampleCount);
-        Result.MeanDrivenWheelRpm =
-            DrivenWheelRpmSumSamples
-                / static_cast<float>(SampleCount);
-        Result.MeanWheelDerivedEngineRpm =
-            WheelDerivedEngineRpmSum
-                / static_cast<float>(SampleCount);
+        Result.SeedWheelDerivedEngineRpm = CurrentSeedWheelDerivedEngineRpm;
+        Result.MeanEngineRpm = Evidence.MeanEngineRpm;
+        Result.MeanDrivenWheelRpm = Evidence.MeanDrivenWheelRpm;
+        Result.MeanWheelDerivedEngineRpm = Evidence.MeanDrivenWheelRpm
+            * FMath::Abs(Movement->TransmissionSetup.GetGearRatio(1));
+        Test->AddInfo(FString::Printf(
+            TEXT("P02_REACTION_WINDOW coupling=%.3f repeat=%d sample_s=%.6f physical_samples=%d max_step_ms=%.6f"),
+            CurrentCoupling(), RepeatIndex + 1, Evidence.CompletedSampleSeconds,
+            Evidence.CompletedSampleSteps, Evidence.MaxDeltaSeconds * 1000.0f));
         Runs.Add(Result);
 
         Test->AddInfo(FString::Printf(
@@ -925,12 +876,6 @@ private:
         Controls.SetDrivetrainTorqueCapacity(1.0f);
         RestGate.Reset();
         RestPollCount = 0;
-        LastMechanicalStep = -1;
-        MeasurementSettleStepsRemaining = 0;
-        EngineRpmSum = 0.0f;
-        DrivenWheelRpmSumSamples = 0.0f;
-        WheelDerivedEngineRpmSum = 0.0f;
-        SampleCount = 0;
         bMeasuring = false;
     }
 
@@ -1025,8 +970,8 @@ private:
     static constexpr float HighSpeedKmh = 50.0f;
     static constexpr float InitialEngineRpm = 3000.0f;
     static constexpr float PartialCoupling = 0.50f;
-    static constexpr int32 MeasurementSettleMechanicalSteps = 3;
-    static constexpr int32 MeasurementSampleMechanicalSteps = 12;
+    static constexpr float MeasurementSettleSeconds = 3.0f / 60.0f;
+    static constexpr float MeasurementSampleSeconds = 12.0f / 60.0f;
     // Preserve the nominal 60 Hz time budget across physics substeps.
     static constexpr double RestTimeoutSeconds = 4.0;
     static constexpr int32 RestPollLimit = 2400;
@@ -1040,12 +985,6 @@ private:
     int32 ConditionIndex = 0;
     int32 RepeatIndex = 0;
     int32 RestPollCount = 0;
-    int32 SampleCount = 0;
-    int32 MeasurementSettleStepsRemaining = 0;
-    int64 LastMechanicalStep = -1;
-    float EngineRpmSum = 0.0f;
-    float DrivenWheelRpmSumSamples = 0.0f;
-    float WheelDerivedEngineRpmSum = 0.0f;
     float CurrentSeedWheelDerivedEngineRpm = 0.0f;
 };
 
