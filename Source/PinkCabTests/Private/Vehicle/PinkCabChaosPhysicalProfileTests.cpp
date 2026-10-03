@@ -307,3 +307,41 @@ bool FPinkCabChaosPhysicalProfileAppliedDefaultsTest::RunTest(const FString& Par
     return true;
 }
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Vehicle/PinkCabGearboxController.h"
+#include "Vehicle/PinkCabGearEngagementValidator.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04GearingCandidateTest,
+    "PinkCab.Vehicle.ControlRuntime.P04GearingCandidate",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04GearingCandidateTest::RunTest(const FString&)
+{
+    const auto Profile = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const FPinkCabGearboxControllerConfig Config;
+    const FPinkCabGearboxController Controller;
+    TestEqual(TEXT("P04 candidate advances calibration identity"), Profile.CalibrationVersion, 7);
+    TestEqual(TEXT("P04 measured moderate first ratio"), Profile.ForwardGearRatios.Value[0], 4.0f);
+    TestEqual(TEXT("P04 reverse uses the same explicit launch ratio"), Profile.ReverseGearRatios.Value[0], 4.0f);
+    TestEqual(TEXT("P04 leaves second gear unchanged"), Profile.ForwardGearRatios.Value[1], 2.2f);
+    TestEqual(TEXT("P04 preserves accepted engine rev-down"), Profile.EngineRevDownRate.Value, 1800.0f);
+    TestEqual(TEXT("P04 preserves accepted idle"), Profile.EngineIdleRpm.Value, 925.0f);
+    const double CircumferenceM = 2.0 * PI * Profile.RearWheel.WheelRadiusCm.Value / 100.0;
+    if (!TestTrue(TEXT("P04 valid driven-wheel circumference"), CircumferenceM > 0.0)) return false;
+    for (int32 Gear = -1; Gear <= 5; ++Gear)
+    {
+        if (Gear == 0) continue;
+        const float Ratio = Gear < 0 ? Profile.ReverseGearRatios.Value[0] : Profile.ForwardGearRatios.Value[Gear - 1];
+        for (const float Speed : {0.0f, 10.0f, 30.0f, 60.0f, 100.0f})
+        {
+            const float Expected = static_cast<float>(Speed * 1000.0 * Ratio * Profile.FinalDriveRatio.Value / (60.0 * CircumferenceM));
+            TestTrue(TEXT("P04 default validator derives kinematics from the physical profile"),
+                FMath::IsNearlyEqual(FPinkCabGearEngagementValidator::ExpectedEngineRpmForGear(Config, Gear, Speed), Expected, 0.02f));
+            TestTrue(TEXT("P04 default runtime controller shares physical profile kinematics"),
+                FMath::IsNearlyEqual(Controller.ExpectedEngineRpmForGear(Gear, Speed), Expected, 0.02f));
+        }
+    }
+    return true;
+}
+#endif
