@@ -1,89 +1,123 @@
-name: CD-952 Verify Administrative Review Corrections
+name: CD-952 Final Main Sync and Accepted Package Audit
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
     paths: [.github/workflows/cd559-accept-v2-entry.yml]
 permissions:
-  contents: write
+  contents: read
+  actions: read
 concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  qualify:
+  final_audit:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: windows-latest
-    timeout-minutes: 8
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 5
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+      GIT_OPTIONAL_LOCKS: '0'
+      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
     steps:
-      - name: Checkout exact reviewed docs candidate
-        uses: actions/checkout@v4
-        with:
-          ref: 3c4e078383f6f110b2975aca8356a8bd0cd6a058
-          fetch-depth: 0
-          lfs: false
-          persist-credentials: false
-      - name: Correct two independently verified review findings
-        shell: python
-        run: |
-          import csv,io,json,os,subprocess
-          from pathlib import Path
-          root=Path.cwd();report=Path(os.environ['RUNNER_TEMP'])/'CD952_REVIEW';report.mkdir()
-          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:f.write('DOC_REPORT='+str(report)+'\n')
-          changed=[]
-          paths=['docs/CONTROL_PLANE.md','docs/FAST_DELIVERY_ENTRYPOINT.md','docs/PINK_CAB_ACTIVE_BASELINE.md','docs/PROGRAM_ROADMAP.md','docs/README.md']
-          old='Direct CD-869 dispatch and retired local fast-delivery cannot bypass P02.'
-          new='Policy permits only P02-mediated owner-test delivery. The legacy direct CD-869 workflow_dispatch trigger still exists and does not verify upstream P02 attestation; direct dispatch is prohibited by policy, not technically prevented. Closing that trigger/attestation gap remains CD-559 engineering. The retired local fast-delivery script refuses mutation.'
-          def save(name,before,after):
-              assert before!=after
-              for folder,text in [('before',before),('after',after)]:
-                  p=report/folder/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(text.encode())
-              (root/name).write_bytes(after.encode());changed.append(name)
-          for name in paths:
-              before=(root/name).read_text(encoding='utf-8');assert before.count(old)==1
-              save(name,before,before.replace(old,new))
-          name='docs/vehicle_physics/TASKS.csv';before=(root/name).read_text(encoding='utf-8');reader=csv.DictReader(io.StringIO(before));fields=reader.fieldnames;rows=list(reader)
-          row=next(x for x in rows if x['ID']=='PHY-013');assert row['Status']=='DONE'
-          row['Status']='IN_PROGRESS'
-          row['Evidence']='P03/V2 and bounded P04 are owner accepted, but this task keeps its full declared criteria: T-025 PASS; T-026 low/urban/high-speed deliberate countersteer remains NOT RUN. Preserve accepted behavior; do not claim full PHY-013 closure or authorize downstream scope from this incomplete criterion. Coordinator37148042881 / delivery37149462470 / owner receipt37152180059.'
-          out=io.StringIO(newline='');w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows);save(name,before,out.getvalue())
-          tests=list(csv.DictReader(io.StringIO((root/'docs/vehicle_physics/TESTS.csv').read_text())))
-          assert len(rows)==48 and len(tests)==96
-          assert next(x for x in tests if x['ID']=='T-026')['Status']=='NOT RUN'
-          for task in rows:
-              if task['Stage']=='P03' and task['Status']=='DONE':assert all(t['Status']=='PASS' for t in tests if t['Task']==task['ID']),task['ID']
-          assert len(changed)==6
-          subprocess.run(['git','diff','--check'],check=True)
-          (report/'CHANGED.json').write_text(json.dumps(changed),encoding='utf-8')
-          print('REVIEW_CORRECTIONS=PASS; no runtime or acceptance criteria changed')
-      - name: Recheck entire script suite and architecture
+      - name: Refuse concurrent project editing without stopping any processes
         shell: powershell
         run: |
-          python -m pip install --disable-pip-version-check PyYAML==6.0.2
-          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
-          python -m unittest discover -s scripts/tests -p 'test_*.py' -v
-          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
-          python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
-          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
-      - name: Export verified immutable blobs without modifying refs
+          $ErrorActionPreference='Stop'
+          $roots=@('E:\CHESHIRE_DIVISION\Games\PINK-CAB','E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
+          $busy=@(Get-CimInstance Win32_Process | Where-Object {
+            $cmd=$_.CommandLine
+            $engine=($_.Name -match '^(UnrealEditor(-Cmd)?|AutomationTool)(\.exe)?$') -or ($_.Name -eq 'dotnet.exe' -and $cmd -match 'UnrealBuildTool|AutomationTool')
+            $engine -and $cmd -and @($roots | Where-Object {$cmd.IndexOf($_,[StringComparison]::OrdinalIgnoreCase) -ge 0}).Count -gt 0
+          })
+          if($busy.Count){throw 'PINKCAB source is in use; no process stopped or source overwritten'}
+      - name: Verify final main gates, fast-forward sources and rehash accepted payload
         env:
           GH_TOKEN: ${{ github.token }}
         shell: python
         run: |
-          import hashlib,json,os,urllib.request
+          import csv,datetime,hashlib,io,json,os,subprocess,time,urllib.request
           from pathlib import Path
-          report=Path(os.environ['DOC_REPORT']);paths=json.loads((report/'CHANGED.json').read_text());files=[]
-          for name in paths:
-              data=Path(name).read_bytes();body=json.dumps({'content':data.decode(),'encoding':'utf-8'}).encode()
-              req=urllib.request.Request('https://api.github.com/repos/CheshirskyCat63/PINK-CAB/git/blobs',data=body,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
-              with urllib.request.urlopen(req) as response:blob=json.load(response)
-              expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest();assert expected==blob['sha']
-              files.append({'path':name,'mode':'100644','type':'blob','sha':expected,'sha256':hashlib.sha256(data).hexdigest()})
-          receipt={'base':'3c4e078383f6f110b2975aca8356a8bd0cd6a058','base_tree':'938ec52596c10b0204e153a0eec0adbd2f84eeee','files':files,'all_script_tests_passed':True,'refs_changed':False,'runtime_changed':False}
-          (report/'PATCH.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8');print(json.dumps(receipt))
-      - name: Preserve verified review correction
-        if: always() && env.DOC_REPORT != ''
+          mainsha='e03e94f6296445d91f4901925b29070123e9962b'
+          accepted='52239b61bc80e5a63716b9b09b87c520fa09fd05'
+          integration='4a313d38f0674a3e5048f832a07428defa31ab62'
+          base=Path(r'E:\CHESHIRE_DIVISION')
+          primary=base/'Games/PINK-CAB';runner=base/'GitHubRunner/PINK-CAB/actions-runner/_work/PINK-CAB/PINK-CAB'
+          report=base/'Artifacts/PINKCAB/Acceptance'/('CD952_CLOSED_'+os.environ['GITHUB_RUN_ID']);report.mkdir(parents=True,exist_ok=False)
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:f.write('FINAL_REPORT='+str(report)+'\n')
+          api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
+          def get(path):
+              req=urllib.request.Request(api+path,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as response:return json.load(response)
+          def sha256(p):
+              with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+          assert get('/git/ref/heads/main')['object']['sha']==mainsha,'Main moved; re-evaluate without overwriting'
+          runs=[]
+          for attempt in range(12):
+              runs=[r for r in get('/actions/runs?head_sha='+mainsha+'&event=push&per_page=10')['workflow_runs'] if r['path']=='.github/workflows/pinkcab-repository-verification.yml']
+              if runs and runs[0]['status']=='completed':break
+              time.sleep(5)
+          assert len(runs)==1 and runs[0]['conclusion']=='success','Final main verification is not successful'
+          assert get('/actions/runs/37152600255')['conclusion']=='success','Integrated runtime verification not successful'
+          workflows=get('/actions/workflows?per_page=100')
+          assert workflows['total_count']<=100,'Workflow list pagination required'
+          workflow_rows=[{k:w[k] for k in ('id','name','path','state')} for w in workflows['workflows']]
+          (report/'WORKFLOW_STATES_BEFORE_RETIREMENT.json').write_text(json.dumps(workflow_rows,indent=2),encoding='utf-8')
+          workspaces=[]
+          for label,repo in [('primary',primary),('runner',runner)]:
+              def git(*args):return subprocess.run(['git','-C',str(repo),*args],check=True,capture_output=True).stdout
+              before={'head':git('rev-parse','HEAD').decode().strip(),'branch':git('branch','--show-current').decode().strip(),'status':git('status','--porcelain=v1','--untracked-files=all').decode()}
+              (report/(label+'-before.json')).write_text(json.dumps(before,indent=2),encoding='utf-8')
+              assert not before['status'].strip(),'Uncommitted changes in '+label
+              if label=='primary':assert before['branch']=='main','Primary is not on main'
+              git('fetch','--no-tags','origin','main')
+              assert git('rev-parse','origin/main').decode().strip()==mainsha
+              if label=='primary':git('merge','--ff-only','origin/main')
+              else:git('checkout','--detach',mainsha)
+              assert git('rev-parse','HEAD').decode().strip()==mainsha
+              assert not git('status','--porcelain=v1','--untracked-files=all').strip()
+              assert not git('diff','--name-only',integration,mainsha,'--','Source','Content','Config','Plugins','.github','scripts','*.uproject').strip(),'Administration changed runtime/build source'
+              commands=[['python','scripts/ci/prepare_metaroad.py','--root',str(repo)],['python','scripts/ci/acceptance_contract.py','workspace','--sha',mainsha]]
+              for index,command in enumerate(commands):
+                  result=subprocess.run(command,cwd=repo,capture_output=True,text=True)
+                  (report/(label+'-gate-'+str(index)+'.txt')).write_text(result.stdout+result.stderr,encoding='utf-8');result.check_returncode()
+              workspaces.append({'kind':label,'path':str(repo),'head':mainsha,'clean':True,'branch':git('branch','--show-current').decode().strip(),'metaroad_pin':'PASS','workspace_guard':'PASS'})
+          delivery=base/'Builds/PINKCAB/CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1'
+          payload=delivery/'Windows';manifest=json.loads((delivery/'PACKAGE_MANIFEST.json').read_text(encoding='utf-8-sig'))
+          assert manifest['candidateSha']==accepted and str(manifest['deliveryRun'])=='37149462470'
+          expected={f['path']:f for f in manifest['files']};actual={p.relative_to(payload).as_posix():p for p in payload.rglob('*') if p.is_file() and 'saved' not in [s.lower() for s in p.relative_to(payload).parts]}
+          assert len(expected)==len(manifest['files'])==53 and set(expected)==set(actual)
+          for name,path in actual.items():assert path.stat().st_size==expected[name]['bytes'] and sha256(path)==expected[name]['sha256'],name
+          owner=json.loads((delivery/'OWNER_ACCEPTANCE.json').read_text(encoding='utf-8'))
+          assert owner['candidate_sha']==accepted and owner['human_accepted'] is True and owner['package_manifest_sha256']==sha256(delivery/'PACKAGE_MANIFEST.json')
+          fallback=base/'Builds/PINKCAB/CD869_ENDLESS_edf75e1b_RUN37117735294/Windows/PinkCab/Binaries/Win64/PinkCab.exe'
+          assert fallback.is_file() and sha256(fallback)==owner['previous_exe_sha256']
+          assert (base/'Builds/PINKCAB/CD869_ENDLESS_8d68e456_RUN36868646970/Windows/PinkCab/Binaries/Win64/PinkCab.exe').is_file()
+          tasks=list(csv.DictReader(io.StringIO((primary/'docs/vehicle_physics/TASKS.csv').read_text(encoding='utf-8'))))
+          tests=list(csv.DictReader(io.StringIO((primary/'docs/vehicle_physics/TESTS.csv').read_text(encoding='utf-8'))))
+          assert len(tasks)==48 and len(tests)==96
+          assert next(t for t in tasks if t['ID']=='PHY-013')['Status']=='IN_PROGRESS'
+          assert next(t for t in tests if t['ID']=='T-026')['Status']=='NOT RUN'
+          (report/'OWNER_ACCEPTANCE.json').write_bytes((delivery/'OWNER_ACCEPTANCE.json').read_bytes())
+          result={'audit_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'administrative_issue':'CD-952','main':mainsha,'integration':integration,'accepted_runtime':accepted,'accepted_delivery':37149462470,'main_verification_run':runs[0]['id'],'integration_verification_run':37152600255,'workspaces':workspaces,'accepted_payload_files':53,'accepted_payload_bytes':sum(p.stat().st_size for p in actual.values()),'all_payload_hashes_match':True,'previous_v2_unchanged':True,'previous_p02_exists':True,'task_rows':48,'test_rows':96,'runtime_changed_by_administration':False,'temporary_workflow_retirement':'PENDING_AFTER_THIS_JOB'}
+          (report/'FINAL_SOURCE_AND_PACKAGE_AUDIT.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result))
+      - name: Verify exact accepted play entry and named editor and rollback
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop';$ws=New-Object -ComObject WScript.Shell
+          $desktop='C:\Users\CheCat\Desktop';$studio=Join-Path $desktop 'CHESHIRE_STUDIO'
+          $rows=@(foreach($dir in @($desktop,'C:\Users\Public\Desktop',$studio)){foreach($f in @(Get-ChildItem -LiteralPath $dir -Filter '*.lnk' -File | Where-Object {$_.BaseName -match '(?i)PIN[CK ]*CAB'})){$s=$ws.CreateShortcut($f.FullName);[pscustomobject]@{path=$f.FullName;target=$s.TargetPath;arguments=$s.Arguments;description=$s.Description;exists=(Test-Path -LiteralPath $s.TargetPath)}}})
+          if($rows.Count -ne 3){throw 'Unexpected PINKCAB desktop/studio alias count'}
+          $entry=@($rows | Where-Object {$_.path -eq (Join-Path $desktop 'PINCKCAB.lnk')})
+          if($entry.Count -ne 1 -or $entry[0].target -ne 'E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1\Windows\PinkCab\Binaries\Win64\PinkCab.exe' -or $entry[0].description -notmatch 'OWNER ACCEPTED' -or -not $entry[0].exists){throw 'Accepted root entry mismatch'}
+          if(@($rows | Where-Object {$_.path -eq (Join-Path $studio 'PINKCAB_Rollback_V2.lnk') -and $_.target -match 'edf75e1b' -and $_.exists}).Count -ne 1){throw 'Named V2 fallback missing'}
+          if(@($rows | Where-Object {$_.path -eq (Join-Path $studio 'PINKCAB_Editor.lnk') -and $_.exists}).Count -ne 1){throw 'Studio Editor missing'}
+          $rows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:FINAL_REPORT 'FINAL_DESKTOP.json') -Encoding UTF8
+          Write-Host 'CD952_SOURCE_PACKAGE_AND_DESKTOP_FINAL=PASS; no game restart or package replacement'
+      - name: Preserve final source and package audit
+        if: always() && env.FINAL_REPORT != ''
         uses: actions/upload-artifact@v4
         with:
-          name: p04-admin-review-corrections-${{ github.run_id }}
-          path: ${{ env.DOC_REPORT }}
+          name: p04-admin-final-audit-${{ github.run_id }}
+          path: ${{ env.FINAL_REPORT }}
           if-no-files-found: error
           retention-days: 90
