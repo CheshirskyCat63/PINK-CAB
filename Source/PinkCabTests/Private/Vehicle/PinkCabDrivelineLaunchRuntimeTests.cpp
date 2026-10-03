@@ -372,6 +372,7 @@ bool FPinkCabD4InclineRuntimeTest::RunTest(const FString&)
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Vehicle/PinkCabGearEngagementValidator.h"
+#include "PhysicsEngine/BodyInstance.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04ProfileTableTest,
@@ -428,8 +429,8 @@ bool FPinkCabP04ProfileTableTest::RunTest(const FString&)
 class FPinkCabP04BaselineCommand final : public IAutomationLatentCommand
 {
 public:
-    explicit FPinkCabP04BaselineCommand(FAutomationTestBase* InTest)
-        : Test(InTest), WallStart(FPlatformTime::Seconds()) {}
+    explicit FPinkCabP04BaselineCommand(FAutomationTestBase* InTest, bool bInRatioProbe = false)
+        : Test(InTest), WallStart(FPlatformTime::Seconds()), bRatioProbe(bInRatioProbe) {}
     virtual bool Update() override
     {
         using namespace PinkCabDrivelineRuntimeTest;
@@ -462,6 +463,12 @@ public:
         {
             Test->AddError(TEXT("P04 four-wheel drivetrain unavailable")); Cleanup(*World); return true;
         }
+        if (bRatioProbe && bSettling)
+        {
+            // Only this fresh fixture instance changes; the native solver consumes
+            // the explicit effective ratio through the normal cockpit/provider command.
+            Movement->TransmissionSetup.ForwardGearRatios[0] = ProbeRatio();
+        }
         PinkCabPhysicsFixture::KeepAwake(*Pawn);
         if (!Apply(*Pawn, Cockpit, Controls))
         {
@@ -475,6 +482,10 @@ public:
             const auto Profile = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
             Test->TestEqual(TEXT("P04 unchanged production mass"), Movement->Mass, Profile.ReferenceMassKg.Value);
             BodyMassKg = Mesh->GetMass();
+            FBodyInstance* RootBody = Mesh->GetBodyInstance();
+            if (!RootBody) { Test->AddError(TEXT("P04 root body unavailable")); Cleanup(*World); return true; }
+            RootMassKg = RootBody->GetBodyMass();
+            StartYaw = Mesh->GetComponentRotation().Yaw;
             LastStep = Movement->GetPinkCabMechanicalIntegrationStepCount();
             bSettling = false;
             Controls.SetBrake(0.0f);
@@ -499,6 +510,12 @@ public:
             PeakRearTorque = FMath::Max(PeakRearTorque, Torque);
             EndDriveSpeed = DirectionalSpeed;
             EndDriveRpm = Movement->GetEngineRotationSpeed();
+            HorizontalEndKmh = HorizontalSpeedCmPerSec(*Mesh) * 0.036f;
+            MaxYawDeg = FMath::Max(MaxYawDeg, FMath::Abs(FMath::FindDeltaAngleDegrees(StartYaw, static_cast<float>(Mesh->GetComponentRotation().Yaw))));
+            int32 Contacts = 0;
+            for (int32 I = 0; I < 4; ++I) Contacts += Movement->GetWheelState(I).bInContact ? 1 : 0;
+            MinimumContacts = FMath::Min(MinimumContacts, Contacts);
+            if (Elapsed >= 2.0) { TorqueSumNm += Torque; ++TorqueSamples; }
             float MeanWheelSpeedMps = 0.0f;
             for (int32 I = 2; I < 4; ++I)
             {
@@ -526,12 +543,21 @@ public:
         Test->TestTrue(TEXT("P04 measurable intended-direction travel"), (Gear() < 0 ? -Travel : Travel) > 10.0f);
         Test->TestTrue(TEXT("P04 neutral removes drive without velocity reset"), Torque <= 0.1f);
         Test->AddInfo(FString::Printf(
-            TEXT("P04_ACCEL_BASELINE gear=%d pedal=%.2f repeat=%d body_mass_kg=%.3f drive_s=%.4f speed_end_kmh=%.3f rpm_end=%.3f time30_s=%.4f time60_s=%.4f peak_rpm=%.3f peak_rear_torque_nm=%.3f peak_slip_speed_mps=%.3f neutral_speed_kmh=%.3f neutral_drive_torque_nm=%.5f timing=OBSERVED_MECHANICAL_STEPS not_reached=-1 fixture=STERILE_NATIVE_NOT_PACKAGED"),
-            Gear(), Dose(), CaseIndex % 3 + 1, BodyMassKg, DriveEndTime, EndDriveSpeed, EndDriveRpm,
+            TEXT("P04_CASE_DIAGNOSTIC mode=%s ratio=%.4f pedal=%.2f repeat=%d root_mass_kg=%.3f aggregate_mesh_mass_kg=%.3f horizontal_end_kmh=%.3f max_yaw_deg=%.3f min_contacts=%d mean_rear_torque_after2s_nm=%.3f"),
+            bRatioProbe ? TEXT("RATIO_PROBE") : TEXT("NOMINAL"),
+            Movement->TransmissionSetup.ForwardGearRatios[0], Dose(), CaseIndex % 3 + 1,
+            RootMassKg, BodyMassKg, HorizontalEndKmh, MaxYawDeg, MinimumContacts,
+            TorqueSamples > 0 ? TorqueSumNm / TorqueSamples : 0.0f));
+        Test->AddInfo(FString::Printf(
+            TEXT("%s ratio=%.4f gear=%d pedal=%.2f repeat=%d body_mass_kg=%.3f drive_s=%.4f speed_end_kmh=%.3f rpm_end=%.3f time30_s=%.4f time60_s=%.4f peak_rpm=%.3f peak_rear_torque_nm=%.3f peak_slip_speed_mps=%.3f neutral_speed_kmh=%.3f neutral_drive_torque_nm=%.5f timing=OBSERVED_MECHANICAL_STEPS not_reached=-1 fixture=STERILE_NATIVE_NOT_PACKAGED"),
+            bRatioProbe ? TEXT("P04_RATIO_PROBE") : TEXT("P04_ACCEL_BASELINE"),
+            Movement->TransmissionSetup.ForwardGearRatios[0], Gear(), Dose(), CaseIndex % 3 + 1, BodyMassKg, DriveEndTime, EndDriveSpeed, EndDriveRpm,
             Time30, Time60, PeakRpm, PeakRearTorque, PeakSlipSpeedMps, DirectionalSpeed, Torque));
         if (++CaseIndex == 18)
         {
-            Test->AddInfo(TEXT("P04_BASELINE_COMPLETE cases=18 profile_changed=0 tuning_accepted=0"));
+            Test->AddInfo(bRatioProbe
+                ? TEXT("P04_RATIO_PROBE_COMPLETE cases=18 production_profile_changed=0 tuning_accepted=0")
+                : TEXT("P04_BASELINE_COMPLETE cases=18 profile_changed=0 tuning_accepted=0"));
             Cleanup(*World);
             return true;
         }
@@ -539,8 +565,13 @@ public:
         return false;
     }
 private:
-    int32 Gear() const { return CaseIndex < 9 ? 1 : -1; }
-    float Dose() const { const float Values[] = {0.25f, 0.50f, 1.00f}; return Values[(CaseIndex / 3) % 3]; }
+    int32 Gear() const { return bRatioProbe || CaseIndex < 9 ? 1 : -1; }
+    float Dose() const
+    {
+        if (bRatioProbe) return (CaseIndex / 3) % 2 == 0 ? 0.50f : 1.00f;
+        const float Values[] = {0.25f, 0.50f, 1.00f}; return Values[(CaseIndex / 3) % 3];
+    }
+    float ProbeRatio() const { const float Ratios[] = {4.60f, 4.00f, 3.60f}; return Ratios[CaseIndex / 6]; }
     void BeginCase(UWorld& World)
     {
         PinkCabPhysicsFixture::DestroyPawns(World);
@@ -554,6 +585,8 @@ private:
         bSettling = true; bCoasting = false;
         Elapsed = DriveEndTime = 0.0; Time30 = Time60 = -1.0; LastStep = -1;
         PeakRpm = PeakRearTorque = PeakSlipSpeedMps = EndDriveSpeed = EndDriveRpm = 0.0f;
+        RootMassKg = HorizontalEndKmh = MaxYawDeg = TorqueSumNm = 0.0f;
+        TorqueSamples = 0; MinimumContacts = 4;
         WallStart = FPlatformTime::Seconds();
     }
     void Cleanup(UWorld& World)
@@ -572,7 +605,10 @@ private:
     double WallStart, Elapsed = 0.0, DriveEndTime = 0.0, Time30 = -1.0, Time60 = -1.0;
     float BodyMassKg = 0.0f, PeakRpm = 0.0f, PeakRearTorque = 0.0f, PeakSlipSpeedMps = 0.0f;
     float EndDriveSpeed = 0.0f, EndDriveRpm = 0.0f;
+    float RootMassKg = 0.0f, StartYaw = 0.0f, HorizontalEndKmh = 0.0f, MaxYawDeg = 0.0f, TorqueSumNm = 0.0f;
+    int32 TorqueSamples = 0, MinimumContacts = 4;
     bool bInitialized = false, bSettling = true, bCoasting = false;
+    const bool bRatioProbe;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04BaselineRuntimeTest,
@@ -582,6 +618,17 @@ bool FPinkCabP04BaselineRuntimeTest::RunTest(const FString&)
 {
     if (!TestTrue(TEXT("P04 sterile fixture map opens"), AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04RatioProbeRuntimeTest,
+    "PinkCab.Vehicle.Physics.P04.GearRatioProbe",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04RatioProbeRuntimeTest::RunTest(const FString&)
+{
+    if (!TestTrue(TEXT("P04 comparison fixture map opens"), AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, true));
     return true;
 }
 
