@@ -1,4 +1,4 @@
-name: CD-559 Recovered P04 Source Qualification
+name: CD-559 Read-only Delivered P04 Verification
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,34 +9,101 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  qualification:
+  verify_handoff:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: windows-latest
-    timeout-minutes: 10
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 5
+    env:
+      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
     steps:
-      - name: Checkout exact normalized P04 source on isolated hosted Windows
-        uses: actions/checkout@v4
-        with:
-          ref: 52239b61bc80e5a63716b9b09b87c520fa09fd05
-          fetch-depth: 0
-          lfs: false
-          persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Prove normalization and complete script regression
+      - name: Read installed candidate, single desktop entry and same-run physics receipts
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          python -m pip install --disable-pip-version-check PyYAML==6.0.2
-          if($LASTEXITCODE -ne 0){throw 'Workflow parser install failed'}
-          python scripts/ci/acceptance_contract.py workspace --sha 52239b61bc80e5a63716b9b09b87c520fa09fd05
-          if($LASTEXITCODE -ne 0){throw 'Fresh exact source is not clean'}
-          python -m unittest discover -s scripts/tests -p 'test_*.py' -v
-          if($LASTEXITCODE -ne 0){throw 'Complete script regression failed'}
-          python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
-          if($LASTEXITCODE -ne 0){throw 'Code health failed'}
-          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/RECOVERY_WRITERS.json
-          if($LASTEXITCODE -ne 0){throw 'Vehicle authority inventory failed'}
-          Write-Host 'RECOVERED_P04_SOURCE_QUALIFICATION=PASS; Unreal and human acceptance are separate'
+          $sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
+          $run='37149462470'
+          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          $delivery='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1'
+          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $gate=Join-Path $root 'Saved\GitHubGate'
+          $handoffPath=Join-Path $gate 'Delivery_37149462470_1\HANDOFF.json'
+          $report=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Recovery' ('POST_HANDOFF_'+$env:GITHUB_RUN_ID+'_ATTEMPT'+$env:GITHUB_RUN_ATTEMPT)
+          if(Test-Path -LiteralPath $report){throw 'Audit destination already exists'}
+          New-Item -ItemType Directory -Path $report | Out-Null
+          "AUDIT_REPORT=$report" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          $env:AUDIT_REPORT=$report
+          $h=Get-Content -LiteralPath $handoffPath -Raw | ConvertFrom-Json
+          if($h.status -ne 'DELIVERED_HUMAN_PENDING' -or $h.candidate -ne $sha -or $h.target -ne $inner -or $h.humanAccepted -ne $false -or -not $h.wheels4 -or -not $h.roadMaterials -or $h.criticalCount -ne 0 -or $h.windowHandle -le 0){throw 'Unexpected handoff receipt; nothing modified'}
+          Copy-Item -LiteralPath $handoffPath -Destination (Join-Path $report 'HANDOFF.json')
+          Copy-Item -LiteralPath (Join-Path $delivery 'PACKAGE_MANIFEST.json') -Destination (Join-Path $report 'PACKAGE_MANIFEST.json')
+          if(-not (Test-Path -LiteralPath $inner) -or -not (Test-Path -LiteralPath $accepted)){throw 'Candidate or accepted fallback missing'}
+          $ws=New-Object -ComObject WScript.Shell
+          $shortcuts=@(foreach($desktop in @('C:\Users\CheCat\Desktop','C:\Users\Public\Desktop')){
+            foreach($file in @(Get-ChildItem -LiteralPath $desktop -File -Force -Filter '*.lnk' -ErrorAction SilentlyContinue | Where-Object {$_.BaseName -match '^(?i:PIN[CK ]*CAB)'})){
+              $link=$ws.CreateShortcut($file.FullName)
+              [pscustomobject]@{path=$file.FullName;target=$link.TargetPath;arguments=$link.Arguments;exists=(Test-Path -LiteralPath $link.TargetPath)}
+            }
+          })
+          ConvertTo-Json -InputObject $shortcuts -Depth 4 | Set-Content (Join-Path $report 'DESKTOP_ENTRIES.json') -Encoding utf8
+          if($shortcuts.Count -ne 1 -or $shortcuts[0].path -ne 'C:\Users\CheCat\Desktop\PINCKCAB.lnk' -or $shortcuts[0].target -ne $inner -or -not $shortcuts[0].exists){throw 'Single PINCKCAB desktop contract failed; all links left untouched'}
+          $previous=$ws.CreateShortcut([string]$h.previousShortcutBackup)
+          if($previous.TargetPath -ne $accepted){throw 'Prior desktop fallback is not accepted V2'}
+          $proc=Get-Process -Id ([int]$h.pid) -ErrorAction SilentlyContinue
+          $live=@{recordedPid=$h.pid;currentlyRunning=($null -ne $proc);currentlyVisible=($proc -and $proc.MainWindowHandle -ne 0);acceptedV2Exists=$true}
+          $live | ConvertTo-Json | Set-Content (Join-Path $report 'CURRENT_RUNTIME.json') -Encoding utf8
+          $script=@'
+          import hashlib, json, os, re
+          from pathlib import Path
+          root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
+          delivery=Path(r'E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1')
+          out=Path(os.environ['AUDIT_REPORT'])
+          sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
+          run='37149462470'
+          def digest(path):
+              h=hashlib.sha256()
+              with path.open('rb') as source:
+                  for block in iter(lambda:source.read(1024*1024),b''): h.update(block)
+              return h.hexdigest()
+          m=json.loads((delivery/'PACKAGE_MANIFEST.json').read_text(encoding='utf-8-sig'))
+          assert m['candidateSha']==sha and str(m['deliveryRun'])==run and str(m['attempt'])=='1'
+          assert m['humanAccepted'] is False
+          payload=delivery/'Windows'
+          expected={item['path']:item for item in m['files']}
+          assert len(expected)==len(m['files']) and len(expected)>2
+          actual={path.relative_to(payload).as_posix():path for path in payload.rglob('*')
+                  if path.is_file() and 'saved' not in [part.lower() for part in path.relative_to(payload).parts]}
+          assert set(actual)==set(expected), 'Installed payload path set differs'
+          for name,path in actual.items():
+              assert path.stat().st_size==expected[name]['bytes'], 'Size mismatch '+name
+              assert digest(path)==expected[name]['sha256'], 'Hash mismatch '+name
+          gate=root/'Saved/GitHubGate'
+          pm=json.loads((gate/'P02_PHYSICS_ACCEPTANCE.json').read_text(encoding='utf-8-sig'))
+          assert pm['candidate_sha']==sha and str(pm['run_id'])==run and str(pm['run_attempt'])=='1'
+          assert pm['result']=='success' and pm['d3_unique_samples']==240 and len(pm['passed_tests'])==63
+          assert digest(gate/'P02_PHYSICS_FULL.log')==pm['log_sha256']
+          (out/'P02_PHYSICS_ACCEPTANCE.json').write_bytes((gate/'P02_PHYSICS_ACCEPTANCE.json').read_bytes())
+          (out/'P02_PHYSICS_FULL.log').write_bytes((gate/'P02_PHYSICS_FULL.log').read_bytes())
+          for repeat in range(1,6):
+              source=gate/f'P01_SLOPE_REPEAT_{repeat}.log'
+              text=source.read_text(encoding='utf-8-sig',errors='replace')
+              assert re.search(r'Test Completed\. Result=\{Success\}.*Path=\{PinkCab\.Vehicle\.Physics\.EngineState\.LiveOffNeutralSlope\}',text)
+              assert 'Test Completed. Result={Fail}' not in text
+              (out/source.name).write_bytes(source.read_bytes())
+          result={'candidate':sha,'deliveryRun':run,'payloadFiles':len(actual),'payloadBytes':sum(p.stat().st_size for p in actual.values()),
+                  'allPayloadHashesVerified':True,'physicsPassed':63,'matrixCases':240,'slopeRepeats':5,'humanAccepted':False,
+                  'mutatedGameOrShortcut':False,'auditUtc':__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
+          (out/'POST_HANDOFF_AUDIT.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+          print(json.dumps(result))
+          '@
+          python -c $script
+          if($LASTEXITCODE -ne 0){throw 'Installed payload or same-run physics proof failed'}
+          Write-Host 'PINKCAB_POST_HANDOFF_READ_ONLY_AUDIT=PASS'
+      - name: Retain read-only handoff audit
+        if: always() && env.AUDIT_REPORT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: p04-delivered-audit-${{ github.run_id }}
+          path: ${{ env.AUDIT_REPORT }}
+          if-no-files-found: error
+          retention-days: 30
