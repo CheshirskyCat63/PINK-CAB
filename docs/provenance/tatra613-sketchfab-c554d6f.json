@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "asset_id": "TATRA-613-SKETCHFAB-C554D6F",
+  "owner_issue": "CD-855",
+  "recorded_on": "2026-10-03",
+  "status": "SOURCE_LICENSE_VERIFIED_ASSET_MAPPING_PENDING",
+  "source": {
+    "platform": "Sketchfab",
+    "url": "https://sketchfab.com/3d-models/tatra-613-1975-1996-c554d6fdaf8749e291b25cbf487f82f8",
+    "model_uid": "c554d6fdaf8749e291b25cbf487f82f8",
+    "title": "Tatra 613 1975-1996",
+    "uploader_display_name": "Mercedesiarz_2025",
+    "uploader_username": "szymonpasterczyk",
+    "published_on": "2025-08-22",
+    "original_download_date": null,
+    "identity_evidence": "Owner explicitly identified this as the download source on 2026-10-03; webpage title, uploader and declared licence were independently read.",
+    "observation_scope": "Retrieved webpage text and linked licence; not an archived original download or byte-level comparison with the site payload."
+  },
+  "declared_license": {
+    "page_label": "CC Attribution",
+    "spdx_id": "CC-BY-4.0",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "legal_code_url": "https://creativecommons.org/licenses/by/4.0/legalcode.en",
+    "commercial_sharing_allowed": true,
+    "adaptation_allowed": true,
+    "conditions": [
+      "Retain supplied creator, copyright, source, licence and disclaimer notices.",
+      "Indicate modifications and retain notices of previous modifications.",
+      "Do not imply creator endorsement or impose incompatible downstream restrictions.",
+      "The licence covers only rights the licensor has authority to grant; unrelated components and other rights are not automatically covered."
+    ]
+  },
+  "attribution": {
+    "base_notice": "Tatra 613 1975-1996 by Mercedesiarz_2025 (@szymonpasterczyk), via Sketchfab. Licensed under Creative Commons Attribution 4.0 International.",
+    "source_url": "https://sketchfab.com/3d-models/tatra-613-1975-1996-c554d6fdaf8749e291b25cbf487f82f8",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "modification_notice_required": true,
+    "modification_notice_status": "Complete from the verified derivation record; do not invent the edit history.",
+    "packaged_notice_verified": false
+  },
+  "recorded_local_candidates": {
+    "evidence": "CD-855 recovery record and merged PINK-CAB PR #60; these hashes were not remeasured during the webpage check.",
+    "source_intake": "E:\\CHESHIRE_DIVISION\\SourceAssets\\PINK-CAB\\Tatra613\\intake-37103855369\\",
+    "scene_gltf_sha256": "c3b0a12daf610607bb3ea13c315f519f61fbadd6921ad3d5887ce229f0045e17",
+    "scene_bin_sha256": "b3f78f5d4757897b7aba90dde5c693caca4b8d96c01fa2a993f18965897f219e",
+    "authored_blend_sha256": "493e1caea8b672b9896ef80ccfc5042da713981d2d6400bb86cc8a9c50132dd1",
+    "web_source_to_local_bytes": "OWNER_DECLARED_NOT_BYTE_VERIFIED",
+    "derived_asset_mapping_verified": false
+  },
+  "source_family_separation": {
+    "restricted_historical_asset_id": "TATRA-DONOR-ARCHIVE",
+    "archive_authority": "https://cheshire-division.atlassian.net/wiki/spaces/TWC/pages/17891371",
+    "archive_heading": "Marathon rights gate",
+    "finding": "The TM-Modding / Assetto Corsa permission restriction is recorded for the Marathon source family. The archive separately lists tatra-603-2-b5-marathon and ZAGLUSHKA_TATRA_613; this does not prove current 613 imports came from the restricted family.",
+    "rule": "Do not transfer either licence between donors by vehicle name or by a broad Tatra613 path prefix."
+  },
+  "remaining_acceptance": [
+    "Correlate retained original archive metadata and dependencies with this exact Sketchfab UID.",
+    "Document donor-to-authored-Blender lineage and any additional donor components.",
+    "Map current scene-preserved body/steering and independently required V12Clean wheel to verified source records.",
+    "Classify historical and publicly retrievable LFS objects by actual provenance; do not assume all 150 audited objects share one donor licence.",
+    "Verify the applicable attribution and modification notices in the actual public/package delivery.",
+    "Retain CD-855 game-specific Unreal import, presentation and product acceptance gates."
+  ],
+  "public_or_commercial_release_cleared": false,
+  "source_payload_published_by_this_change": false,
+  "jira_receipt": "CD-855 comment 16475"
+}
