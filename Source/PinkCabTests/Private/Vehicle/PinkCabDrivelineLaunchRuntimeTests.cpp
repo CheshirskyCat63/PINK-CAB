@@ -597,6 +597,11 @@ public:
                     && Evidence.MaxEngineInputStateErrorRpm <= 1.0f);
             if (bStableTraction)
             {
+                const double MeanGameDeltaSeconds = GameDeltaCount > 0
+                    ? GameDeltaSum / GameDeltaCount : 0.0;
+                Test->TestTrue(TEXT("P04 requested render cadence is actually observed"),
+                    GameDeltaCount > 0 && FMath::IsFinite(MeanGameDeltaSeconds)
+                        && FMath::Abs(MeanGameDeltaSeconds * StableFrameCap() - 1.0) <= 0.10);
                 // This steady, level, no-brake window must not alternate
                 // propulsion and braking every physics step at constant input.
                 Test->TestTrue(TEXT("P04 steady half-throttle carries positive traction"),
