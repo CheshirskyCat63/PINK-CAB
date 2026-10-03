@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: cd869-main-baseline
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deliver:
@@ -267,32 +267,12 @@ jobs:
 
           if(-not $mapReady){
             $mapRel='Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add -- $mapRel
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-
-            $indexPointer=(git show ":$mapRel") -join "`n"
-            $oidMatch=[regex]::Match($indexPointer,'oid sha256:([0-9a-f]{64})')
-            if(-not $oidMatch.Success){ throw 'CD869_CANONICAL_MAP_LFS_POINTER_NOT_STAGED' }
-            $oid=$oidMatch.Groups[1].Value
-            if($oid -ne $mapSha){ throw "CD869_CANONICAL_MAP_LFS_OID_MISMATCH $oid != $mapSha" }
-
-            git lfs push --object-id origin $oid
-            if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-            Write-Host "CD869_CANONICAL_MAP_LFS_OBJECT=PASS oid=$oid"
-
-            git diff --cached --quiet
-            $hasMapDelta=($LASTEXITCODE -ne 0)
-            $global:LASTEXITCODE=0
-            if($hasMapDelta){
-              git commit -m 'asset(CD-869): restore canonical endless runtime map'
-              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-              if(-not $env:GITHUB_HEAD_REF){ throw 'CD869_HEAD_REF_MISSING_FOR_MAP_REPAIR' }
-              git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
-              if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
-              Write-Host "CD869_CANONICAL_MAP_COMMIT=PASS sha=$((git rev-parse HEAD).Trim())"
+            $pointer=(git show "${env:CANDIDATE_SHA}:$mapRel") -join "`n"
+            $oidMatch=[regex]::Match($pointer,'oid sha256:([0-9a-f]{64})')
+            if(-not $oidMatch.Success -or $oidMatch.Groups[1].Value -ne $mapSha){
+              throw 'CD869_REGENERATED_MAP_DIFFERS_FROM_TESTED_SOURCE: preserve output and review separately; delivery cannot change its own candidate'
             }
+            Write-Host "CD869_CANONICAL_MAP_REGENERATED_EXACT_OID=PASS oid=$mapSha"
           }
 
           foreach($test in @(
@@ -459,67 +439,118 @@ jobs:
             if($proc -and -not $proc.HasExited){ Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
           }
 
-      - name: Install latest build and shortcuts
+      - name: Install and verify immutable candidate without changing desktop
         id: install
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
           $sha=(git rev-parse HEAD).Trim()
-          $short=$sha.Substring(0,8)
+          if($sha -ne $env:CANDIDATE_SHA){throw 'CD869_SOURCE_CHANGED_DURING_DELIVERY'}
+          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}_ATTEMPT{2}" -f $sha.Substring(0,8),$env:GITHUB_RUN_ID,$env:GITHUB_RUN_ATTEMPT)
+          if(Test-Path -LiteralPath $delivery){throw 'CD869_IMMUTABLE_DELIVERY_ALREADY_EXISTS'}
           $source=Join-Path $env:GITHUB_WORKSPACE "$env:ARCHIVE\Windows"
-          $delivery=Join-Path $env:DELIVERY_BASE ("CD869_ENDLESS_{0}_RUN{1}" -f $short,$env:GITHUB_RUN_ID)
-          if(Test-Path $delivery){ Remove-Item $delivery -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $delivery | Out-Null
-
-          & robocopy $source (Join-Path $delivery 'Windows') /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
-          $rc=$LASTEXITCODE
-          if($rc -ge 8){ throw "CD869_COPY_FAILED $rc" }
+          $destination=Join-Path $delivery 'Windows'
+          $evidence=Join-Path $env:GITHUB_WORKSPACE ("Saved\GitHubGate\Delivery_{0}_{1}" -f $env:GITHUB_RUN_ID,$env:GITHUB_RUN_ATTEMPT)
+          if(Test-Path -LiteralPath $evidence){throw 'CD869_HANDOFF_EVIDENCE_ALREADY_EXISTS'}
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          "DELIVERY_EVIDENCE=$evidence" | Out-File $env:GITHUB_ENV -Append
+          New-Item -ItemType Directory -Path $destination | Out-Null
+          & robocopy $source $destination /E /COPY:DAT /DCOPY:T /R:2 /W:1 /NFL /NDL /NJH /NJS
+          if($LASTEXITCODE -ge 8){throw 'CD869_PACKAGE_COPY_FAILED'}
           $global:LASTEXITCODE=0
-
-          $inner=Join-Path $delivery 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          if(-not (Test-Path $inner)){ throw 'CD869_DELIVERED_INNER_EXE_MISSING' }
-
-          $desktop=[Environment]::GetFolderPath('Desktop')
-          $ws=New-Object -ComObject WScript.Shell
-          foreach($name in @('PINKCAB L1 ENDLESS HUMAN.lnk','PINKCAB Latest.lnk')){
-            $lnk=Join-Path $desktop $name
-            Remove-Item $lnk -Force -ErrorAction SilentlyContinue
-            $s=$ws.CreateShortcut($lnk)
-            $s.TargetPath=$inner
-            $s.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight'
-            $s.WorkingDirectory=(Split-Path $inner)
-            $s.Description="PINK CAB latest endless Level 1 $sha"
-            $s.Save()
-            Write-Host "CD869_SHORTCUT=$lnk"
+          function Read-Payload([string]$Root){
+            $map=@{}
+            foreach($file in @(Get-ChildItem -LiteralPath $Root -Recurse -File)){
+              $relative=$file.FullName.Substring($Root.Length+1).Replace('\','/')
+              if($relative -match '(^|/)Saved/'){continue}
+              if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'CD869_PAYLOAD_REPARSE_FILE'}
+              $map[$relative]=@{path=$relative;bytes=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+            }
+            if($map.Count -lt 3){throw 'CD869_PAYLOAD_INCOMPLETE'}
+            return $map
           }
-
+          $a=Read-Payload $source
+          $b=Read-Payload $destination
+          if($a.Count -ne $b.Count){throw 'CD869_PAYLOAD_COUNT_MISMATCH'}
+          foreach($path in $a.Keys){if(-not $b.ContainsKey($path) -or $a[$path].sha256 -ne $b[$path].sha256 -or $a[$path].bytes -ne $b[$path].bytes){throw ('CD869_PAYLOAD_MISMATCH='+$path)}}
+          $inner=Join-Path $destination 'PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path -LiteralPath $inner)){throw 'CD869_INSTALLED_INNER_MISSING'}
+          @{schema=1;candidateSha=$sha;deliveryRun=$env:GITHUB_RUN_ID;attempt=$env:GITHUB_RUN_ATTEMPT;installedPackage=$destination;excludedMutablePaths='**/Saved/**';files=@($b.Keys | Sort-Object | ForEach-Object {$b[$_]});humanAccepted=$false} | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $evidence 'PACKAGE_MANIFEST.json') -Encoding UTF8
+          Copy-Item (Join-Path $evidence 'PACKAGE_MANIFEST.json') (Join-Path $delivery 'PACKAGE_MANIFEST.json')
           Set-Content (Join-Path $delivery 'CANDIDATE_SHA.txt') $sha -NoNewline
           Set-Content (Join-Path $delivery 'RUN_ID.txt') $env:GITHUB_RUN_ID -NoNewline
           "delivery=$delivery" | Out-File $env:GITHUB_OUTPUT -Append
           "inner=$inner" | Out-File $env:GITHUB_OUTPUT -Append
-          Write-Host "CD869_HUMAN_DELIVERY=$delivery"
+          Write-Host "CD869_INSTALLED_PAYLOAD_HASHES=PASS count=$($b.Count) delivery=$delivery"
 
-      - name: Launch HUMAN build now
-        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+      - name: Verify visible candidate and replace only PINCKCAB entry
         env:
           DELIVERY_INNER: ${{ steps.install.outputs.inner }}
+          DELIVERY_ROOT: ${{ steps.install.outputs.delivery }}
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          if(-not (Test-Path $env:DELIVERY_INNER)){ throw 'CD869_LAUNCH_EXE_MISSING' }
-
-          $saved=$env:RUNNER_TRACKING_ID
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $session=(Get-Process -Id $PID).SessionId
+          if(@(Get-Process explorer -ErrorAction SilentlyContinue | Where-Object {$_.SessionId -eq $session}).Count -lt 1){throw 'CD869_INTERACTIVE_DESKTOP_NOT_AVAILABLE'}
+          $ws=New-Object -ComObject WScript.Shell
+          $linkPath=Join-Path $desktop 'PINCKCAB.lnk'
+          $backup=Join-Path $env:DELIVERY_EVIDENCE 'PINCKCAB.previous.lnk'
+          $previousHash=''
+          if(Test-Path -LiteralPath $linkPath){
+            $previousHash=(Get-FileHash -LiteralPath $linkPath -Algorithm SHA256).Hash
+            Copy-Item -LiteralPath $linkPath -Destination $backup
+            if((Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash -ne $previousHash){throw 'CD869_PREVIOUS_LINK_BACKUP_FAILED'}
+          }
+          $log=Join-Path $env:DELIVERY_EVIDENCE 'HUMAN_LAUNCH.log'
+          $oldTracking=$env:RUNNER_TRACKING_ID
           $env:RUNNER_TRACKING_ID=''
+          $process=$null
+          $verified=$false
           try {
-            $proc=Start-Process -FilePath $env:DELIVERY_INNER -ArgumentList @(
-              '/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight',
-              '-windowed','-ResX=1600','-ResY=900'
-            ) -WorkingDirectory (Split-Path $env:DELIVERY_INNER) -PassThru
-            Start-Sleep -Seconds 5
-            $proc.Refresh()
-            if($proc.HasExited){ throw "CD869_HUMAN_EXITED_EARLY code=$($proc.ExitCode)" }
-            Write-Host "CD869_HUMAN_LAUNCHED_PID=$($proc.Id)"
-            Write-Host 'HUMAN_PENDING'
+            $process=Start-Process -FilePath $env:DELIVERY_INNER -WorkingDirectory (Split-Path $env:DELIVERY_INNER) -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900','-PinkCabGateTelemetry','-PinkCabRoadMaterialAudit',('-abslog="'+$log+'"')) -PassThru
+            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            do {
+              Start-Sleep -Milliseconds 500
+              $process.Refresh()
+              if($process.HasExited){throw ('CD869_HUMAN_EXITED='+$process.ExitCode)}
+              $wheels=(Test-Path $log) -and [bool](Select-String -LiteralPath $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+              $materials=(Test-Path $log) -and [bool](Select-String -LiteralPath $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS' -Quiet)
+            } while((-not $wheels -or -not $materials -or $process.MainWindowHandle -eq 0) -and [DateTime]::UtcNow -lt $deadline)
+            $critical=@(Select-String -LiteralPath $log -Pattern 'Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception|Failed to load package|LogStreaming: Error:|LogLinker: Error:' -ErrorAction SilentlyContinue)
+            if(-not $wheels -or -not $materials -or $process.MainWindowHandle -eq 0 -or $critical.Count -gt 0){throw 'CD869_HUMAN_VISIBLE_RUNTIME_CHECK_FAILED'}
+            $temp=Join-Path $desktop ('PINCKCAB.'+[Guid]::NewGuid().ToString('N')+'.tmp.lnk')
+            $shortcut=$ws.CreateShortcut($temp)
+            $shortcut.TargetPath=$env:DELIVERY_INNER
+            $shortcut.WorkingDirectory=Split-Path $env:DELIVERY_INNER
+            $shortcut.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900'
+            $shortcut.IconLocation=$env:DELIVERY_INNER+',0'
+            $shortcut.Description=('PINCKCAB - candidate '+$env:CANDIDATE_SHA.Substring(0,8)+'; HUMAN PENDING; prior accepted build retained')
+            $shortcut.Save()
+            if($ws.CreateShortcut($temp).TargetPath -ne $env:DELIVERY_INNER){throw 'CD869_TEMP_LINK_READBACK_FAILED'}
+            if($previousHash){
+              if(-not (Test-Path -LiteralPath $linkPath) -or (Get-FileHash -LiteralPath $linkPath -Algorithm SHA256).Hash -ne $previousHash){throw 'CD869_DESKTOP_LINK_CHANGED_CONCURRENTLY'}
+              [IO.File]::Replace($temp,$linkPath,$null)
+            } else {
+              if(Test-Path -LiteralPath $linkPath){throw 'CD869_DESKTOP_LINK_CREATED_CONCURRENTLY'}
+              [IO.File]::Move($temp,$linkPath)
+            }
+            if($ws.CreateShortcut($linkPath).TargetPath -ne $env:DELIVERY_INNER){throw 'CD869_FINAL_LINK_READBACK_FAILED'}
+            $activated=$ws.AppActivate($process.Id)
+            @{status='DELIVERED_HUMAN_PENDING';candidate=$env:CANDIDATE_SHA;delivery=$env:DELIVERY_ROOT;shortcut=$linkPath;target=$env:DELIVERY_INNER;pid=$process.Id;session=$session;windowHandle=$process.MainWindowHandle.ToInt64();foregroundActivated=$activated;wheels4=$wheels;roadMaterials=$materials;criticalCount=$critical.Count;previousShortcutBackup=$backup;humanAccepted=$false} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $env:DELIVERY_EVIDENCE 'HANDOFF.json') -Encoding UTF8
+            $verified=$true
+            Write-Host ('CD869_HUMAN_READY=PASS shortcut='+$linkPath+' pid='+$process.Id)
+          } finally {
+            $env:RUNNER_TRACKING_ID=$oldTracking
+            if(-not $verified -and $process -and -not $process.HasExited){Stop-Process -Id $process.Id -ErrorAction SilentlyContinue}
+            if($temp -and (Test-Path -LiteralPath $temp)){Move-Item -LiteralPath $temp -Destination (Join-Path $env:DELIVERY_EVIDENCE 'incomplete-shortcut.lnk')}
           }
-          finally {
-            $env:RUNNER_TRACKING_ID=$saved
-          }
+
+      - name: Preserve verification receipts without publishing game content
+        if: ${{ always() && env.DELIVERY_EVIDENCE != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinkcab-human-handoff-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DELIVERY_EVIDENCE }}
+          retention-days: 30
+          if-no-files-found: error

@@ -137,7 +137,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 6;
+    R.CalibrationVersion = 7;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -186,8 +186,11 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.bUseAutomaticGears = P(false, A::Calibration);
     R.bUseAutoReverse = P(false, A::Calibration);
     R.FinalDriveRatio = P(3.2f, A::Calibration);
-    R.ForwardGearRatios = P(TArray<float>{4.6f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
-    R.ReverseGearRatios = P(TArray<float>{4.6f}, A::Calibration);
+    // P04 measured candidate: the 4.0 first-gear probe improves useful launch
+    // speed over 4.6 without changing engine output, tyres or adding forces.
+    // Reverse uses the same explicit reduction and requires its own recheck.
+    R.ForwardGearRatios = P(TArray<float>{4.0f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
+    R.ReverseGearRatios = P(TArray<float>{4.0f}, A::Calibration);
     R.SteeringAngleRatio = P(0.72f, A::Calibration);
     R.FrontWheel = MakeWheel(true, Variant);
     R.RearWheel = MakeWheel(false, Variant);
