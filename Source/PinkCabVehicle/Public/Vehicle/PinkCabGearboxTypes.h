@@ -24,15 +24,17 @@ struct FPinkCabGearEngagementContext
     float GearboxHealth = 1.0f;
 };
 
-struct FPinkCabGearboxControllerConfig
+struct PINKCABVEHICLE_API FPinkCabGearboxControllerConfig
 {
+    FPinkCabGearboxControllerConfig();
+
     float ClutchDisengagedThreshold = 0.85f;
     float ClutchCurveExponent = 1.35f;
     float ClutchlessMatchToleranceRpm = 250.0f;
     float ClutchlessLoadThreshold = 0.15f;
     float ReverseLockoutSpeedKmh = 5.0f;
     FPinkCabEngineRpmEnvelope EngineRpmEnvelope;
-    float RpmPerKmh[6] = {
-        0.0f, 121.5251f, 58.1207f, 39.6277f, 29.0603f, 22.4557f};
-    float ReverseRpmPerKmh = 121.5251f;
+    // Derived once from the physical profile; never a second ratio authority.
+    float RpmPerKmh[6] = {};
+    float ReverseRpmPerKmh = 0.0f;
 };

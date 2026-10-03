@@ -1,11 +1,34 @@
 #include "Vehicle/PinkCabGearboxController.h"
 
 #include "Vehicle/PinkCabGearEngagementValidator.h"
+#include "Vehicle/PinkCabChaosPhysicalProfile.h"
+
+FPinkCabGearboxControllerConfig::FPinkCabGearboxControllerConfig()
+{
+    const FPinkCabChaosPhysicalProfile Profile =
+        FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    check(Profile.ForwardGearRatios.Value.Num() == 5);
+    check(Profile.ReverseGearRatios.Value.Num() == 1);
+    check(Profile.RearWheel.WheelRadiusCm.Value > 0.0f);
+    const double CircumferenceM =
+        2.0 * PI * Profile.RearWheel.WheelRadiusCm.Value / 100.0;
+    const double RpmFactor =
+        1000.0 * Profile.FinalDriveRatio.Value / (60.0 * CircumferenceM);
+    for (int32 Gear = 1; Gear <= 5; ++Gear)
+    {
+        RpmPerKmh[Gear] = static_cast<float>(
+            RpmFactor * Profile.ForwardGearRatios.Value[Gear - 1]);
+    }
+    ReverseRpmPerKmh = static_cast<float>(
+        RpmFactor * Profile.ReverseGearRatios.Value[0]);
+    EngineRpmEnvelope = Profile.GetEngineRpmEnvelope();
+}
 
 FPinkCabGearboxController::FPinkCabGearboxController(
     const FPinkCabGearboxControllerConfig& InConfig)
     : Config(InConfig)
 {
+    ExpectedCoupledRpm = Config.EngineRpmEnvelope.IdleRpm;
 }
 
 float FPinkCabGearboxController::ComputeClutchCoupling(const float ClutchPedal) const

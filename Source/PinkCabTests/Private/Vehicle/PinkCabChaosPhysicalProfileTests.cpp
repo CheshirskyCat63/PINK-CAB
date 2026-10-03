@@ -55,10 +55,10 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
     TestEqual(TEXT("torque is design target"), Profile.MaxTorqueNm.Authority,
         EPinkCabPhysicalParameterAuthority::DesignTarget);
     TestEqual(TEXT("terminal speed target"), Profile.TerminalTargetKmh.Value, 195.0f);
-    TestEqual(TEXT("first ratio is short enough to turn excess launch torque into tire slip"),
-        Profile.ForwardGearRatios.Value[0], 4.6f);
-    TestEqual(TEXT("reverse ratio mirrors first for strong controllable reverse launch"),
-        Profile.ReverseGearRatios.Value[0], 4.6f);
+    TestEqual(TEXT("P04 first ratio is the measured moderate candidate"),
+        Profile.ForwardGearRatios.Value[0], 4.0f);
+    TestEqual(TEXT("P04 reverse shares the explicit launch reduction"),
+        Profile.ReverseGearRatios.Value[0], 4.0f);
     TestTrue(TEXT("rear drive axle has lower grip than front for power oversteer"),
         Profile.RearWheel.FrictionForceMultiplier.Value
             < Profile.FrontWheel.FrictionForceMultiplier.Value);
@@ -86,15 +86,15 @@ bool FPinkCabChaosPhysicalProfileAuthorityTest::RunTest(const FString& Parameter
         FPinkCabThrottleResponse::ToEngineThrottle(0.25f);
     const float HalfPedalEngineThrottle =
         FPinkCabThrottleResponse::ToEngineThrottle(0.50f);
-    // The player must be able to meter ordinary acceleration without the rear
-    // axle being permanently under-gripped. Full throttle may still exceed the
-    // static budget and create power oversteer naturally.
+    // Preserve the accepted dosable low/medium pedal budget. P04 intentionally
+    // reduces wheel-torque excess: no fixed 15% surplus is required to force
+    // wheelspin. Actual breakaway still belongs to native tyre/load dynamics.
     TestTrue(TEXT("25 percent pedal stays comfortably below rear static grip budget"),
         AxleDriveForceAt2000N * QuarterPedalEngineThrottle < RearGripBudgetN * 0.75f);
     TestTrue(TEXT("50 percent pedal is dosable instead of guaranteed by profile math to spin"),
         AxleDriveForceAt2000N * HalfPedalEngineThrottle < RearGripBudgetN * 0.95f);
     TestTrue(TEXT("full throttle can still exceed rear static grip budget"),
-        AxleDriveForceAt2000N > RearGripBudgetN * 1.15f);
+        AxleDriveForceAt2000N > RearGripBudgetN);
     TestEqual(TEXT("front steering lock target"), Profile.FrontWheel.MaxSteerAngleDeg.Value, 41.0f);
     TestFalse(TEXT("front ABS disabled"), Profile.FrontWheel.bABSEnabled.Value);
     TestFalse(TEXT("rear ABS disabled"), Profile.RearWheel.bABSEnabled.Value);
@@ -137,8 +137,8 @@ bool FPinkCabP03HumanFeelCorrectionContractTest::RunTest(const FString&)
     // Human-gate rejection 2026-10-02: the permanent 2.00/0.50 axle split
     // and WheelLoadRatio=0.38 are no longer an admissible way to manufacture
     // oversteer. Reuse the already-proven R6 physical-reference candidate.
-    TestEqual(TEXT("human correction advances calibration identity"),
-        Profile.CalibrationVersion, 6);
+    TestEqual(TEXT("P04 calibration retains the accepted P03 correction"),
+        Profile.CalibrationVersion, 7);
     TestEqual(TEXT("front load sensitivity uses physical reference"),
         Profile.FrontWheel.WheelLoadRatio.Value, 1.0f);
     TestEqual(TEXT("rear load sensitivity uses physical reference"),
@@ -217,7 +217,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("human handling correction advances profile to v6"), Profile.CalibrationVersion, 6);
+    TestEqual(TEXT("P04 gearing advances calibration to v7"), Profile.CalibrationVersion, 7);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
@@ -304,6 +304,44 @@ bool FPinkCabChaosPhysicalProfileAppliedDefaultsTest::RunTest(const FString& Par
     TestEqual(TEXT("rear steer comes from profile"), Rear->MaxSteerAngle, Profile.RearWheel.MaxSteerAngleDeg.Value);
     TestEqual(TEXT("front handbrake torque comes from profile"), Front->MaxHandBrakeTorque, Profile.FrontWheel.MaxHandBrakeTorqueNm.Value);
     TestEqual(TEXT("rear handbrake torque comes from profile"), Rear->MaxHandBrakeTorque, Profile.RearWheel.MaxHandBrakeTorqueNm.Value);
+    return true;
+}
+#endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Vehicle/PinkCabGearboxController.h"
+#include "Vehicle/PinkCabGearEngagementValidator.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04GearingCandidateTest,
+    "PinkCab.Vehicle.ControlRuntime.P04GearingCandidate",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04GearingCandidateTest::RunTest(const FString&)
+{
+    const auto Profile = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    const FPinkCabGearboxControllerConfig Config;
+    const FPinkCabGearboxController Controller;
+    TestEqual(TEXT("P04 candidate advances calibration identity"), Profile.CalibrationVersion, 7);
+    TestEqual(TEXT("P04 measured moderate first ratio"), Profile.ForwardGearRatios.Value[0], 4.0f);
+    TestEqual(TEXT("P04 reverse uses the same explicit launch ratio"), Profile.ReverseGearRatios.Value[0], 4.0f);
+    TestEqual(TEXT("P04 leaves second gear unchanged"), Profile.ForwardGearRatios.Value[1], 2.2f);
+    TestEqual(TEXT("P04 preserves accepted engine rev-down"), Profile.EngineRevDownRate.Value, 1800.0f);
+    TestEqual(TEXT("P04 preserves accepted idle"), Profile.EngineIdleRpm.Value, 925.0f);
+    const double CircumferenceM = 2.0 * PI * Profile.RearWheel.WheelRadiusCm.Value / 100.0;
+    if (!TestTrue(TEXT("P04 valid driven-wheel circumference"), CircumferenceM > 0.0)) return false;
+    for (int32 Gear = -1; Gear <= 5; ++Gear)
+    {
+        if (Gear == 0) continue;
+        const float Ratio = Gear < 0 ? Profile.ReverseGearRatios.Value[0] : Profile.ForwardGearRatios.Value[Gear - 1];
+        for (const float Speed : {0.0f, 10.0f, 30.0f, 60.0f, 100.0f})
+        {
+            const float Expected = static_cast<float>(Speed * 1000.0 * Ratio * Profile.FinalDriveRatio.Value / (60.0 * CircumferenceM));
+            TestTrue(TEXT("P04 default validator derives kinematics from the physical profile"),
+                FMath::IsNearlyEqual(FPinkCabGearEngagementValidator::ExpectedEngineRpmForGear(Config, Gear, Speed), Expected, 0.02f));
+            TestTrue(TEXT("P04 default runtime controller shares physical profile kinematics"),
+                FMath::IsNearlyEqual(Controller.ExpectedEngineRpmForGear(Gear, Speed), Expected, 0.02f));
+        }
+    }
     return true;
 }
 #endif
