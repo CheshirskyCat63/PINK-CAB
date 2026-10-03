@@ -1,4 +1,4 @@
-name: CD-559 Accepted PINCKCAB Desktop Entry
+name: CD-559 Desktop Publication Contract Verification
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,72 +9,44 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  accept:
+  verify:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: [self-hosted, Windows, X64, pinkcab]
+    runs-on: windows-latest
     timeout-minutes: 5
     steps:
-      - name: Expose exactly PINCKCAB and retain previous links reversibly
-        shell: pwsh
+      - name: Exercise actual .NET atomic replacement without touching any desktop
+        shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V' -or $env:USERNAME -ne 'CheCat'){throw 'Wrong host/user'}
-          $desktop=[Environment]::GetFolderPath('Desktop')
-          if($desktop -ne 'C:\Users\CheCat\Desktop'){throw 'Unexpected desktop'}
-          $package='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294'
-          $exe=Join-Path $package 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          if((Get-Content (Join-Path $package 'CANDIDATE_SHA.txt') -Raw).Trim() -ne 'edf75e1b91742237d14ba9dfe76284993da77d17'){throw 'Accepted package identity mismatch'}
-          if((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0d06f81c2f83ab983ce7709569c04682e5ae3eba5b4d07fc43397947fafce9cc'){throw 'Accepted executable hash mismatch'}
-          $out=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\DesktopEntry' ($env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $out){throw 'Evidence already exists'}
-          New-Item -ItemType Directory -Path $out | Out-Null
-          "DESKTOP_ENTRY_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
-          $ws=New-Object -ComObject WScript.Shell
-          $play=Join-Path $desktop 'PINCKCAB.lnk'
-          $pattern='^(?:PINK\s?CAB|PINCKCAB)(?:[ _-]|\.)'
-          $plan=@(); $foreign=@{}
-          foreach($file in @(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File)){
-            $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            if($file.Name -notmatch $pattern){$foreign[$file.FullName]=$hash;continue}
-            $link=$ws.CreateShortcut($file.FullName)
-            if(-not $link.TargetPath.StartsWith('E:\CHESHIRE_DIVISION\Builds\PINKCAB\',[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($link.TargetPath) -notmatch '^PinkCab(?:-Win64-(?:Shipping|Development))?\.exe$'){throw ('Unrecognized shortcut; no changes: '+$file.Name)}
-            if($file.FullName -eq $play -and $link.TargetPath -ne $exe){throw 'PINCKCAB already targets a different package; do not replace it'}
-            $plan+=@{name=$file.Name;path=$file.FullName;target=$link.TargetPath;sha256=$hash}
+          $root=Join-Path $env:RUNNER_TEMP ('PINCKCAB-Replacement-'+[Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $results=@()
+          foreach($mode in @('NullArgument','ExplicitSameVolumeBackup')){
+            $dir=Join-Path $root $mode
+            New-Item -ItemType Directory -Path $dir | Out-Null
+            $source=Join-Path $dir 'candidate.lnk'
+            $destination=Join-Path $dir 'PINCKCAB.lnk'
+            $backup=Join-Path $dir 'previous.lnk'
+            [IO.File]::WriteAllText($source,'new-verified-candidate')
+            [IO.File]::WriteAllText($destination,'previous-accepted-candidate')
+            $ok=$false; $errorText=''
+            try {
+              if($mode -eq 'NullArgument'){[IO.File]::Replace($source,$destination,$null)}
+              else {[IO.File]::Replace($source,$destination,$backup)}
+              $ok=([IO.File]::ReadAllText($destination) -eq 'new-verified-candidate') -and -not (Test-Path -LiteralPath $source)
+              if($mode -eq 'ExplicitSameVolumeBackup'){$ok=$ok -and ([IO.File]::ReadAllText($backup) -eq 'previous-accepted-candidate')}
+            } catch {$errorText=$_.Exception.Message}
+            $results+=@{mode=$mode;passed=$ok;error=$errorText;destination=[IO.File]::ReadAllText($destination);sourceRetained=(Test-Path -LiteralPath $source);backupRetained=(Test-Path -LiteralPath $backup)}
           }
-          $plan | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $out 'before.json') -Encoding utf8
-          $archive=Join-Path $desktop ('CHESHIRE_STUDIO\PINKCAB\ShortcutArchive\'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
-          New-Item -ItemType Directory -Path $archive | Out-Null
-          foreach($row in $plan){
-            $backup=Join-Path $archive $row.name
-            Copy-Item -LiteralPath $row.path -Destination $backup
-            if((Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Shortcut backup verification failed'}
-          }
-          $new=$ws.CreateShortcut($play)
-          $new.TargetPath=$exe
-          $new.WorkingDirectory=Split-Path $exe
-          $new.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900'
-          $new.IconLocation=$exe+',0'
-          $new.Description='PINCKCAB - owner-accepted V2, P03 edf75e1b, delivery 37117735294'
-          $new.Save()
-          if(-not (Test-Path -LiteralPath $play) -or $ws.CreateShortcut($play).TargetPath -ne $exe){throw 'PINCKCAB readback failed; previous desktop links retained'}
-          foreach($row in $plan){
-            if($row.path -eq $play){continue}
-            if((Get-FileHash -LiteralPath $row.path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Shortcut changed concurrently'}
-            $retained=Join-Path $archive ('original-'+$row.name)
-            Move-Item -LiteralPath $row.path -Destination $retained
-            if((Get-FileHash -LiteralPath $retained -Algorithm SHA256).Hash.ToLowerInvariant() -ne $row.sha256){throw 'Retained shortcut hash mismatch'}
-          }
-          foreach($path in $foreign.Keys){if(-not (Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $foreign[$path]){throw 'Unrelated shortcut changed'}}
-          $after=@(Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File | Where-Object {$_.Name -match $pattern})
-          $receipt=@{status='PINCKCAB_READY';desktop=$desktop;shortcut=$play;target=$exe;archive=$archive;archivedCount=@($plan | Where-Object {$_.path -ne $play}).Count;remaining=@($after.Name);unrelatedShortcutsUnchanged=$true;buildsDeleted=0;gameProcessesStopped=0;newP04Delivered=$false}
-          $receipt | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $out 'DESKTOP_ENTRY.json') -Encoding utf8
-          $receipt | ConvertTo-Json -Depth 6 | Write-Host
-          if($after.Count -ne 1 -or $after[0].Name -ne 'PINCKCAB.lnk'){throw 'Desktop convergence incomplete'}
-      - name: Preserve desktop verification receipt
-        if: always() && env.DESKTOP_ENTRY_EVIDENCE != ''
+          @{psVersion=$PSVersionTable.PSVersion.ToString();runtime=[Environment]::Version.ToString();testLocation='isolated-hosted-runner-temp';userDesktopTouched=$false;results=$results} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $root 'replacement-tests.json') -Encoding UTF8
+          "REPLACEMENT_TESTS=$root" | Out-File $env:GITHUB_ENV -Append
+          $results | ConvertTo-Json -Depth 5 | Write-Host
+          if(-not ($results | Where-Object {$_.mode -eq 'ExplicitSameVolumeBackup'}).passed){throw 'Explicit atomic replacement contract failed'}
+      - name: Preserve isolated test report
+        if: always() && env.REPLACEMENT_TESTS != ''
         uses: actions/upload-artifact@v4
         with:
-          name: pinkcab-desktop-entry-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ env.DESKTOP_ENTRY_EVIDENCE }}
+          name: pinckcab-publication-contract-${{ github.run_id }}
+          path: ${{ env.REPLACEMENT_TESTS }}/replacement-tests.json
+          retention-days: 14
           if-no-files-found: error
-          retention-days: 30
