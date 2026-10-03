@@ -22,11 +22,20 @@ def verify(root: Path, lock: dict) -> None:
             raise ValueError(f'MetaRoad missing pinned file: {relative}')
         if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
             raise ValueError(f'MetaRoad hash mismatch: {relative}')
-    source = root / 'Source'
-    extras = [p.relative_to(root).as_posix() for p in source.rglob('*')
-              if p.is_file() and p.relative_to(root).as_posix() not in expected]
+    # Ignore only top-level Unreal build/cache output and the source package's
+    # provenance receipts. All authored roots (including unknown ones) are pinned.
+    generated = {'binaries', 'intermediate', 'saved', 'deriveddatacache'}
+    receipts = {'vendor.manifest', 'VERIFIED_PACKAGE.json'}
+    extras = []
+    for directory, children, names in os.walk(root):
+        if Path(directory) == root:
+            children[:] = [name for name in children if name.casefold() not in generated]
+        for name in names:
+            relative = (Path(directory) / name).relative_to(root).as_posix()
+            if relative not in expected and relative not in receipts:
+                extras.append(relative)
     if extras:
-        raise ValueError(f'MetaRoad unexpected source files (mixed installation): {extras[:8]}')
+        raise ValueError(f'MetaRoad unexpected authored files (mixed installation): {sorted(extras)[:8]}')
 
 
 def provision(repo: Path, source: Path, lock: dict) -> None:
