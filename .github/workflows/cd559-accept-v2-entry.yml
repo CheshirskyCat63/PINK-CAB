@@ -21,7 +21,7 @@ jobs:
           $root=Join-Path $env:RUNNER_TEMP ('PINCKCAB-Replacement-'+[Guid]::NewGuid().ToString('N'))
           New-Item -ItemType Directory -Path $root | Out-Null
           $results=@()
-          foreach($mode in @('NullArgument','ExplicitSameVolumeBackup')){
+          foreach($mode in @('NullArgument','ExplicitSameVolumeBackup','NullStringArgument')){
             $dir=Join-Path $root $mode
             New-Item -ItemType Directory -Path $dir | Out-Null
             $source=Join-Path $dir 'candidate.lnk'
@@ -32,6 +32,7 @@ jobs:
             $ok=$false; $errorText=''
             try {
               if($mode -eq 'NullArgument'){[IO.File]::Replace($source,$destination,$null)}
+              elseif($mode -eq 'NullStringArgument'){[IO.File]::Replace($source,$destination,[System.Management.Automation.Language.NullString]::Value)}
               else {[IO.File]::Replace($source,$destination,$backup)}
               $ok=([IO.File]::ReadAllText($destination) -eq 'new-verified-candidate') -and -not (Test-Path -LiteralPath $source)
               if($mode -eq 'ExplicitSameVolumeBackup'){$ok=$ok -and ([IO.File]::ReadAllText($backup) -eq 'previous-accepted-candidate')}
@@ -41,7 +42,9 @@ jobs:
           @{psVersion=$PSVersionTable.PSVersion.ToString();runtime=[Environment]::Version.ToString();testLocation='isolated-hosted-runner-temp';userDesktopTouched=$false;results=$results} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $root 'replacement-tests.json') -Encoding UTF8
           "REPLACEMENT_TESTS=$root" | Out-File $env:GITHUB_ENV -Append
           $results | ConvertTo-Json -Depth 5 | Write-Host
-          if(-not ($results | Where-Object {$_.mode -eq 'ExplicitSameVolumeBackup'}).passed){throw 'Explicit atomic replacement contract failed'}
+          foreach($mode in @('ExplicitSameVolumeBackup','NullStringArgument')){
+            if(-not ($results | Where-Object {$_.mode -eq $mode}).passed){throw ('Corrected atomic replacement contract failed: '+$mode)}
+          }
       - name: Preserve isolated test report
         if: always() && env.REPLACEMENT_TESTS != ''
         uses: actions/upload-artifact@v4
