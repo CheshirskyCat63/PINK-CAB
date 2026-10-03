@@ -87,6 +87,7 @@ void FPinkCabPhysicsFixtureRestGate::Reset()
     Observation = {};
     StartMechanicalStep = -1;
     LastMechanicalStep = -1;
+    ElapsedMechanicalSeconds = 0.0;
     StableMechanicalSteps = 0;
 }
 
@@ -117,9 +118,14 @@ bool FPinkCabPhysicsFixtureRestGate::Update(
         return false;
     }
 
+    // A timeout is a duration, not a fixed number of substeps. The same
+    // settled-state predicates below still gate every measured case.
+    ElapsedMechanicalSeconds += static_cast<double>(MechanicalStep - LastMechanicalStep)
+        * static_cast<double>(PinkCabMovement->GetPinkCabLastMechanicalIntegrationDeltaSeconds());
     LastMechanicalStep = MechanicalStep;
 
     Observation = {};
+    Observation.ElapsedMechanicalSeconds = ElapsedMechanicalSeconds;
     Observation.MechanicalStep = MechanicalStep;
     Observation.ElapsedMechanicalSteps =
         MechanicalStep - StartMechanicalStep;

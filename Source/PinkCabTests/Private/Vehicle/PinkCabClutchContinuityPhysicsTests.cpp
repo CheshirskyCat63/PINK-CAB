@@ -135,7 +135,7 @@ public:
             if (!RestGate.Update(*Pawn))
             {
                 const auto& Rest = RestGate.GetObservation();
-                if (Rest.ElapsedMechanicalSteps < RestTimeoutMechanicalSteps
+                if (Rest.ElapsedMechanicalSeconds < RestTimeoutSeconds
                     && RestPollCount < RestPollLimit)
                 {
                     return false;
@@ -573,7 +573,8 @@ private:
     static constexpr float ConstitutiveSampleSeconds = 1.0e-4f;
     static constexpr double MeasurementSettleSeconds = 0.05;
     static constexpr double MeasurementSampleSeconds = 0.50;
-    static constexpr int64 RestTimeoutMechanicalSteps = 240;
+    // Preserve the nominal 60 Hz time budget across physics substeps.
+    static constexpr double RestTimeoutSeconds = 4.0;
     static constexpr int32 RestPollLimit = 2400;
     static constexpr float MaxBoundaryStep = 0.10f;
 
@@ -696,7 +697,7 @@ public:
             if (!RestGate.Update(*Pawn))
             {
                 const auto& Rest = RestGate.GetObservation();
-                if (Rest.ElapsedMechanicalSteps < RestTimeoutMechanicalSteps
+                if (Rest.ElapsedMechanicalSeconds < RestTimeoutSeconds
                     && RestPollCount < RestPollLimit)
                 {
                     return false;
@@ -1026,7 +1027,8 @@ private:
     static constexpr float PartialCoupling = 0.50f;
     static constexpr int32 MeasurementSettleMechanicalSteps = 3;
     static constexpr int32 MeasurementSampleMechanicalSteps = 12;
-    static constexpr int64 RestTimeoutMechanicalSteps = 240;
+    // Preserve the nominal 60 Hz time budget across physics substeps.
+    static constexpr double RestTimeoutSeconds = 4.0;
     static constexpr int32 RestPollLimit = 2400;
     static constexpr float MaxSeedMismatchRpm = 5.0f;
     static constexpr float MinShaftStimulusRpm = 1500.0f;

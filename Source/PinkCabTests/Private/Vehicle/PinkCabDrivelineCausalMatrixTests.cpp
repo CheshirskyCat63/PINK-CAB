@@ -193,8 +193,8 @@ public:
                 return false;
             }
 
-            if (Rest.ElapsedMechanicalSteps
-                    < ResetTimeoutMechanicalSteps
+            if (Rest.ElapsedMechanicalSeconds
+                    < ResetTimeoutSeconds
                 && ResetPollCount < ResetPollLimit)
             {
                 return false;
@@ -565,7 +565,8 @@ private:
     static constexpr float ResetBodyAngularToleranceDegPerSec = 2.0f;
     static constexpr int64 MinimumResetMechanicalSteps = 20;
     static constexpr int32 MinimumStableResetMechanicalSteps = 5;
-    static constexpr int64 ResetTimeoutMechanicalSteps = 240;
+    // Preserve the nominal 60 Hz time budget across physics substeps.
+    static constexpr double ResetTimeoutSeconds = 4.0;
     static constexpr int32 ResetPollLimit = 2400;
 
     int32 CouplingIndex = 0;
