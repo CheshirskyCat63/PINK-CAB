@@ -1,4 +1,4 @@
-name: CD-559 Read-only P04 Recovery Diagnosis
+name: CD-559 Preserve and Reconcile P04 Runner
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,39 +9,87 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  diagnose:
+  reconcile:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 5
     env:
       GIT_OPTIONAL_LOCKS: '0'
     steps:
-      - name: Read workspace provenance, runtime processes and PINCKCAB targets
+      - name: Preserve exact residual and restore only if Python meaning is identical
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
-          if(-not (Test-Path -LiteralPath (Join-Path $root '.git'))){throw 'Expected runner checkout missing'}
-          Write-Host ('DIAGNOSTIC_TIME_UTC='+[DateTime]::UtcNow.ToString('o'))
-          Write-Host 'WORKSPACE_HEAD'
-          git -C $root rev-parse HEAD
-          if($LASTEXITCODE -ne 0){throw 'Cannot read checkout HEAD'}
-          Write-Host 'WORKSPACE_PORCELAIN_BEGIN'
-          git -C $root status --porcelain=v1 --untracked-files=all
-          if($LASTEXITCODE -ne 0){throw 'Cannot inspect checkout status'}
-          Write-Host 'WORKSPACE_PORCELAIN_END'
-          Write-Host 'WORKSPACE_DIFF_STAT'
-          git -C $root diff --stat
-          Write-Host 'GAME_ENGINE_PROCESSES'
-          Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$'} | Select-Object Name,ProcessId,ParentProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Depth 3
+          $busy=@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool') })
+          if($busy.Count){throw 'Shared Unreal host busy; no process stopped or file changed'}
+          $report=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Recovery' ('CD559_'+$env:GITHUB_RUN_ID+'_ATTEMPT'+$env:GITHUB_RUN_ATTEMPT)
+          if(Test-Path -LiteralPath $report){throw 'Recovery destination already exists'}
+          New-Item -ItemType Directory -Path $report | Out-Null
+          "RECOVERY_REPORT=$report" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          $env:RECOVERY_REPORT=$report
+          $script=@'
+          import ast, difflib, hashlib, json, os, subprocess
+          from pathlib import Path
+          root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
+          out=Path(os.environ['RECOVERY_REPORT'])
+          expected='52a27ff510f2d9540eb97667e4608c4bbe354f32'
+          rel='scripts/tests/test_fast_delivery_retirement.py'
+          def git(*args):
+              return subprocess.run(['git',*args],cwd=root,check=True,capture_output=True).stdout
+          head=git('rev-parse','HEAD').decode().strip()
+          if head != expected: raise RuntimeError('Unexpected checkout HEAD: '+head)
+          status=git('status','--porcelain=v1','--untracked-files=all').decode().splitlines()
+          (out/'status-before.txt').write_text('\n'.join(status),encoding='utf-8')
+          if status not in ([],[' M '+rel]): raise RuntimeError('Unexpected edits; nothing restored: '+repr(status))
+          original=(root/rel).read_bytes()
+          committed=git('show','HEAD:'+rel)
+          (out/'working-original.py').write_bytes(original)
+          (out/'committed-original.py').write_bytes(committed)
+          left=committed.decode('utf-8-sig'); right=original.decode('utf-8-sig')
+          diff=''.join(difflib.unified_diff(left.splitlines(True),right.splitlines(True),fromfile='HEAD',tofile='working'))
+          (out/'residual.diff').write_text(diff,encoding='utf-8')
+          identical=ast.dump(ast.parse(left)) == ast.dump(ast.parse(right))
+          receipt={'head':head,'path':rel,'working_sha256':hashlib.sha256(original).hexdigest(),'head_sha256':hashlib.sha256(committed).hexdigest(),'ast_equal':identical,'restored':False}
+          (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
+          if not identical: raise RuntimeError('Residual changes Python semantics; originals and diff preserved, checkout untouched')
+          if status: (root/rel).write_bytes(committed)
+          after=git('status','--porcelain=v1','--untracked-files=all').decode()
+          (out/'status-after.txt').write_text(after,encoding='utf-8')
+          receipt['restored']=bool(status); receipt['clean']=not bool(after.strip())
+          (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
+          print(json.dumps(receipt))
+          if after.strip(): raise RuntimeError('Checkout remains dirty; review preserved bytes and Git normalization: '+after)
+          subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha',expected],cwd=root,check=True)
+          '@
+          python -c $script
+          if($LASTEXITCODE -ne 0){throw 'Bounded workspace recovery did not pass; retained evidence must be reviewed'}
+      - name: Rename only known accepted desktop entry to exact owner spelling
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $desktop='C:\Users\CheCat\Desktop'
+          $old=Join-Path $desktop 'PINKCAB.lnk'
+          $new=Join-Path $desktop 'PINCKCAB.lnk'
+          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           $ws=New-Object -ComObject WScript.Shell
-          Write-Host 'PINKCAB_SHORTCUTS'
-          foreach($desktop in @('C:\Users\CheCat\Desktop','C:\Users\Public\Desktop')){
-            Get-ChildItem -LiteralPath $desktop -Filter '*.lnk' -File -ErrorAction SilentlyContinue | Where-Object {$_.BaseName -match '(?i)pin[ck]*\s*cab|pink.*cab'} | ForEach-Object {
-              $link=$ws.CreateShortcut($_.FullName)
-              [pscustomobject]@{path=$_.FullName;target=$link.TargetPath;arguments=$link.Arguments;targetExists=(Test-Path -LiteralPath $link.TargetPath)} | ConvertTo-Json -Compress
-            }
+          if(Test-Path -LiteralPath $new){
+            $s=$ws.CreateShortcut($new)
+            if($s.TargetPath -ne $accepted -or (Test-Path -LiteralPath $old)){throw 'Unexpected or duplicate desktop entry; left unchanged'}
+          } else {
+            if(-not (Test-Path -LiteralPath $old)){throw 'Known accepted desktop entry missing'}
+            $s=$ws.CreateShortcut($old)
+            if($s.TargetPath -ne $accepted -or -not (Test-Path -LiteralPath $accepted)){throw 'Accepted desktop target mismatch'}
+            Copy-Item -LiteralPath $old -Destination (Join-Path $env:RECOVERY_REPORT 'PINKCAB-before.lnk')
+            Move-Item -LiteralPath $old -Destination $new
           }
-          Write-Host 'RECENT_BUILD_DIRECTORIES'
-          Get-ChildItem -LiteralPath 'E:\CHESHIRE_DIVISION\Builds\PINKCAB' -Directory | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 8 Name,LastWriteTimeUtc | Format-Table -AutoSize
-          Write-Host 'READ_ONLY_DIAGNOSIS_COMPLETE'
+          $s=$ws.CreateShortcut($new)
+          if($s.TargetPath -ne $accepted -or -not (Test-Path -LiteralPath $accepted)){throw 'Renamed shortcut failed verification'}
+          @{path=$new;target=$s.TargetPath;arguments=$s.Arguments;acceptedRuntime='edf75e1b';targetExists=$true} | ConvertTo-Json | Tee-Object -FilePath (Join-Path $env:RECOVERY_REPORT 'desktop.json')
+      - name: Preserve recovery evidence outside the game checkout
+        if: always() && env.RECOVERY_REPORT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: p04-runner-recovery-${{ github.run_id }}
+          path: ${{ env.RECOVERY_REPORT }}
+          if-no-files-found: error
+          retention-days: 30
