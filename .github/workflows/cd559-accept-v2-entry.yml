@@ -1,0 +1,98 @@
+name: CD-559 Accept P03 Version 2 Entry
+on:
+  push:
+    branches: [ops/CD-559-restore-playable-entry-20261003]
+    paths: [.github/workflows/cd559-accept-v2-entry.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: pinkcab-accepted-v2-entry
+  cancel-in-progress: false
+jobs:
+  accept:
+    if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 5
+    steps:
+      - name: Preserve exact package and retire generated cooker log residue
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V' -or $env:USERNAME -ne 'CheCat'){throw 'Wrong host/user'}
+          if(@(Get-Process UnrealEditor,UnrealEditor-Cmd,AutomationTool,UnrealBuildTool -ErrorAction SilentlyContinue).Count -or @(Get-Process Runner.Worker -ErrorAction SilentlyContinue).Count -gt 1){throw 'Host busy; no process stopped'}
+          $work='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          $merge='ea86bd5a84c2f5de2406bc5f3c57f6218a224fa8'
+          $accepted='edf75e1b91742237d14ba9dfe76284993da77d17'
+          $out=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Acceptance' ('P03-v2-'+$env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
+          if(Test-Path -LiteralPath $out){throw 'Evidence directory exists'}
+          New-Item -ItemType Directory -Path $out | Out-Null
+          "ACCEPTANCE_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
+          $head=(git -C $work rev-parse HEAD).Trim()
+          if($LASTEXITCODE -ne 0 -or $head -ne $merge){throw 'Runner source changed; no cleanup attempted'}
+          if(@(git -C $work status --porcelain --untracked-files=all).Count){throw 'Unexpected tracked/untracked source changes; no cleanup attempted'}
+          $package='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294'
+          $manifestPath=Join-Path $package 'PACKAGE_MANIFEST_ATTEMPT_1.json'
+          if((Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'bb159394965f3ca4ea44cfa1b58c7ce499f874034be51473bee99948fbbedab9'){throw 'Accepted manifest hash mismatch'}
+          $manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if($manifest.candidateSha -ne $accepted -or $manifest.deliveryRun -ne '37117735294'){throw 'Accepted manifest identity mismatch'}
+          $payload=Join-Path $package 'Windows'
+          $expected=@{}
+          foreach($entry in $manifest.files){
+            if($entry.path -match '(^|/)\.\.(/|$)' -or [IO.Path]::IsPathRooted($entry.path)){throw 'Unsafe manifest path'}
+            $path=Join-Path $payload $entry.path
+            $file=Get-Item -LiteralPath $path
+            if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Unexpected payload reparse file'}
+            if($file.Length -ne $entry.bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.sha256){throw ('Changed accepted payload: '+$entry.path)}
+            if($expected.ContainsKey($entry.path)){throw 'Duplicate payload key'}
+            $expected[$entry.path]=$true
+          }
+          $actual=@(Get-ChildItem -LiteralPath $payload -File -Recurse | Where-Object {$_.FullName.Substring($payload.Length+1).Replace('\','/') -notmatch '(^|/)Saved/'})
+          if($actual.Count -ne $expected.Count){throw 'Accepted payload file set changed'}
+          foreach($file in $actual){if(-not $expected.ContainsKey($file.FullName.Substring($payload.Length+1).Replace('\','/'))){throw 'Unexpected accepted payload file'}}
+          $records=@()
+          foreach($relative in @('Build/Windows/FileOpenOrder/CookerOpenOrder.log','Build/Windows/FileOpenOrder/EditorOpenOrder.log')){
+            $source=Join-Path $work $relative
+            if(-not (Test-Path -LiteralPath $source)){continue}
+            $tracked=@(git -C $work ls-files -- $relative)
+            if($LASTEXITCODE -ne 0 -or $tracked.Count){throw 'Cooker log is tracked; refuse retirement'}
+            git -C $work check-ignore --quiet -- $relative
+            if($LASTEXITCODE -ne 0){throw 'Unexpected nonignored cooker log'}
+            $file=Get-Item -LiteralPath $source
+            if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Cooker reparse file'}
+            $hash=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
+            $dest=Join-Path $out $file.Name
+            Copy-Item -LiteralPath $source -Destination $dest
+            if((Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash){throw 'Cooker preservation mismatch'}
+            $retired=Join-Path $out ('retained-original-'+$file.Name)
+            Move-Item -LiteralPath $source -Destination $retired
+            if((Get-FileHash -LiteralPath $retired -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash){throw 'Cooker move mismatch'}
+            $records+=@{original=$source;retained=$retired;sha256=$hash;bytes=$file.Length}
+          }
+          python (Join-Path $work 'scripts/ci/acceptance_contract.py') workspace --root $work --sha $merge
+          if($LASTEXITCODE -ne 0){throw 'Workspace still blocked; no gameplay modified'}
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          if($desktop -ne 'C:\Users\CheCat\Desktop'){throw 'Unexpected desktop path'}
+          $exe=Join-Path $payload 'PinkCab\Binaries\Win64\PinkCab.exe'
+          $ws=New-Object -ComObject WScript.Shell
+          $shortcuts=@()
+          foreach($path in @((Join-Path $desktop 'PINKCAB PLAY - V2 ACCEPTED.lnk'),(Join-Path $desktop 'CHESHIRE_STUDIO\PINKCAB_Accepted.lnk'))){
+            if(Test-Path -LiteralPath $path){throw 'Accepted version entry already exists; do not overwrite'}
+            New-Item -ItemType Directory -Path (Split-Path $path) -Force | Out-Null
+            $link=$ws.CreateShortcut($path);$link.TargetPath=$exe;$link.WorkingDirectory=Split-Path $exe
+            $link.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900'
+            $link.IconLocation=$exe+',0';$link.Description='PINK CAB - owner accepted iteration 2 / P03 edf75e1b, 2026-10-03';$link.Save()
+            if($ws.CreateShortcut($path).TargetPath -ne $exe){throw 'Accepted shortcut readback failed'}
+            $shortcuts+=$path
+          }
+          $receipt=@{status='OWNER_ACCEPTED_V2_PACKAGE_REVALIDATED';stage='P03';sourceSha=$accepted;mergeSha=$merge;ciRun='37116996219';deliveryRun='37117735294';package=$package;fileCount=$expected.Count;manifestSha256='bb159394965f3ca4ea44cfa1b58c7ce499f874034be51473bee99948fbbedab9';ownerAcceptanceDate='2026-10-03';shortcuts=$shortcuts;retiredGeneratedLogs=$records;runnerWorkspaceClean=$true;canonicalCheckoutModified=$false;newBuild=$false;publicReleaseApproved=$false;P04Accepted=$false}
+          $receipt | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'ACCEPTANCE.json') -Encoding utf8
+          $receipt | ConvertTo-Json -Depth 8 | Write-Host
+      - name: Preserve acceptance and cooker-log evidence
+        if: always() && env.ACCEPTANCE_EVIDENCE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinkcab-v2-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ACCEPTANCE_EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 30
