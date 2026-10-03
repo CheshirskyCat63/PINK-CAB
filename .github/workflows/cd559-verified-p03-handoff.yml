@@ -1,0 +1,199 @@
+name: CD-559 Verified P03 Human Handoff
+on:
+  push:
+    branches: [ops/CD-559-restore-playable-entry-20261003]
+    paths: [.github/workflows/cd559-verified-p03-handoff.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pinkcab-verified-p03-handoff
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Require the complete existing exact-candidate CI result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json'}
+          $api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
+          $expected='edf75e1b91742237d14ba9dfe76284993da77d17'
+          $deadline=[DateTime]::UtcNow.AddMinutes(30)
+          do {
+            $run=Invoke-RestMethod -Headers $headers -Uri "$api/actions/runs/37116996219"
+            if($run.head_sha -ne $expected -or $run.event -ne 'pull_request'){throw 'Wrong verification source'}
+            if($run.status -eq 'completed'){break}
+            Write-Host ('AWAITING_EXISTING_CI run=37116996219 status='+$run.status)
+            Start-Sleep -Seconds 20
+          } while([DateTime]::UtcNow -lt $deadline)
+          if($run.status -ne 'completed' -or $run.conclusion -ne 'success' -or $run.run_attempt -ne 1){throw 'Full exact-candidate verification did not pass; no delivery permitted'}
+          $pr=Invoke-RestMethod -Headers $headers -Uri "$api/pulls/52"
+          if($pr.head.sha -ne $expected -or $pr.state -ne 'open'){throw 'PR52 candidate changed'}
+          $jobs=(Invoke-RestMethod -Headers $headers -Uri "$api/actions/runs/37116996219/jobs?per_page=100").jobs
+          foreach($name in @('Repository verification','physics-tdd / Vehicle physics focused TDD gate','p02 / P02 PHY-009 evidence','Gameplay acceptance gate')){
+            $matches=@($jobs | Where-Object {$_.name -eq $name})
+            if($matches.Count -ne 1 -or $matches[0].conclusion -ne 'success'){throw ('Missing successful required job: '+$name)}
+          }
+          Write-Host 'COMPLETE_P03_CI_AND_P02=PASS'
+      - name: Checkout the tested source for evidence validation
+        uses: actions/checkout@v4
+        with:
+          ref: edf75e1b91742237d14ba9dfe76284993da77d17
+          lfs: false
+          persist-credentials: false
+      - name: Download original same-run physics evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: physics-acceptance-37116996219-1
+          run-id: 37116996219
+          repository: CheshirskyCat63/PINK-CAB
+          github-token: ${{ github.token }}
+          path: verified-physics
+      - name: Validate actual test set, source, attempt and 240-case matrix
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; from scripts.ci.acceptance_contract import verify_attestation; verify_attestation(Path.cwd(),Path('verified-physics/VEHICLE_PHYSICS_TDD.log'),Path('verified-physics/PHYSICS_ACCEPTANCE.json'),'edf75e1b91742237d14ba9dfe76284993da77d17','37116996219','1'); print('SOURCE_BOUND_PHYSICS_RECEIPT=PASS')"
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+  preserve:
+    needs: verify
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 5
+    outputs:
+      receipt_root: ${{ steps.preflight.outputs.receipt_root }}
+    steps:
+      - name: Preserve previous package and desktop handoff before fresh cook
+        id: preflight
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V' -or $env:USERNAME -ne 'CheCat'){throw 'Wrong host/user'}
+          if($env:GITHUB_RUN_ATTEMPT -ne '1'){throw 'Full delivery retry must use a new run; existing package is retained'}
+          $workspace='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
+          if([IO.Path]::GetFullPath($env:GITHUB_WORKSPACE).TrimEnd('\') -ne $workspace){throw 'Unexpected runner workspace'}
+          if((git -C $workspace rev-parse HEAD).Trim() -ne 'edf75e1b91742237d14ba9dfe76284993da77d17'){throw 'Runner source changed'}
+          if(@(git -C $workspace status --porcelain --untracked-files=all).Count -ne 0){throw 'Runner contains unowned changes; preserve without mutation'}
+          if(@(Get-Process UnrealEditor,UnrealEditor-Cmd,AutomationTool,UnrealBuildTool -ErrorAction SilentlyContinue).Count -gt 0 -or @(Get-Process Runner.Worker -ErrorAction SilentlyContinue).Count -gt 1){throw 'Host busy; no process was stopped'}
+          $out=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Delivery' $env:GITHUB_RUN_ID
+          if(Test-Path -LiteralPath $out){throw 'Pre-existing handoff receipt directory'}
+          New-Item -ItemType Directory -Path $out | Out-Null
+          $target=Join-Path 'E:\CHESHIRE_DIVISION\Builds\PINKCAB' ('CD869_ENDLESS_edf75e1b_RUN'+$env:GITHUB_RUN_ID)
+          if(Test-Path -LiteralPath $target){throw 'Refusing to overwrite an existing delivered package'}
+          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970'
+          if(-not (Test-Path -LiteralPath (Join-Path $accepted 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'))){throw 'Accepted P02 rollback missing'}
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $links=@()
+          foreach($name in @('PINKCAB Latest.lnk','PINKCAB L1 ENDLESS HUMAN.lnk')){
+            $path=Join-Path $desktop $name
+            $exists=Test-Path -LiteralPath $path
+            if($exists){Copy-Item -LiteralPath $path -Destination (Join-Path $out ($name+'.before'))}
+            $links+=@{name=$name;existed=$exists}
+          }
+          $archive=Join-Path $workspace 'Artifacts\CD869Human'
+          $hold=''
+          if(Test-Path -LiteralPath $archive){
+            if((Get-Item -LiteralPath $archive).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Archive reparse path is not allowed'}
+            foreach($process in @(Get-Process PinkCab -ErrorAction SilentlyContinue)){
+              if($process.Path -and $process.Path.StartsWith($archive+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Previous runner package is in use'}
+            }
+            $hold=Join-Path $out 'previous-runner-package'
+            Move-Item -LiteralPath $archive -Destination $hold
+          }
+          @{candidate='edf75e1b91742237d14ba9dfe76284993da77d17';verifiedRun='37116996219';desktop=$desktop;links=$links;acceptedP02=$accepted;previousArchiveHold=$hold;delivery=$target;workspaceInitiallyClean=$true} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $out 'preflight.json') -Encoding utf8
+          "receipt_root=$out" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host 'ACCEPTED_P02_PRESERVED_FRESH_PACKAGE_REQUIRED=PASS'
+  deliver:
+    needs: preserve
+    uses: CheshirskyCat63/PINK-CAB/.github/workflows/cd869-deliver.yml@edf75e1b91742237d14ba9dfe76284993da77d17
+    with:
+      candidate_sha: edf75e1b91742237d14ba9dfe76284993da77d17
+  handoff:
+    needs: [preserve, deliver]
+    if: ${{ always() && needs.preserve.result == 'success' }}
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 15
+    env:
+      HANDOFF_ROOT: ${{ needs.preserve.outputs.receipt_root }}
+      DELIVERY_RESULT: ${{ needs.deliver.result }}
+    steps:
+      - name: Verify installed package bytes and expose explicit P03 test shortcut
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $out=Join-Path $env:HANDOFF_ROOT ('handoff-attempt-'+$env:GITHUB_RUN_ATTEMPT)
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          "FINAL_HANDOFF_EVIDENCE=$out" | Out-File $env:GITHUB_ENV -Append
+          $pre=Get-Content (Join-Path $env:HANDOFF_ROOT 'preflight.json') -Raw | ConvertFrom-Json
+          $ws=New-Object -ComObject WScript.Shell
+          function Restore-PreviousLinks {
+            foreach($entry in $pre.links){
+              $path=Join-Path $pre.desktop $entry.name
+              $ours=$false
+              if(Test-Path -LiteralPath $path){$link=$ws.CreateShortcut($path);$ours=$link.TargetPath.StartsWith($pre.delivery+'\',[StringComparison]::OrdinalIgnoreCase)}
+              if(($ours -or -not (Test-Path -LiteralPath $path)) -and $entry.existed){Copy-Item -LiteralPath (Join-Path $env:HANDOFF_ROOT ($entry.name+'.before')) -Destination $path -Force}
+            }
+          }
+          if($env:DELIVERY_RESULT -ne 'success'){
+            Restore-PreviousLinks
+            throw 'Fresh delivery failed; prior links restored where owned, packages preserved'
+          }
+          try {
+            if((Get-Content (Join-Path $pre.delivery 'CANDIDATE_SHA.txt') -Raw).Trim() -ne $pre.candidate){throw 'Delivered source marker mismatch'}
+            if((Get-Content (Join-Path $pre.delivery 'RUN_ID.txt') -Raw).Trim() -ne $env:GITHUB_RUN_ID){throw 'Delivered run marker mismatch'}
+            $source=Join-Path $env:GITHUB_WORKSPACE 'Artifacts\CD869Human\Windows'
+            $installed=Join-Path $pre.delivery 'Windows'
+            function Get-Payload([string]$root){
+              $map=@{}
+              foreach($file in @(Get-ChildItem -LiteralPath $root -Recurse -File)){
+                $relative=$file.FullName.Substring($root.Length+1).Replace('\','/')
+                if($relative -match '(^|/)Saved/'){continue}
+                if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Runtime payload reparse file'}
+                if($map.ContainsKey($relative)){throw 'Duplicate runtime payload path'}
+                $map[$relative]=@{path=$relative;bytes=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+              }
+              if($map.Count -lt 3){throw 'Runtime payload incomplete'}
+              return $map
+            }
+            $a=Get-Payload $source
+            $b=Get-Payload $installed
+            if($a.Count -ne $b.Count){throw 'Copied package file count mismatch'}
+            foreach($key in $a.Keys){if(-not $b.ContainsKey($key) -or $a[$key].sha256 -ne $b[$key].sha256 -or $a[$key].bytes -ne $b[$key].bytes){throw ('Copied package differs: '+$key)}}
+            $files=@($b.Keys | Sort-Object | ForEach-Object {$b[$_]})
+            $manifest=@{schema=1;candidateSha=$pre.candidate;verificationRun=$pre.verifiedRun;deliveryRun=$env:GITHUB_RUN_ID;attempt=$env:GITHUB_RUN_ATTEMPT;sourcePackage=$source;installedPackage=$installed;excludedMutablePaths='**/Saved/**';files=$files;humanAccepted=$false}
+            $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'PACKAGE_MANIFEST.json') -Encoding utf8
+            Copy-Item -LiteralPath (Join-Path $out 'PACKAGE_MANIFEST.json') -Destination (Join-Path $pre.delivery ('PACKAGE_MANIFEST_ATTEMPT_'+$env:GITHUB_RUN_ATTEMPT+'.json'))
+            $exe=Join-Path $installed 'PinkCab\Binaries\Win64\PinkCab.exe'
+            $links=@()
+            foreach($path in @((Join-Path $pre.desktop 'PINKCAB P03 TEST.lnk'),(Join-Path $pre.desktop 'CHESHIRE_STUDIO\PINKCAB_Test.lnk'))){
+              if(Test-Path -LiteralPath $path){Copy-Item -LiteralPath $path -Destination (Join-Path $out ((Split-Path $path -Leaf)+'.before'))}
+              New-Item -ItemType Directory -Path (Split-Path $path) -Force | Out-Null
+              $link=$ws.CreateShortcut($path);$link.TargetPath=$exe;$link.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900';$link.WorkingDirectory=Split-Path $exe;$link.IconLocation=$exe+',0';$link.Description='PINK CAB P03 corrective candidate edf75e1b - HUMAN PENDING';$link.Save()
+              if($ws.CreateShortcut($path).TargetPath -ne $exe){throw 'P03 shortcut readback mismatch'}
+              $links+=$path
+            }
+            $games=@(Get-Process PinkCab -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $exe -and $_.SessionId -eq (Get-Process -Id $PID).SessionId})
+            if($games.Count -ne 1){throw 'Unique delivered interactive game process not found'}
+            $game=$games[0];$game.Refresh()
+            if($game.MainWindowHandle -eq 0){throw 'Delivered game has no main window'}
+            $activated=$ws.AppActivate($game.Id)
+            @{candidate=$pre.candidate;delivery=$pre.delivery;fileCount=$b.Count;manifestSha256=(Get-FileHash (Join-Path $out 'PACKAGE_MANIFEST.json') -Algorithm SHA256).Hash.ToLowerInvariant();pid=$game.Id;windowHandle=$game.MainWindowHandle.ToInt64();activated=$activated;shortcuts=$links;status='DELIVERED_HUMAN_PENDING';P02Retained=(Test-Path $pre.acceptedP02);humanAccepted=$false} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $out 'HANDOFF.json') -Encoding utf8
+            git status --porcelain --untracked-files=all | Set-Content (Join-Path $out 'runner-after-authoring.txt') -Encoding utf8
+            Write-Host ('P03_PACKAGE_COPY_HASHES_PASS files='+$b.Count+' PID='+$game.Id)
+            Write-Host ('P03_PLAY_SHORTCUT='+$links[0])
+          } catch {
+            Restore-PreviousLinks
+            throw
+          }
+      - name: Retain handoff evidence without uploading the game package
+        if: always() && env.FINAL_HANDOFF_EVIDENCE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: p03-human-handoff-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.FINAL_HANDOFF_EVIDENCE }}
+          retention-days: 30
+          if-no-files-found: error
