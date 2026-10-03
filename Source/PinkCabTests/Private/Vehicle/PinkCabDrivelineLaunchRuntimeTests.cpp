@@ -580,7 +580,7 @@ public:
         if (++CaseIndex == (bEngineCoherence ? 3 : 18))
         {
             Test->AddInfo(bEngineCoherence
-                ? TEXT("P04_ENGINE_COHERENCE_COMPLETE cases=3 physics_changed=0")
+                ? TEXT("P04_ENGINE_COHERENCE_COMPLETE cases=3 profile_changed=0")
                 : bRatioProbe
                 ? TEXT("P04_RATIO_PROBE_COMPLETE cases=18 production_profile_changed=0 tuning_accepted=0")
                 : TEXT("P04_BASELINE_COMPLETE cases=18 profile_changed=0 tuning_accepted=0"));

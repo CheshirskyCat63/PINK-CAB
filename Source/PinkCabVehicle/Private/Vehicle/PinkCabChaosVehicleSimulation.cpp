@@ -127,10 +127,12 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
     FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
     Transmission.SetGear(0, true);
 
+    const float EngineOmegaBeforeNative = Engine.GetEngineOmega();
+    // SetEngineOmega applies the preceding clutch reaction without updating
+    // Chaos' cached CurrentRPM. Predict from the actual angular state at the
+    // start of this step, not the pre-reaction display RPM from the last one.
     const float EngineRpmBeforeNative =
-        Engine.GetEngineRPM();
-    const float EngineOmegaBeforeNative =
-        Engine.GetEngineOmega();
+        EngineOmegaBeforeNative / PinkCabChaosRpmToRadPerSecond;
     LastEngineInputStateErrorRpm = FMath::Abs(
         EngineRpmBeforeNative
         - EngineOmegaBeforeNative / PinkCabChaosRpmToRadPerSecond);
