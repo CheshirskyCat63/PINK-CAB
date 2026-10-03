@@ -4,6 +4,7 @@
 #include "Tests/AutomationCommon.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "HAL/IConsoleManager.h"
 #include "Vehicle/PinkCabDrivelineRuntimeTestUtils.h"
 
 namespace
@@ -429,8 +430,17 @@ bool FPinkCabP04ProfileTableTest::RunTest(const FString&)
 class FPinkCabP04BaselineCommand final : public IAutomationLatentCommand
 {
 public:
-    explicit FPinkCabP04BaselineCommand(FAutomationTestBase* InTest, bool bInRatioProbe = false)
-        : Test(InTest), WallStart(FPlatformTime::Seconds()), bRatioProbe(bInRatioProbe) {}
+    explicit FPinkCabP04BaselineCommand(
+        FAutomationTestBase* InTest, bool bInRatioProbe = false,
+        bool bInEngineCoherence = false, bool bInStableTraction = false)
+        : Test(InTest), WallStart(FPlatformTime::Seconds())
+        , bRatioProbe(bInRatioProbe)
+        , bEngineCoherence(bInEngineCoherence || bInStableTraction)
+        , bStableTraction(bInStableTraction) {}
+    virtual ~FPinkCabP04BaselineCommand() override
+    {
+        RestoreFrameCap();
+    }
     virtual bool Update() override
     {
         using namespace PinkCabDrivelineRuntimeTest;
@@ -445,6 +455,12 @@ public:
         if (!bInitialized)
         {
             UGameplayStatics::SetGamePaused(World, false);
+            if (bStableTraction)
+            {
+                FrameCap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"));
+                if (!FrameCap) { Test->AddError(TEXT("P04 frame cap unavailable")); return true; }
+                OriginalFrameCap = FrameCap->GetFloat();
+            }
             AActor* Floor = PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
             FloorBox = Floor ? Cast<UBoxComponent>(Floor->GetRootComponent()) : nullptr;
             if (!FloorBox.IsValid()) { Test->AddError(TEXT("P04 flat fixture unavailable")); return true; }
@@ -491,6 +507,14 @@ public:
             Controls.SetBrake(0.0f);
             Controls.SetThrottle(Dose());
             Controls.SetDriveline(Gear(), Gear(), 0.0f);
+            if (bEngineCoherence
+                && !Movement->BeginPinkCabMechanicalEvidenceWindow(
+                    bStableTraction ? 2.0f : 0.0f, bStableTraction ? 2.0f : 4.0f))
+            {
+                Test->AddError(TEXT("P04 engine coherence evidence unavailable"));
+                Cleanup(*World);
+                return true;
+            }
             return false;
         }
         const double PreviousTime = Elapsed;
@@ -504,6 +528,11 @@ public:
         const float Torque = FMath::Abs(MeanRearDriveTorqueNm(*Movement));
         if (PreviousTime < 5.0)
         {
+            if (bStableTraction)
+            {
+                GameDeltaSum += FApp::GetDeltaTime();
+                ++GameDeltaCount;
+            }
             if (Time30 < 0.0 && DirectionalSpeed >= 30.0f) Time30 = Elapsed;
             if (Time60 < 0.0 && DirectionalSpeed >= 60.0f) Time60 = Elapsed;
             PeakRpm = FMath::Max(PeakRpm, Movement->GetEngineRotationSpeed());
@@ -553,9 +582,74 @@ public:
             bRatioProbe ? TEXT("P04_RATIO_PROBE") : TEXT("P04_ACCEL_BASELINE"),
             Movement->TransmissionSetup.ForwardGearRatios[0], Gear(), Dose(), CaseIndex % 3 + 1, BodyMassKg, DriveEndTime, EndDriveSpeed, EndDriveRpm,
             Time30, Time60, PeakRpm, PeakRearTorque, PeakSlipSpeedMps, DirectionalSpeed, Torque));
-        if (++CaseIndex == 18)
+        if (bEngineCoherence)
         {
-            Test->AddInfo(bRatioProbe
+            FPinkCabMechanicalEvidenceSnapshot Evidence;
+            const bool bRead = Movement->ReadPinkCabMechanicalEvidenceWindow(Evidence);
+            Test->TestTrue(TEXT("P04 engine coherence window completed"), bRead && Evidence.bComplete);
+            Test->AddInfo(FString::Printf(
+                TEXT("P04_ENGINE_COHERENCE repeat=%d steps=%d max_input_state_error_rpm=%.6f speed_end_kmh=%.3f"),
+                CaseIndex + 1, Evidence.CompletedSampleSteps,
+                Evidence.MaxEngineInputStateErrorRpm, EndDriveSpeed));
+            Test->TestTrue(
+                TEXT("P04 clutch predictor consumes the actual same-step engine angular state"),
+                bRead && Evidence.bComplete
+                    && Evidence.MaxEngineInputStateErrorRpm <= 1.0f);
+            if (bStableTraction)
+            {
+                const double MeanGameDeltaSeconds = GameDeltaCount > 0
+                    ? GameDeltaSum / GameDeltaCount : 0.0;
+                Test->TestTrue(TEXT("P04 requested render cadence is actually observed"),
+                    GameDeltaCount > 0 && FMath::IsFinite(MeanGameDeltaSeconds)
+                        && FMath::Abs(MeanGameDeltaSeconds * StableFrameCap() - 1.0) <= 0.10);
+                // This steady, level, no-brake window must not alternate
+                // propulsion and braking every physics step at constant input.
+                Test->TestTrue(TEXT("P04 steady half-throttle carries positive traction"),
+                    Evidence.MeanSignedDrivenWheelTorqueNm > 1.0f);
+                Test->TestTrue(TEXT("P04 steady traction has no spurious opposing impulse"),
+                    Evidence.MeanDrivenWheelTorqueNm
+                        <= Evidence.MeanSignedDrivenWheelTorqueNm * 1.01f + 1.0f);
+                Test->TestTrue(TEXT("P04 clutch and tyre exchange use resolved substeps"),
+                    Evidence.MaxDeltaSeconds <= 1.0f / 240.0f + 1.0e-6f);
+                Test->TestTrue(TEXT("P04 no brake or parking injection masks the defect"),
+                    Evidence.MeanAppliedWheelBrakeTorqueNm <= 0.1f
+                        && !Evidence.bAnyParkingEnabled);
+                Test->AddInfo(FString::Printf(
+                    TEXT("P04_STABLE_TRACTION fps_cap=%d repeat=%d game_dt_ms=%.6f abs_rear_nm=%.6f signed_rear_nm=%.6f max_step_ms=%.6f speed_end_kmh=%.3f"),
+                    StableFrameCap(), CaseIndex % 3 + 1,
+                    GameDeltaCount > 0 ? GameDeltaSum / GameDeltaCount * 1000.0 : 0.0,
+                    Evidence.MeanDrivenWheelTorqueNm,
+                    Evidence.MeanSignedDrivenWheelTorqueNm,
+                    Evidence.MaxDeltaSeconds * 1000.0f, EndDriveSpeed));
+                StableSpeeds.Add(EndDriveSpeed);
+            }
+        }
+        if (++CaseIndex == (bStableTraction ? 9 : bEngineCoherence ? 3 : 18))
+        {
+            if (bStableTraction)
+            {
+                Test->TestEqual(TEXT("P04 executes three repeats at all three frame caps"), StableSpeeds.Num(), 9);
+                auto Median = [this](int32 Offset)
+                {
+                    TArray<float> Group{StableSpeeds[Offset], StableSpeeds[Offset + 1], StableSpeeds[Offset + 2]};
+                    Group.Sort();
+                    return Group[1];
+                };
+                if (StableSpeeds.Num() == 9)
+                {
+                    const float Reference = Median(0);
+                    for (int32 Offset : {3, 6})
+                    {
+                        Test->TestTrue(TEXT("P04 five-second traction is render-cadence invariant"),
+                            FMath::Abs(Median(Offset) - Reference) / FMath::Max(Reference, 1.0f) <= 0.05f);
+                    }
+                }
+            }
+            Test->AddInfo(bStableTraction
+                ? TEXT("P04_STABLE_TRACTION_COMPLETE cases=9 frame_caps=30,60,120 profile_changed=0")
+                : bEngineCoherence
+                ? TEXT("P04_ENGINE_COHERENCE_COMPLETE cases=3 profile_changed=0")
+                : bRatioProbe
                 ? TEXT("P04_RATIO_PROBE_COMPLETE cases=18 production_profile_changed=0 tuning_accepted=0")
                 : TEXT("P04_BASELINE_COMPLETE cases=18 profile_changed=0 tuning_accepted=0"));
             Cleanup(*World);
@@ -568,12 +662,29 @@ private:
     int32 Gear() const { return bRatioProbe || CaseIndex < 9 ? 1 : -1; }
     float Dose() const
     {
+        if (bEngineCoherence) return 0.50f;
         if (bRatioProbe) return (CaseIndex / 3) % 2 == 0 ? 0.50f : 1.00f;
         const float Values[] = {0.25f, 0.50f, 1.00f}; return Values[(CaseIndex / 3) % 3];
     }
     float ProbeRatio() const { const float Ratios[] = {4.60f, 4.00f, 3.60f}; return Ratios[CaseIndex / 6]; }
+    int32 StableFrameCap() const
+    {
+        const int32 Caps[] = {30, 60, 120};
+        return Caps[CaseIndex / 3];
+    }
+    void RestoreFrameCap()
+    {
+        if (FrameCap)
+        {
+            FrameCap->Set(OriginalFrameCap, ECVF_SetByCode);
+            FrameCap = nullptr;
+        }
+    }
     void BeginCase(UWorld& World)
     {
+        if (FrameCap) FrameCap->Set(static_cast<float>(StableFrameCap()), ECVF_SetByCode);
+        GameDeltaSum = 0.0;
+        GameDeltaCount = 0;
         PinkCabPhysicsFixture::DestroyPawns(World);
         Cockpit = {};
         Test->TestTrue(TEXT("P04 fresh engine starts"), Cockpit.StartEngine());
@@ -591,6 +702,7 @@ private:
     }
     void Cleanup(UWorld& World)
     {
+        RestoreFrameCap();
         PinkCabPhysicsFixture::DestroyPawns(World);
         if (FloorBox.IsValid()) FloorBox->SetBoxExtent(OriginalExtent);
     }
@@ -609,6 +721,13 @@ private:
     int32 TorqueSamples = 0, MinimumContacts = 4;
     bool bInitialized = false, bSettling = true, bCoasting = false;
     const bool bRatioProbe;
+    const bool bEngineCoherence;
+    const bool bStableTraction;
+    IConsoleVariable* FrameCap = nullptr;
+    float OriginalFrameCap = 0.0f;
+    double GameDeltaSum = 0.0;
+    int32 GameDeltaCount = 0;
+    TArray<float> StableSpeeds;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04BaselineRuntimeTest,
@@ -629,6 +748,30 @@ bool FPinkCabP04RatioProbeRuntimeTest::RunTest(const FString&)
 {
     if (!TestTrue(TEXT("P04 comparison fixture map opens"), AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, true));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04EngineStateCoherenceTest,
+    "PinkCab.Vehicle.Physics.P04.EngineStateCoherence",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04EngineStateCoherenceTest::RunTest(const FString&)
+{
+    if (!TestTrue(TEXT("P04 engine coherence fixture opens"),
+        AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, false, true));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabP04StableTractionTest,
+    "PinkCab.Vehicle.Physics.P04.StableHalfThrottleTraction",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabP04StableTractionTest::RunTest(const FString&)
+{
+    if (!TestTrue(TEXT("P04 steady traction fixture opens"),
+        AutomationOpenMap(PinkCabPhysicsFixture::MapPath, true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabP04BaselineCommand(this, false, false, true));
     return true;
 }
 

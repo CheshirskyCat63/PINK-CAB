@@ -23,6 +23,8 @@ void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     EvidenceClutchSlipRpmTimeIntegral = 0.0;
     EvidenceAppliedWheelBrakeTorqueTimeIntegral = 0.0;
     EvidenceObservedDeltaSecondsSum = 0.0;
+    EvidenceMaxDeltaSeconds = 0.0f;
+    EvidenceMaxEngineInputStateErrorRpm = 0.0f;
     bEvidenceAnyParkingEnabled = false;
 }
 
@@ -68,6 +70,8 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
             EvidenceAppliedWheelBrakeTorqueTimeIntegral
             / EvidenceCompletedSampleSeconds);
     }
+    Result.MaxEngineInputStateErrorRpm = EvidenceMaxEngineInputStateErrorRpm;
+    Result.MaxDeltaSeconds = EvidenceMaxDeltaSeconds;
     Result.bAnyParkingEnabled = bEvidenceAnyParkingEnabled;
     if (EvidenceCompletedSteps > 0)
     {
@@ -163,9 +167,12 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceValues(
     EvidenceAppliedWheelBrakeTorqueTimeIntegral +=
         static_cast<double>(LastMaxAppliedWheelBrakeTorqueNm)
         * SampleWeightSeconds;
+    EvidenceMaxEngineInputStateErrorRpm = FMath::Max(
+        EvidenceMaxEngineInputStateErrorRpm, LastEngineInputStateErrorRpm);
     bEvidenceAnyParkingEnabled |= bLastParkingEnabled;
     EvidenceCompletedSampleSeconds += SampleWeightSeconds;
     EvidenceObservedDeltaSecondsSum += static_cast<double>(DeltaTime);
+    EvidenceMaxDeltaSeconds = FMath::Max(EvidenceMaxDeltaSeconds, DeltaTime);
     ++EvidenceCompletedSteps;
 }
 

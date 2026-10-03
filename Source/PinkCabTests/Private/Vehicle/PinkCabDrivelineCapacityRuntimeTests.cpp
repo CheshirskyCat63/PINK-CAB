@@ -108,8 +108,8 @@ public:
             ++ResetPollCount;
             if (!RestGate.Update(*Pawn))
             {
-                if (RestGate.GetObservation().ElapsedMechanicalSteps
-                        < ResetTimeoutMechanicalSteps
+                if (RestGate.GetObservation().ElapsedMechanicalSeconds
+                        < ResetTimeoutSeconds
                     && ResetPollCount < ResetPollLimit)
                 {
                     return false;
@@ -350,7 +350,8 @@ private:
     static constexpr float SampleWheelRpmTolerance = 2.0f;
     static constexpr float FullBoundaryRelativeTolerance = 0.05f;
     static constexpr float CapacityEffectFloorNm = 25.0f;
-    static constexpr int64 ResetTimeoutMechanicalSteps = 240;
+    // Preserve the nominal 60 Hz time budget across physics substeps.
+    static constexpr double ResetTimeoutSeconds = 4.0;
     static constexpr int32 ResetPollLimit = 2400;
 
     int32 CapacityIndex = 0;

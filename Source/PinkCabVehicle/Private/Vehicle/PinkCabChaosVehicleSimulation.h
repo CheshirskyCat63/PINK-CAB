@@ -86,7 +86,10 @@ private:
     double EvidenceClutchSlipRpmTimeIntegral = 0.0;
     double EvidenceAppliedWheelBrakeTorqueTimeIntegral = 0.0;
     double EvidenceObservedDeltaSecondsSum = 0.0;
+    float EvidenceMaxDeltaSeconds = 0.0f;
     float LastMaxAppliedWheelBrakeTorqueNm = 0.0f;
+    float LastEngineInputStateErrorRpm = 0.0f;
+    float EvidenceMaxEngineInputStateErrorRpm = 0.0f;
     bool bLastParkingEnabled = false;
     bool bEvidenceAnyParkingEnabled = false;
 };

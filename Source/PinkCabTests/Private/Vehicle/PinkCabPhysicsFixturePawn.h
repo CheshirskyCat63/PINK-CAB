@@ -11,6 +11,7 @@ struct FPinkCabPhysicsFixtureRestObservation
 {
     int64 MechanicalStep = 0;
     int64 ElapsedMechanicalSteps = 0;
+    double ElapsedMechanicalSeconds = 0.0;
     float EngineRpm = 0.0f;
     float TargetIdleRpm = 0.0f;
     float MaxDrivenWheelRpm = 0.0f;
@@ -40,6 +41,7 @@ private:
     FPinkCabPhysicsFixtureRestObservation Observation;
     int64 StartMechanicalStep = -1;
     int64 LastMechanicalStep = -1;
+    double ElapsedMechanicalSeconds = 0.0;
     int32 StableMechanicalSteps = 0;
 };
 
