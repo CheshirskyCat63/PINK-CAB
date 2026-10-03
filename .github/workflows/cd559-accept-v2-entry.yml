@@ -1,4 +1,4 @@
-name: CD-559 Preserve and Reconcile P04 Runner
+name: CD-559 Normalize Exact P04 Checkout and Entry
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -15,54 +15,62 @@ jobs:
     timeout-minutes: 5
     env:
       GIT_OPTIONAL_LOCKS: '0'
+      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
     steps:
-      - name: Preserve exact residual and restore only if Python meaning is identical
+      - name: Preserve EOL-only residual and verify normalized exact source
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          $busy=@(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool') })
-          if($busy.Count){throw 'Shared Unreal host busy; no process stopped or file changed'}
+          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
           $report=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Recovery' ('CD559_'+$env:GITHUB_RUN_ID+'_ATTEMPT'+$env:GITHUB_RUN_ATTEMPT)
-          if(Test-Path -LiteralPath $report){throw 'Recovery destination already exists'}
+          if(Test-Path -LiteralPath $report){throw 'Recovery destination exists'}
           New-Item -ItemType Directory -Path $report | Out-Null
           "RECOVERY_REPORT=$report" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           $env:RECOVERY_REPORT=$report
+          $processes=@(Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^(UnrealEditor(-Cmd)?|UnrealBuildTool|AutomationTool|PinkCab|Kukuruza)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool')} | Select-Object Name,ProcessId,ExecutablePath,CommandLine)
+          ConvertTo-Json -InputObject $processes -Depth 4 | Set-Content (Join-Path $report 'engine-processes.json') -Encoding UTF8
+          if(@($processes | Where-Object {$_.CommandLine -and $_.CommandLine.IndexOf($root,[StringComparison]::OrdinalIgnoreCase) -ge 0}).Count){throw 'PINKCAB checkout is in use; no process stopped'}
           $script=@'
           import ast, difflib, hashlib, json, os, subprocess
           from pathlib import Path
           root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
           out=Path(os.environ['RECOVERY_REPORT'])
-          expected='52a27ff510f2d9540eb97667e4608c4bbe354f32'
+          old='52a27ff510f2d9540eb97667e4608c4bbe354f32'
+          new='52239b61bc80e5a63716b9b09b87c520fa09fd05'
           rel='scripts/tests/test_fast_delivery_retirement.py'
           def git(*args):
               return subprocess.run(['git',*args],cwd=root,check=True,capture_output=True).stdout
           head=git('rev-parse','HEAD').decode().strip()
-          if head != expected: raise RuntimeError('Unexpected checkout HEAD: '+head)
+          if head not in (old,new): raise RuntimeError('Unexpected checkout HEAD: '+head)
           status=git('status','--porcelain=v1','--untracked-files=all').decode().splitlines()
           (out/'status-before.txt').write_text('\n'.join(status),encoding='utf-8')
-          if status not in ([],[' M '+rel]): raise RuntimeError('Unexpected edits; nothing restored: '+repr(status))
+          if status not in ([],[' M '+rel]): raise RuntimeError('Unexpected local changes; nothing overwritten: '+repr(status))
           original=(root/rel).read_bytes()
           committed=git('show','HEAD:'+rel)
           (out/'working-original.py').write_bytes(original)
           (out/'committed-original.py').write_bytes(committed)
-          left=committed.decode('utf-8-sig'); right=original.decode('utf-8-sig')
-          diff=''.join(difflib.unified_diff(left.splitlines(True),right.splitlines(True),fromfile='HEAD',tofile='working'))
-          (out/'residual.diff').write_text(diff,encoding='utf-8')
-          identical=ast.dump(ast.parse(left)) == ast.dump(ast.parse(right))
-          receipt={'head':head,'path':rel,'working_sha256':hashlib.sha256(original).hexdigest(),'head_sha256':hashlib.sha256(committed).hexdigest(),'ast_equal':identical,'restored':False}
+          git('fetch','--no-tags','origin',new)
+          changes=git('diff','--name-only',old,new).decode().splitlines()
+          if changes != [rel]: raise RuntimeError('Normalization commit changes unexpected paths: '+repr(changes))
+          fixed=git('show',new+':'+rel)
+          if hashlib.sha1(b'blob '+str(len(fixed)).encode()+b'\0'+fixed).hexdigest() != 'b0184119777cbdd19d7b0842e1ed44c331720a65': raise RuntimeError('Normalized blob mismatch')
+          if original.replace(b'\r\n',b'\n') != fixed: raise RuntimeError('Local change is not the exact EOL normalization; preserved but not overwritten')
+          if ast.dump(ast.parse(original)) != ast.dump(ast.parse(fixed)): raise RuntimeError('Python meaning differs')
+          receipt={'old_head':head,'new_head':new,'path':rel,'old_sha256':hashlib.sha256(original).hexdigest(),'new_sha256':hashlib.sha256(fixed).hexdigest(),'working_crlf':original.count(b'\r\n'),'committed_crlf':committed.count(b'\r\n'),'normalized_crlf':fixed.count(b'\r\n'),'eol_only':True,'game_source_changed':False,'processes_stopped':False}
           (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
-          if not identical: raise RuntimeError('Residual changes Python semantics; originals and diff preserved, checkout untouched')
-          if status: (root/rel).write_bytes(committed)
+          git('checkout','--force','--detach',new)
           after=git('status','--porcelain=v1','--untracked-files=all').decode()
           (out/'status-after.txt').write_text(after,encoding='utf-8')
-          receipt['restored']=bool(status); receipt['clean']=not bool(after.strip())
+          if after.strip(): raise RuntimeError('Normalized checkout not clean: '+after)
+          result=subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha',new],cwd=root,capture_output=True,text=True)
+          (out/'workspace-check.txt').write_text(result.stdout+result.stderr,encoding='utf-8')
+          result.check_returncode()
+          receipt['workspace_gate']='PASS'
           (out/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
           print(json.dumps(receipt))
-          if after.strip(): raise RuntimeError('Checkout remains dirty; review preserved bytes and Git normalization: '+after)
-          subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha',expected],cwd=root,check=True)
           '@
           python -c $script
-          if($LASTEXITCODE -ne 0){throw 'Bounded workspace recovery did not pass; retained evidence must be reviewed'}
+          if($LASTEXITCODE -ne 0){throw 'Exact normalized checkout qualification failed; inspect retained evidence'}
       - name: Rename only known accepted desktop entry to exact owner spelling
         shell: powershell
         run: |
