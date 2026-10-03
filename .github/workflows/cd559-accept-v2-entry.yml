@@ -1,4 +1,4 @@
-name: CD-952 Preserve Delivery Residue and Accepted Launchers
+name: CD-952 Finish Clean Checkout and Accepted Entry
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
@@ -9,104 +9,77 @@ concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  closeout:
+  reconcile:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 5
     env:
-      GIT_LFS_SKIP_SMUDGE: '1'
       GIT_OPTIONAL_LOCKS: '0'
       PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
     steps:
-      - name: Retain exact derived bytes before bounded tracked-path reconciliation
-        shell: powershell
+      - name: Preserve only identified cooker output and export existing administrative sources
+        shell: python
         run: |
-          $ErrorActionPreference='Stop'
-          $root='E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB'
-          if(@(Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -and $_.CommandLine.IndexOf($root,[StringComparison]::OrdinalIgnoreCase) -ge 0 -and ($_.Name -match '^(UnrealEditor(-Cmd)?|PinkCab)(\.exe)?$' -or ($_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'UnrealBuildTool|AutomationTool'))}).Count){throw 'PINKCAB checkout in active use; no process stopped'}
-          $env:ADMIN_REPORT=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Acceptance' ('CD952_RECONCILE_'+$env:GITHUB_RUN_ID+'_'+$env:GITHUB_RUN_ATTEMPT)
-          New-Item -ItemType Directory -Path $env:ADMIN_REPORT | Out-Null
-          "ADMIN_REPORT=$env:ADMIN_REPORT" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          $script=@'
-          import hashlib,json,os,re,subprocess,zipfile
+          import hashlib,json,os,shutil,subprocess,zipfile
           from pathlib import Path
           root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
-          out=Path(os.environ['ADMIN_REPORT']); receipts=out/'receipts'; receipts.mkdir()
-          sha='52239b61bc80e5a63716b9b09b87c520fa09fd05'
-          def git(*args): return subprocess.run(['git','-C',str(root),*args],check=True,capture_output=True).stdout
-          assert git('rev-parse','HEAD').decode().strip()==sha
-          status=git('status','--porcelain=v1','-z','--untracked-files=all')
-          entries=[(x[:2].decode(),x[3:].decode('utf-8')) for x in status.split(b'\0') if x]
-          assert len(entries) in (0,238), 'Unexpected workspace count'
-          for state,name in entries:
-              assert state in (' M',' D') and name.startswith('Content/') and name.endswith(('.uasset','.umap')), (state,name)
-              if state==' M':
-                  assert name in ('Content/Dev/Authoring/L_PC_L1_MetaRoadAuthoring.umap','Content/World/L1/Road/Physics/PM_PC_DryAsphalt.uasset') or re.fullmatch(r'Content/World/L1/Road/Road(?:Curbs|Marks|Surface|Sidewalks)\d*\.uasset',name),name
-          (receipts/'STATUS_BEFORE.txt').write_text('\n'.join(s+' '+n for s,n in entries),encoding='utf-8')
-          archive=out/'delivery-derived-originals.zip'
-          hashes=[]
-          with zipfile.ZipFile(archive,'x',zipfile.ZIP_STORED) as z:
-              for state,name in entries:
-                  committed=git('show','HEAD:'+name)
-                  assert committed.startswith(b'version https://git-lfs.github.com/spec/v1'),name
-                  z.writestr('committed/'+name,committed)
-                  if state==' M':
-                      data=(root/name).read_bytes(); z.writestr('working/'+name,data)
-                      hashes.append({'path':name,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
-              z.writestr('status.z',status)
-              z.writestr('index-before', (root/'.git/index').read_bytes())
-          with zipfile.ZipFile(archive) as z:
+          base=Path(r'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Acceptance')
+          out=base/('CD952_FINAL_'+os.environ['GITHUB_RUN_ID']);out.mkdir()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:f.write('ADMIN_REPORT='+str(out)+'\n')
+          def git(*args):return subprocess.run(['git','-C',str(root),*args],check=True,capture_output=True).stdout
+          assert git('rev-parse','HEAD').decode().strip()=='52239b61bc80e5a63716b9b09b87c520fa09fd05'
+          assert not git('status','--porcelain','--untracked-files=all').strip()
+          old=base/'CD952_RECONCILE_37152421485_1/delivery-derived-originals.zip'
+          with zipfile.ZipFile(old) as z:
               assert z.testzip() is None
-              for entry in hashes:
-                  assert hashlib.sha256(z.read('working/'+entry['path'])).hexdigest()==entry['sha256']
-                  assert hashlib.sha256((root/entry['path']).read_bytes()).hexdigest()==entry['sha256'], 'Concurrent source edit'
-          assert git('status','--porcelain=v1','-z','--untracked-files=all')==status
-          if entries:
-              paths=out/'restore-paths.z';paths.write_bytes(b'\0'.join(n.encode('utf-8') for s,n in entries)+b'\0')
-              git('restore','--source=HEAD','--worktree','--pathspec-from-file='+str(paths),'--pathspec-file-nul')
-          after=git('status','--porcelain=v1','--untracked-files=all').decode()
-          assert not after.strip(),after
-          result=subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha',sha],cwd=root,capture_output=True,text=True)
-          (receipts/'WORKSPACE_GATE.txt').write_text(result.stdout+result.stderr,encoding='utf-8');result.check_returncode()
-          with archive.open('rb') as f: archive_hash=hashlib.file_digest(f,'sha256').hexdigest()
-          report={'candidate':sha,'tracked_residue_entries':len(entries),'preserved_modified_files':len(hashes),'local_archive':str(archive),'local_archive_sha256':archive_hash,'archive_bytes':archive.stat().st_size,'restoration_verified':True,'runner_clean':True,'game_package_changed':False,'processes_stopped':False,'files':hashes}
-          (receipts/'RECONCILIATION.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
-          print(json.dumps({k:v for k,v in report.items() if k!='files'}))
-          '@
-          python -c $script
-          if($LASTEXITCODE -ne 0){throw 'Bounded source reconciliation failed; originals retained'}
-      - name: Reconcile single play entry and explicitly named prior accepted fallback
+              names=[n for n in z.namelist() if n.startswith('working/')]
+              count=len([x for x in z.read('status.z').split(b'\0') if x])
+          kept=[]
+          for rel in ['Build/Windows/FileOpenOrder/CookerOpenOrder.log','Build/Windows/FileOpenOrder/EditorOpenOrder.log']:
+              path=root/rel
+              if path.exists():
+                  assert not git('ls-files','--',rel).strip();git('check-ignore','--',rel)
+                  data=path.read_bytes();dest=out/path.name;shutil.move(str(path),str(dest))
+                  assert dest.read_bytes()==data
+                  kept.append({'path':rel,'sha256':hashlib.sha256(data).hexdigest(),'preserved_as':str(dest)})
+          result=subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha','52239b61bc80e5a63716b9b09b87c520fa09fd05'],cwd=root,capture_output=True,text=True)
+          (out/'WORKSPACE_GATE.txt').write_text(result.stdout+result.stderr,encoding='utf-8');print(result.stdout);result.check_returncode()
+          sources=['README.md','docs/PROJECT_SETUP.md','docs/ENGINEERING_START_HERE.md','docs/CONTROL_PLANE.md','docs/FAST_DELIVERY_ENTRYPOINT.md','docs/AUTHORITY.yaml','docs/README.md']
+          sources += git('ls-files','docs/vehicle_physics/*.md','docs/vehicle_physics/*.csv').decode().splitlines()
+          sources += ['scripts/ci/acceptance_contract.py']
+          for rel in sorted(set(sources)):
+              data=git('show','HEAD:'+rel);p=out/'sources'/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+          with old.open('rb') as f:old_hash=hashlib.file_digest(f,'sha256').hexdigest()
+          (out/'RECONCILIATION.json').write_text(json.dumps({'runner_clean':True,'guard_passed':True,'preserved_tracked_changes':count,'preserved_derived_files':len(names),'previous_archive':str(old),'previous_archive_sha256':old_hash,'ignored_cooker_logs':kept,'source_sha':'52239b61bc80e5a63716b9b09b87c520fa09fd05'},indent=2),encoding='utf-8')
+      - name: Keep one play shortcut and clearly named prior accepted fallback
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
           $desktop='C:\Users\CheCat\Desktop';$studio=Join-Path $desktop 'CHESHIRE_STUDIO'
-          $newExe='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           $v2='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
           $p02='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $ws=New-Object -ComObject WScript.Shell;$entry=Join-Path $desktop 'PINCKCAB.lnk'
+          if($ws.CreateShortcut($entry).TargetPath -ne $accepted -or -not (Test-Path $accepted) -or -not (Test-Path $v2)){throw 'Accepted target mismatch'}
+          $known=@{'PINKCAB_Accepted.lnk'=$v2;'PINKCAB_Play.lnk'=$p02;'PINKCAB_Test.lnk'=$v2}
+          foreach($name in $known.Keys){$p=Join-Path $studio $name;if(Test-Path $p){if($ws.CreateShortcut($p).TargetPath -ne $known[$name]){throw 'Unexpected studio link'}}}
           $backup=Join-Path $env:ADMIN_REPORT 'shortcut-originals';New-Item -ItemType Directory -Path $backup | Out-Null
-          $ws=New-Object -ComObject WScript.Shell
-          $entry=Join-Path $desktop 'PINCKCAB.lnk'
-          if($ws.CreateShortcut($entry).TargetPath -ne $newExe -or -not (Test-Path -LiteralPath $newExe) -or -not (Test-Path -LiteralPath $v2)){throw 'Accepted/fallback target mismatch'}
-          $existing=@{'PINKCAB_Accepted.lnk'=$v2;'PINKCAB_Play.lnk'=$p02;'PINKCAB_Test.lnk'=$v2}
-          foreach($name in $existing.Keys){$p=Join-Path $studio $name;if(Test-Path -LiteralPath $p){if($ws.CreateShortcut($p).TargetPath -ne $existing[$name]){throw ('Unexpected studio shortcut '+$name)}}}
-          Copy-Item -LiteralPath $entry -Destination (Join-Path $backup 'PINCKCAB-before.lnk')
-          $temp=Join-Path $desktop ('PINCKCAB.'+[Guid]::NewGuid().ToString('N')+'.tmp.lnk')
-          Copy-Item -LiteralPath $entry -Destination $temp
-          $link=$ws.CreateShortcut($temp);$link.Description='PINCKCAB - OWNER ACCEPTED P04 52239b61; delivery 37149462470; previous accepted V2 retained';$link.Save()
+          Copy-Item $entry (Join-Path $backup 'PINCKCAB-before.lnk')
+          $temp=Join-Path $desktop ('PINCKCAB.'+[Guid]::NewGuid().ToString('N')+'.tmp.lnk');Copy-Item $entry $temp
+          $link=$ws.CreateShortcut($temp);$link.Description='PINCKCAB - OWNER ACCEPTED P04 52239b61; delivery 37149462470; prior accepted V2 retained';$link.Save()
           [IO.File]::Replace($temp,$entry,[System.Management.Automation.Language.NullString]::Value)
-          if($ws.CreateShortcut($entry).TargetPath -ne $newExe){throw 'Accepted entry readback failed'}
-          foreach($name in @('PINKCAB_Play.lnk','PINKCAB_Test.lnk')){$p=Join-Path $studio $name;if(Test-Path -LiteralPath $p){Move-Item -LiteralPath $p -Destination (Join-Path $backup $name)}}
+          foreach($name in @('PINKCAB_Play.lnk','PINKCAB_Test.lnk')){$p=Join-Path $studio $name;if(Test-Path $p){Move-Item $p (Join-Path $backup $name)}}
           $old=Join-Path $studio 'PINKCAB_Accepted.lnk';$rollback=Join-Path $studio 'PINKCAB_Rollback_V2.lnk'
-          if(Test-Path -LiteralPath $old){if(Test-Path -LiteralPath $rollback){throw 'Rollback entry already exists'};Copy-Item -LiteralPath $old -Destination (Join-Path $backup 'PINKCAB_Accepted-before.lnk');Move-Item -LiteralPath $old -Destination $rollback}
-          if($ws.CreateShortcut($rollback).TargetPath -ne $v2){throw 'V2 rollback entry mismatch'}
-          $all=@(foreach($dir in @($desktop,'C:\Users\Public\Desktop',$studio)){foreach($f in @(Get-ChildItem -LiteralPath $dir -Filter '*.lnk' -File | Where-Object {$_.BaseName -match '(?i)PIN[CK ]*CAB'})){$s=$ws.CreateShortcut($f.FullName);[pscustomobject]@{path=$f.FullName;target=$s.TargetPath;arguments=$s.Arguments;description=$s.Description}}})
-          $all | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:ADMIN_REPORT 'receipts\DESKTOP_FINAL.json') -Encoding utf8
-          Write-Host 'ACCEPTED_PINCKCAB_ENTRY=PASS; studio retains Editor and Rollback_V2 only'
-      - name: Publish only administrative receipts, never donor binaries
+          if(Test-Path $old){if(Test-Path $rollback){throw 'Rollback already exists'};Copy-Item $old (Join-Path $backup 'PINKCAB_Accepted-before.lnk');Move-Item $old $rollback}
+          if($ws.CreateShortcut($entry).TargetPath -ne $accepted -or $ws.CreateShortcut($rollback).TargetPath -ne $v2){throw 'Final target readback failed'}
+          $rows=@(foreach($dir in @($desktop,'C:\Users\Public\Desktop',$studio)){foreach($f in @(Get-ChildItem $dir -Filter '*.lnk' -File | Where-Object {$_.BaseName -match '(?i)PIN[CK ]*CAB'})){$s=$ws.CreateShortcut($f.FullName);[pscustomobject]@{path=$f.FullName;target=$s.TargetPath;description=$s.Description}}})
+          $rows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:ADMIN_REPORT 'DESKTOP_FINAL.json') -Encoding UTF8
+          Write-Host 'ACCEPTED_PINCKCAB_AND_NAMED_ROLLBACK=PASS'
+      - name: Export admin inputs and preservation receipts without asset binaries
         if: always() && env.ADMIN_REPORT != ''
         uses: actions/upload-artifact@v4
         with:
-          name: p04-administrative-reconciliation-${{ github.run_id }}
-          path: ${{ env.ADMIN_REPORT }}/receipts
+          name: p04-admin-inputs-${{ github.run_id }}
+          path: ${{ env.ADMIN_REPORT }}
           if-no-files-found: error
           retention-days: 90
