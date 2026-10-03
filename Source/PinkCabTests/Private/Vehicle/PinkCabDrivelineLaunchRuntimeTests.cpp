@@ -502,7 +502,7 @@ public:
             float MeanWheelSpeedMps = 0.0f;
             for (int32 I = 2; I < 4; ++I)
             {
-                const auto* Wheel = Movement->Wheels[I];
+                const UChaosVehicleWheel* Wheel = Movement->Wheels[I].Get();
                 if (!Wheel) { Test->AddError(TEXT("P04 rear wheel missing")); Cleanup(*World); return true; }
                 MeanWheelSpeedMps += 0.5f * FMath::Abs(Wheel->GetWheelAngularVelocity()) * Wheel->WheelRadius / 100.0f;
             }
