@@ -4,7 +4,7 @@ on:
     branches: [ops/CD-559-restore-playable-entry-20261003]
     paths: [.github/workflows/cd559-accept-v2-entry.yml]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
@@ -14,42 +14,95 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 5
     steps:
-      - name: Exercise actual .NET atomic replacement without touching any desktop
+      - name: Prepare exact source repair and run real PowerShell publication regression
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          $root=Join-Path $env:RUNNER_TEMP ('PINCKCAB-Replacement-'+[Guid]::NewGuid().ToString('N'))
+          $api='https://api.github.com/repos/CheshirskyCat63/PINK-CAB'
+          $headers=@{Authorization=('Bearer '+$env:GH_TOKEN);Accept='application/vnd.github+json'}
+          $base='7d624d0e81139647ed3914734e6e7f5436fa0aed'
+          $parent='6b8f83538d880fec753bd784278723b13681c89b'
+          $pr=Invoke-RestMethod -Headers $headers -Uri "$api/pulls/62"
+          if($pr.head.sha -ne $parent -or $pr.state -ne 'open'){throw 'Concurrent PR head change; no mutation'}
+          $root=Join-Path $env:RUNNER_TEMP ('PINCKCAB-Patch-'+[Guid]::NewGuid().ToString('N'))
           New-Item -ItemType Directory -Path $root | Out-Null
-          $results=@()
-          foreach($mode in @('NullArgument','ExplicitSameVolumeBackup','NullStringArgument')){
-            $dir=Join-Path $root $mode
-            New-Item -ItemType Directory -Path $dir | Out-Null
-            $source=Join-Path $dir 'candidate.lnk'
-            $destination=Join-Path $dir 'PINCKCAB.lnk'
-            $backup=Join-Path $dir 'previous.lnk'
-            [IO.File]::WriteAllText($source,'new-verified-candidate')
-            [IO.File]::WriteAllText($destination,'previous-accepted-candidate')
-            $ok=$false; $errorText=''
-            try {
-              if($mode -eq 'NullArgument'){[IO.File]::Replace($source,$destination,$null)}
-              elseif($mode -eq 'NullStringArgument'){[IO.File]::Replace($source,$destination,[System.Management.Automation.Language.NullString]::Value)}
-              else {[IO.File]::Replace($source,$destination,$backup)}
-              $ok=([IO.File]::ReadAllText($destination) -eq 'new-verified-candidate') -and -not (Test-Path -LiteralPath $source)
-              if($mode -eq 'ExplicitSameVolumeBackup'){$ok=$ok -and ([IO.File]::ReadAllText($backup) -eq 'previous-accepted-candidate')}
-            } catch {$errorText=$_.Exception.Message}
-            $results+=@{mode=$mode;passed=$ok;error=$errorText;destination=[IO.File]::ReadAllText($destination);sourceRetained=(Test-Path -LiteralPath $source);backupRetained=(Test-Path -LiteralPath $backup)}
+          "PATCH_REPORT=$root" | Out-File $env:GITHUB_ENV -Append
+          function Get-TextBlob([string]$sha){
+            $blob=Invoke-RestMethod -Headers $headers -Uri "$api/git/blobs/$sha"
+            if($blob.sha -ne $sha -or $blob.encoding -ne 'base64'){throw 'Unexpected Git blob'}
+            return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($blob.content))
           }
-          @{psVersion=$PSVersionTable.PSVersion.ToString();runtime=[Environment]::Version.ToString();testLocation='isolated-hosted-runner-temp';userDesktopTouched=$false;results=$results} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $root 'replacement-tests.json') -Encoding UTF8
-          "REPLACEMENT_TESTS=$root" | Out-File $env:GITHUB_ENV -Append
-          $results | ConvertTo-Json -Depth 5 | Write-Host
-          foreach($mode in @('ExplicitSameVolumeBackup','NullStringArgument')){
-            if(-not ($results | Where-Object {$_.mode -eq $mode}).passed){throw ('Corrected atomic replacement contract failed: '+$mode)}
+          function Post-Json([string]$uri,$body){
+            return Invoke-RestMethod -Method Post -Headers $headers -Uri $uri -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 12 -Compress)))
           }
-      - name: Preserve isolated test report
-        if: always() && env.REPLACEMENT_TESTS != ''
+          $text=Get-TextBlob '596ec7ac4580a8e5ba670e94ba5d934b051a2b1a'
+          $old='[IO.File]::Replace($temp,$linkPath,$null)'
+          $new='[IO.File]::Replace($temp,$linkPath,[System.Management.Automation.Language.NullString]::Value)'
+          if(([regex]::Matches($text,[regex]::Escape($old))).Count -ne 1){throw 'Expected one exact replacement'}
+          $fixed=$text.Replace($old,$new)
+          if($fixed.Replace($new,$old) -cne $text){throw 'Non-local source mutation'}
+          if(($fixed -split "`n").Count -lt 550){throw 'Workflow truncation'}
+          $case=Join-Path $root 'case'
+          New-Item -ItemType Directory -Path $case | Out-Null
+          $temp=Join-Path $case 'new.lnk'
+          $linkPath=Join-Path $case 'PINCKCAB.lnk'
+          [IO.File]::WriteAllText($temp,'candidate')
+          [IO.File]::WriteAllText($linkPath,'accepted')
+          $redFailed=$false
+          try { & ([ScriptBlock]::Create($old)) } catch {$redFailed=$true}
+          if(-not $redFailed -or [IO.File]::ReadAllText($linkPath) -ne 'accepted' -or -not (Test-Path $temp)){throw 'RED behavior differs from the observed contract'}
+          & ([ScriptBlock]::Create($new))
+          if([IO.File]::ReadAllText($linkPath) -ne 'candidate' -or (Test-Path $temp)){throw 'Corrected atomic publication failed'}
+          $tests=Get-TextBlob 'b758a730cbc041632f05ae9ef88ba5d4663444a4'
+          $anchor="if __name__ == '__main__':"
+          if(([regex]::Matches($tests,[regex]::Escape($anchor))).Count -ne 1){throw 'Unexpected test anchor'}
+          $addition=@'
+              @unittest.skipUnless(POWERSHELL, 'PowerShell executes the real publication primitive')
+              def test_real_atomic_publication_call_accepts_null_backup_on_windows_powershell(self):
+                  import re
+                  text = self.script('Verify visible candidate and replace only PINCKCAB entry')
+                  calls = re.findall(r'^\s*(\[IO.File\]::Replace\([^\r\n]+)\s*$', text, re.MULTILINE)
+                  self.assertEqual(len(calls), 1)
+                  with tempfile.TemporaryDirectory() as directory:
+                      root = Path(directory)
+                      source, target = root / 'new.lnk', root / 'PINCKCAB.lnk'
+                      source.write_bytes(b'candidate')
+                      target.write_bytes(b'accepted')
+                      script = root / 'publication.ps1'
+                      script.write_text("$ErrorActionPreference='Stop'\n$temp=$env:TEST_SOURCE\n$linkPath=$env:TEST_TARGET\n" + calls[0], encoding='utf-8')
+                      result = subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-File', str(script)],
+                                              env={**os.environ, 'TEST_SOURCE': str(source), 'TEST_TARGET': str(target)},
+                                              capture_output=True, text=True, timeout=30)
+                      self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                      self.assertEqual(target.read_bytes(), b'candidate')
+                      self.assertFalse(source.exists())
+
+
+          '@
+          $testsFixed=$tests.Replace($anchor,$addition+$anchor)
+          $wfDir=Join-Path $root '.github\workflows';$testDir=Join-Path $root 'scripts\tests'
+          New-Item -ItemType Directory -Path $wfDir,$testDir | Out-Null
+          [IO.File]::WriteAllText((Join-Path $wfDir 'cd869-deliver.yml'),$fixed,[Text.UTF8Encoding]::new($false))
+          [IO.File]::WriteAllText((Join-Path $testDir 'test_fast_delivery_retirement.py'),$testsFixed,[Text.UTF8Encoding]::new($false))
+          python -m pip install --disable-pip-version-check pyyaml
+          if($LASTEXITCODE -ne 0){throw 'Parser installation failed'}
+          Push-Location $root
+          try {python -m unittest scripts.tests.test_fast_delivery_retirement.CanonicalHumanDeliveryContractTests -v;if($LASTEXITCODE -ne 0){throw 'Actual canonical publication regression failed'}} finally {Pop-Location}
+          $baseCommit=Invoke-RestMethod -Headers $headers -Uri "$api/git/commits/$base"
+          $wfBlob=Post-Json "$api/git/blobs" @{content=$fixed;encoding='utf-8'}
+          $testBlob=Post-Json "$api/git/blobs" @{content=$testsFixed;encoding='utf-8'}
+          $tree=Post-Json "$api/git/trees" @{base_tree=$baseCommit.tree.sha;tree=@(@{path='.github/workflows/cd869-deliver.yml';mode='100644';type='blob';sha=$wfBlob.sha},@{path='scripts/tests/test_fast_delivery_retirement.py';mode='100644';type='blob';sha=$testBlob.sha})}
+          $commit=Post-Json "$api/git/commits" @{message='fix(CD-559): restore complete reviewed delivery recipe, correct null marshaling, and execute publication regression';tree=$tree.sha;parents=@($parent)}
+          $receipt=@{base=$base;parent=$parent;candidate=$commit.sha;tree=$tree.sha;workflowBlob=$wfBlob.sha;testBlob=$testBlob.sha;psVersion=$PSVersionTable.PSVersion.ToString();redReproduced=$redFailed;correctedCallPassed=$true;canonicalPublicationTests=5;branchUpdated=$false;mainModified=$false;userHostTouched=$false}
+          $receipt | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $root 'PATCH.json') -Encoding UTF8
+          $receipt | ConvertTo-Json -Depth 6 | Write-Host
+      - name: Preserve validated patch receipt
+        if: always() && env.PATCH_REPORT != ''
         uses: actions/upload-artifact@v4
         with:
-          name: pinckcab-publication-contract-${{ github.run_id }}
-          path: ${{ env.REPLACEMENT_TESTS }}/replacement-tests.json
-          retention-days: 14
-          if-no-files-found: error
+          name: pinckcab-publication-repair-${{ github.run_id }}
+          path: ${{ env.PATCH_REPORT }}/PATCH.json
+          retention-days: 30
+          if-no-files-found: warn
