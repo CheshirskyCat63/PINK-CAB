@@ -30,7 +30,7 @@ The recovery/admin freeze is over. Gameplay work is allowed.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
 - Code-health debt baseline is zero.
-- The accepted vehicle/control runtime remains `8168d724…`; later sanitation/CI commits do not retroactively rename that binary.
+- The accepted vehicle/control runtime is P02 `8d68e456d1944be295281535cf9fd103ecf05d52`; `8168d724…` is a historical rollback reference. Administrative commits do not rename accepted binaries.
 
 ## Delivery lanes
 
