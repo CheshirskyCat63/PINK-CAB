@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import re
 import unittest
+import sys
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -16,25 +17,16 @@ class P02WorkflowScopeTests(unittest.TestCase):
         self.text = WORKFLOW.read_text(encoding="utf-8")
 
     def test_docs_only_changes_do_not_enter_runtime_physics_scope(self):
-        match = re.search(
-            r"\$physics=@\(\$changed \| Where-Object \{(?P<body>.*?)\n\s*\}\)",
-            self.text,
-            flags=re.S,
-        )
-        self.assertIsNotNone(match, "change-scope classifier block not found")
-        body = match.group("body")
-        self.assertNotIn(
-            "$_.StartsWith('docs/vehicle_physics/')",
-            body,
-            "docs-only admin changes must not trigger the P02 runtime suite",
-        )
+        from scripts.ci.acceptance_contract import runtime_required
+        self.assertFalse(runtime_required(['docs/vehicle_physics/TASKS.csv']))
+        self.assertTrue(runtime_required(['docs/vehicle_physics/STATE_WRITER_INVENTORY.csv']))
 
     def test_scope_regression_file_is_a_pull_request_trigger(self):
-        self.assertIn(
-            "- 'scripts/tests/test_p02_workflow_scope.py'",
-            self.text,
-            "editing the scope regression test must trigger this workflow",
-        )
+        coordinator = (WORKFLOW.parent / 'pinkcab-repository-verification.yml').read_text()
+        trigger = coordinator.split('  pull_request:\n', 1)[1].split('  push:', 1)[0]
+        self.assertNotIn('paths:', trigger)
+        from scripts.ci.acceptance_contract import runtime_required
+        self.assertTrue(runtime_required(['scripts/tests/test_p02_workflow_scope.py']))
 
     def test_runtime_scope_guard_allows_canonical_p02_admin_documents(self):
         required = (
@@ -143,9 +135,11 @@ class WorkflowExecutionTests(unittest.TestCase):
     def scope(self, workflow, event, before=None):
         output = pathlib.Path(self.temp.name) / "scope.txt"
         output.unlink(missing_ok=True)
-        result = self.execute(marked_script(WORKFLOWS / workflow, "PINKCAB_CHANGE_SCOPE"),
-                              GITHUB_EVENT_NAME=event, PINKCAB_PR_BASE_SHA=self.base,
-                              PINKCAB_PUSH_BEFORE=before or self.base, GITHUB_OUTPUT=str(output))
+        result = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/acceptance_contract.py'), 'scope'],
+                                cwd=self.repo, env={**os.environ, 'GITHUB_EVENT_NAME':event,
+                                'PINKCAB_PR_BASE_SHA':self.base, 'PINKCAB_CANDIDATE_SHA':self.git('rev-parse','HEAD'),
+                                'PINKCAB_PUSH_BEFORE':before or self.base, 'GITHUB_OUTPUT':str(output)},
+                                text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout)
         return output.read_text(encoding="utf-8-sig").strip()
 
@@ -179,8 +173,10 @@ class WorkflowExecutionTests(unittest.TestCase):
     def test_missing_pr_base_fails_instead_of_reporting_green(self):
         for workflow in PHYSICS_WORKFLOWS:
             with self.subTest(workflow=workflow):
-                result = self.execute(marked_script(WORKFLOWS / workflow, "PINKCAB_CHANGE_SCOPE"),
-                                      GITHUB_EVENT_NAME="pull_request", PINKCAB_PR_BASE_SHA="")
+                result = subprocess.run([sys.executable, str(ROOT / 'scripts/ci/acceptance_contract.py'), 'scope'],
+                                        cwd=self.repo, env={**os.environ, 'GITHUB_EVENT_NAME':'pull_request',
+                                        'PINKCAB_PR_BASE_SHA':'', 'PINKCAB_CANDIDATE_SHA':self.git('rev-parse','HEAD')},
+                                        text=True, capture_output=True)
                 self.assertNotEqual(result.returncode, 0, result.stdout)
                 self.assertIn("PINKCAB_SCOPE_BASE_INVALID", result.stdout)
 
@@ -195,11 +191,14 @@ class WorkflowExecutionTests(unittest.TestCase):
             self.write(path, "administrative fixture")
         self.commit("reviewed admin change set")
         script = marked_script(WORKFLOWS / "cd648-p02-phy009.yml", "PINKCAB_P02_PREFLIGHT")
+        script = re.sub(r'\$\{\{.*?\}\}', self.git('rev-parse','HEAD'), script)
         accepted = self.execute(script)
         self.assertEqual(accepted.returncode, 0, accepted.stdout)
         self.assertIn("P02_PHY009_PREFLIGHT=PASS", accepted.stdout)
         self.write("Source/PinkCabVehicle/Private/UnrelatedRuntime.cpp", "// unrelated change")
         self.commit("unreviewed runtime scope")
+        script = marked_script(WORKFLOWS / "cd648-p02-phy009.yml", "PINKCAB_P02_PREFLIGHT")
+        script = re.sub(r'\$\{\{.*?\}\}', self.git('rev-parse','HEAD'), script)
         rejected = self.execute(script)
         self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
         self.assertIn("P02_PHY009_SCOPE_GUARD_FAIL", rejected.stdout)
