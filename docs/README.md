@@ -30,7 +30,7 @@ The recovery/admin freeze is over. Gameplay work is allowed.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
 - Code-health debt baseline is zero.
-- The accepted vehicle/control runtime is P02 `8d68e456d1944be295281535cf9fd103ecf05d52`; `8168d724…` is a historical rollback reference. Administrative commits do not rename accepted binaries.
+- The accepted vehicle/control runtime is P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. Administrative commits do not rename accepted binaries.
 
 ## Delivery lanes
 
@@ -62,7 +62,11 @@ These close, in order: representative L1↔L2 route/streaming; pickup/dropoff + 
 
 ## Asset provenance
 
-The current donor Tatra is valid for internal development evidence only. Commercial modification/redistribution permission is not proven. `docs/ASSET_LICENSE_LEDGER.csv` records `TATRA-DONOR-ARCHIVE = BLOCKED_NO_COMMERCIAL_PERMISSION`. This is owned by `CD-855` and blocks public/commercial use of that donor asset, **not internal gameplay development**.
+The owner identified the Tatra 613 download as the Sketchfab model `c554d6fdaf8749e291b25cbf487f82f8`, **Tatra 613 1975-1996**, uploaded by **Mercedesiarz_2025 (@szymonpasterczyk)**. Its page declares **CC BY 4.0**, which permits commercial sharing and adaptation subject to attribution and the other licence terms. Source evidence, a base attribution notice and the remaining mapping checks are recorded in [`provenance/tatra613-sketchfab-c554d6f.json`](provenance/tatra613-sketchfab-c554d6f.json) and `ASSET_LICENSE_LEDGER.csv` as `TATRA-613-SKETCHFAB-C554D6F = SOURCE_LICENSE_VERIFIED_ASSET_MAPPING_PENDING`.
+
+The older `TATRA-DONOR-ARCHIVE = BLOCKED_NO_COMMERCIAL_PERMISSION` record concerns the **TM-Modding / Assetto Corsa Marathon** source family described in Confluence archive 48C. That restriction must not be assigned automatically to the distinct Sketchfab 613, and the Sketchfab licence must not be assigned automatically to Marathon or other unidentified components. The earlier wildcard attribution of all `Tatra613*` imports to one restricted donor was not established by the cited archive.
+
+`CD-855` still owns source-to-authored-scene and current/historical LFS mapping, including the separately required V12Clean wheel, applicable release attribution and game-specific import/presentation acceptance. No current or historical binary receives blanket public/commercial clearance from this documentation correction. These checks do **not block internal gameplay development**.
 
 ## Truth rule
 
