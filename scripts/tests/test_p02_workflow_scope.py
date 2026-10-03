@@ -190,6 +190,7 @@ class WorkflowExecutionTests(unittest.TestCase):
             "README.md", "docs/AUTHORITY.yaml", "docs/PROJECT_SETUP.md", "docs/README.md",
             "scripts/ci/package_g1_recovery.py",
             "scripts/tests/test_ci_powershell_environment.py",
+            "scripts/tests/test_package_g1_recovery.py",
         ):
             self.write(path, "administrative fixture")
         self.commit("reviewed admin change set")

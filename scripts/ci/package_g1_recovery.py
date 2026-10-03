@@ -8,6 +8,22 @@ import subprocess
 import zipfile
 
 
+def write_archive(output: Path, files: dict) -> None:
+    # Stored members avoid platform/zlib-version-dependent compressed streams.
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_STORED) as archive:
+        for name, data in sorted(files.items()):
+            entry = zipfile.ZipInfo(name, date_time=(2026, 10, 3, 0, 0, 0))
+            entry.create_system = 3
+            entry.create_version = 20
+            entry.extract_version = 20
+            entry.external_attr = 0o100644 << 16
+            entry.internal_attr = 0
+            entry.extra = b''
+            entry.comment = b''
+            entry.compress_type = zipfile.ZIP_STORED
+            archive.writestr(entry, data)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-ref', default='HEAD')
@@ -57,11 +73,7 @@ def main():
     files['RECOVERY_MANIFEST.json'] = (json.dumps(manifest, indent=2) + '\n').encode()
     files['SHA256SUMS'] = ''.join(f'{hashlib.sha256(data).hexdigest()}  {name}\n' for name, data in sorted(files.items())).encode()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(args.output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, data in sorted(files.items()):
-            entry = zipfile.ZipInfo(name, date_time=(2026, 10, 3, 0, 0, 0))
-            entry.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(entry, data)
+    write_archive(args.output, files)
     with zipfile.ZipFile(args.output) as archive:
         if archive.testzip() is not None:
             raise ValueError('ZIP integrity failure')
