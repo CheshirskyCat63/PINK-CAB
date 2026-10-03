@@ -1,6 +1,6 @@
 # PINK CAB · Project Setup
 
-**Status:** CURRENT PREPRODUCTION / BOOTSTRAP CONTRACT
+**Status:** CURRENT DEVELOPMENT SETUP / ACCEPTED P04 CANDIDATE
 **Product:** `CD-519`
 **BASE-100:** `CD-746..753`; Confluence `11239425`
 **Readiness:** `CD-660/CD-661`
@@ -14,9 +14,17 @@ Run `python scripts/ci/prepare_metaroad.py` before building. The repository pins
 
 Build or generate the IDE project with `.\scripts\build.ps1 -GenerateProjectFiles`; package with `.\scripts\build.ps1 -Package`. Launcher and source-engine project generation are supported. Engine family is pinned to UE 5.8; the prepared workstation reports 5.8.3 / CL 58210709. Override the engine path with `-EngineRoot` or `PINKCAB_UE_ROOT`.
 
-CI runner: `DESKTOP-C7VAU4V-PINKCAB`, scoped to this repository. `scripts/ci/start-pinkcab-runner.ps1` checks registration identity and avoids a second listener. Required integration check: `Repository verification`, including administrators; merge requires an up-to-date PR and resolved conversations. Ordinary verification cannot deliver or launch a replacement HUMAN build.
+CI runner: `DESKTOP-C7VAU4V-PINKCAB`, scoped to this repository. `scripts/ci/start-pinkcab-runner.ps1` checks registration identity and avoids a second listener. Required integration checks: `Repository verification` and `Gameplay acceptance gate`, including administrators; merge requires an up-to-date PR and resolved conversations. Ordinary verification cannot deliver or launch a replacement HUMAN build.
 
-Accepted runtime remains P02 `8d68e456d1944be295281535cf9fd103ecf05d52` / run `36868646970`. P03 is corrective work in PR #52; P04 remains blocked. CD-559 owns reproducibility/regression/package evidence; CD-649/CD-659 own renewed P03 acceptance. Results from different source trees must not be combined as a full-suite pass. Authoring tests that save tracked road assets must run in an isolated checkout.
+Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+
+Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+
+Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+
+CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+
+Authoring tests that save tracked assets must run in an isolated checkout. Never combine different source trees as one full-suite proof.
 
 ## Read first
 
@@ -109,7 +117,7 @@ World identity is `CityCode + GeneratorVersion + ContentSetVersion + persistent 
 
 ## Vehicle baseline
 
-Hero Tatra: bespoke early/Gen-1 603-family; rear-mounted air-cooled V8; RWD; no ABS/ESP. The executable profile and current vehicle release contract own mass/power/ratio calibration. Earlier 180 hp / 240 Nm values are historical, not current locks. Accepted P02 uses approximately 250 hp / 260 Nm / 8500 RPM with healthy warm idle centered at 925 RPM; P04 owns final causal power/ratio/acceleration calibration after P03 acceptance.
+Hero Tatra: bespoke early/Gen-1 603-family; rear-mounted air-cooled V8; RWD; no ABS/ESP. The executable profile and current vehicle release contract own mass/power/ratio calibration. Earlier 180 hp / 240 Nm values are historical, not current locks. Accepted P02 uses approximately 250 hp / 260 Nm / 8500 RPM with healthy warm idle centered at 925 RPM; P04 first/reverse4.0 and profile-derived RPM/speed defaults are owner accepted; remaining torque/rev-inertia/road-performance calibration stays in CD-641.
 
 Level1 residual magnetism is linear by authoritative mass: 5.0 s @1657 kg → 4.0 s @2107 kg; lighter legal states cap at 5.0 s.
 
@@ -137,4 +145,4 @@ No unbounded Tick, global Actor scans, sync loads or repeated spawn/allocation s
 
 Every executable result records exact commit/build, UE/plugin/config/schema/generator/profile versions, deterministic IDs/seeds, expected/observed behavior and artifacts. Build success alone does not establish gameplay verification.
 
-PINK CAB remains **NOT IMPLEMENTED / NOT VERIFIED** until such evidence exists.
+Apply IMPLEMENTED/VERIFIED per scope: the recorded P04 candidate is owner accepted, while unproved full-product/release requirements remain open. Do not label the entire project unimplemented or infer release readiness from one accepted candidate.

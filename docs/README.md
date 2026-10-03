@@ -1,11 +1,11 @@
 # PINK CAB · Documentation Index
 
-**Status:** CURRENT / PROTECTED INTEGRATION / P03 CORRECTION OPEN
+**Status:** CURRENT / PROTECTED INTEGRATION / P04 CANDIDATE HUMAN ACCEPTED / ADMIN CD-952
 **Active product:** Jira `CD-519`  
 **Canonical Git:** `CheshirskyCat63/PINK-CAB` → `main`  
 **Current mechanics owner:** `CD-848`  
 **Control-plane cleanup:** `CD-868` — DONE  
-**Owner-accepted runtime baseline:** `8d68e456d1944be295281535cf9fd103ecf05d52` / Actions run `36868646970`
+**Owner-accepted runtime baseline:** `52239b61bc80e5a63716b9b09b87c520fa09fd05` / delivery `37149462470` attempt 1
 
 ## Start here
 
@@ -25,32 +25,32 @@
 The recovery/admin freeze is over. Gameplay work is allowed.
 
 - `main` is the only integration branch.
-- PR #52 is the active P03 corrective implementation; PR #47 remains a separate draft tire diagnostic.
+- PR #52/P03 and PR #62/bounded P04 are integrated; CD-641 owns remaining P04 engineering. PR #47 is a separate tyre diagnostic.
 - New work uses one short-lived Jira-keyed task branch → one PR → verification → merge.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
 - Code-health debt baseline is zero.
-- The accepted vehicle/control runtime is P02 `8d68e456d1944be295281535cf9fd103ecf05d52`; `8168d724…` is a historical rollback reference. Administrative commits do not rename accepted binaries.
+- Accepted runtime is bounded P04 52239b61; previous V2edf75e1b and P02 remain retained. Administrative commits do not rename binaries.
 
 ## Delivery lanes
 
-The canonical workflow is `.github/workflows/pinkcab-g1-github-control-plane.yml`.
+Normal coordinator: `.github/workflows/pinkcab-repository-verification.yml` — complete scope, repository checks, exact-source physics, same-run evidence plus five independent slope repeats, then aggregate technical gate. Main requires both `Repository verification` and `Gameplay acceptance gate`.
 
-- **fast** — normal engineering iteration: exact-head preflight, zero-debt checks, standalone Game build/sign, cooked-base overlay, packaged Windows runtime/input smoke.
-- **human_gate** — same lightweight code-only dev-build path, delivered as `PINKCAB Latest.lnk`; no full recook and no machine-level signing requirement. If any change since the proven cooked base changes cook-sensitive `Content/`, `Config/`, `Plugins/` or `.uproject`, this lane fails closed and requires `release_gate`. Result is technical PASS + `HUMAN_PENDING`.
-- **release_gate** — expensive release evidence only: Editor modules, full automation, fresh cook/package and packaged runtime. Windows machine-level trust / external trusted signing belongs here, not in ordinary development.
+Human delivery is explicit: `cd648-p02-phy009.yml` with `deliver_human=true` on the reviewed candidate ref, then its verified `cd869-deliver.yml` call. Record the full SHA/run/attempt. The route checks packaged map/four-wheel/material smoke, installs to a unique SHA/run/attempt directory, compares payload paths/sizes/SHA256, verifies an interactive window and atomically replaces only `PINCKCAB.lnk`, retaining prior link and accepted package. Delivery initially records HUMAN_PENDING; owner acceptance is a subsequent separate record.
 
-Smart App Control / UMCI is therefore a **release-host infrastructure boundary**, not a gameplay acceptance criterion for everyday PINK-CAB development.
+Retained G1 fast/human_gate/release_gate and inline definitions are auxiliary/history, not competing routine entry points. Direct CD-869 dispatch and retired local fast-delivery cannot bypass P02. Full clean-source/full-project/packaged-input qualification remains CD-559 engineering. Cached-package source-marker/executable-presence checks are not a complete cache-provenance certificate.
+
+Documentation-only administration does not require replacing the runtime package. PINK CAB and KUKURUZA registrations share one physical host; coordinate heavy Unreal work without stopping another project's processes.
 
 ## Current execution checkpoint
 
-- Integration: protected `main`; exact current SHA is read from GitHub, not inferred from an old document.
-- Accepted runtime: P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. P00-P02 and road R1-R5 remain frozen.
-- Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
-- PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
-- Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
-- Preserved preparation branches: the bootstrap branch contains integrated local candidate `86c2da3`; earlier test snapshot `4554285` and separate P03 snapshot `95dafd4` remain historical evidence. These candidates are unaccepted and must be reconciled into existing PR #52 before renewed gameplay acceptance. Pure build/CI preparation is maintained separately from gameplay changes.
-- Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
+Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+
+Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+
+Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+
+CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
 
 ## Broader FIRST EURO execution corridor (after current physics priorities)
 

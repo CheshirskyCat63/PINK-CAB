@@ -2,6 +2,16 @@
 
 This page is the five-minute entry point for changing PINK CAB code. It describes the current exact repository shape; `Config/ArchitectureOwnership.json` is the machine-readable ownership source and `scripts/code-health.ps1` rejects stale paths or missing rows.
 
+## Accepted vehicle checkpoint · CD-952
+
+Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+
+Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+
+Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+
+CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+
 ## 1. First five minutes
 
 1. Run `git rev-parse --show-toplevel`, `git branch --show-current`, `git status` and `git log -5 --oneline` before editing.
@@ -24,7 +34,7 @@ Architecture/code-health gate:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\code-health.ps1
 ```
 
-Full automation uses the project runner pattern with `-Multiprocess`. Run it only in an isolated disposable checkout: authoring tests can rewrite tracked maps and road assets. The current selected preparation results are not a green full regression.
+Full automation uses the project runner pattern with `-Multiprocess`. Run it only in an isolated disposable checkout: authoring tests can rewrite tracked maps and road assets. The accepted vehicle suite is not the full PinkCab product suite; full-product regression remains separately scoped under CD-559.
 
 ```powershell
 $UE = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
