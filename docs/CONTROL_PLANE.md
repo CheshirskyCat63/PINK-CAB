@@ -93,6 +93,16 @@ PINK-CAB remains **FREE-FIRST / RESOURCE-CONSTRAINED**.
 
 Every main change requires a PR, an up-to-date branch, the GitHub-hosted `Repository verification` check and resolved conversations. Rules include administrators; force-push and deletion are prohibited. Required reviewer count is zero for the current single-owner team; this does not claim independent review.
 
+The automatic coordinator is `pinkcab-repository-verification.yml`. It classifies the complete PR merge-base range (or the complete push before/after range). Only known documentation/administrative paths may skip Unreal; code, content, configuration, CI, the executable writer inventory and unknown paths require runtime checks. Missing scope/history fails closed.
+
+For runtime changes, the existing TDD workflow runs the full physics suite once, including all 240 D3 samples. It publishes a receipt bound to the candidate SHA, Actions run, run attempt, complete registered test-name set and log hash. The existing P02 workflow validates that receipt and independently repeats the slope fixture five times. Manual P02 dispatch still runs the full physics suite before its five repeats. No test thresholds or gameplay acceptance rules change.
+
+Use **Re-run all jobs** for a failed coordinated run. Re-running only a downstream failed job creates a new run attempt without a matching TDD receipt and intentionally fails closed; previous-attempt evidence is not silently reused.
+
+`Gameplay acceptance gate` always evaluates the static, TDD and P02 results. Runtime changes require successful results from every needed job; failed, cancelled, skipped or missing runtime evidence cannot pass. Administrative-only changes explicitly report N/A for gameplay. Activate this check in branch protection only after a successful exact-candidate run; until the repository setting is updated it is an implemented gate, not a claimed enforced setting.
+
+Self-hosted checkouts retain Unreal caches. Before building, exact SHA, tracked/untracked cleanliness, ignored authored input roots and the pinned MetaRoad package are checked. The normal UBT build still runs; cached output is never itself accepted as evidence. Unexpected authored leftovers fail and must be investigated instead of silently removed. Clean-checkout reproducibility remains a separate CD-559 obligation.
+
 Self-hosted PR jobs accept only same-repository OWNER/MEMBER/COLLABORATOR branches. Fork checks run on GitHub-hosted machines. The dedicated runner is `DESKTOP-C7VAU4V-PINKCAB`; KUKURUZA has a separate registration.
 
 Ordinary PR verification does not deliver or launch a human build. P02 delivery requires an explicit workflow dispatch with `deliver_human=true` after verification succeeds. Delivery is HUMAN_PENDING until the owner accepts that exact candidate.
