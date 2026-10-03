@@ -1,0 +1,129 @@
+name: CD-559 Restore Accepted Playable Entry
+on:
+  push:
+    branches: [ops/CD-559-restore-playable-entry-20261003]
+    paths: [.github/workflows/cd559-restore-playable-entry.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pinkcab-restore-accepted-entry
+  cancel-in-progress: false
+jobs:
+  restore:
+    if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 5
+    env:
+      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+    steps:
+      - name: Inspect and restore the retained accepted P02 entry
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-C7VAU4V'){throw 'Wrong execution host'}
+          $expected='8d68e456d1944be295281535cf9fd103ecf05d52'
+          $root='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970'
+          $evidence=Join-Path 'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\PlayableEntry' ($env:GITHUB_RUN_ID+'-'+$env:GITHUB_RUN_ATTEMPT)
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          "PINKCAB_ENTRY_EVIDENCE=$evidence" | Out-File $env:GITHUB_ENV -Append
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          $session=(Get-Process -Id $PID).SessionId
+          $explorers=@(Get-Process explorer -ErrorAction SilentlyContinue | Select-Object Id,SessionId)
+          Write-Host ('HOST='+$env:COMPUTERNAME+' USER='+$env:USERNAME+' SESSION='+$session+' DESKTOP='+$desktop)
+          Write-Host ('EXPLORERS='+($explorers | ConvertTo-Json -Compress))
+          $ws=New-Object -ComObject WScript.Shell
+          $desktopCandidates=@($desktop,'C:\Users\CheCat\Desktop','C:\Users\CheCat\OneDrive\Desktop') | Select-Object -Unique
+          foreach($d in $desktopCandidates){
+            if($d -and (Test-Path -LiteralPath $d)){
+              foreach($link in @(Get-ChildItem -LiteralPath $d -Filter 'PINKCAB*.lnk' -File)){
+                $l=$ws.CreateShortcut($link.FullName)
+                Write-Host ('EXISTING_LINK='+(@{path=$link.FullName;target=$l.TargetPath;arguments=$l.Arguments;targetExists=(Test-Path -LiteralPath $l.TargetPath)} | ConvertTo-Json -Compress))
+              }
+            }
+          }
+          if(-not (Test-Path -LiteralPath $root)){
+            Get-ChildItem 'E:\CHESHIRE_DIVISION\Builds\PINKCAB' -Directory -ErrorAction SilentlyContinue | Select-Object Name | ConvertTo-Json | Write-Host
+            throw 'Accepted package directory missing; no shortcut was changed'
+          }
+          $shaFile=Join-Path $root 'CANDIDATE_SHA.txt'
+          $runFile=Join-Path $root 'RUN_ID.txt'
+          if(-not (Test-Path -LiteralPath $shaFile) -or -not (Test-Path -LiteralPath $runFile)){throw 'Accepted package identity receipt missing'}
+          if((Get-Content -LiteralPath $shaFile -Raw).Trim() -ne $expected){throw 'Accepted source identity mismatch'}
+          if((Get-Content -LiteralPath $runFile -Raw).Trim() -ne '36868646970'){throw 'Accepted run identity mismatch'}
+          $exe=Join-Path $root 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          if(-not (Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1048576){throw 'Accepted executable missing or invalid size'}
+          $paks=Join-Path $root 'Windows\PinkCab\Content\Paks'
+          $utoc=@(Get-ChildItem -LiteralPath $paks -Filter '*.utoc' -File)
+          $ucas=@(Get-ChildItem -LiteralPath $paks -Filter '*.ucas' -File)
+          if($utoc.Count -lt 1 -or $ucas.Count -lt 1){throw 'Accepted IoStore payload missing'}
+          $hash=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $signature=(Get-AuthenticodeSignature -LiteralPath $exe).Status.ToString()
+          Write-Host ('ACCEPTED_EXE='+$exe+' SHA256='+$hash+' SIGNATURE='+$signature)
+          if($env:USERNAME -ne 'CheCat' -or -not $desktop.StartsWith('C:\Users\CheCat\',[StringComparison]::OrdinalIgnoreCase)){throw 'User desktop ownership not established; no shortcut changed'}
+          $targets=@((Join-Path $desktop 'PINKCAB PLAY - P02 ACCEPTED.lnk'),(Join-Path $desktop 'CHESHIRE_STUDIO\PINKCAB_Play.lnk'))
+          $latest=Join-Path $desktop 'PINKCAB Latest.lnk'
+          $latestValid=$false
+          if(Test-Path -LiteralPath $latest){$old=$ws.CreateShortcut($latest);$latestValid=$old.TargetPath -and (Test-Path -LiteralPath $old.TargetPath)}
+          if(-not $latestValid){$targets+= $latest}
+          $receipts=@()
+          foreach($linkPath in $targets){
+            New-Item -ItemType Directory -Path (Split-Path $linkPath) -Force | Out-Null
+            if(Test-Path -LiteralPath $linkPath){Copy-Item -LiteralPath $linkPath -Destination (Join-Path $evidence ((Split-Path $linkPath -Leaf)+'.previous'))}
+            $shortcut=$ws.CreateShortcut($linkPath)
+            $shortcut.TargetPath=$exe
+            $shortcut.WorkingDirectory=Split-Path $exe
+            $shortcut.Arguments='/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight -windowed -ResX=1600 -ResY=900'
+            $shortcut.IconLocation=$exe+',0'
+            $shortcut.Description='PINK CAB - owner-accepted P02, source 8d68e456, run 36868646970; not corrective P03'
+            $shortcut.Save()
+            $check=$ws.CreateShortcut($linkPath)
+            if($check.TargetPath -ne $exe -or -not (Test-Path -LiteralPath $linkPath)){throw 'Shortcut readback failed'}
+            $receipts+=@{path=$linkPath;target=$check.TargetPath;arguments=$check.Arguments}
+            Write-Host ('SHORTCUT_VERIFIED='+$linkPath)
+          }
+          $receipt=@{time=[DateTime]::UtcNow.ToString('o');sourceSha=$expected;acceptedRun='36868646970';exe=$exe;exeSha256=$hash;signature=$signature;desktop=$desktop;session=$session;shortcuts=$receipts;newBuild=false;P03Accepted=false;launch='NOT_ATTEMPTED'}
+          $receipt | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'receipt.json') -Encoding UTF8
+          $conflicts=@(Get-Process UnrealEditor,UnrealEditor-Cmd,AutomationTool,UnrealBuildTool -ErrorAction SilentlyContinue)
+          $workers=@(Get-Process Runner.Worker -ErrorAction SilentlyContinue)
+          $games=@(Get-Process PinkCab -ErrorAction SilentlyContinue)
+          if($conflicts.Count -gt 0 -or $workers.Count -gt 1){
+            $receipt.launch='DEFERRED_HOST_BUSY'; Write-Host 'SHORTCUTS_READY_LAUNCH_DEFERRED_HOST_BUSY'
+          } elseif($games.Count -gt 0){
+            $receipt.launch='EXISTING_GAME_NOT_INTERRUPTED'; Write-Host 'SHORTCUTS_READY_EXISTING_GAME_NOT_INTERRUPTED'
+          } elseif(@($explorers | Where-Object {$_.SessionId -eq $session}).Count -eq 0){
+            $receipt.launch='NO_INTERACTIVE_SESSION'; Write-Host 'SHORTCUTS_READY_NO_INTERACTIVE_SESSION'
+          } else {
+            $log=Join-Path $evidence 'accepted-p02-launch.log'
+            $saved=$env:RUNNER_TRACKING_ID; $env:RUNNER_TRACKING_ID=''
+            try {
+              $proc=Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -ArgumentList @('/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight','-windowed','-ResX=1600','-ResY=900','-PinkCabGateTelemetry','-PinkCabRoadMaterialAudit',('-abslog="'+$log+'"')) -PassThru
+            } finally {$env:RUNNER_TRACKING_ID=$saved}
+            $deadline=[DateTime]::UtcNow.AddSeconds(45)
+            $wheels=$false; $materials=$false
+            do {
+              Start-Sleep -Seconds 1; $proc.Refresh()
+              if($proc.HasExited){throw ('Accepted game exited, code='+$proc.ExitCode)}
+              if(Test-Path -LiteralPath $log){
+                $wheels=[bool](Select-String -LiteralPath $log -Pattern 'PINKCAB_GATE_STATE .*wheels=4' -Quiet)
+                $materials=[bool](Select-String -LiteralPath $log -Pattern 'PINKCAB_ROAD_MATERIAL_AUDIT=PASS' -Quiet)
+              }
+            } while((-not $wheels -or -not $materials -or $proc.MainWindowHandle -eq 0) -and [DateTime]::UtcNow -lt $deadline)
+            $critical=@(Select-String -LiteralPath $log -Pattern 'Fatal error:|Assertion failed|Ensure condition failed|Unhandled Exception' -ErrorAction SilentlyContinue)
+            $receipt.launch='PROCESS_RUNNING';$receipt.pid=$proc.Id;$receipt.windowHandle=$proc.MainWindowHandle.ToInt64();$receipt.wheels=$wheels;$receipt.materials=$materials;$receipt.criticalCount=$critical.Count
+            $receipt | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'receipt.json') -Encoding UTF8
+            if(-not $wheels -or -not $materials -or $proc.MainWindowHandle -eq 0 -or $critical.Count -gt 0){throw 'Launch verification incomplete; retained receipt and process, no game acceptance claimed'}
+            $receipt.launch='VERIFIED_VISIBLE_SESSION_MAP_WHEELS_MATERIALS'
+            $null=$ws.AppActivate($proc.Id)
+            Write-Host ('ACCEPTED_P02_VISIBLE_PID='+$proc.Id+' WINDOW='+$proc.MainWindowHandle)
+          }
+          $receipt | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'receipt.json') -Encoding UTF8
+          $receipt | ConvertTo-Json -Depth 8 | Write-Host
+      - name: Preserve entry restoration evidence
+        if: always() && env.PINKCAB_ENTRY_EVIDENCE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinkcab-playable-entry-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PINKCAB_ENTRY_EVIDENCE }}
+          retention-days: 30
+          if-no-files-found: error
