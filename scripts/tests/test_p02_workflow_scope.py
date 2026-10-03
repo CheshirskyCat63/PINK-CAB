@@ -47,9 +47,9 @@ class P02WorkflowScopeTests(unittest.TestCase):
                     allowed,
                     "frozen P02 regression gate must admit the explicit canonical P03 steering owner without admitting arbitrary files",
                 )
-                self.assertIn(
-                    f"- '{path}'",
-                    self.text,
+                from scripts.ci.acceptance_contract import runtime_required
+                self.assertTrue(
+                    runtime_required([path]),
                     "canonical P03 steering owner must also trigger the frozen P02 regression suite",
                 )
 
@@ -72,11 +72,24 @@ class P02WorkflowScopeTests(unittest.TestCase):
                     allowed,
                     "frozen P02 regression gate must admit the explicit canonical P03 pedal-linkage owner without admitting arbitrary files",
                 )
-                self.assertIn(
-                    f"- '{path}'",
-                    self.text,
+                from scripts.ci.acceptance_contract import runtime_required
+                self.assertTrue(
+                    runtime_required([path]),
                     "canonical P03 pedal-linkage owner must also trigger the frozen P02 regression suite",
                 )
+
+    def test_p03_control_regression_is_enabled_for_runtime_candidates(self):
+        import yaml
+        tdd_path = WORKFLOW.parent / "pinkcab-vehicle-physics-tdd.yml"
+        tdd = yaml.safe_load(tdd_path.read_text(encoding="utf-8"))
+        matches = [step for job in tdd["jobs"].values()
+                   for step in job.get("steps", [])
+                   if step.get("name") == "Run complete P03 control-runtime regression"]
+        self.assertEqual(len(matches), 1)
+        step = matches[0]
+        self.assertEqual(step.get("if"), "${{ steps.change_scope.outputs.run_physics == 'true' }}")
+        self.assertIn("-TestName 'PinkCab.Vehicle.ControlRuntime'", step["run"])
+        self.assertIn("run-unreal-automation.ps1", step["run"])
 
     def test_runtime_scope_guard_allows_canonical_p02_admin_documents(self):
         required = (
