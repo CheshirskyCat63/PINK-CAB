@@ -1,12 +1,10 @@
 name: CD-869 Fast Human Delivery
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/cd869-deliver.yml'
-      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapGenerator.cpp'
-      - 'Source/PinkCabTests/Private/World/PinkCabL1EndlessRoadMapTests.cpp'
   workflow_dispatch:
     inputs:
       candidate_sha:
@@ -28,6 +26,7 @@ concurrency:
 
 jobs:
   deliver:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
     name: Reuse package, smoke, deliver, launch
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 30
@@ -45,6 +44,12 @@ jobs:
           lfs: false
           clean: false
           ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+
+      - name: Prepare pinned MetaRoad dependency
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Materialize verified local LFS
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'

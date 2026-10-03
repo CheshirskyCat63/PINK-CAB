@@ -28,7 +28,7 @@
 
 Documentation never implies runtime verification. Exact executable evidence wins for implementation/verification status.
 
-Current working vehicle/control baseline is owner-accepted at exact source SHA `8168d72406af6934ab20eace583c2b895f0620b7` / GitHub Actions run `35809749568`. This acceptance proves the working baseline the owner tested; it does not imply every broader QA-01..QA-20 or FIRST EURO feature is complete.
+Current working vehicle/control baseline is P02, owner-accepted at exact source SHA `8d68e456d1944be295281535cf9fd103ecf05d52` / GitHub Actions run `36868646970`. P03 PR #52 remains HUMAN REJECTED / CORRECTIVE WORK IN PROGRESS. This acceptance proves the working baseline the owner tested; it does not imply every broader QA-01..QA-20 or FIRST EURO feature is complete.
 
 ## FIRST EURO
 
@@ -44,9 +44,11 @@ The hero-vehicle lane is frozen for asset substitution under `CD-856`. After tha
 - Required third-party vehicle/damage dependency spend: **EUR 0**.
 - FGear/VDS evaluation material is archived fallback research only and is not production authority.
 
-The current executable path is already verified through clean build, automation, PIE/runtime and packaged Win64 smoke. Any future external solver adoption requires an explicit new decision and migration gate.
+The accepted historical executable has build/runtime/package evidence. Current preparation branches have selected passing tests and unresolved failures; they are not a newly verified replacement. Any future external solver adoption requires an explicit new decision and migration gate.
 
 ## Development entry
+
+Local build, pinned dependencies, runner identity and acceptance boundaries: [Project setup](docs/PROJECT_SETUP.md).
 
 Current work keeps full Mechanics Freeze governance separate from the frozen working vehicle baseline. `main` is the sole active integration branch; use one short-lived Jira-keyed task branch and one PR per change. The merged recovery history is evidence only, not a continuing execution lane. Read `CONTRIBUTING.md`, `docs/README.md`, `docs/AUTHORITY.yaml`, and current gate evidence before changing product code or authority.
 

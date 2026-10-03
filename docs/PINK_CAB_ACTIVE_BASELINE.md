@@ -5,16 +5,26 @@
 **Current broader mechanics owner:** `CD-848`  
 **Canonical Git:** `CheshirskyCat63/PINK-CAB` → `main`
 
+## Current execution checkpoint
+
+- Integration: protected `main`; exact current SHA is read from GitHub, not inferred from an old document.
+- Accepted runtime: P02 `8d68e456d1944be295281535cf9fd103ecf05d52`, run `36868646970`, accepted 2026-10-01 and integrated by PR #49. P00-P02 and road R1-R5 remain frozen.
+- Active gameplay correction: PR #52 / CD-649 + CD-659. P03 is HUMAN REJECTED; P04 is BLOCKED until corrective automation, packaged delivery and renewed owner acceptance.
+- PR #47 / CD-650 is a separate draft tire diagnostic, not an accepted calibration or next road stage.
+- Infrastructure: CD-559 remains IN PROGRESS. PR #53 integrated CI trust/scope repairs and explicit delivery control; full regression and release reproducibility are not thereby certified.
+- Preserved preparation branches: `fix/CD-559-development-bootstrap-20261002` at `4554285` and `fix/CD-659-p03-readiness-20261002` at `95dafd4`. They are unmerged evidence/candidates, not competing integration branches. Reconcile them into PR #52 before a new gameplay acceptance.
+- Preparation evidence: 436/446 latest selected test outcomes passed on the bootstrap branch; 10 failed. Separate P03 correction: 47/47 physics and 30/30 control tests passed. These are different source trees and must not be added together as full-suite proof.
+
 ## Owner-accepted working runtime
 
-- source SHA: `8168d72406af6934ab20eace583c2b895f0620b7`
-- GitHub Actions run: `35809749568`
-- successful job: `PINK-CAB code-only standalone human build`
-- integration merge: `865e8f77dde4af1f5c5bee8d49754628b6494db4`
-- CD-868 control-plane cleanup: DONE
-- current development branch: `main`
+- source SHA: `8d68e456d1944be295281535cf9fd103ecf05d52`
+- GitHub Actions run: `36868646970`
+- runtime integration: PR #49, `104295ab6329e85b5998e8df298770255ad2dd05`
+- accepted stage: P02, 2026-10-01
+- local delivery: `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970`
+- later local or remote candidates are not accepted replacements until explicitly approved
 
-This is the immutable owner-accepted working executable baseline. Later sanitation/documentation/CI commits may advance `main`, but they do not retroactively rename that accepted binary. A future gameplay baseline supersedes it only after new exact-candidate evidence and owner acceptance.
+Historical baseline `8168d724` / run `35809749568` remains immutable prior evidence.
 
 ## Current vehicle/control authority
 

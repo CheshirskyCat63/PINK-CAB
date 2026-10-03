@@ -37,8 +37,6 @@ $argumentLine=@(
     '-nopause',
     '-NoSound',
     '-SkipAssetScan',
-    '-stdout',
-    '-FullStdOutLogOutput',
     (Quote-Arg "-abslog=$LogPath"),
     (Quote-Arg "-ExecCmds=Automation RunTests $TestName"),
     (Quote-Arg '-TestExit=Automation Test Queue Empty')
@@ -55,7 +53,23 @@ if(-not $process.Start()){
     throw "PINKCAB_AUTOMATION_START_FAILED=$TestName"
 }
 
-$completed=$process.WaitForExit($TimeoutSeconds * 1000)
+$timer=[Diagnostics.Stopwatch]::StartNew()
+$completed=$false
+while(-not $completed -and $timer.Elapsed.TotalSeconds -lt $TimeoutSeconds){
+    $remainingMs=[Math]::Max(1, [int](($TimeoutSeconds - $timer.Elapsed.TotalSeconds) * 1000))
+    $completed=$process.WaitForExit([Math]::Min(30000, $remainingMs))
+    if(-not $completed){
+        $progress='waiting for automation log'
+        if(Test-Path -LiteralPath $LogPath){
+            $lastEvent=Get-Content -LiteralPath $LogPath -Tail 200 |
+                Select-String -Pattern 'Test Started.|Test Completed.|P02_D3_MATRIX|Automation Test Queue Empty' |
+                Select-Object -Last 1
+            if($lastEvent){ $progress=$lastEvent.Line }
+        }
+        Write-Host "PINKCAB_AUTOMATION_PROGRESS test=$TestName elapsed_s=$([int]$timer.Elapsed.TotalSeconds) $progress"
+    }
+}
+$timer.Stop()
 if(-not $completed){
     try { $process.Kill() } catch {}
     try { $process.WaitForExit(10000) | Out-Null } catch {}
@@ -88,6 +102,10 @@ $assetFail=@(Select-String -LiteralPath $LogPath -Pattern "Failed to load packag
 
 if($queue.Count -eq 0){
     throw "PINKCAB_AUTOMATION_QUEUE_MISSING=$TestName"
+}
+$queueCount=[regex]::Match($queue[-1].Line, 'Automation Test Queue Empty ([0-9]+) tests performed')
+if(-not $queueCount.Success -or [int]$queueCount.Groups[1].Value -le 0){
+    throw "PINKCAB_AUTOMATION_NO_TESTS=$TestName"
 }
 if($fail.Count -gt 0){
     Write-Host "PINKCAB_AUTOMATION_FAILURE_LINES_BEGIN test=$TestName count=$($fail.Count)"

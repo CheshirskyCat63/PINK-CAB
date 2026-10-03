@@ -1,5 +1,9 @@
 name: CD-869 Inline Verification
 
+# Windows PowerShell 5.1 must resolve its own built-in modules, not an inherited host edition.
+env:
+  PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+
 on:
   workflow_dispatch:
 
@@ -17,7 +21,7 @@ jobs:
     timeout-minutes: 120
     env:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
-      METAROAD_PLUGIN: C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\MetaRoad08e3462d55e7V4\MetaRoad.uplugin
+      METAROAD_PLUGIN: Plugins\MetaRoad\MetaRoad.uplugin
       TEST_LOG: Saved\GitHubGate\CD869_ENDLESS_ROAD.log
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
 
@@ -28,6 +32,12 @@ jobs:
           fetch-depth: 0
           lfs: true
           clean: false
+
+      - name: Prepare pinned MetaRoad dependency
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          python .\scripts\ci\prepare_metaroad.py --root "$env:GITHUB_WORKSPACE"
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
       - name: Exact-head preflight
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
