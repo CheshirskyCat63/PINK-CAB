@@ -1,85 +1,180 @@
-name: CD-952 Finish Clean Checkout and Accepted Entry
+name: CD-952 Qualify Existing Authority Reconciliation
 on:
   push:
     branches: [ops/CD-559-restore-playable-entry-20261003]
     paths: [.github/workflows/cd559-accept-v2-entry.yml]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: pinkcab-accepted-v2-entry
   cancel-in-progress: false
 jobs:
-  reconcile:
+  qualify:
     if: github.repository == 'CheshirskyCat63/PINK-CAB' && github.actor == 'CheshirskyCat63'
-    runs-on: [self-hosted, Windows, X64, pinkcab]
-    timeout-minutes: 5
-    env:
-      GIT_OPTIONAL_LOCKS: '0'
-      PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
+    runs-on: windows-latest
+    timeout-minutes: 8
     steps:
-      - name: Preserve only identified cooker output and export existing administrative sources
-        shell: python
-        run: |
-          import hashlib,json,os,shutil,subprocess,zipfile
-          from pathlib import Path
-          root=Path(r'E:\CHESHIRE_DIVISION\GitHubRunner\PINK-CAB\actions-runner\_work\PINK-CAB\PINK-CAB')
-          base=Path(r'E:\CHESHIRE_DIVISION\Artifacts\PINKCAB\Acceptance')
-          out=base/('CD952_FINAL_'+os.environ['GITHUB_RUN_ID']);out.mkdir()
-          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:f.write('ADMIN_REPORT='+str(out)+'\n')
-          def git(*args):return subprocess.run(['git','-C',str(root),*args],check=True,capture_output=True).stdout
-          assert git('rev-parse','HEAD').decode().strip()=='52239b61bc80e5a63716b9b09b87c520fa09fd05'
-          assert not git('status','--porcelain','--untracked-files=all').strip()
-          old=base/'CD952_RECONCILE_37152421485_1/delivery-derived-originals.zip'
-          with zipfile.ZipFile(old) as z:
-              assert z.testzip() is None
-              names=[n for n in z.namelist() if n.startswith('working/')]
-              count=len([x for x in z.read('status.z').split(b'\0') if x])
-          kept=[]
-          for rel in ['Build/Windows/FileOpenOrder/CookerOpenOrder.log','Build/Windows/FileOpenOrder/EditorOpenOrder.log']:
-              path=root/rel
-              if path.exists():
-                  assert not git('ls-files','--',rel).strip();git('check-ignore','--',rel)
-                  data=path.read_bytes();dest=out/path.name;shutil.move(str(path),str(dest))
-                  assert dest.read_bytes()==data
-                  kept.append({'path':rel,'sha256':hashlib.sha256(data).hexdigest(),'preserved_as':str(dest)})
-          result=subprocess.run(['python','scripts/ci/acceptance_contract.py','workspace','--sha','52239b61bc80e5a63716b9b09b87c520fa09fd05'],cwd=root,capture_output=True,text=True)
-          (out/'WORKSPACE_GATE.txt').write_text(result.stdout+result.stderr,encoding='utf-8');print(result.stdout);result.check_returncode()
-          sources=['README.md','docs/PROJECT_SETUP.md','docs/ENGINEERING_START_HERE.md','docs/CONTROL_PLANE.md','docs/FAST_DELIVERY_ENTRYPOINT.md','docs/AUTHORITY.yaml','docs/README.md']
-          sources += git('ls-files','docs/vehicle_physics/*.md','docs/vehicle_physics/*.csv').decode().splitlines()
-          sources += ['scripts/ci/acceptance_contract.py']
-          for rel in sorted(set(sources)):
-              data=git('show','HEAD:'+rel);p=out/'sources'/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
-          with old.open('rb') as f:old_hash=hashlib.file_digest(f,'sha256').hexdigest()
-          (out/'RECONCILIATION.json').write_text(json.dumps({'runner_clean':True,'guard_passed':True,'preserved_tracked_changes':count,'preserved_derived_files':len(names),'previous_archive':str(old),'previous_archive_sha256':old_hash,'ignored_cooker_logs':kept,'source_sha':'52239b61bc80e5a63716b9b09b87c520fa09fd05'},indent=2),encoding='utf-8')
-      - name: Keep one play shortcut and clearly named prior accepted fallback
+      - name: Checkout integrated owner-accepted tree on isolated hosted machine
+        uses: actions/checkout@v4
+        with:
+          ref: 4a313d38f0674a3e5048f832a07428defa31ab62
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      - name: Prepare parser
         shell: powershell
         run: |
-          $ErrorActionPreference='Stop'
-          $desktop='C:\Users\CheCat\Desktop';$studio=Join-Path $desktop 'CHESHIRE_STUDIO'
-          $accepted='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $v2='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_edf75e1b_RUN37117735294\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $p02='E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_8d68e456_RUN36868646970\Windows\PinkCab\Binaries\Win64\PinkCab.exe'
-          $ws=New-Object -ComObject WScript.Shell;$entry=Join-Path $desktop 'PINCKCAB.lnk'
-          if($ws.CreateShortcut($entry).TargetPath -ne $accepted -or -not (Test-Path $accepted) -or -not (Test-Path $v2)){throw 'Accepted target mismatch'}
-          $known=@{'PINKCAB_Accepted.lnk'=$v2;'PINKCAB_Play.lnk'=$p02;'PINKCAB_Test.lnk'=$v2}
-          foreach($name in $known.Keys){$p=Join-Path $studio $name;if(Test-Path $p){if($ws.CreateShortcut($p).TargetPath -ne $known[$name]){throw 'Unexpected studio link'}}}
-          $backup=Join-Path $env:ADMIN_REPORT 'shortcut-originals';New-Item -ItemType Directory -Path $backup | Out-Null
-          Copy-Item $entry (Join-Path $backup 'PINCKCAB-before.lnk')
-          $temp=Join-Path $desktop ('PINCKCAB.'+[Guid]::NewGuid().ToString('N')+'.tmp.lnk');Copy-Item $entry $temp
-          $link=$ws.CreateShortcut($temp);$link.Description='PINCKCAB - OWNER ACCEPTED P04 52239b61; delivery 37149462470; prior accepted V2 retained';$link.Save()
-          [IO.File]::Replace($temp,$entry,[System.Management.Automation.Language.NullString]::Value)
-          foreach($name in @('PINKCAB_Play.lnk','PINKCAB_Test.lnk')){$p=Join-Path $studio $name;if(Test-Path $p){Move-Item $p (Join-Path $backup $name)}}
-          $old=Join-Path $studio 'PINKCAB_Accepted.lnk';$rollback=Join-Path $studio 'PINKCAB_Rollback_V2.lnk'
-          if(Test-Path $old){if(Test-Path $rollback){throw 'Rollback already exists'};Copy-Item $old (Join-Path $backup 'PINKCAB_Accepted-before.lnk');Move-Item $old $rollback}
-          if($ws.CreateShortcut($entry).TargetPath -ne $accepted -or $ws.CreateShortcut($rollback).TargetPath -ne $v2){throw 'Final target readback failed'}
-          $rows=@(foreach($dir in @($desktop,'C:\Users\Public\Desktop',$studio)){foreach($f in @(Get-ChildItem $dir -Filter '*.lnk' -File | Where-Object {$_.BaseName -match '(?i)PIN[CK ]*CAB'})){$s=$ws.CreateShortcut($f.FullName);[pscustomobject]@{path=$f.FullName;target=$s.TargetPath;description=$s.Description}}})
-          $rows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:ADMIN_REPORT 'DESKTOP_FINAL.json') -Encoding UTF8
-          Write-Host 'ACCEPTED_PINCKCAB_AND_NAMED_ROLLBACK=PASS'
-      - name: Export admin inputs and preservation receipts without asset binaries
-        if: always() && env.ADMIN_REPORT != ''
+          python -m pip install --disable-pip-version-check PyYAML==6.0.2
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Reconcile existing current sections without changing contracts or runtime
+        shell: python
+        run: |
+          import csv,io,json,os,re,subprocess
+          from pathlib import Path
+          import yaml
+          root=Path.cwd()
+          report=Path(os.environ['RUNNER_TEMP'])/'CD952_DOCS';report.mkdir()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:f.write('DOC_REPORT='+str(report)+'\n')
+          changed=[]
+          def load(n):return (root/n).read_text(encoding='utf-8-sig')
+          def put(n,t):
+              old=load(n);assert old!=t,n
+              assert '\r' not in t,n
+              before=report/'before'/n;after=report/'after'/n
+              before.parent.mkdir(parents=True,exist_ok=True);after.parent.mkdir(parents=True,exist_ok=True)
+              before.write_bytes(old.encode());after.write_bytes(t.encode());(root/n).write_bytes(t.encode());changed.append(n)
+          def exact(t,a,b):
+              assert t.count(a)==1,a[:100]
+              return t.replace(a,b,1)
+          def line(t,a,b):
+              found=[v for v in t.splitlines() if v.startswith(a)];assert len(found)==1,(a,len(found))
+              return exact(t,found[0],b)
+          def section(t,h,b):
+              a=t.index(h);z=t.find('\n## ',a+len(h));z=len(t) if z<0 else z
+              return t[:a]+h+'\n\n'+b.strip()+'\n'+t[z:]
+          current='''Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+
+          Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+
+          Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+
+          CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.'''
+          route='''Normal coordinator: `.github/workflows/pinkcab-repository-verification.yml` — complete scope, repository checks, exact-source physics, same-run evidence plus five independent slope repeats, then aggregate technical gate. Main requires both `Repository verification` and `Gameplay acceptance gate`.
+
+          Human delivery is explicit: `cd648-p02-phy009.yml` with `deliver_human=true` on the reviewed candidate ref, then its verified `cd869-deliver.yml` call. Record the full SHA/run/attempt. The route checks packaged map/four-wheel/material smoke, installs to a unique SHA/run/attempt directory, compares payload paths/sizes/SHA256, verifies an interactive window and atomically replaces only `PINCKCAB.lnk`, retaining prior link and accepted package. Delivery initially records HUMAN_PENDING; owner acceptance is a subsequent separate record.
+
+          Retained G1 fast/human_gate/release_gate and inline definitions are auxiliary/history, not competing routine entry points. Direct CD-869 dispatch and retired local fast-delivery cannot bypass P02. Full clean-source/full-project/packaged-input qualification remains CD-559 engineering. Cached-package source-marker/executable-presence checks are not a complete cache-provenance certificate.
+
+          Documentation-only administration does not require replacing the runtime package. PINK CAB and KUKURUZA registrations share one physical host; coordinate heavy Unreal work without stopping another project's processes.'''
+          for n in ['docs/CONTROL_PLANE.md','docs/README.md','docs/PINK_CAB_ACTIVE_BASELINE.md','docs/PROGRAM_ROADMAP.md']:
+              t=load(n);t=section(t,'## Current execution checkpoint',current)
+              t=t.replace('P03 CORRECTION OPEN','P04 CANDIDATE HUMAN ACCEPTED / ADMIN CD-952')
+              heading={'docs/CONTROL_PLANE.md':'## GitHub execution policy','docs/README.md':'## Delivery lanes','docs/PINK_CAB_ACTIVE_BASELINE.md':'## Delivery policy','docs/PROGRAM_ROADMAP.md':'## Delivery / verification lanes'}[n]
+              t=section(t,heading,route)
+              if n=='docs/CONTROL_PLANE.md':
+                  t=section(t,'## Accepted executable and rollback',r'''`C:\Users\CheCat\Desktop\PINCKCAB.lnk` targets the real executable in `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1`. Accepted source is 52239b61, not whichever branch is checked out. `CHESHIRE_STUDIO` retains PINKCAB_Editor and PINKCAB_Rollback_V2 (edf75e1b / 37117735294). Old Play/Test aliases were preserved outside the desktop. P02 and historical 8168d724 remain retained evidence. Original handoff and additive owner decision retain separate identities.''')
+                  t=line(t,'Never mark CD-559 Done from script checks alone:','Never mark CD-559 Done from script checks alone. Full clean-source/full-product regression and comprehensive packaged input remain open; the current P04 fresh package, immutable install, 53-file manifest, smoke, visible handoff and owner acceptance are already verified sub-scopes.')
+              elif n=='docs/README.md':
+                  t=line(t,'**Owner-accepted runtime baseline:**','**Owner-accepted runtime baseline:** `52239b61bc80e5a63716b9b09b87c520fa09fd05` / delivery `37149462470` attempt 1')
+                  t=line(t,'- PR #52 is the active','- PR #52/P03 and PR #62/bounded P04 are integrated; CD-641 owns remaining P04 engineering. PR #47 is a separate tyre diagnostic.')
+                  t=line(t,'- The accepted vehicle/control runtime is P02','- Accepted runtime is bounded P04 52239b61; previous V2edf75e1b and P02 remain retained. Administrative commits do not rename binaries.')
+              elif n=='docs/PINK_CAB_ACTIVE_BASELINE.md':
+                  t=section(t,'## Owner-accepted working runtime',current.split('\n\nCD-648')[0])
+                  t=exact(t,'The project is no longer blocked by recovery or administrative freeze. Current finite closure queue:','Vehicle priorities remain CD-648: remaining P04 calibration, then P05-P11. The broader FIRST EURO queue below follows those priorities; no new migration is required:')
+              else:
+                  t=exact(t,'`main → one Jira-keyed task branch → focused FAST verification → PR/review → merge → human gate only where required`','`main → one Jira-keyed branch → PR + exact-source checks → required packaged human gate → owner verdict → merge → post-merge verification`')
+                  t=line(t,'`CD-856` pre-model handoff is DONE.','`CD-856` pre-model handoff is DONE. CD-855 placeholder polish/replacement is deferred until vehicle calibration; only test-blocking placeholder defects justify immediate work. Import and physics/presentation ownership contracts remain binding.')
+              put(n,t)
+          n='README.md';t=load(n)
+          t=exact(t,'- Native Unreal Chaos vehicle program: `CD-785..CD-792`','- Current Native Chaos vehicle program: `CD-648` / P00-P11; terminal gate `CD-921`; administrative closeout `CD-952`')
+          t=line(t,'Current working vehicle/control baseline is P02',current.split('\n\n')[0])
+          t=line(t,'The hero-vehicle lane is frozen for asset substitution','The current Tatra is a replaceable placeholder. CD-855 polish/replacement is deferred until vehicle calibration; only test-blocking defects justify immediate work. CD-856 contracts remain binding; public asset rights stay separate.')
+          t=line(t,'The accepted historical executable has build/runtime/package evidence.','Accepted P04 has exact-source tests, fresh package, installed-payload and owner-acceptance evidence. Full clean-source/full-product/packaged-input qualification remains CD-559 engineering; one candidate does not certify the entire product. External solver adoption requires a new explicit decision.')
+          put(n,t)
+          n='docs/PROJECT_SETUP.md';t=load(n)
+          t=exact(t,'CURRENT PREPRODUCTION / BOOTSTRAP CONTRACT','CURRENT DEVELOPMENT SETUP / ACCEPTED P04 CANDIDATE')
+          t=exact(t,'Required integration check: `Repository verification`','Required integration checks: `Repository verification` and `Gameplay acceptance gate`')
+          t=line(t,'Accepted runtime remains P02',current+'\n\nAuthoring tests that save tracked assets must run in an isolated checkout. Never combine different source trees as one full-suite proof.')
+          t=exact(t,'P04 owns final causal power/ratio/acceleration calibration after P03 acceptance.','P04 first/reverse4.0 and profile-derived RPM/speed defaults are owner accepted; remaining torque/rev-inertia/road-performance calibration stays in CD-641.')
+          t=exact(t,'PINK CAB remains **NOT IMPLEMENTED / NOT VERIFIED** until such evidence exists.','Apply IMPLEMENTED/VERIFIED per scope: the recorded P04 candidate is owner accepted, while unproved full-product/release requirements remain open. Do not label the entire project unimplemented or infer release readiness from one accepted candidate.')
+          put(n,t)
+          n='docs/ENGINEERING_START_HERE.md';t=load(n)
+          t=exact(t,'## 1. First five minutes','## Accepted vehicle checkpoint · CD-952\n\n'+current+'\n\n## 1. First five minutes')
+          t=exact(t,'The current selected preparation results are not a green full regression.','The accepted vehicle suite is not the full PinkCab product suite; full-product regression remains separately scoped under CD-559.')
+          put(n,t)
+          n='docs/FAST_DELIVERY_ENTRYPOINT.md';t=load(n)
+          t=exact(t,'P03 remains rejected/pending corrective work; this administrative retirement changes none of those decisions.','P03/V2 and bounded P04 are now owner accepted; original pending-delivery records remain historical evidence.')
+          t=section(t,'## Remaining delivery work under CD-559','Completed P04 protections: unique SHA/run/attempt directory, complete 53-file installed manifest/path/size/hash comparison, packaged smoke, verified visible window, atomic PINCKCAB-only publication and prior-link backup. Runs37149462470 and37151172013 prove those protections; additive owner receipt37152180059 records acceptance. Previous V2/P02 retained.\n\n'+route)
+          put(n,t)
+          n='docs/AUTHORITY.yaml';t=load(n);a=t.index('  active_gameplay_pr: 52');b=t.index('\nhistorical_control_plane_cleanup_20260923:');c=t[a:b]
+          for old,new in [('  active_gameplay_pr: 52','  active_gameplay_pr: null\n  accepted_gameplay_pr: 62\n  administrative_closeout_owner: CD-952'),('  active_gameplay_branch: feat/cd649-p03-steering-transfer','  active_gameplay_branch: main'),('  gameplay_gate: P03_HUMAN_REJECTED_CORRECTIVE_WORK','  gameplay_gate: P04_BOUNDED_GEARING_HUMAN_ACCEPTED_INTEGRATED'),('  next_stage: P04_BLOCKED','  next_stage: P04_REMAINING_PERFORMANCE_CALIBRATION_THEN_P05'),('  current_workflow_lanes: [fast, human_gate, release_gate]','  current_workflow_lanes: [repository_verification, p02_explicit_human_delivery]\n  auxiliary_historical_g1_lanes: [fast, human_gate, release_gate]'),('  preparation_candidates:','  historical_preparation_candidates:'),('  resume_rule: existing_PR52_then_exact_head_verification_then_explicit_delivery_then_owner_acceptance_then_merge','  resume_rule: main_then_one_task_PR_then_exact_checks_then_required_owner_gate_then_merge')]:c=exact(c,old,new)
+          x=c.index('  accepted_working_baseline:');y=c.index('  historical_preparation_candidates:')
+          accepted={'stage':'P04_BOUNDED_MEASURED_GEARING','source_sha':'52239b61bc80e5a63716b9b09b87c520fa09fd05','actions_run':37149462470,'actions_attempt':1,'owner_acceptance':'ACCEPTED_2026_10_03','owner_acceptance_receipt':'OWNER_ACCEPTANCE.json','owner_acceptance_record_run':37152180059,'runtime_integration_pr':62,'runtime_integration_sha':'4a313d38f0674a3e5048f832a07428defa31ab62','delivery_root':r'E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1','desktop_entry':'PINCKCAB.lnk','payload_files_verified':53,'verification_run':37148042881,'installed_audit_run':37151172013,'full_p04_complete':False,'full_product_release_accepted':False}
+          replacement=yaml.safe_dump({'accepted_working_baseline':accepted,'previous_accepted_baselines':{'p03_v2':{'source_sha':'edf75e1b91742237d14ba9dfe76284993da77d17','actions_run':37117735294,'status':'RETAINED'},'p02':{'source_sha':'8d68e456d1944be295281535cf9fd103ecf05d52','actions_run':36868646970,'status':'RETAINED'}}},sort_keys=False)
+          c=c[:x]+''.join('  '+v+'\n' for v in replacement.splitlines())+c[y:]
+          t=t[:a]+c+t[b:];t=exact(t,'  verification: owner_accepted_P02_8d68e456_with_P03_correction_open','  verification: owner_accepted_P04_bounded_52239b61_remaining_performance_and_release_open')
+          assert yaml.safe_load(t)['control_plane_cleanup']['accepted_working_baseline']['source_sha']==accepted['source_sha'];put(n,t)
+          n='docs/vehicle_physics/PINK_CAB_VEHICLE_PHYSICS_CALIBRATION_PROGRAM_2026-09-26.md';t=load(n)
+          t=line(t,'**Current execution point:**','**Current execution point (2026-10-03):** bounded P04 gearing HUMAN ACCEPTED / INTEGRATED, source52239b61 / delivery37149462470 attempt1 / PR62 integration4a313d38. P03/V2edf75e1b and P02 retained. CD952 owns administrative closeout; CD641 retains remaining PHY017..020; P05-P11 and full release are not complete.')
+          t=exact(t,'## Verified current-code facts that force this program','## Historical audited-code facts that motivated this program')
+          t=exact(t,'At exact audited `main`:','At the historical exact audit checkpoint, not current P04. P02 centralized RPM/torque ownership, accepted P03 removed speed-driven held-target steering shrink, and accepted P04 uses first/reverse4.0 with calibration7. Dated values below are provenance, not current-profile overrides:')
+          t=exact(t,'## Current authority conflicts to resolve, not paper over','## Original authority-conflict register and current disposition\n\nItems2/3 were addressed by accepted P01/P02 and held-target steering in item6 by accepted P03. Remaining load/grip/performance concerns stay with their stage owners. The original list below is historical and does not reopen resolved defects.')
+          t=line(t,'**P02 gate:**','**P02 gate:** CLOSED / FROZEN. P03/V2 and the bounded P04 candidate were subsequently accepted; current checkpoint above supersedes the former P03-next routing. Historical evidence remains retained.')
+          t=exact(t,'## P03 — Steering + pedal feel without mechanic changes','## P03 — Steering + pedal feel without mechanic changes\n\n**Status:** recorded P03/V2 scope HUMAN ACCEPTED / INTEGRATED, sourceedf75e1b / delivery37117735294 / PR52. Exact P04 coordinator37148042881 preserves complete ControlRuntime and all13 P03 physics regressions. Scenario-level evidence remains in TESTS.csv; unmeasured broader scenarios are not promoted to PASS.')
+          t=exact(t,'## P04 — Acceleration + gearing','## P04 — Acceleration + gearing\n\n**Status:** first/reverse4.0 and profile-derived defaults HUMAN ACCEPTED; source52239b61, coordinator37148042881, delivery37149462470, installed audit37151172013, additive owner receipt37152180059. Other gears, engine output, controls, mass, tyres and suspension unchanged.\n\n**Remaining:** full PHY017..020 requirements below. Native probes and18 launch/coast cases are not packaged 0-30/0-60 or195km/h evidence. Half-input endpoint speed below quarter-input is an unresolved observation, not an established cause. Continue declared comparable measurements under CD641, not another migration or placeholder polish.')
+          put(n,t)
+          for n in ['docs/vehicle_physics/TASKS.csv','docs/vehicle_physics/TESTS.csv']:
+              reader=csv.DictReader(io.StringIO(load(n)));fields=reader.fieldnames;rows=list(reader);before=len(rows)
+              proven={'T-025':'P03.SteeringTargetAuthority','T-027':'P03.FrameRateIndependentSteeringTrace','T-028':'P03.NoPostInputGhostSteering','T-029':'P03.PedalDoseMonotonicity + LowInputThrottleDosabilityCandidate: command response, not road-speed monotonicity','T-030':'P03.PedalSingleRecipient + PedalWheelPauseReversal + NoHiddenThrottleInjection','T-031':'P03.DirectMomentaryWithoutGrip + ControlRuntime','T-032':'P03.ReleasedQuickRecallClearsTarget','T-039':'Reviewed accepted ratio/profile diff, identical-condition native GearRatioProbe; unchanged mass, tyres, engine output and controls','T-040':'Complete ControlRuntime,63 physics including13 P03 regressions, gated package and explicit owner acceptance'}
+              for row in rows:
+                  if n.endswith('TASKS.csv') and row['Stage'] in ('P03','P04'):
+                      row['Status']='DONE' if row['Stage']=='P03' else 'IN_PROGRESS'
+                      row['Evidence']='P03/V2edf75e1b accepted/PR52; bounded P04 candidate52239b61 accepted/PR62 integration4a313d38. Coordinator37148042881, delivery37149462470, audit37151172013. Full remaining P04 envelope is not closed; exact scenario coverage is TESTS.csv.'
+                      row['Change']=row['Change'].replace('A/B current pow(driver,0.55)','A/B historical pow(driver,0.55) baseline')
+                  elif n.endswith('TESTS.csv') and row['Stage'] in ('P03','P04'):
+                      row['SHA']=accepted['source_sha'];row['Evidence']='Coordinator37148042881 / physics artifact11282834957; delivery37149462470; owner receipt37152180059'
+                      if row['ID'] in proven:row['Status']='PASS';row['Actual']=proven[row['ID']]
+                      else:row['Actual']='Full scenario remains NOT RUN; related native/profile evidence and bounded owner acceptance do not prove the entire packaged-road requirement.'
+                      if row['ID']=='T-029':row['Expected']=row['Expected'].replace('current pow(driver,0.55)','historical pow(driver,0.55) baseline')
+              out=io.StringIO(newline='');w=csv.DictWriter(out,fieldnames=fields,lineterminator='\n');w.writeheader();w.writerows(rows);assert len(rows)==before
+              if n.endswith('TESTS.csv'):assert len(rows)==96
+              put(n,out.getvalue())
+          assert len(changed)==12 and all(n=='README.md' or n.startswith('docs/') for n in changed)
+          subprocess.run(['git','diff','--check'],check=True)
+          (report/'CHANGED.json').write_text(json.dumps(changed,indent=2),encoding='utf-8')
+          print('CD952_DOCUMENT_ONLY_PATCH=PASS files='+str(len(changed)))
+      - name: Verify complete script suite and architecture on the patched candidate
+        shell: powershell
+        run: |
+          python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+          python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+          python scripts/ci/verify_vehicle_physics_writers.py --manifest docs/vehicle_physics/STATE_WRITER_INVENTORY.csv --evidence Saved/GitHubGate/ADMIN_WRITERS.json
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Export verified immutable blobs only; do not create trees commits branches or PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import hashlib,json,os,subprocess,urllib.request
+          from pathlib import Path
+          report=Path(os.environ['DOC_REPORT']);paths=json.loads((report/'CHANGED.json').read_text())
+          results=[]
+          for name in paths:
+              data=Path(name).read_bytes()
+              body=json.dumps({'content':data.decode('utf-8'),'encoding':'utf-8'}).encode()
+              req=urllib.request.Request('https://api.github.com/repos/CheshirskyCat63/PINK-CAB/git/blobs',data=body,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(req) as r:blob=json.load(r)
+              expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest();assert blob['sha']==expected
+              results.append({'path':name,'mode':'100644','type':'blob','sha':expected,'sha256':hashlib.sha256(data).hexdigest()})
+          receipt={'base':'4a313d38f0674a3e5048f832a07428defa31ab62','base_tree':'36e5dfc2ffdfd4d3d9adbf3ea75f4c617889a789','files':results,'only_existing_docs':True,'script_suite_passed':True,'runtime_changed':False,'refs_changed':False,'user_host_touched':False}
+          (report/'PATCH.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8');print(json.dumps(receipt))
+      - name: Preserve verified patch inputs and metadata
+        if: always() && env.DOC_REPORT != ''
         uses: actions/upload-artifact@v4
         with:
-          name: p04-admin-inputs-${{ github.run_id }}
-          path: ${{ env.ADMIN_REPORT }}
+          name: p04-admin-qualified-docs-${{ github.run_id }}
+          path: ${{ env.DOC_REPORT }}
           if-no-files-found: error
           retention-days: 90
