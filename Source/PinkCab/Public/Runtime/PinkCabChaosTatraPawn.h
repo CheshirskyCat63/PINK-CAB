@@ -24,6 +24,7 @@ class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
 class UPinkCabVehicleVisualShellComponent;
+class UPinkCabVehicleDefinition;
 class UPinkCabDriverUiComponent;
 struct FPinkCabInteractionEvent;
 struct FPinkCabPlayerInputSample;
@@ -60,6 +61,8 @@ public:
     UPinkCabVehicleVisualShellComponent* GetVehicleVisualShell() const { return VehicleVisualShell; }
     FName GetVehicleVisualProfileId() const;
     bool ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile);
+    bool ApplyVehicleDefinition(const UPinkCabVehicleDefinition& Definition);
+    FName GetVehicleDefinitionId() const { return ActiveVehicleDefinitionId; }
     bool SyncWheelPresentationFromChaos();
     const FPinkCabVehicleLoadState& GetVehicleLoadState() const { return VehicleLoadState; }
 
@@ -167,6 +170,7 @@ private:
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
+    FName ActiveVehicleDefinitionId = NAME_None;
     FPinkCabTatraProfile TatraProfile = FPinkCabTatraProfile::Canonical();
     FPinkCabVehicleLoadState VehicleLoadState;
     FPinkCabVehicleDamageProfile VehicleDamageProfile{TEXT("PinkCab.Damage.Fallback")};

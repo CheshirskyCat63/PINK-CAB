@@ -6,12 +6,70 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
+#include "PhysicsEngine/PhysicsAsset.h"
+#include "Components/SkinnedMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabVehicleDamageProfile.h"
+#include "Vehicle/PinkCabVehicleDefinition.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
+
+namespace
+{
+FPinkCabVehiclePresentationPart MakeSwapPart(const TCHAR* Id, const TCHAR* MeshPath)
+{
+    FPinkCabVehiclePresentationPart Part;
+    Part.PartId = FName(Id);
+    Part.Mesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(MeshPath));
+    return Part;
+}
+
+UPinkCabVehicleDefinition* MakeSwapDefinition(
+    APinkCabChaosTatraPawn& Pawn,
+    const TCHAR* VehicleId,
+    const TCHAR* ProfileId,
+    const TCHAR* MeshPath,
+    const FVector& DriverLocation)
+{
+    UPinkCabVehicleDefinition* Definition = NewObject<UPinkCabVehicleDefinition>();
+    Definition->VehicleId = FName(VehicleId);
+    Definition->PhysicsCarrierMesh = TSoftObjectPtr<USkeletalMesh>(
+        Pawn.GetMesh()->GetSkeletalMeshAsset());
+    Definition->PhysicsAsset = TSoftObjectPtr<UPhysicsAsset>(
+        Pawn.GetMesh()->GetPhysicsAsset());
+
+    if (USkinnedMeshComponent* Driver = Pawn.GetPrototypeDriverVisual())
+    {
+        Definition->DriverMesh = TSoftObjectPtr<USkeletalMesh>(
+            Cast<USkeletalMesh>(Driver->GetSkinnedAsset()));
+    }
+    Definition->DriverTransform = FTransform(FRotator::ZeroRotator, DriverLocation);
+    Definition->DriverHeadTransform = FTransform(
+        FRotator::ZeroRotator, DriverLocation + FVector(17.0f, 0.0f, 167.0f));
+
+    Definition->VisualProfile.ProfileId = FName(ProfileId);
+    const TCHAR* WheelIds[4] = {
+        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
+    const TCHAR* BoneNames[4] = {
+        TEXT("Phys_Wheel_FL"), TEXT("Phys_Wheel_FR"),
+        TEXT("Phys_Wheel_BL"), TEXT("Phys_Wheel_BR")};
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        Definition->VisualProfile.PresentationParts.Add(
+            MakeSwapPart(WheelIds[Index], MeshPath));
+        FPinkCabVehicleWheelBinding Wheel;
+        Wheel.WheelId = FName(WheelIds[Index]);
+        Wheel.BoneName = FName(BoneNames[Index]);
+        Wheel.PresentationPartId = FName(WheelIds[Index]);
+        Definition->Wheels.Add(Wheel);
+    }
+    return Definition;
+}
+}
 
 class FPinkCabVehicleLivePawnRoundTripCommand final : public IAutomationLatentCommand
 {
@@ -46,6 +104,45 @@ bool FPinkCabVehicleLivePawnRoundTripCommand::Update()
         FMath::IsNearlyEqual(Movement->Mass, 1657.0f, 0.001f));
     USkeletalMesh* PhysicsMeshBefore = Pawn->GetMesh()->GetSkeletalMeshAsset();
     Test->TestNotNull(TEXT("physics chassis mesh remains assigned"), PhysicsMeshBefore);
+
+    UPinkCabVehicleDefinition* DefinitionA = MakeSwapDefinition(
+        *Pawn,
+        TEXT("PinkCab.Vehicle.RuntimeFixtureA"),
+        TEXT("PinkCab.Visual.RuntimeFixtureA"),
+        TEXT("/Engine/BasicShapes/Cube.Cube"),
+        FVector(-31.0f, -37.0f, -54.0f));
+    UPinkCabVehicleDefinition* DefinitionB = MakeSwapDefinition(
+        *Pawn,
+        TEXT("PinkCab.Vehicle.RuntimeFixtureB"),
+        TEXT("PinkCab.Visual.RuntimeFixtureB"),
+        TEXT("/Engine/BasicShapes/Sphere.Sphere"),
+        FVector(-33.0f, -39.0f, -56.0f));
+
+    Test->TestTrue(TEXT("first definition applies through the same pawn"),
+        Pawn->ApplyVehicleDefinition(*DefinitionA));
+    Test->TestEqual(TEXT("first definition id is live"),
+        Pawn->GetVehicleDefinitionId(), DefinitionA->VehicleId);
+    Test->TestEqual(TEXT("first definition drives visual profile"),
+        Pawn->GetVehicleVisualProfileId(), DefinitionA->VisualProfile.ProfileId);
+    Test->TestEqual(TEXT("first definition drives driver placement"),
+        Pawn->GetPrototypeDriverVisual()->GetRelativeLocation(),
+        DefinitionA->DriverTransform.GetLocation());
+
+    Test->TestTrue(TEXT("second definition applies without a pawn subclass"),
+        Pawn->ApplyVehicleDefinition(*DefinitionB));
+    Test->TestEqual(TEXT("second definition id replaces first"),
+        Pawn->GetVehicleDefinitionId(), DefinitionB->VehicleId);
+    Test->TestEqual(TEXT("second definition drives visual profile"),
+        Pawn->GetVehicleVisualProfileId(), DefinitionB->VisualProfile.ProfileId);
+    Test->TestEqual(TEXT("definition swap preserves the carrier when definitions share it"),
+        Pawn->GetMesh()->GetSkeletalMeshAsset(), PhysicsMeshBefore);
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        Test->TestEqual(
+            *FString::Printf(TEXT("wheel binding %d comes from definition"), Index),
+            Movement->WheelSetups[Index].BoneName,
+            DefinitionB->Wheels[Index].BoneName);
+    }
 
     FPinkCabVehicleDamageProfile DamageProfile(TEXT("PinkCab.Damage.CD855Runtime"));
     Test->TestTrue(TEXT("runtime authored damage zone registers"), DamageProfile.TryAddZone(
