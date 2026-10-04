@@ -78,6 +78,40 @@ class P02WorkflowScopeTests(unittest.TestCase):
                     "canonical P03 pedal-linkage owner must also trigger the frozen P02 regression suite",
                 )
 
+    def test_runtime_scope_guard_admits_reviewed_release_hardening_files(self):
+        required = (
+            ".github/workflows/cd869-r5-dry-asphalt.yml",
+            "Source/PinkCabInteraction/Private/Interaction/PinkCabInteractionModel.cpp",
+            "Source/PinkCabTests/Private/Core/PinkCabCoreCodeCompleteRuntimeTests.cpp",
+            "Source/PinkCabTests/Private/Interaction/PinkCabContractZeroGenerator.cpp",
+            "Source/PinkCabTests/Private/PinkCabAutomationWriteGuard.h",
+            "Source/PinkCabTests/Private/Vehicle/PinkCabChaosPawnTests.cpp",
+            "Source/PinkCabTests/Private/Vehicle/PinkCabChaosVehicleProviderTests.cpp",
+            "Source/PinkCabTests/Private/Vehicle/PinkCabG1HInpContractTests.cpp",
+            "Source/PinkCabTests/Private/Vehicle/PinkCabHInpContractTests.cpp",
+            "Source/PinkCabTests/Private/World/PinkCabChaosWeaveMapGenerator.cpp",
+            "Source/PinkCabTests/Private/World/PinkCabL1GreyboxGenerator.cpp",
+            "Source/PinkCabTests/Private/World/PinkCabL1MetaRoadAuthoringTests.cpp",
+            "Source/PinkCabTests/Private/World/PinkCabL1RoadR5PhysicalSurfaceTests.cpp",
+            "Source/PinkCabTests/Private/World/PinkCabVerticalAcceptanceMapGenerator.cpp",
+            "scripts/tests/test_release_automation_readonly.py",
+        )
+        allowed_match = re.search(
+            r"\$allowed=@\((?P<body>.*?)\n\s*\)",
+            self.text,
+            flags=re.S,
+        )
+        self.assertIsNotNone(allowed_match, "scope-guard allowlist block not found")
+        allowed = allowed_match.group("body")
+        self.assertIn("$_ -notin $allowed", self.text)
+        for path in required:
+            with self.subTest(path=path):
+                self.assertIn(
+                    f"'{path}'",
+                    allowed,
+                    "reviewed release-hardening files must be admitted individually by the frozen P02 gate",
+                )
+
     def test_p03_control_regression_is_enabled_for_runtime_candidates(self):
         import yaml
         tdd_path = WORKFLOW.parent / "pinkcab-vehicle-physics-tdd.yml"
