@@ -86,9 +86,12 @@ jobs:
             '--base-ref', 'origin/main',
             '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
             '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
-            '--search-root', 'E:\Development',
-            '--allow-changed-lfs', 'Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap'
+            '--search-root', 'E:\Development'
           )
+          foreach($allowed in @($fixtureManifest.allow_changed_lfs)){
+            $materializeArgs += '--allow-changed-lfs'
+            $materializeArgs += [string]$allowed
+          }
           foreach($fixture in $fixtureManifest.lfs){
             $absolute=Join-Path $env:GITHUB_WORKSPACE ([string]$fixture.path)
             if(-not (Test-Path -LiteralPath $absolute)){

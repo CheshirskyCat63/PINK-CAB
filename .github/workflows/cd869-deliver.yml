@@ -55,10 +55,18 @@ jobs:
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
         run: |
           $ErrorActionPreference='Stop'
-          python .\scripts\ci\materialize_local_lfs.py `
-            --workspace "$env:GITHUB_WORKSPACE" `
-            --base-ref origin/main `
-            --allow-changed-lfs "Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap"
+          $fixtureManifestPath=Join-Path $env:GITHUB_WORKSPACE 'Config\VehiclePhysicsRuntimeFixtures.json'
+          $fixtureManifest=Get-Content -LiteralPath $fixtureManifestPath -Raw | ConvertFrom-Json
+          $materializeArgs=@(
+            'scripts/ci/materialize_local_lfs.py',
+            '--workspace', $env:GITHUB_WORKSPACE,
+            '--base-ref', 'origin/main'
+          )
+          foreach($allowed in @($fixtureManifest.allow_changed_lfs)){
+            $materializeArgs += '--allow-changed-lfs'
+            $materializeArgs += [string]$allowed
+          }
+          python @materializeArgs
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
           # Local git-lfs cache is materialized first. Unresolved unrelated
