@@ -24,6 +24,18 @@
 
 namespace
 {
+constexpr int32 GHeroStageCount = 7;
+const FName GHeroPanelIds[] = {
+    TEXT("DoorFL"), TEXT("DoorFR"), TEXT("DoorRL"),
+    TEXT("DoorRR"), TEXT("FrontLid"), TEXT("RearLid")
+};
+constexpr uint8 GHeroStageOpenMasks[GHeroStageCount] = {
+    0u, 0x03u, 0x0Fu, 0x10u, 0x20u, 0x3Fu, 0u
+};
+constexpr float GHeroStageViewYaw[GHeroStageCount] = {
+    135.0f, 90.0f, 90.0f, 180.0f, 0.0f, 135.0f, 135.0f
+};
+
 struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
 {
     TWeakObjectPtr<UWorld> World;
@@ -34,8 +46,6 @@ struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
     int32 Polls = 0;
     FString PendingCapture;
     bool bFinishing = false;
-
-    static constexpr int32 StageCount = 7;
 
     void Finish(const bool bPass, const TCHAR* Reason)
     {
@@ -70,88 +80,45 @@ struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
 
     bool ApplyStage()
     {
-        CloseAll();
-        if (!Pawn.IsValid())
+        if (!Pawn.IsValid() || Stage < 0 || Stage >= GHeroStageCount)
         {
             return false;
         }
-
-        switch (Stage)
+        CloseAll();
+        const uint8 Mask = GHeroStageOpenMasks[Stage];
+        for (int32 Index = 0; Index < UE_ARRAY_COUNT(GHeroPanelIds); ++Index)
         {
-        case 0:
-            break;
-        case 1:
-            return SetPanel(TEXT("DoorFL"), true)
-                && SetPanel(TEXT("DoorFR"), true);
-        case 2:
-            return SetPanel(TEXT("DoorFL"), true)
-                && SetPanel(TEXT("DoorFR"), true)
-                && SetPanel(TEXT("DoorRL"), true)
-                && SetPanel(TEXT("DoorRR"), true);
-        case 3:
-            return SetPanel(TEXT("FrontLid"), true);
-        case 4:
-            return SetPanel(TEXT("RearLid"), true);
-        case 5:
-            return SetPanel(TEXT("DoorFL"), true)
-                && SetPanel(TEXT("DoorFR"), true)
-                && SetPanel(TEXT("DoorRL"), true)
-                && SetPanel(TEXT("DoorRR"), true)
-                && SetPanel(TEXT("FrontLid"), true)
-                && SetPanel(TEXT("RearLid"), true);
-        case 6:
-            break;
-        default:
-            return false;
+            if ((Mask & (1u << Index)) != 0u
+                && !SetPanel(GHeroPanelIds[Index], true))
+            {
+                return false;
+            }
         }
         return true;
     }
 
     bool VerifyStage() const
     {
-        if (!Pawn.IsValid() || !Pawn->GetVehicleArticulation())
+        const UPinkCabVehicleArticulationComponent* Articulation =
+            Pawn.IsValid() ? Pawn->GetVehicleArticulation() : nullptr;
+        if (!Articulation || Stage < 0 || Stage >= GHeroStageCount)
         {
             return false;
         }
-        const auto Fraction = [this](const TCHAR* Id)
-        {
-            return Pawn->GetVehicleArticulation()->GetPanelFraction(FName(Id));
-        };
-        const auto Open = [&Fraction](const TCHAR* Id)
-        {
-            return Fraction(Id) >= 0.96f;
-        };
-        const auto Closed = [&Fraction](const TCHAR* Id)
-        {
-            return Fraction(Id) <= 0.04f;
-        };
 
-        switch (Stage)
+        const uint8 Mask = GHeroStageOpenMasks[Stage];
+        for (int32 Index = 0; Index < UE_ARRAY_COUNT(GHeroPanelIds); ++Index)
         {
-        case 0:
-        case 6:
-            return Closed(TEXT("DoorFL"))
-                && Closed(TEXT("DoorFR"))
-                && Closed(TEXT("DoorRL"))
-                && Closed(TEXT("DoorRR"))
-                && Closed(TEXT("FrontLid"))
-                && Closed(TEXT("RearLid"));
-        case 1:
-            return Open(TEXT("DoorFL")) && Open(TEXT("DoorFR"));
-        case 2:
-            return Open(TEXT("DoorFL")) && Open(TEXT("DoorFR"))
-                && Open(TEXT("DoorRL")) && Open(TEXT("DoorRR"));
-        case 3:
-            return Open(TEXT("FrontLid"));
-        case 4:
-            return Open(TEXT("RearLid"));
-        case 5:
-            return Open(TEXT("DoorFL")) && Open(TEXT("DoorFR"))
-                && Open(TEXT("DoorRL")) && Open(TEXT("DoorRR"))
-                && Open(TEXT("FrontLid")) && Open(TEXT("RearLid"));
-        default:
-            return false;
+            const float Fraction =
+                Articulation->GetPanelFraction(GHeroPanelIds[Index]);
+            const bool bExpectedOpen = (Mask & (1u << Index)) != 0u;
+            if ((bExpectedOpen && Fraction < 0.96f)
+                || (!bExpectedOpen && Fraction > 0.04f))
+            {
+                return false;
+            }
         }
+        return true;
     }
 
     void PollCapture()
@@ -164,9 +131,9 @@ struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
         {
             ++Captures;
             ++Stage;
-            if (Stage >= StageCount)
+            if (Stage >= GHeroStageCount)
             {
-                Finish(Captures == StageCount, TEXT("MATRIX_COMPLETE"));
+                Finish(Captures == GHeroStageCount, TEXT("MATRIX_COMPLETE"));
                 return;
             }
             ScheduleStage();
@@ -245,7 +212,7 @@ struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
 
     bool ConfigureStageView()
     {
-        if (!Pawn.IsValid())
+        if (!Pawn.IsValid() || Stage < 0 || Stage >= GHeroStageCount)
         {
             return false;
         }
@@ -254,29 +221,10 @@ struct FPinkCabTatraHeroAudit : TSharedFromThis<FPinkCabTatraHeroAudit>
         {
             return false;
         }
-        float Yaw = 135.0f;
-        switch (Stage)
-        {
-        case 1:
-        case 2:
-            Yaw = 90.0f; // Driver-side doors.
-            break;
-        case 3:
-            Yaw = 180.0f; // Front view proves the reverse-hinged hood.
-            break;
-        case 4:
-            Yaw = 0.0f; // Rear view proves the engine/rear lid.
-            break;
-        case 5:
-            Yaw = 135.0f; // Three-quarter view for all-open composition.
-            break;
-        default:
-            Yaw = 135.0f;
-            break;
-        }
         Boom->TargetArmLength = 620.0f;
         Boom->SocketOffset = FVector(0.0f, 0.0f, 135.0f);
-        Boom->SetRelativeRotation(FRotator(-12.0f, Yaw, 0.0f));
+        Boom->SetRelativeRotation(
+            FRotator(-12.0f, GHeroStageViewYaw[Stage], 0.0f));
         return true;
     }
 
