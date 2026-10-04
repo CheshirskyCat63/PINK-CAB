@@ -132,6 +132,8 @@ jobs:
             'scripts/ci/acceptance_contract.py',
             'scripts/tests/test_acceptance_contract.py',
             'docs/CONTROL_PLANE.md',
+            'docs/PINK_CAB_ACTIVE_BASELINE.md',
+            'docs/PROGRAM_ROADMAP.md',
             # CD-559 reproducible, project-local vendor provisioning and runner lifecycle.
             'README.md',
             'docs/AUTHORITY.yaml',
@@ -325,4 +327,7 @@ jobs:
     uses: ./.github/workflows/cd869-deliver.yml
     with:
       candidate_sha: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+      p02_verified: true
+      p02_run_id: ${{ github.run_id }}
+      p02_run_attempt: ${{ github.run_attempt }}
     secrets: inherit

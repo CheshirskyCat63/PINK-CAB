@@ -127,7 +127,7 @@ def marked_script(path, name):
 
 class WorkflowTrustTests(unittest.TestCase):
     def test_pull_request_jobs_cannot_enter_self_hosted_runner_from_forks(self):
-        for name in (*PHYSICS_WORKFLOWS, "cd869-deliver.yml"):
+        for name in PHYSICS_WORKFLOWS:
             text = (WORKFLOWS / name).read_text(encoding="utf-8")
             jobs = text.split("\njobs:\n", 1)[1]
             for match in re.finditer(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", jobs):
@@ -142,13 +142,32 @@ class WorkflowTrustTests(unittest.TestCase):
                         self.assertIn('["OWNER","MEMBER","COLLABORATOR"]', guard.group(1))
                         self.assertNotIn('"CONTRIBUTOR"', guard.group(1))
 
-    def test_human_delivery_requires_explicit_dispatch(self):
+    def test_human_delivery_is_only_reusable_from_attested_p02_dispatch(self):
         delivery = (WORKFLOWS / "cd869-deliver.yml").read_text(encoding="utf-8")
         triggers = delivery.split("\npermissions:", 1)[0]
         self.assertNotIn("  pull_request:", triggers)
-        self.assertIn("  workflow_dispatch:", triggers)
+        self.assertNotIn("  workflow_dispatch:", triggers)
+        self.assertIn("  workflow_call:", triggers)
+        for token in ("p02_verified:", "p02_run_id:", "p02_run_attempt:"):
+            self.assertIn(token, triggers)
+        self.assertIn("p02_run_id:\n        required: true\n        type: string", triggers)
+        self.assertIn("p02_run_attempt:\n        required: true\n        type: string", triggers)
+        guard = re.search(r"(?m)^    if: (.+)$", delivery)
+        self.assertIsNotNone(guard)
+        for token in (
+            "inputs.p02_verified",
+            "github.event_name == 'workflow_dispatch'",
+            "github.workflow == 'CD-648 P02 PHY-009 Drivetrain Continuity'",
+            "inputs.p02_run_id == github.run_id",
+            "inputs.p02_run_attempt == github.run_attempt",
+        ):
+            self.assertIn(token, guard.group(1))
+
         p02 = (WORKFLOWS / "cd648-p02-phy009.yml").read_text(encoding="utf-8")
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.deliver_human", p02)
+        self.assertIn("p02_verified: true", p02)
+        self.assertIn("p02_run_id: ${{ github.run_id }}", p02)
+        self.assertIn("p02_run_attempt: ${{ github.run_attempt }}", p02)
         self.assertIn("default: false", p02)
 
     def test_general_verification_covers_all_pull_requests_on_hosted_runner(self):
@@ -247,6 +266,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.git("update-ref", "refs/remotes/origin/main", self.base)
         for path in (
             "README.md", "docs/AUTHORITY.yaml", "docs/PROJECT_SETUP.md", "docs/README.md",
+            "docs/PINK_CAB_ACTIVE_BASELINE.md", "docs/PROGRAM_ROADMAP.md",
             "scripts/ci/package_g1_recovery.py",
             "scripts/tests/test_ci_powershell_environment.py",
             "scripts/tests/test_package_g1_recovery.py",

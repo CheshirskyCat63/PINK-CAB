@@ -5,15 +5,18 @@ env:
   PSModulePath: 'C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules'
 
 on:
-  workflow_dispatch:
-    inputs:
-      candidate_sha:
-        description: 'Exact candidate SHA to package and launch'
-        required: false
-        type: string
   workflow_call:
     inputs:
       candidate_sha:
+        required: true
+        type: string
+      p02_verified:
+        required: true
+        type: boolean
+      p02_run_id:
+        required: true
+        type: string
+      p02_run_attempt:
         required: true
         type: string
 
@@ -26,7 +29,7 @@ concurrency:
 
 jobs:
   deliver:
-    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) }}
+    if: ${{ inputs.p02_verified && github.event_name == 'workflow_dispatch' && github.workflow == 'CD-648 P02 PHY-009 Drivetrain Continuity' && inputs.p02_run_id == github.run_id && inputs.p02_run_attempt == github.run_attempt }}
     name: Reuse package, smoke, deliver, launch
     runs-on: [self-hosted, Windows, X64, pinkcab]
     timeout-minutes: 30
@@ -34,7 +37,7 @@ jobs:
       UE_ROOT: C:\Program Files\Epic Games\UE_5.8
       DELIVERY_BASE: E:\CHESHIRE_DIVISION\Builds\PINKCAB
       ARCHIVE: Artifacts\CD869Human
-      CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
 
     steps:
       - name: Checkout exact candidate
@@ -43,7 +46,7 @@ jobs:
           fetch-depth: 0
           lfs: false
           clean: false
-          ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.candidate_sha }}
 
       - name: Prepare pinned MetaRoad dependency
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
