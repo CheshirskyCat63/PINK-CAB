@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Cockpit/PinkCabPrototypeVisualProfile.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
+#include "Vehicle/PinkCabVehicleDefinitionTestUtils.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabPrototypeVisualProfileDefaultsTest,
@@ -25,6 +26,61 @@ bool FPinkCabPrototypeVisualProfileDefaultsTest::RunTest(const FString& Paramete
     TestEqual(TEXT("rear-right wheel bone"), Profile.WheelBones[3], FName(TEXT("Phys_Wheel_BR")));
     TestFalse(TEXT("driver transform is explicit, not implicit identity"),
         Profile.DriverTransform.Equals(FTransform::Identity));
+
+    const UPinkCabVehicleDefinition* TatraDefinition =
+        PinkCabVehicleDefinitionTestUtils::LoadTatra();
+    TestNotNull(TEXT("Tatra vehicle definition resolves"), TatraDefinition);
+    if (!TatraDefinition) return false;
+    const FPinkCabVehicleVisualProfile Tatra = TatraDefinition->BuildVisualProfile();
+    TestTrue(TEXT("Tatra presentation profile is structurally valid"), Tatra.IsValid());
+    TestEqual(TEXT("Tatra owns six presentation articulations"), Tatra.Articulations.Num(), 6);
+    for (const FPinkCabVehicleArticulationDefinition& Hinge : Tatra.Articulations)
+    {
+        TestTrue(*FString::Printf(TEXT("%s articulation valid"), *Hinge.ArticulationId.ToString()), Hinge.IsValid());
+    }
+    const FPinkCabVehicleArticulationDefinition* FrontLid =
+        Tatra.Articulations.FindByPredicate([](const FPinkCabVehicleArticulationDefinition& Hinge)
+        {
+            return Hinge.ArticulationId == FName(TEXT("FrontLid"));
+        });
+    TestNotNull(TEXT("reverse front lid is declared"), FrontLid);
+    if (FrontLid)
+    {
+        TestTrue(TEXT("reverse front lid opens around lateral hinge"),
+            FMath::Abs(FrontLid->AxisLocal.Y) > 0.9f);
+        TestTrue(TEXT("reverse front lid pivot matches authored front edge"),
+            FrontLid->PivotLocal.Equals(FVector(235.2f, 0.0f, 82.0f), 0.25f));
+        TestTrue(TEXT("reverse front lid has donor body panel"),
+            FrontLid->PartIds.Num() > 0);
+    }
+
+    const FPinkCabVehicleArticulationDefinition* DoorFL =
+        Tatra.Articulations.FindByPredicate([](const FPinkCabVehicleArticulationDefinition& Hinge)
+        {
+            return Hinge.ArticulationId == FName(TEXT("DoorFL"));
+        });
+    TestNotNull(TEXT("front-left door articulation is declared"), DoorFL);
+    if (DoorFL)
+    {
+        TestTrue(TEXT("front-left hinge matches authored door edge"),
+            DoorFL->PivotLocal.Equals(FVector(73.5f, -91.0f, 85.0f), 0.25f));
+        TestTrue(TEXT("front-left door rotates around vertical axis"),
+            FMath::Abs(DoorFL->AxisLocal.Z) > 0.9f);
+    }
+
+    const FPinkCabVehicleArticulationDefinition* RearLid =
+        Tatra.Articulations.FindByPredicate([](const FPinkCabVehicleArticulationDefinition& Hinge)
+        {
+            return Hinge.ArticulationId == FName(TEXT("RearLid"));
+        });
+    TestNotNull(TEXT("rear lid articulation is declared"), RearLid);
+    if (RearLid)
+    {
+        TestTrue(TEXT("rear lid pivot matches authored forward edge"),
+            RearLid->PivotLocal.Equals(FVector(-187.4f, 0.0f, 85.0f), 0.25f));
+        TestTrue(TEXT("rear lid opens around lateral hinge"),
+            FMath::Abs(RearLid->AxisLocal.Y) > 0.9f);
+    }
 
     const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Fallback();
     TestTrue(TEXT("visual profile is valid without donor art"), Visual.IsValid());

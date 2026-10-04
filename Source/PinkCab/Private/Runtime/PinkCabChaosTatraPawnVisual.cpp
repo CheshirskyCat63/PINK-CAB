@@ -6,6 +6,7 @@
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -16,6 +17,40 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "Math/RotationMatrix.h"
+
+namespace
+{
+void ResetPoseBones(UPoseableMeshComponent& Mesh, const TArray<FName>& Bones)
+{
+    for (const FName Bone : Bones)
+    {
+        if (Mesh.GetBoneIndex(Bone) != INDEX_NONE)
+        {
+            Mesh.ResetBoneTransformByName(Bone);
+        }
+    }
+    Mesh.RefreshBoneTransforms();
+}
+
+void RotatePoseBone(
+    UPoseableMeshComponent& Mesh,
+    const FName Bone,
+    const FQuat& Delta)
+{
+    if (Mesh.GetBoneIndex(Bone) == INDEX_NONE)
+    {
+        return;
+    }
+    FTransform Transform = Mesh.GetBoneTransformByName(
+        Bone,
+        EBoneSpaces::ComponentSpace);
+    Transform.SetRotation((Delta * Transform.GetRotation()).GetNormalized());
+    Mesh.SetBoneTransformByName(
+        Bone,
+        Transform,
+        EBoneSpaces::ComponentSpace);
+}
+}
 
 void APinkCabChaosTatraPawn::EnsurePlayableLighting()
 {
@@ -60,6 +95,91 @@ void APinkCabChaosTatraPawn::EnsurePlayableLighting()
 }
 
 
+void APinkCabChaosTatraPawn::ApplyPrototypeDriverPose(const float Steering)
+{
+    if (!PrototypeDriverVisual || !PrototypeDriverVisual->GetSkinnedAsset())
+    {
+        return;
+    }
+
+    const float ClampedSteering = FMath::Clamp(Steering, -1.0f, 1.0f);
+    if (bPrototypeDriverPoseInitialized
+        && FMath::Abs(ClampedSteering - LastPrototypeDriverSteering) < 0.0125f)
+    {
+        return;
+    }
+
+    static const TArray<FName> PoseBones = {
+        TEXT("pelvis"), TEXT("spine_01"), TEXT("spine_02"), TEXT("spine_03"),
+        TEXT("thigh_l"), TEXT("thigh_r"), TEXT("calf_l"), TEXT("calf_r"),
+        TEXT("foot_l"), TEXT("foot_r"),
+        TEXT("clavicle_l"), TEXT("clavicle_r"),
+        TEXT("upperarm_l"), TEXT("upperarm_r"),
+        TEXT("lowerarm_l"), TEXT("lowerarm_r"),
+        TEXT("hand_l"), TEXT("hand_r")
+    };
+    ResetPoseBones(*PrototypeDriverVisual, PoseBones);
+
+    const auto AxisRotation = [](const FVector& Axis, const float Degrees)
+    {
+        return FQuat(Axis, FMath::DegreesToRadians(Degrees));
+    };
+
+    // Cheap placeholder driver: pelvis/back lean and a stable seated leg chain.
+    // This stays presentation-only; the final heroine animation can replace it
+    // without touching the vehicle/control contracts.
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("pelvis"),
+        AxisRotation(FVector::RightVector, 4.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("spine_01"),
+        AxisRotation(FVector::RightVector, -6.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("spine_02"),
+        AxisRotation(FVector::RightVector, -4.0f));
+    PrototypeDriverVisual->RefreshBoneTransforms();
+
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("thigh_l"),
+        AxisRotation(FVector::RightVector, -73.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("thigh_r"),
+        AxisRotation(FVector::RightVector, -73.0f));
+    PrototypeDriverVisual->RefreshBoneTransforms();
+
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("calf_l"),
+        AxisRotation(FVector::RightVector, 74.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("calf_r"),
+        AxisRotation(FVector::RightVector, 74.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("foot_l"),
+        AxisRotation(FVector::RightVector, 8.0f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("foot_r"),
+        AxisRotation(FVector::RightVector, 8.0f));
+    PrototypeDriverVisual->RefreshBoneTransforms();
+
+    // Bring both arms from the mannequin A-pose toward the wheel. Steering adds
+    // a small opposite hand-height/forearm bias so the dummy visibly follows
+    // the actual cockpit steering state instead of remaining a statue.
+    const float WheelBias = 13.0f * ClampedSteering;
+    const FQuat LeftShoulder =
+        AxisRotation(FVector::UpVector, 67.0f + WheelBias * 0.25f)
+        * AxisRotation(FVector::RightVector, 18.0f);
+    const FQuat RightShoulder =
+        AxisRotation(FVector::UpVector, -67.0f + WheelBias * 0.25f)
+        * AxisRotation(FVector::RightVector, 18.0f);
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("upperarm_l"), LeftShoulder);
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("upperarm_r"), RightShoulder);
+    PrototypeDriverVisual->RefreshBoneTransforms();
+
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("lowerarm_l"),
+        AxisRotation(FVector::UpVector, -42.0f + WheelBias));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("lowerarm_r"),
+        AxisRotation(FVector::UpVector, 42.0f + WheelBias));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("hand_l"),
+        AxisRotation(FVector::ForwardVector, -12.0f - WheelBias * 0.6f));
+    RotatePoseBone(*PrototypeDriverVisual, TEXT("hand_r"),
+        AxisRotation(FVector::ForwardVector, 12.0f - WheelBias * 0.6f));
+    PrototypeDriverVisual->RefreshBoneTransforms();
+
+    LastPrototypeDriverSteering = ClampedSteering;
+    bPrototypeDriverPoseInitialized = true;
+}
+
 bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
 {
     if (!VehicleVisualShell)
@@ -68,25 +188,26 @@ bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
     }
 
     UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
-    if (!Movement || Movement->Wheels.Num() != 4)
+    if (!Movement
+        || Movement->Wheels.Num() != 4
+        || ActiveWheelPresentationPartIds.Num() != 4)
     {
         return false;
     }
 
-    static const FName WheelIds[4] = {
-        TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR")};
     const FPinkCabVehicleVisualProfile& Profile = VehicleVisualShell->GetProfile();
 
     for (int32 Index = 0; Index < 4; ++Index)
     {
+        const FName PartId = ActiveWheelPresentationPartIds[Index];
         UChaosVehicleWheel* ChaosWheel = Movement->Wheels[Index];
         UStaticMeshComponent* VisualWheel =
-            VehicleVisualShell->GetPresentationPartComponent(WheelIds[Index]);
+            VehicleVisualShell->GetPresentationPartComponent(PartId);
         const FPinkCabVehiclePresentationPart* Part =
             Profile.PresentationParts.FindByPredicate(
-                [Index](const FPinkCabVehiclePresentationPart& Candidate)
+                [PartId](const FPinkCabVehiclePresentationPart& Candidate)
                 {
-                    return Candidate.PartId == WheelIds[Index];
+                    return Candidate.PartId == PartId;
                 });
 
         if (!ChaosWheel || !VisualWheel || !Part || ChaosWheel->Location.ContainsNaN())
@@ -152,36 +273,16 @@ bool APinkCabChaosTatraPawn::ConfigureSourceSteeringVisual(
 
     UStaticMeshComponent* SourceSteering =
         VehicleVisualShell->GetPresentationPartComponent(Profile.SteeringPresentationPartId);
-    UStaticMesh* SteeringMesh = SourceSteering ? SourceSteering->GetStaticMesh() : nullptr;
-    if (!SourceSteering || !SteeringMesh)
+    if (!SourceSteering)
     {
         return false;
     }
 
-    // Derive the steering-column pivot from the actual visible source wheel,
-    // not camera/head-space or guessed scene coordinates. The preserved Tatra
-    // wheel is a thin disc; its thinnest local bounds axis is the column axis.
-    const FBoxSphereBounds LocalBounds = SteeringMesh->GetBounds();
-    const FVector Extent = LocalBounds.BoxExtent;
-    FVector LocalAxis = FVector::ForwardVector;
-    if (Extent.Y <= Extent.X && Extent.Y <= Extent.Z)
-    {
-        LocalAxis = FVector::RightVector;
-    }
-    else if (Extent.Z <= Extent.X && Extent.Z <= Extent.Y)
-    {
-        LocalAxis = FVector::UpVector;
-    }
-
-    const FTransform SteeringWorld = SourceSteering->GetComponentTransform();
-    const FVector PivotWorld = SteeringWorld.TransformPosition(LocalBounds.Origin);
-    const FVector AxisWorld =
-        SteeringWorld.TransformVectorNoScale(LocalAxis).GetSafeNormal();
-    const FTransform ShellWorld = VehicleVisualShell->GetComponentTransform();
-    const FVector PivotLocal = ShellWorld.InverseTransformPosition(PivotWorld);
-    const FVector AxisLocal =
-        ShellWorld.InverseTransformVectorNoScale(AxisWorld).GetSafeNormal();
-    if (AxisLocal.IsNearlyZero())
+    const FVector PivotLocal = Profile.SteeringPresentationPivot;
+    const FVector AxisLocal = Profile.SteeringPresentationAxis.GetSafeNormal();
+    if (PivotLocal.ContainsNaN()
+        || Profile.SteeringPresentationAxis.ContainsNaN()
+        || AxisLocal.IsNearlyZero())
     {
         return false;
     }

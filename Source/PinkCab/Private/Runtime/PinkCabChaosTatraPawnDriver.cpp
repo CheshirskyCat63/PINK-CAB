@@ -1,7 +1,9 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabDriverUiComponent.h"
+#include "Runtime/PinkCabVehicleArticulationComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
 #include "Cockpit/PinkCabCockpitInteractionComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
@@ -28,7 +30,67 @@ void APinkCabChaosTatraPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
             IE_Pressed,
             this,
             &APinkCabChaosTatraPawn::CaptureMouseWheelDown);
+
+        // Presentation-only panel controls for the current hero-car gate.
+        // They drive the same named articulation state exposed to later
+        // exterior interaction traces; Chaos road dynamics are untouched.
+        PlayerInputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleDoorFL);
+        PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleDoorFR);
+        PlayerInputComponent->BindKey(EKeys::NumPadThree, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleDoorRL);
+        PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleDoorRR);
+        PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleFrontLid);
+        PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleRearLid);
+        PlayerInputComponent->BindKey(EKeys::F8, IE_Pressed, this, &APinkCabChaosTatraPawn::ToggleVehiclePresentationCamera);
     }
+}
+
+void APinkCabChaosTatraPawn::ToggleDoorFL()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("DoorFL"));
+}
+
+void APinkCabChaosTatraPawn::ToggleDoorFR()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("DoorFR"));
+}
+
+void APinkCabChaosTatraPawn::ToggleDoorRL()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("DoorRL"));
+}
+
+void APinkCabChaosTatraPawn::ToggleDoorRR()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("DoorRR"));
+}
+
+void APinkCabChaosTatraPawn::ToggleFrontLid()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("FrontLid"));
+}
+
+void APinkCabChaosTatraPawn::ToggleRearLid()
+{
+    if (VehicleArticulation) VehicleArticulation->TogglePanel(TEXT("RearLid"));
+}
+
+void APinkCabChaosTatraPawn::SetVehiclePresentationCamera(const bool bChase)
+{
+    if (!DriverCamera || !ChaseCamera)
+    {
+        return;
+    }
+    ChaseCamera->SetActive(bChase);
+    DriverCamera->SetActive(!bChase);
+    if (PrototypeDriverVisual)
+    {
+        PrototypeDriverVisual->SetOwnerNoSee(!bChase);
+    }
+}
+
+void APinkCabChaosTatraPawn::ToggleVehiclePresentationCamera()
+{
+    SetVehiclePresentationCamera(ChaseCamera && !ChaseCamera->IsActive());
 }
 
 void APinkCabChaosTatraPawn::CaptureMouseWheelUp()

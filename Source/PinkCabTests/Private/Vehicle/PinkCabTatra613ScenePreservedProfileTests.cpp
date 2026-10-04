@@ -4,6 +4,7 @@
 #include "Engine/StaticMesh.h"
 #include "Cockpit/PinkCabCockpitVisualBinding.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
+#include "Vehicle/PinkCabVehicleDefinitionTestUtils.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabTatra613ScenePreservedProfileTest,
@@ -12,10 +13,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabTatra613ScenePreservedProfileTest::RunTest(const FString& Parameters)
 {
-    const FPinkCabVehicleVisualProfile Profile = FPinkCabVehicleVisualProfile::Tatra613ScenePreserved();
+    const UPinkCabVehicleDefinition* TatraDefinition =
+        PinkCabVehicleDefinitionTestUtils::LoadTatra();
+    TestNotNull(TEXT("Tatra definition resolves"), TatraDefinition);
+    if (!TatraDefinition) return false;
+    const FPinkCabVehicleVisualProfile Profile = TatraDefinition->BuildVisualProfile();
     TestTrue(TEXT("Tatra 613 scene-preserved profile validates"), Profile.IsValid());
-    TestEqual(TEXT("Tatra 613 desktop scene profile id"), Profile.ProfileId,
-        FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
+    TestEqual(TEXT("Tatra 613 data-driven profile id"), Profile.ProfileId,
+        FName(TEXT("PinkCab.Visual.tatra613")));
     TestTrue(TEXT("scene profile does not use a merged exterior mesh"), Profile.ExteriorStaticMesh.IsNull());
     TestFalse(TEXT("scene profile does not duplicate exterior into a cabin mesh"), Profile.bUseExteriorAsCabinWhenCabinMissing);
     TestEqual(TEXT("scene profile contains all 133 source meshes plus four V12Clean wheels"),

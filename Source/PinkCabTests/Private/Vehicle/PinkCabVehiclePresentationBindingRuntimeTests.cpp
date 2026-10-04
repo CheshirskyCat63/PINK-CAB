@@ -16,6 +16,7 @@
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
+#include "Vehicle/PinkCabVehicleDefinitionTestUtils.h"
 #include "HAL/PlatformTime.h"
 
 class FPinkCabVehiclePresentationBindingCommand final : public IAutomationLatentCommand
@@ -52,8 +53,14 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestNotNull(TEXT("cockpit visual driver exists"), VisualDriver);
     Test->TestNotNull(TEXT("vehicle visual shell exists"), Shell);
     if (!Assembly || !VisualDriver || !Shell) return true;
-    Test->TestEqual(TEXT("playable map starts with Tatra 613 desktop-clean profile"),
-        Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
+    const UPinkCabVehicleDefinition* TatraDefinition =
+        PinkCabVehicleDefinitionTestUtils::LoadTatra();
+    Test->TestNotNull(TEXT("playable map Tatra definition resolves"), TatraDefinition);
+    if (!TatraDefinition) return true;
+    Test->TestEqual(TEXT("playable map starts with selected Tatra definition"),
+        Pawn->GetVehicleDefinitionId(), TatraDefinition->VehicleId);
+    Test->TestEqual(TEXT("playable map starts with data-driven Tatra profile"),
+        Pawn->GetVehicleVisualProfileId(), TatraDefinition->VisualProfile.ProfileId);
     Test->TestNotNull(TEXT("playable map starts with visible Tatra presentation"), Shell->GetExteriorPresentation());
     Test->TestNotNull(TEXT("playable map starts with owner-visible source scene"), Shell->GetCabinPresentation());
     Test->TestEqual(TEXT("playable map renders all 133 source meshes plus four V12Clean wheels"),
@@ -87,8 +94,22 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     if (!SteeringPivot) return true;
     Test->TestTrue(TEXT("the actual source steering mesh is parented to the live pivot"),
         SourceSteering->GetAttachParent() == SteeringPivot);
+    const FBox SteeringBounds = SourceSteering->Bounds.GetBox();
+    Test->AddInfo(FString::Printf(
+        TEXT("STEERING_ANCHOR_DIAG pivot=(%.3f,%.3f,%.3f) boundsMin=(%.3f,%.3f,%.3f) boundsMax=(%.3f,%.3f,%.3f) profilePivot=(%.3f,%.3f,%.3f) profileAxis=(%.4f,%.4f,%.4f)"),
+        SteeringPivot->GetComponentLocation().X,
+        SteeringPivot->GetComponentLocation().Y,
+        SteeringPivot->GetComponentLocation().Z,
+        SteeringBounds.Min.X, SteeringBounds.Min.Y, SteeringBounds.Min.Z,
+        SteeringBounds.Max.X, SteeringBounds.Max.Y, SteeringBounds.Max.Z,
+        ActiveProfile.SteeringPresentationPivot.X,
+        ActiveProfile.SteeringPresentationPivot.Y,
+        ActiveProfile.SteeringPresentationPivot.Z,
+        ActiveProfile.SteeringPresentationAxis.X,
+        ActiveProfile.SteeringPresentationAxis.Y,
+        ActiveProfile.SteeringPresentationAxis.Z));
     Test->TestTrue(TEXT("steering-column pivot lies inside the actual steering-wheel bounds"),
-        SourceSteering->Bounds.GetBox().IsInsideOrOn(SteeringPivot->GetComponentLocation()));
+        SteeringBounds.IsInsideOrOn(SteeringPivot->GetComponentLocation()));
 
     const FTransform OriginalPivot = SteeringPivot->GetRelativeTransform();
     const FTransform OriginalSourceWorld = SourceSteering->GetComponentTransform();
@@ -147,10 +168,10 @@ bool FPinkCabVehiclePresentationBindingCommand::Update()
     Test->TestTrue(TEXT("physics chassis returns when test exterior is removed"), Pawn->GetMesh()->IsVisible());
     Test->TestTrue(TEXT("fallback restores primitive steering visibility"),
         SteeringPrimitive && !SteeringPrimitive->bHiddenInGame);
-    Test->TestTrue(TEXT("scene-preserved profile reapplies after fallback"),
-        Pawn->ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved()));
-    Test->TestEqual(TEXT("desktop-clean profile id restored after fallback proof"),
-        Pawn->GetVehicleVisualProfileId(), FName(TEXT("PinkCab.Visual.Tatra613.ScenePreserved")));
+    Test->TestTrue(TEXT("data-driven Tatra definition reapplies after fallback"),
+        Pawn->ApplyVehicleDefinition(*TatraDefinition));
+    Test->TestEqual(TEXT("data-driven Tatra profile id restored after fallback proof"),
+        Pawn->GetVehicleVisualProfileId(), TatraDefinition->VisualProfile.ProfileId);
     return true;
 }
 

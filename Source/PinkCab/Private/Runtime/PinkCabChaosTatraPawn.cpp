@@ -9,6 +9,7 @@
 #include "Cockpit/PinkCabCockpitServiceBridge.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -36,6 +37,7 @@
 #include "Vehicle/PinkCabVehicleStateSnapshot.h"
 #include "Vehicle/PinkCabChaosLoadBridge.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
+#include "Runtime/PinkCabVehicleArticulationComponent.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Vehicle/PinkCabChaosWheelFront.h"
@@ -46,6 +48,8 @@
 #include "Vehicle/PinkCabCockpitInteractionRouter.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Vehicle/PinkCabVehicleInputResponse.h"
+#include "Vehicle/PinkCabVehicleDefinition.h"
+#include "Vehicle/PinkCabVehicleSettings.h"
 
 namespace
 {
@@ -69,72 +73,6 @@ void ConfigurePhysicsVehicleMesh(
     VehicleMesh.SetOwnerNoSee(true);
 }
 
-FVector ResolveWheelBoneLocalPosition(
-    const USkeletalMeshComponent& Mesh,
-    const FName BoneName)
-{
-    const USkinnedAsset* Asset = Mesh.GetSkinnedAsset();
-    if (!Asset || BoneName.IsNone())
-    {
-        return FVector::ZeroVector;
-    }
-
-    const FVector BonePosition =
-        Asset->GetComposedRefPoseMatrix(BoneName).GetOrigin() * Mesh.GetRelativeScale3D();
-    FMatrix RootBodyMatrix = FMatrix::Identity;
-    if (const FBodyInstance* BodyInstance = Mesh.GetBodyInstance())
-    {
-        if (BodyInstance->BodySetup.IsValid())
-        {
-            RootBodyMatrix = Asset->GetComposedRefPoseMatrix(BodyInstance->BodySetup->BoneName);
-        }
-    }
-    return RootBodyMatrix.InverseTransformPosition(BonePosition);
-}
-
-const FPinkCabVehiclePresentationPart* FindPresentationPart(
-    const FPinkCabVehicleVisualProfile& Profile,
-    const FName PartId)
-{
-    return Profile.PresentationParts.FindByPredicate([PartId](const FPinkCabVehiclePresentationPart& Part)
-    {
-        return Part.PartId == PartId;
-    });
-}
-
-bool BindChaosWheelsToTatraGeometry(
-    UChaosWheeledVehicleMovementComponent& Movement,
-    const USkeletalMeshComponent& Mesh,
-    const FPinkCabVehicleVisualProfile& TatraVisual)
-{
-    if (Movement.WheelSetups.Num() != 4)
-    {
-        return false;
-    }
-
-    const FName PartIds[4] = { TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR") };
-    for (int32 Index = 0; Index < 4; ++Index)
-    {
-        FChaosWheelSetup& Setup = Movement.WheelSetups[Index];
-        const FPinkCabVehiclePresentationPart* Part = FindPresentationPart(TatraVisual, PartIds[Index]);
-        if (!Part || !Setup.WheelClass)
-        {
-            return false;
-        }
-
-        const UChaosVehicleWheel* WheelDefaults = Setup.WheelClass.GetDefaultObject();
-        if (!WheelDefaults)
-        {
-            return false;
-        }
-
-        const FVector BaseRestPosition =
-            ResolveWheelBoneLocalPosition(Mesh, Setup.BoneName) + WheelDefaults->Offset;
-        Setup.AdditionalOffset = Part->LocalTransform.GetLocation() - BaseRestPosition;
-    }
-    return true;
-}
-
 }
 
 APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
@@ -155,6 +93,8 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
     VehicleVisualShell = CreateDefaultSubobject<UPinkCabVehicleVisualShellComponent>(TEXT("VehicleVisualShell"));
     VehicleVisualShell->SetupAttachment(VehicleMesh);
 
+    VehicleArticulation = CreateDefaultSubobject<UPinkCabVehicleArticulationComponent>(TEXT("VehicleArticulation"));
+
     CockpitAssembly = CreateDefaultSubobject<UPinkCabCockpitAssemblyComponent>(TEXT("CockpitAssembly"));
     CockpitAssembly->SetupAttachment(VehicleMesh);
     CockpitAssembly->SetRelativeTransform(PrototypeVisualProfile.CockpitRootTransform);
@@ -162,16 +102,16 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
     CockpitInteraction = CreateDefaultSubobject<UPinkCabCockpitInteractionComponent>(TEXT("CockpitInteraction"));
     CockpitVisualDriver = CreateDefaultSubobject<UPinkCabCockpitVisualDriverComponent>(TEXT("CockpitVisualDriver"));
 
-    PrototypeDriverVisual = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PrototypeDriverVisual"));
+    PrototypeDriverVisual = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PrototypeDriverVisual"));
     PrototypeDriverVisual->SetupAttachment(VehicleMesh);
     PrototypeDriverVisual->SetRelativeTransform(PrototypeVisualProfile.DriverTransform);
     PrototypeDriverVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     PrototypeDriverVisual->SetGenerateOverlapEvents(false);
-    PrototypeDriverVisual->SetCastShadow(false);
+    PrototypeDriverVisual->SetCastShadow(true);
     PrototypeDriverVisual->SetOwnerNoSee(true);
     if (USkeletalMesh* DriverAsset = Cast<USkeletalMesh>(PrototypeVisualProfile.DriverMeshPath.TryLoad()))
     {
-        PrototypeDriverVisual->SetSkeletalMesh(DriverAsset);
+        PrototypeDriverVisual->SetSkinnedAssetAndUpdate(DriverAsset, true);
     }
 
     DriverHeadRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DriverHeadRoot"));
@@ -237,7 +177,27 @@ void APinkCabChaosTatraPawn::BeginPlay()
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     EnsurePlayableLighting();
-    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved());
+
+    const UPinkCabVehicleSettings* VehicleSettings =
+        GetDefault<UPinkCabVehicleSettings>();
+    const UPinkCabVehicleDefinition* VehicleDefinition = VehicleSettings
+        ? VehicleSettings->LoadSelectedDefinition(FCommandLine::Get())
+        : nullptr;
+    if (!VehicleDefinition || !ApplyVehicleDefinition(*VehicleDefinition))
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("PINKCAB_VEHICLE_STARTUP_DEFINITION_FAIL path=%s"),
+            VehicleSettings
+                ? *VehicleSettings->DefaultVehicleDefinition.ToSoftObjectPath().ToString()
+                : TEXT("<settings-unavailable>"));
+    }
+
+    if (VehicleArticulation)
+    {
+        VehicleArticulation->SetVisualShell(VehicleVisualShell);
+    }
+    bPrototypeDriverPoseInitialized = false;
+    ApplyPrototypeDriverPose(0.0f);
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();
@@ -325,6 +285,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
         DeltaSeconds);
     UpdateDriverLook(PlayerInput, bPhysicalManipulationActive, DeltaSeconds);
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
+    ApplyPrototypeDriverPose(Presentation.Steering);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
     UpdateDriverUiState(Presentation);
     const double TelemetryNowSeconds = FPlatformTime::Seconds();

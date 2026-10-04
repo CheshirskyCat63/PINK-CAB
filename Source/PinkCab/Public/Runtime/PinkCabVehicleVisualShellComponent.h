@@ -25,6 +25,8 @@ public:
     UPrimitiveComponent* GetCabinPresentation() const;
     int32 GetPresentationPartCount() const { return PresentationPartComponents.Num(); }
     UStaticMeshComponent* GetPresentationPartComponent(FName PartId) const;
+    USceneComponent* GetArticulationRoot(FName ArticulationId) const;
+    bool SetArticulationFraction(FName ArticulationId, float Fraction);
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
     bool RebuildPresentation();
 
@@ -32,7 +34,9 @@ private:
     UPrimitiveComponent* BuildExterior();
     UPrimitiveComponent* BuildCabin();
     bool BuildPresentationParts();
+    bool BuildArticulationRoots();
     void DestroyPresentationParts();
+    void DestroyArticulationRoots();
     void DestroyPresentationComponent(TObjectPtr<UPrimitiveComponent>& Component);
 
     UPROPERTY(EditAnywhere, Category="Vehicle|Visual")
@@ -46,4 +50,9 @@ private:
 
     UPROPERTY(Transient)
     TArray<TObjectPtr<UStaticMeshComponent>> PresentationPartComponents;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<USceneComponent>> ArticulationRoots;
+
+    TMap<FName, int32> ArticulationRootIndices;
 };

@@ -12,6 +12,7 @@
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabVehicleVisualProfile.h"
+#include "Vehicle/PinkCabVehicleDefinitionTestUtils.h"
 
 namespace
 {
@@ -49,7 +50,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabTatra613V12AssetContractTest::RunTest(const FString& Parameters)
 {
-    const FPinkCabVehicleVisualProfile Visual = FPinkCabVehicleVisualProfile::Tatra613ScenePreserved();
+    const UPinkCabVehicleDefinition* TatraDefinition =
+        PinkCabVehicleDefinitionTestUtils::LoadTatra();
+    TestNotNull(TEXT("Tatra definition resolves"), TatraDefinition);
+    if (!TatraDefinition) return false;
+    FString DefinitionFailure;
+    TestTrue(TEXT("Tatra definition validates"), TatraDefinition->IsValid(&DefinitionFailure));
+    const FPinkCabVehicleVisualProfile Visual = TatraDefinition->BuildVisualProfile();
     const FPinkCabChaosPhysicalProfile Physical = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
 
     TestEqual(TEXT("desktop TATRA613 does not replace source cockpit geometry"),

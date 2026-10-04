@@ -6,6 +6,7 @@
 
 class UStaticMesh;
 class USkeletalMesh;
+class UMaterialInterface;
 
 USTRUCT(BlueprintType)
 struct PINKCAB_API FPinkCabVehiclePresentationPart
@@ -24,10 +25,39 @@ struct PINKCAB_API FPinkCabVehiclePresentationPart
     FTransform LocalTransform = FTransform::Identity;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TSoftObjectPtr<UMaterialInterface> MaterialOverride;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     bool bOwnerNoSee = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     bool bOnlyOwnerSee = false;
+};
+
+USTRUCT(BlueprintType)
+struct PINKCAB_API FPinkCabVehicleArticulationDefinition
+{
+    GENERATED_BODY()
+
+    bool IsValid() const;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FName ArticulationId = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FVector PivotLocal = FVector::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    FVector AxisLocal = FVector::UpVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    float OpenAngleDegrees = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    float TravelSeconds = 0.55f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TArray<FName> PartIds;
 };
 
 USTRUCT(BlueprintType)
@@ -36,7 +66,6 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
     GENERATED_BODY()
 
     static FPinkCabVehicleVisualProfile Fallback();
-    static FPinkCabVehicleVisualProfile Tatra613ScenePreserved();
 
     bool IsValid() const;
     bool HasExteriorAsset() const;
@@ -69,6 +98,9 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     TArray<FPinkCabVehiclePresentationPart> PresentationParts;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    TArray<FPinkCabVehicleArticulationDefinition> Articulations;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     TArray<FPinkCabCockpitVisualBinding> CockpitBindings;

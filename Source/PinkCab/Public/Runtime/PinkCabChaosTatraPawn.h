@@ -19,11 +19,13 @@ class UChaosWheeledVehicleMovementComponent;
 class UCameraComponent;
 class USceneComponent;
 class USkeletalMeshComponent;
+class UPoseableMeshComponent;
 class USpringArmComponent;
 class UPinkCabCockpitAssemblyComponent;
 class UPinkCabCockpitInteractionComponent;
 class UPinkCabCockpitVisualDriverComponent;
 class UPinkCabVehicleVisualShellComponent;
+class UPinkCabVehicleArticulationComponent;
 class UPinkCabVehicleDefinition;
 class UPinkCabDriverUiComponent;
 struct FPinkCabInteractionEvent;
@@ -56,9 +58,12 @@ public:
     UPinkCabCockpitInteractionComponent* GetCockpitInteraction() const { return CockpitInteraction; }
     UPinkCabCockpitVisualDriverComponent* GetCockpitVisualDriver() const { return CockpitVisualDriver; }
     FName GetPrototypeVisualProfileId() const { return PrototypeVisualProfile.ProfileId; }
-    USkeletalMeshComponent* GetPrototypeDriverVisual() const { return PrototypeDriverVisual; }
+    UPoseableMeshComponent* GetPrototypeDriverVisual() const { return PrototypeDriverVisual; }
     UCameraComponent* GetDriverCamera() const { return DriverCamera; }
+    UCameraComponent* GetChaseCamera() const { return ChaseCamera; }
+    void SetVehiclePresentationCamera(bool bChase);
     UPinkCabVehicleVisualShellComponent* GetVehicleVisualShell() const { return VehicleVisualShell; }
+    UPinkCabVehicleArticulationComponent* GetVehicleArticulation() const { return VehicleArticulation; }
     FName GetVehicleVisualProfileId() const;
     bool ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile);
     bool ApplyVehicleDefinition(const UPinkCabVehicleDefinition& Definition);
@@ -114,6 +119,9 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Visual")
     TObjectPtr<UPinkCabVehicleVisualShellComponent> VehicleVisualShell;
 
+    UPROPERTY(VisibleAnywhere, Category = "PinkCab|Visual")
+    TObjectPtr<UPinkCabVehicleArticulationComponent> VehicleArticulation;
+
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<UPinkCabCockpitAssemblyComponent> CockpitAssembly;
 
@@ -124,7 +132,7 @@ private:
     TObjectPtr<UPinkCabCockpitVisualDriverComponent> CockpitVisualDriver;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|PrototypeVisual")
-    TObjectPtr<USkeletalMeshComponent> PrototypeDriverVisual;
+    TObjectPtr<UPoseableMeshComponent> PrototypeDriverVisual;
 
     UPROPERTY(VisibleAnywhere, Category = "PinkCab|Cockpit")
     TObjectPtr<USceneComponent> DriverHeadRoot;
@@ -160,6 +168,7 @@ private:
     FPinkCabCockpitPresentationState BuildCockpitPresentation(float DeltaSeconds);
     void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
     void EnsurePlayableLighting();
+    void ApplyPrototypeDriverPose(float Steering);
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
     void EmitPackagedGateTelemetry(double NowSeconds);
     void RecordCausalTelemetry(double NowSeconds, float DeltaSeconds);
@@ -167,10 +176,18 @@ private:
     void CaptureMouseWheelUp();
     void CaptureMouseWheelDown();
     void QueueMouseWheelStep(int32 Step);
+    void ToggleDoorFL();
+    void ToggleDoorFR();
+    void ToggleDoorRL();
+    void ToggleDoorRR();
+    void ToggleFrontLid();
+    void ToggleRearLid();
+    void ToggleVehiclePresentationCamera();
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
         FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
     FName ActiveVehicleDefinitionId = NAME_None;
+    TArray<FName> ActiveWheelPresentationPartIds;
     FPinkCabTatraProfile TatraProfile = FPinkCabTatraProfile::Canonical();
     FPinkCabVehicleLoadState VehicleLoadState;
     FPinkCabVehicleDamageProfile VehicleDamageProfile{TEXT("PinkCab.Damage.Fallback")};
@@ -200,6 +217,8 @@ private:
     float SmoothedLookMouseX = 0.0f;
     float SmoothedLookMouseY = 0.0f;
     float VisualSteering = 0.0f;
+    float LastPrototypeDriverSteering = 0.0f;
+    bool bPrototypeDriverPoseInitialized = false;
     float EngineTemperature01 = 0.15f;
     float LookYaw = 0.0f;
     float LookPitch = 0.0f;

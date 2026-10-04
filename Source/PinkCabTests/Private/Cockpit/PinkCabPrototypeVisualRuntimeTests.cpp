@@ -2,7 +2,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "EngineUtils.h"
@@ -30,10 +30,12 @@ public:
 
         Test->TestEqual(TEXT("prototype visual profile is explicit"),
             Pawn->GetPrototypeVisualProfileId(), FName(TEXT("Epic.SportsCar.Manny")));
-        USkeletalMeshComponent* Driver = Pawn->GetPrototypeDriverVisual();
-        Test->TestNotNull(TEXT("driver placeholder component exists"), Driver);
-        Test->TestTrue(TEXT("driver placeholder has a skeletal mesh"),
-            Driver && Driver->GetSkeletalMeshAsset() != nullptr);
+        UPoseableMeshComponent* Driver = Pawn->GetPrototypeDriverVisual();
+        Test->TestNotNull(TEXT("driver placeholder pose component exists"), Driver);
+        Test->TestTrue(TEXT("driver placeholder has a skinned mesh"),
+            Driver && Driver->GetSkinnedAsset() != nullptr);
+        Test->TestTrue(TEXT("driver placeholder has a pelvis"),
+            Driver && Driver->GetBoneIndex(TEXT("pelvis")) != INDEX_NONE);
         Test->TestTrue(TEXT("driver camera remains active"),
             Pawn->GetDriverCamera() && Pawn->GetDriverCamera()->IsActive());
         return true;

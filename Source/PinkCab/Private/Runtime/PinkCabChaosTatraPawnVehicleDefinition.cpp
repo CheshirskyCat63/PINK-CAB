@@ -105,6 +105,11 @@ bool APinkCabChaosTatraPawn::ApplyVehicleDefinition(
 
     ApplyCarrierAssets(*VehicleMesh, *CarrierMesh, *CarrierPhysics);
     ApplyWheelBindings(*Movement, WheelBindings);
+    ActiveWheelPresentationPartIds.Reset(4);
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        ActiveWheelPresentationPartIds.Add(WheelBindings[Index]->PresentationPartId);
+    }
 
     if (USkinnedMeshComponent* DriverVisual = PrototypeDriverVisual)
     {
