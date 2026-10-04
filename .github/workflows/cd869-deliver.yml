@@ -445,6 +445,18 @@ jobs:
             if($proc -and -not $proc.HasExited){ Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
           }
 
+      - name: P04 packaged road acceptance
+        shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'
+        run: |
+          $ErrorActionPreference='Stop'
+          $archive=Join-Path $env:GITHUB_WORKSPACE $env:ARCHIVE
+          $inner=Join-Path $archive 'Windows\PinkCab\Binaries\Win64\PinkCab.exe'
+          $logs=Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\P04_PACKAGED_ACCEPTANCE'
+          & .\scripts\ci\run-p04-packaged-acceptance.ps1 `
+            -ExePath $inner `
+            -LogRoot $logs
+          if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
       - name: Install and verify immutable candidate without changing desktop
         id: install
         shell: 'powershell -NoProfile -ExecutionPolicy Bypass -File {0}'

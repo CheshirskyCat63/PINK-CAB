@@ -261,6 +261,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
         FParse::Param(FCommandLine::Get(), TEXT("PinkCabGateTelemetry"));
     bCausalTelemetryEnabled =
         FParse::Param(FCommandLine::Get(), TEXT("PinkCabCausalTelemetry"));
+    InitializeP04PackagedAcceptance();
     if (bCausalTelemetryEnabled)
     {
         CausalTelemetryTrace.Reset();
@@ -297,6 +298,12 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     if (!UGameplayStatics::IsGamePaused(this))
     {
         SyncWheelPresentationFromChaos();
+    }
+    if (bP04PackagedAcceptanceEnabled)
+    {
+        TickP04PackagedAcceptance(DeltaSeconds);
+        EmitPackagedGateTelemetry(FPlatformTime::Seconds());
+        return;
     }
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
