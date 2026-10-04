@@ -15,10 +15,10 @@ on:
         type: boolean
       p02_run_id:
         required: true
-        type: number
+        type: string
       p02_run_attempt:
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: read

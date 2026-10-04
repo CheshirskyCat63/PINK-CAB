@@ -150,6 +150,8 @@ class WorkflowTrustTests(unittest.TestCase):
         self.assertIn("  workflow_call:", triggers)
         for token in ("p02_verified:", "p02_run_id:", "p02_run_attempt:"):
             self.assertIn(token, triggers)
+        self.assertIn("p02_run_id:\n        required: true\n        type: string", triggers)
+        self.assertIn("p02_run_attempt:\n        required: true\n        type: string", triggers)
         guard = re.search(r"(?m)^    if: (.+)$", delivery)
         self.assertIsNotNone(guard)
         for token in (
