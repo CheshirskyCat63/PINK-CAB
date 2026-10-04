@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "PinkCabAutomationWriteGuard.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "FileHelpers.h"
@@ -21,6 +22,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabGenerateL1EndlessRoadMap::RunTest(const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateL1EndlessRoadMap")))
+    {
+        return true;
+    }
+
     const FString MapPackage = TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight");
     if (FPackageName::DoesPackageExist(MapPackage))
     {

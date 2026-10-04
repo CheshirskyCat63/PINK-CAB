@@ -88,7 +88,7 @@ jobs:
           $project="$env:GITHUB_WORKSPACE\PinkCab.uproject"
           $log="$env:GITHUB_WORKSPACE\Saved\GitHubGate\CD869_R5_AUTHOR.log"
           New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial" "-TestExit=Automation Test Queue Empty"
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -PinkCabAllowAssetAuthoring -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial" "-TestExit=Automation Test Queue Empty"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
           if(Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet){
             throw 'CD869_R5_AUTHOR_TEST_FAIL'

@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "PinkCabAutomationWriteGuard.h"
 #include "Interaction/PinkCabContractCabinPrimitive.h"
 #include "Editor.h"
 #include "FileHelpers.h"
@@ -13,6 +14,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabGenerateContractZeroCabinPrimitive::RunTest(const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateContractZeroCabinPrimitive")))
+    {
+        return true;
+    }
+
     if (!FEditorFileUtils::LoadMap(TEXT("/Game/Dev/Maps/L_PinkCab_ContractZero"), false, true))
     {
         AddError(TEXT("ContractZero map failed to load"));

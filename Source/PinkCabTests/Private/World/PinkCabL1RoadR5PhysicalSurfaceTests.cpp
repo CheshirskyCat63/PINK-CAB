@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "PinkCabAutomationWriteGuard.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Components/StaticMeshComponent.h"
@@ -63,6 +64,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGenerateL1RoadR5DryAsphaltPhysicalMaterial::RunTest(
     const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial")))
+    {
+        return true;
+    }
+
     using namespace PinkCabL1RoadR5PhysicalSurfaceTests;
 
     UPhysicalMaterial* Material =

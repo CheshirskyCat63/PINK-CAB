@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "PinkCabAutomationWriteGuard.h"
 #include "Misc/PackageName.h"
 #include "World/PinkCabVerticalAcceptanceCourse.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -15,6 +16,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabGenerateVerticalAcceptanceMap::RunTest(const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateVerticalAcceptanceMap")))
+    {
+        return true;
+    }
+
     const FString MapPackage = TEXT("/Game/Dev/Maps/L_PinkCab_VerticalAcceptance");
     if (FPackageName::DoesPackageExist(MapPackage))
     {
