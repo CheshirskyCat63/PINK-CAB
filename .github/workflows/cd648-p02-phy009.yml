@@ -325,4 +325,7 @@ jobs:
     uses: ./.github/workflows/cd869-deliver.yml
     with:
       candidate_sha: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
+      p02_verified: true
+      p02_run_id: ${{ github.run_id }}
+      p02_run_attempt: ${{ github.run_attempt }}
     secrets: inherit
