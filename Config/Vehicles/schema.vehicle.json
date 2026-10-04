@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "PinkCab.VehicleManifest.v1",
+  "title": "PINK CAB Vehicle Authoring Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "slug",
+    "vehicle_id",
+    "definition_asset",
+    "source",
+    "physics",
+    "presentation",
+    "driver"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "definition_asset": {
+      "type": "string",
+      "pattern": "^/(Game|Engine)/"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "path",
+        "provenance",
+        "mode"
+      ]
+    },
+    "physics": {
+      "type": "object",
+      "required": [
+        "carrier_mesh",
+        "physics_asset",
+        "wheels"
+      ]
+    },
+    "presentation": {
+      "type": "object",
+      "required": [
+        "mode",
+        "asset_root",
+        "root_transform",
+        "parts",
+        "material_palette",
+        "material_rules",
+        "articulations",
+        "steering",
+        "cockpit_bindings"
+      ]
+    },
+    "driver": {
+      "type": "object",
+      "required": [
+        "mesh",
+        "transform",
+        "head_transform"
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "notes": "Runtime validation authority is scripts/vehicles/vehicle_manifest.py; this schema documents the stable top-level contract without adding a jsonschema dependency."
+}

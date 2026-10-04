@@ -1,0 +1,406 @@
+{
+  "schema_version": 1,
+  "slug": "tatra613",
+  "vehicle_id": "PinkCab.Vehicle.Tatra613",
+  "definition_asset": "/Game/Dev/Vehicles/Definitions/DA_PC_Vehicle_tatra613",
+  "source": {
+    "root": "studio",
+    "path": "SourceAssets/PINK-CAB/Tatra613/working/TATRA613_CHAOS_RIG_04_CABIN_CONTROLS_AXLEFIX.blend",
+    "provenance": "Sketchfab Tatra 613 source under the project-recorded CC BY 4.0 provenance; canonical working blend is the single source used for this profile.",
+    "mode": "existing_assets"
+  },
+  "physics": {
+    "carrier_mesh": "/Game/Vehicles/SportsCar/SKM_SportsCar.SKM_SportsCar",
+    "physics_asset": "/Game/Vehicles/SportsCar/PA_SportsCar.PA_SportsCar",
+    "wheels": [
+      {
+        "id": "WheelFL",
+        "bone": "Phys_Wheel_FL",
+        "presentation_part": "WheelFL",
+        "mesh": "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel",
+        "transform": {
+          "location": [
+            135.012,
+            -76,
+            32.667
+          ],
+          "rotation": [
+            0,
+            -90,
+            180
+          ],
+          "scale": [
+            1.0189712,
+            1.5406767,
+            1.5990789
+          ]
+        }
+      },
+      {
+        "id": "WheelFR",
+        "bone": "Phys_Wheel_FR",
+        "presentation_part": "WheelFR",
+        "mesh": "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel",
+        "transform": {
+          "location": [
+            135.012,
+            76,
+            32.667
+          ],
+          "rotation": [
+            0,
+            -90,
+            0
+          ],
+          "scale": [
+            1.0189712,
+            1.5406767,
+            1.5990789
+          ]
+        }
+      },
+      {
+        "id": "WheelRL",
+        "bone": "Phys_Wheel_BL",
+        "presentation_part": "WheelRL",
+        "mesh": "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel",
+        "transform": {
+          "location": [
+            -162.988,
+            -76,
+            32.667
+          ],
+          "rotation": [
+            0,
+            -90,
+            180
+          ],
+          "scale": [
+            1.0189712,
+            1.5406767,
+            1.5990789
+          ]
+        }
+      },
+      {
+        "id": "WheelRR",
+        "bone": "Phys_Wheel_BR",
+        "presentation_part": "WheelRR",
+        "mesh": "/Game/Dev/Vehicles/Tatra613ArchiveV12Clean/Tatra613_V12_Wheel/StaticMeshes/Tatra613_V12_Wheel.Tatra613_V12_Wheel",
+        "transform": {
+          "location": [
+            -162.988,
+            76,
+            32.667
+          ],
+          "rotation": [
+            0,
+            -90,
+            0
+          ],
+          "scale": [
+            1.0189712,
+            1.5406767,
+            1.5990789
+          ]
+        }
+      }
+    ]
+  },
+  "presentation": {
+    "mode": "discover",
+    "asset_root": "/Game/Dev/Vehicles/Tatra613DesktopScene/Tatra613_ScenePreserved/StaticMeshes",
+    "root_transform": {
+      "location": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        1.703831800036479,
+        1.703831800036479,
+        1.703831800036479
+      ]
+    },
+    "parts": [],
+    "discovery": {
+      "id_format": "Scene_{index:03d}",
+      "exclude_leafs": []
+    },
+    "material_palette": {
+      "BodyPaint": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_BodyPaint.M_PC_Tatra_BodyPaint",
+      "Chrome": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_Chrome.M_PC_Tatra_Chrome",
+      "Glass": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_Glass.M_PC_Tatra_Glass",
+      "RubberPlastic": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_RubberPlastic.M_PC_Tatra_RubberPlastic",
+      "InteriorVinyl": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_InteriorVinyl.M_PC_Tatra_InteriorVinyl",
+      "Fabric": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_Fabric.M_PC_Tatra_Fabric",
+      "Mirror": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_Mirror.M_PC_Tatra_Mirror",
+      "LightWhite": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_LightWhite.M_PC_Tatra_LightWhite",
+      "LightRed": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_LightRed.M_PC_Tatra_LightRed",
+      "LightAmber": "/Game/Dev/Vehicles/Tatra613Presentation/Materials/M_PC_Tatra_LightAmber.M_PC_Tatra_LightAmber"
+    },
+    "material_rules": [
+      {
+        "semantic": "LightRed",
+        "contains": [
+          "brakelight",
+          "redglass",
+          "ffff0000",
+          "oil_material"
+        ]
+      },
+      {
+        "semantic": "LightAmber",
+        "contains": [
+          "signal_",
+          "orangeglass",
+          "lowfuel"
+        ]
+      },
+      {
+        "semantic": "LightWhite",
+        "contains": [
+          "headglass",
+          "vehiclelights",
+          "highbeam",
+          "lowbeam",
+          "rearlowbeam",
+          "reverse_material",
+          "white_material",
+          "on_material"
+        ]
+      },
+      {
+        "semantic": "Glass",
+        "contains": [
+          "t613_glass_material",
+          "tintglassb"
+        ]
+      },
+      {
+        "semantic": "Mirror",
+        "contains": [
+          "mirror_material"
+        ]
+      },
+      {
+        "semantic": "BodyPaint",
+        "contains": [
+          "pessimat613_body_material"
+        ]
+      },
+      {
+        "semantic": "Chrome",
+        "contains": [
+          "t613_chrome_material",
+          "t613_chrome_022_material"
+        ]
+      },
+      {
+        "semantic": "Fabric",
+        "contains": [
+          "leatherspec5"
+        ]
+      },
+      {
+        "semantic": "InteriorVinyl",
+        "contains": [
+          "interiorspec",
+          "int1_material",
+          "int2_material",
+          "parkingbrake"
+        ]
+      },
+      {
+        "semantic": "RubberPlastic",
+        "contains": [
+          "t613_black_material",
+          "matte__ff000000"
+        ]
+      }
+    ],
+    "articulations": [
+      {
+        "id": "DoorFL",
+        "pivot": [
+          73.5,
+          -91,
+          85
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "open_angle_degrees": 70,
+        "travel_seconds": 0.48,
+        "parts": [
+          "pessimat613_body_material_002",
+          "t613_Black_material_011",
+          "t613_chrome_material_022",
+          "t613_glass_material_001",
+          "mirror_material_001",
+          "t613_chrome_material_008"
+        ]
+      },
+      {
+        "id": "DoorFR",
+        "pivot": [
+          73.5,
+          91,
+          85
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "open_angle_degrees": -70,
+        "travel_seconds": 0.48,
+        "parts": [
+          "pessimat613_body_material_005",
+          "t613_Black_material_014",
+          "t613_chrome_material_014",
+          "t613_glass_material_005",
+          "mirror_material",
+          "t613_chrome_material_013"
+        ]
+      },
+      {
+        "id": "DoorRL",
+        "pivot": [
+          -30.4,
+          -91,
+          84
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "open_angle_degrees": 68,
+        "travel_seconds": 0.52,
+        "parts": [
+          "pessimat613_body_material_009",
+          "t613_Black_material_012",
+          "t613_chrome_material_025",
+          "t613_glass_material_002"
+        ]
+      },
+      {
+        "id": "DoorRR",
+        "pivot": [
+          -30.4,
+          91,
+          84
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "open_angle_degrees": -68,
+        "travel_seconds": 0.52,
+        "parts": [
+          "pessimat613_body_material_007",
+          "t613_Black_material_013",
+          "t613_chrome_material_033",
+          "t613_glass_material_003"
+        ]
+      },
+      {
+        "id": "FrontLid",
+        "pivot": [
+          235.2,
+          0,
+          82
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "open_angle_degrees": 68,
+        "travel_seconds": 0.72,
+        "parts": [
+          "pessimat613_body_material_008"
+        ]
+      },
+      {
+        "id": "RearLid",
+        "pivot": [
+          -187.4,
+          0,
+          85
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "open_angle_degrees": 62,
+        "travel_seconds": 0.72,
+        "parts": [
+          "pessimat613_body_material_001",
+          "t613_chrome_material_007"
+        ]
+      }
+    ],
+    "steering": {
+      "part": "t613_Black_material_021",
+      "pivot": [
+        -39.22271407488436,
+        -46.02430498305838,
+        84.8569625477922
+      ],
+      "axis": [
+        0.9659258,
+        0,
+        0.258819
+      ]
+    },
+    "cockpit_bindings": []
+  },
+  "driver": {
+    "mesh": "/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple",
+    "transform": {
+      "location": [
+        -35,
+        -38,
+        -55
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ]
+    },
+    "head_transform": {
+      "location": [
+        -18,
+        -40,
+        112
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  }
+}

@@ -1,0 +1,328 @@
+{
+  "schema_version": 1,
+  "slug": "fixture",
+  "vehicle_id": "PinkCab.Vehicle.Fixture",
+  "definition_asset": "/Game/Dev/Vehicles/Definitions/DA_PC_Vehicle_fixture",
+  "source": {
+    "path": "SourceAssets/Vehicles/fixture/generated",
+    "provenance": "engine basic-shape test fixture",
+    "mode": "existing_assets"
+  },
+  "physics": {
+    "carrier_mesh": "/Game/Vehicles/SportsCar/SKM_SportsCar.SKM_SportsCar",
+    "physics_asset": "/Game/Vehicles/SportsCar/PA_SportsCar.PA_SportsCar",
+    "wheels": [
+      {
+        "id": "WheelFL",
+        "bone": "Phys_Wheel_FL",
+        "presentation_part": "WheelFL",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            120,
+            -75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        }
+      },
+      {
+        "id": "WheelFR",
+        "bone": "Phys_Wheel_FR",
+        "presentation_part": "WheelFR",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            120,
+            75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        }
+      },
+      {
+        "id": "WheelRL",
+        "bone": "Phys_Wheel_BL",
+        "presentation_part": "WheelRL",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            -120,
+            -75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        }
+      },
+      {
+        "id": "WheelRR",
+        "bone": "Phys_Wheel_BR",
+        "presentation_part": "WheelRR",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            -120,
+            75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        }
+      }
+    ]
+  },
+  "presentation": {
+    "mode": "explicit",
+    "asset_root": "/Engine/BasicShapes",
+    "root_transform": {
+      "location": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "parts": [
+      {
+        "id": "Body",
+        "mesh": "/Engine/BasicShapes/Cube.Cube",
+        "transform": {
+          "location": [
+            0,
+            0,
+            60
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2.4,
+            1,
+            0.5
+          ]
+        },
+        "material_semantic": "BodyPaint"
+      },
+      {
+        "id": "DoorFL",
+        "mesh": "/Engine/BasicShapes/Cube.Cube",
+        "transform": {
+          "location": [
+            45,
+            -85,
+            70
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.8,
+            0.08,
+            0.7
+          ]
+        },
+        "material_semantic": "BodyPaint"
+      },
+      {
+        "id": "WheelFL",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            120,
+            -75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        },
+        "material_semantic": "RubberPlastic"
+      },
+      {
+        "id": "WheelFR",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            120,
+            75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        },
+        "material_semantic": "RubberPlastic"
+      },
+      {
+        "id": "WheelRL",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            -120,
+            -75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        },
+        "material_semantic": "RubberPlastic"
+      },
+      {
+        "id": "WheelRR",
+        "mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+        "transform": {
+          "location": [
+            -120,
+            75,
+            32
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.65,
+            0.25,
+            0.65
+          ]
+        },
+        "material_semantic": "RubberPlastic"
+      }
+    ],
+    "material_palette": {
+      "BodyPaint": "/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial",
+      "RubberPlastic": "/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"
+    },
+    "material_rules": [],
+    "articulations": [
+      {
+        "id": "DoorFL",
+        "pivot": [
+          45,
+          -85,
+          70
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "open_angle_degrees": 70,
+        "travel_seconds": 0.5,
+        "parts": [
+          "DoorFL"
+        ]
+      }
+    ],
+    "steering": null,
+    "cockpit_bindings": []
+  },
+  "driver": {
+    "mesh": "/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple",
+    "transform": {
+      "location": [
+        -30,
+        -38,
+        -55
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ]
+    },
+    "head_transform": {
+      "location": [
+        -18,
+        -40,
+        112
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  }
+}
