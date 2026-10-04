@@ -599,9 +599,24 @@ public:
             {
                 const double MeanGameDeltaSeconds = GameDeltaCount > 0
                     ? GameDeltaSum / GameDeltaCount : 0.0;
-                Test->TestTrue(TEXT("P04 requested render cadence is actually observed"),
+                const float ObservedFps = MeanGameDeltaSeconds > 0.0
+                    ? static_cast<float>(1.0 / MeanGameDeltaSeconds)
+                    : 0.0f;
+                const float RequestedFps = static_cast<float>(StableFrameCap());
+                // t.MaxFPS is a ceiling, not a promise that a self-hosted runner can
+                // render every frame at that ceiling. Preserve strict 10% windows for
+                // 30/60 FPS and require the 120-cap lane to be a real >=100 FPS
+                // high-refresh regime. Cross-group separation is asserted below so a
+                // single cadence can never satisfy this test accidentally.
+                const float MinimumObservedFps = StableFrameCap() >= 100
+                    ? 100.0f
+                    : RequestedFps * 0.90f;
+                const float MaximumObservedFps = RequestedFps * 1.10f;
+                Test->TestTrue(TEXT("P04 requested render cadence regime is actually observed"),
                     GameDeltaCount > 0 && FMath::IsFinite(MeanGameDeltaSeconds)
-                        && FMath::Abs(MeanGameDeltaSeconds * StableFrameCap() - 1.0) <= 0.10);
+                        && FMath::IsFinite(ObservedFps)
+                        && ObservedFps >= MinimumObservedFps
+                        && ObservedFps <= MaximumObservedFps);
                 // This steady, level, no-brake window must not alternate
                 // propulsion and braking every physics step at constant input.
                 Test->TestTrue(TEXT("P04 steady half-throttle carries positive traction"),
@@ -615,13 +630,14 @@ public:
                     Evidence.MeanAppliedWheelBrakeTorqueNm <= 0.1f
                         && !Evidence.bAnyParkingEnabled);
                 Test->AddInfo(FString::Printf(
-                    TEXT("P04_STABLE_TRACTION fps_cap=%d repeat=%d game_dt_ms=%.6f abs_rear_nm=%.6f signed_rear_nm=%.6f max_step_ms=%.6f speed_end_kmh=%.3f"),
-                    StableFrameCap(), CaseIndex % 3 + 1,
+                    TEXT("P04_STABLE_TRACTION fps_cap=%d repeat=%d observed_fps=%.3f game_dt_ms=%.6f abs_rear_nm=%.6f signed_rear_nm=%.6f max_step_ms=%.6f speed_end_kmh=%.3f"),
+                    StableFrameCap(), CaseIndex % 3 + 1, ObservedFps,
                     GameDeltaCount > 0 ? GameDeltaSum / GameDeltaCount * 1000.0 : 0.0,
                     Evidence.MeanDrivenWheelTorqueNm,
                     Evidence.MeanSignedDrivenWheelTorqueNm,
                     Evidence.MaxDeltaSeconds * 1000.0f, EndDriveSpeed));
                 StableSpeeds.Add(EndDriveSpeed);
+                StableObservedFps.Add(ObservedFps);
             }
         }
         if (++CaseIndex == (bStableTraction ? 9 : bEngineCoherence ? 3 : 18))
@@ -629,20 +645,39 @@ public:
             if (bStableTraction)
             {
                 Test->TestEqual(TEXT("P04 executes three repeats at all three frame caps"), StableSpeeds.Num(), 9);
-                auto Median = [this](int32 Offset)
+                Test->TestEqual(TEXT("P04 records observed cadence for all nine drives"), StableObservedFps.Num(), 9);
+                auto MedianSpeed = [this](int32 Offset)
                 {
                     TArray<float> Group{StableSpeeds[Offset], StableSpeeds[Offset + 1], StableSpeeds[Offset + 2]};
                     Group.Sort();
                     return Group[1];
                 };
-                if (StableSpeeds.Num() == 9)
+                auto MedianObservedFps = [this](int32 Offset)
                 {
-                    const float Reference = Median(0);
+                    TArray<float> Group{
+                        StableObservedFps[Offset],
+                        StableObservedFps[Offset + 1],
+                        StableObservedFps[Offset + 2]};
+                    Group.Sort();
+                    return Group[1];
+                };
+                if (StableSpeeds.Num() == 9 && StableObservedFps.Num() == 9)
+                {
+                    const float Reference = MedianSpeed(0);
                     for (int32 Offset : {3, 6})
                     {
                         Test->TestTrue(TEXT("P04 five-second traction is render-cadence invariant"),
-                            FMath::Abs(Median(Offset) - Reference) / FMath::Max(Reference, 1.0f) <= 0.05f);
+                            FMath::Abs(MedianSpeed(Offset) - Reference) / FMath::Max(Reference, 1.0f) <= 0.05f);
                     }
+                    const float LowFps = MedianObservedFps(0);
+                    const float MidFps = MedianObservedFps(3);
+                    const float HighFps = MedianObservedFps(6);
+                    Test->TestTrue(TEXT("P04 60-cap cadence is materially distinct from 30-cap"),
+                        MidFps >= LowFps * 1.50f);
+                    Test->TestTrue(TEXT("P04 120-cap cadence is materially distinct from 60-cap"),
+                        HighFps >= MidFps * 1.50f);
+                    Test->TestTrue(TEXT("P04 120-cap lane reaches a real high-refresh regime"),
+                        HighFps >= 100.0f);
                 }
             }
             Test->AddInfo(bStableTraction
@@ -728,6 +763,7 @@ private:
     double GameDeltaSum = 0.0;
     int32 GameDeltaCount = 0;
     TArray<float> StableSpeeds;
+    TArray<float> StableObservedFps;
 };
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabP04BaselineRuntimeTest,
