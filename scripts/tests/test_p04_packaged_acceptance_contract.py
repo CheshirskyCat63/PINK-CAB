@@ -74,6 +74,21 @@ class P04PackagedAcceptanceContractTests(unittest.TestCase):
         self.assertLess(acceptance, install)
         self.assertIn("run-p04-packaged-acceptance.ps1", self.delivery)
 
+    def test_delivery_cooks_and_proves_the_real_tatra_visual_shell(self):
+        for token in (
+            "Content\\Dev\\Vehicles\\Tatra613DesktopScene",
+            "Content\\Dev\\Vehicles\\Tatra613ArchiveV12Clean",
+            "CD869_REQUIRED_COOK_DIR_MISSING",
+            "PINKCAB_TATRA_VISUAL=PASS .*physics_chassis_hidden=1",
+            "CD869_SMOKE_TATRA_VISUAL_MISSING",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, self.delivery)
+        pawn = (ROOT / "Source" / "PinkCab" / "Private" / "Runtime" / "PinkCabChaosTatraPawn.cpp").read_text(encoding="utf-8")
+        self.assertIn("PINKCAB_TATRA_VISUAL=PASS", pawn)
+        self.assertIn("PINKCAB_TATRA_VISUAL=FAIL", pawn)
+        self.assertIn("Tatra613ScenePreserved()", pawn)
+
     def test_frozen_p02_scope_admits_only_the_explicit_new_acceptance_files(self):
         for path in (
             "Source/PinkCab/Private/Runtime/PinkCabChaosTatraPawnP04Acceptance.cpp",

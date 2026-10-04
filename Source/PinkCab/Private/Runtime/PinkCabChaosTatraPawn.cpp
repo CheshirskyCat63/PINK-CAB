@@ -237,7 +237,28 @@ void APinkCabChaosTatraPawn::BeginPlay()
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     EnsurePlayableLighting();
-    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved());
+    const FPinkCabVehicleVisualProfile TatraVisual =
+        FPinkCabVehicleVisualProfile::Tatra613ScenePreserved();
+    const bool bTatraVisualApplied = ApplyVehicleVisualProfile(TatraVisual);
+    if (bTatraVisualApplied)
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("PINKCAB_TATRA_VISUAL=PASS profile=%s parts=%d physics_chassis_hidden=%d"),
+            *TatraVisual.ProfileId.ToString(),
+            TatraVisual.PresentationParts.Num(),
+            static_cast<int32>(TatraVisual.bHidePhysicsChassisWhenExteriorPresent));
+    }
+    else
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("PINKCAB_TATRA_VISUAL=FAIL profile=%s parts=%d"),
+            *TatraVisual.ProfileId.ToString(),
+            TatraVisual.PresentationParts.Num());
+    }
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();
