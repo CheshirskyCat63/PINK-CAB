@@ -264,6 +264,7 @@ class WorkflowExecutionTests(unittest.TestCase):
         self.git("update-ref", "refs/remotes/origin/main", self.base)
         for path in (
             "README.md", "docs/AUTHORITY.yaml", "docs/PROJECT_SETUP.md", "docs/README.md",
+            "docs/PINK_CAB_ACTIVE_BASELINE.md", "docs/PROGRAM_ROADMAP.md",
             "scripts/ci/package_g1_recovery.py",
             "scripts/tests/test_ci_powershell_environment.py",
             "scripts/tests/test_package_g1_recovery.py",

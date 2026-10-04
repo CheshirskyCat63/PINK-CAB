@@ -132,6 +132,8 @@ jobs:
             'scripts/ci/acceptance_contract.py',
             'scripts/tests/test_acceptance_contract.py',
             'docs/CONTROL_PLANE.md',
+            'docs/PINK_CAB_ACTIVE_BASELINE.md',
+            'docs/PROGRAM_ROADMAP.md',
             # CD-559 reproducible, project-local vendor provisioning and runner lifecycle.
             'README.md',
             'docs/AUTHORITY.yaml',
