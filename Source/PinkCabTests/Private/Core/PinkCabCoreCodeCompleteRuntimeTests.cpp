@@ -80,9 +80,9 @@ bool FCoreCodeCompleteRuntimeProbeCommand::Update()
             FPinkCabVehicleInputFrame::FromDigital(false, true, false, false);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Gearbox")), true, -160.0f, 0.0f, 0.05f);
+            FName(TEXT("Gearbox")), true, -640.0f, 0.0f, 0.05f);
         Pawn->ApplyPhysicalControlMouseDelta(
-            FName(TEXT("Gearbox")), true, 0.0f, 140.0f, 0.05f);
+            FName(TEXT("Gearbox")), true, 0.0f, 480.0f, 0.05f);
         Pawn->ApplyVehicleInputFrame(ClutchFrame, 0.0f);
         Pawn->ApplyVehicleInputFrame(
             FPinkCabVehicleInputFrame::FromDigital(false, false, false, false), 0.0f);

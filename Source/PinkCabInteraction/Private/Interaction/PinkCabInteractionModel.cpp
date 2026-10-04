@@ -186,7 +186,7 @@ bool FPinkCabInteractionState::RecallQuickTarget(int32 Slot)
 
 bool FPinkCabInteractionState::TryBeginGrip()
 {
-    if (CurrentTarget.Id.IsNone())
+    if (CurrentTarget.Id.IsNone() || !CurrentTarget.bSupportsGrip)
     {
         return false;
     }
