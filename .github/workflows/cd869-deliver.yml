@@ -130,6 +130,7 @@ jobs:
             -EngineRoot $env:UE_ROOT `
             -ProjectPath $project `
             -TestName 'PinkCab.Editor.GenerateL1EndlessRoadAssets' `
+            -AllowAssetAuthoring `
             -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_ASSETS.log') `
             -TimeoutSeconds 300
 
@@ -149,6 +150,7 @@ jobs:
             -EngineRoot $env:UE_ROOT `
             -ProjectPath $project `
             -TestName 'PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials' `
+            -AllowAssetAuthoring `
             -LogPath (Join-Path $gate 'CD869_GENERATE_METAROAD_RUNTIME_MATERIALS.log') `
             -TimeoutSeconds 240
 
@@ -200,6 +202,7 @@ jobs:
             -EngineRoot $env:UE_ROOT `
             -ProjectPath $project `
             -TestName 'PinkCab.Editor.GenerateL1RoadR5DryAsphaltPhysicalMaterial' `
+            -AllowAssetAuthoring `
             -LogPath (Join-Path $gate 'CD869_GENERATE_DRY_ASPHALT.log') `
             -TimeoutSeconds 180
 
@@ -239,7 +242,7 @@ jobs:
             Remove-Item $map -Force -ErrorAction SilentlyContinue
             $editorArgs=@(
               $project, '/Engine/Maps/Entry', '-unattended', '-NullRHI', '-nosplash', '-nopause', '-NoSound',
-              '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
+              '-PinkCabAllowAssetAuthoring', '-stdout', '-FullStdOutLogOutput', "-abslog=$mapLog",
               '-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap',
               '-TestExit=Automation Test Queue Empty'
             )

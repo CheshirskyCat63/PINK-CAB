@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory=$true)][string]$LogPath,
     [string]$StartupMap = '/Engine/Maps/Entry',
     [ValidateRange(30, 3600)][int]$TimeoutSeconds = 300,
-    [int]$TailLines = 160
+    [int]$TailLines = 160,
+    [switch]$AllowAssetAuthoring
 )
 
 $ErrorActionPreference='Stop'
@@ -28,7 +29,7 @@ function Quote-Arg([string]$Value){
     return '"' + ($Value -replace '"','\"') + '"'
 }
 
-$argumentLine=@(
+$arguments=@(
     (Quote-Arg $ProjectPath),
     $StartupMap,
     '-unattended',
@@ -36,11 +37,17 @@ $argumentLine=@(
     '-nosplash',
     '-nopause',
     '-NoSound',
-    '-SkipAssetScan',
+    '-SkipAssetScan'
+)
+if($AllowAssetAuthoring){
+    $arguments += '-PinkCabAllowAssetAuthoring'
+}
+$arguments += @(
     (Quote-Arg "-abslog=$LogPath"),
     (Quote-Arg "-ExecCmds=Automation RunTests $TestName"),
     (Quote-Arg '-TestExit=Automation Test Queue Empty')
-) -join ' '
+)
+$argumentLine=$arguments -join ' '
 
 $process=New-Object System.Diagnostics.Process
 $process.StartInfo.FileName=$editor
@@ -48,7 +55,7 @@ $process.StartInfo.Arguments=$argumentLine
 $process.StartInfo.UseShellExecute=$false
 $process.StartInfo.CreateNoWindow=$true
 
-Write-Host "PINKCAB_AUTOMATION_START test=$TestName timeout_s=$TimeoutSeconds map=$StartupMap"
+Write-Host "PINKCAB_AUTOMATION_START test=$TestName timeout_s=$TimeoutSeconds map=$StartupMap asset_authoring=$([int]$AllowAssetAuthoring.IsPresent)"
 if(-not $process.Start()){
     throw "PINKCAB_AUTOMATION_START_FAILED=$TestName"
 }

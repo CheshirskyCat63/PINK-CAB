@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "PinkCabAutomationWriteGuard.h"
 #include "Misc/PackageName.h"
 #include "UObject/SavePackage.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -830,6 +831,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabGenerateL1EndlessMetaRoadAssets::RunTest(const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateL1EndlessRoadAssets")))
+    {
+        return true;
+    }
+
     using namespace PinkCabL1MetaRoadAuthoring;
 
     UWorld* World = UEditorLoadingAndSavingUtils::NewBlankMap(false);
@@ -912,6 +920,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabGenerateL1EndlessRoadRuntimeMaterials::RunTest(
     const FString& Parameters)
 {
+    if (PinkCabAutomationWriteGuard::SkipUnlessAssetAuthoringAllowed(
+            *this,
+            TEXT("PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials")))
+    {
+        return true;
+    }
+
     using namespace PinkCabL1MetaRoadAuthoring;
 
     UMaterialInterface* DriveSurface = LoadObject<UMaterialInterface>(

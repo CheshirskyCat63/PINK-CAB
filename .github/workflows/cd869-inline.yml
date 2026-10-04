@@ -82,7 +82,7 @@ jobs:
           $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_METAROAD_AUTHOR.log'
           New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
-          & $editor $project -unattended -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
+          & $editor $project -unattended -nosplash -nopause -NoSound -PinkCabAllowAssetAuthoring -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadAssets" "-TestExit=Automation Test Queue Empty"
           $exit = $LASTEXITCODE
           if (Test-Path $log) {
             Get-Content $log | Select-String -Pattern 'CD869_METAROAD_BAKE|MetaRoad generated|Automation Test Queue Empty|Test Completed. Result=|LogAutomationController: Error:' | Select-Object -Last 160 | ForEach-Object { Write-Host $_.Line }
@@ -133,7 +133,7 @@ jobs:
           $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_MAP_GENERATOR.log'
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap" "-TestExit=Automation Test Queue Empty"
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -PinkCabAllowAssetAuthoring -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadMap" "-TestExit=Automation Test Queue Empty"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path $mapFile)) { throw 'CD869_ENDLESS_MAP_NOT_GENERATED' }
           if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
@@ -166,7 +166,7 @@ jobs:
           $editor = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'
           $project = Join-Path $env:GITHUB_WORKSPACE 'PinkCab.uproject'
           $log = Join-Path $env:GITHUB_WORKSPACE 'Saved\GitHubGate\CD869_RUNTIME_MATERIALS.log'
-          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
+          & $editor $project -unattended -NullRHI -nosplash -nopause -NoSound -PinkCabAllowAssetAuthoring -stdout -FullStdOutLogOutput "-abslog=$log" "-ExecCmds=Automation RunTests PinkCab.Editor.GenerateL1EndlessRoadRuntimeMaterials" "-TestExit=Automation Test Queue Empty"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (Select-String -Path $log -Pattern 'Test Completed\. Result=\{Fail\}|LogAutomationController: Error:' -Quiet) {
             throw 'CD869_RUNTIME_MATERIAL_GENERATOR_FAILED'
