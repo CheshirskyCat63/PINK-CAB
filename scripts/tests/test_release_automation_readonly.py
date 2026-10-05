@@ -108,6 +108,14 @@ class ReleaseAutomationReadOnlyTests(unittest.TestCase):
         self.assertIn("[switch]$AllowAssetAuthoring", text)
         self.assertIn("'-PinkCabAllowAssetAuthoring'", text)
 
+    def test_shared_automation_runner_flushes_evidence_before_test_exit(self):
+        text = AUTOMATION_RUNNER.read_text(encoding="utf-8").lower()
+        self.assertIn("'-forcelogflush'", text)
+        self.assertLess(
+            text.index("'-forcelogflush'"),
+            text.index("'-testexit=automation test queue empty'"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,7 +37,8 @@ $arguments=@(
     '-nosplash',
     '-nopause',
     '-NoSound',
-    '-SkipAssetScan'
+    '-SkipAssetScan',
+    '-forcelogflush'
 )
 if($AllowAssetAuthoring){
     $arguments += '-PinkCabAllowAssetAuthoring'
