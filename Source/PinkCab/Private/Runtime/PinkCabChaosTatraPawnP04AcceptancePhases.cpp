@@ -1,4 +1,4 @@
-#include "Runtime/PinkCabChaosTatraPawn.h"
+﻿#include "Runtime/PinkCabChaosTatraPawn.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabVehicleTelemetry.h"
@@ -38,16 +38,6 @@ float CounterTargetKmh(const FString& CaseName)
     return 0.0f;
 }
 
-float MeanRearDriveTorqueNm(const UChaosWheeledVehicleMovementComponent& Movement)
-{
-    if (Movement.GetNumWheels() < 4)
-    {
-        return 0.0f;
-    }
-    return 0.5f * (
-        Movement.GetWheelState(2).DriveTorque
-        + Movement.GetWheelState(3).DriveTorque);
-}
 
 float AbsMeanRearDriveTorqueNmLocal(const UChaosWheeledVehicleMovementComponent& Movement)
 {
