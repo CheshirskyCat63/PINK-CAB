@@ -6,6 +6,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 
 namespace
@@ -40,6 +41,50 @@ float AbsMeanRearDriveTorqueNm(const UChaosWheeledVehicleMovementComponent& Move
         FMath::Abs(Movement.GetWheelState(2).DriveTorque)
         + FMath::Abs(Movement.GetWheelState(3).DriveTorque));
 }
+
+float MeanRearDriveTorqueNm(const UChaosWheeledVehicleMovementComponent& Movement)
+{
+    if (Movement.GetNumWheels() < 4)
+    {
+        return 0.0f;
+    }
+    return 0.5f * (
+        Movement.GetWheelState(2).DriveTorque
+        + Movement.GetWheelState(3).DriveTorque);
+}
+}
+
+bool APinkCabChaosTatraPawn::SampleP04PackagedAcceptancePostLiftTorque(
+    UChaosWheeledVehicleMovementComponent& Movement)
+{
+    UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+        Cast<UPinkCabChaosVehicleMovementComponent>(&Movement);
+    if (!PinkCabMovement)
+    {
+        FinishP04PackagedAcceptance(false, TEXT("PINKCAB_MOVEMENT_LOST"));
+        return false;
+    }
+
+    const int64 CurrentMechanicalStep =
+        PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+    if (P04PackagedAcceptanceProofCommandMechanicalStep < 0)
+    {
+        // Wheel-state telemetry still describes the preceding physics step on
+        // the same game tick that zero throttle is authored. Anchor the command
+        // here and judge lift-off only after a later mechanical integration has
+        // consumed that command.
+        P04PackagedAcceptanceProofCommandMechanicalStep = CurrentMechanicalStep;
+        return false;
+    }
+    if (CurrentMechanicalStep <= P04PackagedAcceptanceProofCommandMechanicalStep)
+    {
+        return false;
+    }
+
+    P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm = FMath::Max(
+        P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm,
+        MeanRearDriveTorqueNm(Movement));
+    return true;
 }
 
 void APinkCabChaosTatraPawn::InitializeP04PackagedAcceptance()
@@ -77,6 +122,7 @@ void APinkCabChaosTatraPawn::InitializeP04PackagedAcceptance()
     P04PackagedAcceptanceRightSteering = 0.0f;
     P04PackagedAcceptanceCounterSteering = 0.0f;
     P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm = -MAX_flt;
+    P04PackagedAcceptanceProofCommandMechanicalStep = -1;
     P04PackagedAcceptanceStartForward = GetActorForwardVector().GetSafeNormal();
 
     SetSystemMenuOpen(false);
@@ -126,6 +172,7 @@ void APinkCabChaosTatraPawn::EnterP04PackagedAcceptancePhase(const int32 Phase)
 {
     P04PackagedAcceptancePhase = Phase;
     P04PackagedAcceptancePhaseSeconds = 0.0;
+    P04PackagedAcceptanceProofCommandMechanicalStep = -1;
 }
 
 float APinkCabChaosTatraPawn::GetP04PackagedAcceptanceDirectionalSpeedKmh() const

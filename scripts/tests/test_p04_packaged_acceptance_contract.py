@@ -42,6 +42,11 @@ class P04PackagedAcceptanceContractTests(unittest.TestCase):
         self.assertIn("ForwardGearRatios[0] = 4.60f", self.harness)
         self.assertIn("profile_asset_mutated=0 transient_ab_ratio_override=%d force_injection=0", self.harness)
 
+    def test_lift_off_judges_only_physics_that_consumed_zero_throttle(self):
+        self.assertIn("GetPinkCabMechanicalIntegrationStepCount()", self.harness)
+        self.assertIn("P04PackagedAcceptanceProofCommandMechanicalStep", self.harness)
+        self.assertIn("CurrentMechanicalStep <= P04PackagedAcceptanceProofCommandMechanicalStep", self.harness)
+
     def test_packaged_matrix_covers_remaining_p04_and_countersteer_gate(self):
         for case in (
             "forward_baseline",

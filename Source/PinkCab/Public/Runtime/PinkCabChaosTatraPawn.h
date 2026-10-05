@@ -169,6 +169,8 @@ private:
     bool TickP04PackagedAcceptanceShift(float DeltaSeconds);
     bool TickP04PackagedAcceptanceProof(float DeltaSeconds);
     bool TickP04PackagedAcceptanceNeutralOrLiftProof(float DeltaSeconds);
+    bool SampleP04PackagedAcceptancePostLiftTorque(
+        UChaosWheeledVehicleMovementComponent& Movement);
     bool TickP04PackagedAcceptanceCountersteerProof(float DeltaSeconds);
     bool TickP04PackagedAcceptanceDrive(float DeltaSeconds);
     bool TickP04PackagedAcceptanceForwardDrive(float DeltaSeconds);
@@ -235,6 +237,7 @@ private:
     float P04PackagedAcceptanceRightSteering = 0.0f;
     float P04PackagedAcceptanceCounterSteering = 0.0f;
     float P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm = -MAX_flt;
+    int64 P04PackagedAcceptanceProofCommandMechanicalStep = -1;
     FVector P04PackagedAcceptanceStartForward = FVector::ForwardVector;
     bool bCausalTelemetryEnabled = false;
     FPinkCabCausalTelemetryTrace CausalTelemetryTrace{16384};

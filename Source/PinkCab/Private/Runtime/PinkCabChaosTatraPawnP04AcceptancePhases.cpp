@@ -157,11 +157,10 @@ bool APinkCabChaosTatraPawn::TickP04PackagedAcceptanceNeutralOrLiftProof(
         0.0f,
         DeltaSeconds);
 
-    if (!bNeutralProof)
+    if (!bNeutralProof
+        && !SampleP04PackagedAcceptancePostLiftTorque(*Movement))
     {
-        P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm = FMath::Max(
-            P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm,
-            MeanRearDriveTorqueNm(*Movement));
+        return true;
     }
 
     const double RequiredSeconds = bNeutralProof ? 1.25 : 2.0;
