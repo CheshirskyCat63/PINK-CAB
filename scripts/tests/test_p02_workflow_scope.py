@@ -212,6 +212,16 @@ class WorkflowTrustTests(unittest.TestCase):
         self.assertNotIn("runs-on: [self-hosted", text)
         self.assertIn("persist-credentials: false", text)
 
+    def test_self_hosted_physics_jobs_materialize_all_tracked_lfs_before_unreal(self):
+        for name in PHYSICS_WORKFLOWS:
+            text = (WORKFLOWS / name).read_text(encoding="utf-8")
+            block = text.split("- name: Materialize verified local LFS fixtures", 1)[1]
+            block = block.split("\n      - name:", 1)[0]
+            with self.subTest(workflow=name):
+                self.assertIn("'--all-tracked'", block)
+                self.assertIn("'--search-root', 'E:\\CHESHIRE_DIVISION\\Games\\PINK-CAB'", block)
+                self.assertIn("materialize_local_lfs.py", block)
+
 
 @unittest.skipUnless(POWERSHELL, "PowerShell is required for workflow execution regressions")
 class WorkflowExecutionTests(unittest.TestCase):

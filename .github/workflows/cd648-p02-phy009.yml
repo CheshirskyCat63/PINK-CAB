@@ -84,6 +84,7 @@ jobs:
             'scripts/ci/materialize_local_lfs.py',
             '--workspace', $env:GITHUB_WORKSPACE,
             '--base-ref', 'origin/main',
+            '--all-tracked',
             '--search-root', 'E:\CHESHIRE_DIVISION\Games\PINK-CAB',
             '--search-root', 'E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB',
             '--search-root', 'E:\Development',
