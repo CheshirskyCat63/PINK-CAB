@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Misc/AutomationTest.h"
+#include "Misc/App.h"
 #include "Tests/AutomationCommon.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -439,7 +440,7 @@ public:
         , bStableTraction(bInStableTraction) {}
     virtual ~FPinkCabP04BaselineCommand() override
     {
-        RestoreFrameCap();
+        RestoreCadenceState();
     }
     virtual bool Update() override
     {
@@ -460,6 +461,8 @@ public:
                 FrameCap = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"));
                 if (!FrameCap) { Test->AddError(TEXT("P04 frame cap unavailable")); return true; }
                 OriginalFrameCap = FrameCap->GetFloat();
+                bOriginalUseFixedTimeStep = FApp::UseFixedTimeStep();
+                OriginalFixedDeltaTime = FApp::GetFixedDeltaTime();
             }
             AActor* Floor = PinkCabPhysicsFixture::FindOrSpawnFlatFloor(*World);
             FloorBox = Floor ? Cast<UBoxComponent>(Floor->GetRootComponent()) : nullptr;
@@ -603,20 +606,23 @@ public:
                     ? static_cast<float>(1.0 / MeanGameDeltaSeconds)
                     : 0.0f;
                 const float RequestedFps = static_cast<float>(StableFrameCap());
-                // t.MaxFPS is a ceiling, not a promise that a self-hosted runner can
-                // render every frame at that ceiling. Preserve strict 10% windows for
-                // 30/60 FPS. A single 120-cap repeat may dip under 100 FPS from host
-                // scheduling, so require >=90 FPS per repeat; the group median must
-                // still reach >=100 FPS and be >=1.5x the 60-cap median below.
-                const float MinimumObservedFps = StableFrameCap() >= 100
-                    ? 90.0f
-                    : RequestedFps * 0.90f;
+                // This is a numerical/game-cadence test, not a host performance
+                // benchmark. Drive FApp with an explicit fixed delta so 30/60/120
+                // exercise genuinely different game-step sizes even if the
+                // self-hosted editor cannot execute 120 frames per wall-clock second.
+                const float MinimumObservedFps = RequestedFps * 0.90f;
                 const float MaximumObservedFps = RequestedFps * 1.10f;
-                Test->TestTrue(TEXT("P04 requested render cadence regime is actually observed"),
+                Test->TestTrue(TEXT("P04 requested game cadence regime is actually observed"),
                     GameDeltaCount > 0 && FMath::IsFinite(MeanGameDeltaSeconds)
                         && FMath::IsFinite(ObservedFps)
                         && ObservedFps >= MinimumObservedFps
                         && ObservedFps <= MaximumObservedFps);
+                Test->TestTrue(TEXT("P04 cadence uses the requested deterministic fixed step"),
+                    FApp::UseFixedTimeStep()
+                        && FMath::IsNearlyEqual(
+                            FApp::GetFixedDeltaTime(),
+                            1.0 / static_cast<double>(StableFrameCap()),
+                            1.0e-6));
                 // This steady, level, no-brake window must not alternate
                 // propulsion and braking every physics step at constant input.
                 Test->TestTrue(TEXT("P04 steady half-throttle carries positive traction"),
@@ -681,7 +687,7 @@ public:
                 }
             }
             Test->AddInfo(bStableTraction
-                ? TEXT("P04_STABLE_TRACTION_COMPLETE cases=9 frame_caps=30,60,120 profile_changed=0")
+                ? TEXT("P04_STABLE_TRACTION_COMPLETE cases=9 game_hz=30,60,120 fixed_timestep=1 wallclock_independent=1 profile_changed=0")
                 : bEngineCoherence
                 ? TEXT("P04_ENGINE_COHERENCE_COMPLETE cases=3 profile_changed=0")
                 : bRatioProbe
@@ -707,8 +713,13 @@ private:
         const int32 Caps[] = {30, 60, 120};
         return Caps[CaseIndex / 3];
     }
-    void RestoreFrameCap()
+    void RestoreCadenceState()
     {
+        if (bStableTraction)
+        {
+            FApp::SetFixedDeltaTime(OriginalFixedDeltaTime);
+            FApp::SetUseFixedTimeStep(bOriginalUseFixedTimeStep);
+        }
         if (FrameCap)
         {
             FrameCap->Set(OriginalFrameCap, ECVF_SetByCode);
@@ -717,7 +728,16 @@ private:
     }
     void BeginCase(UWorld& World)
     {
-        if (FrameCap) FrameCap->Set(static_cast<float>(StableFrameCap()), ECVF_SetByCode);
+        if (bStableTraction)
+        {
+            // Remove wall-clock throttling from this correctness test. Simulation
+            // cadence is authored explicitly through FApp below and verified from
+            // the observed game delta for every repeat.
+            if (FrameCap) FrameCap->Set(0.0f, ECVF_SetByCode);
+            FApp::SetFixedDeltaTime(
+                1.0 / static_cast<double>(StableFrameCap()));
+            FApp::SetUseFixedTimeStep(true);
+        }
         GameDeltaSum = 0.0;
         GameDeltaCount = 0;
         PinkCabPhysicsFixture::DestroyPawns(World);
@@ -737,7 +757,7 @@ private:
     }
     void Cleanup(UWorld& World)
     {
-        RestoreFrameCap();
+        RestoreCadenceState();
         PinkCabPhysicsFixture::DestroyPawns(World);
         if (FloorBox.IsValid()) FloorBox->SetBoxExtent(OriginalExtent);
     }
@@ -760,6 +780,8 @@ private:
     const bool bStableTraction;
     IConsoleVariable* FrameCap = nullptr;
     float OriginalFrameCap = 0.0f;
+    bool bOriginalUseFixedTimeStep = false;
+    double OriginalFixedDeltaTime = 0.0;
     double GameDeltaSum = 0.0;
     int32 GameDeltaCount = 0;
     TArray<float> StableSpeeds;
