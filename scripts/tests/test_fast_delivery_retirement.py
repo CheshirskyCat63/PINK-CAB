@@ -114,6 +114,16 @@ class CanonicalHumanDeliveryContractTests(unittest.TestCase):
     def test_delivery_cannot_be_cancelled_by_a_second_dispatch(self):
         self.assertIs(self.document['concurrency']['cancel-in-progress'], False)
 
+    def test_delivery_materializes_all_lfs_and_never_deletes_unresolved_assets(self):
+        materialize = self.script('Materialize verified local LFS')
+        self.assertIn('--all-tracked', materialize)
+        self.assertIn(r'--search-root "E:\CHESHIRE_DIVISION\Games\PINK-CAB"', materialize)
+        build = self.script('Build package only when warm package is absent')
+        self.assertIn('CD869_COOK_LFS_UNRESOLVED', build)
+        self.assertIn('CD869_COOK_LFS_PREFLIGHT=PASS count=0', build)
+        self.assertNotIn('CD869_COOK_QUARANTINED_LFS_POINTER', build)
+        self.assertNotIn('Remove-Item -LiteralPath $full -Force', build)
+
 
     @unittest.skipUnless(POWERSHELL, 'PowerShell executes the real publication primitive')
     def test_real_atomic_publication_call_accepts_null_backup_on_windows_powershell(self):

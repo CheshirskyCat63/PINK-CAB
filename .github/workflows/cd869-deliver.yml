@@ -61,12 +61,16 @@ jobs:
           python .\scripts\ci\materialize_local_lfs.py `
             --workspace "$env:GITHUB_WORKSPACE" `
             --base-ref origin/main `
+            --all-tracked `
+            --search-root "E:\CHESHIRE_DIVISION\Games\PINK-CAB" `
+            --search-root "E:\CHESHIRE_DIVISION\RecoveryLinks\PINK-CAB" `
+            --search-root "E:\Development" `
             --allow-changed-lfs "Content/Dev/Maps/L_PinkCab_L1_EndlessStraight.umap"
           if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
-          # Local git-lfs cache is materialized first. Unresolved unrelated
-          # pointers are allowed here; the exact target map is regenerated from
-          # source below and BuildCookRun is the hard runtime dependency gate.
+          # Human delivery cooks the complete runtime presentation shell, not a
+          # reduced fixture set. Every tracked LFS object must therefore be a
+          # verified payload before authoring/cook starts.
           $dirty=@(git status --porcelain)
           if($dirty.Count -ne 0){
             $dirty | ForEach-Object { Write-Host "CD869_DIRTY_AFTER_LOCAL_LFS $_" }
@@ -332,27 +336,31 @@ jobs:
             # StructUtils remains editor-only through PinkCab.uproject TargetAllowList.
             $descriptor | ConvertTo-Json -Depth 32 | Set-Content $project -Encoding UTF8
 
-            # Git LFS pointers are text stubs, not Unreal packages. The cooker
-            # scans the project asset registry before following the explicit map
-            # dependency closure, so unrelated unresolved pointers would fail
-            # PACKAGE_FILE_TAG validation. Quarantine only files that are still
-            # literal LFS pointers; generated/materialized runtime assets remain.
-            $quarantined=0
+            # The package is not allowed to silently drop tracked assets.
+            # materialize_local_lfs.py has already verified every tracked OID;
+            # this second check is a fail-closed guard immediately before cook.
+            $unresolvedPointers=@()
             foreach($relative in @(git lfs ls-files -n)){
               $full=Join-Path $env:GITHUB_WORKSPACE $relative
-              if(-not (Test-Path -LiteralPath $full)){ continue }
+              if(-not (Test-Path -LiteralPath $full)){
+                $unresolvedPointers += $relative
+                Write-Host "CD869_COOK_LFS_MISSING=$relative"
+                continue
+              }
               try {
                 $first=Get-Content -LiteralPath $full -TotalCount 1 -ErrorAction Stop
               } catch {
-                continue
+                throw "CD869_COOK_LFS_READ_FAILED=$relative"
               }
               if($first -eq 'version https://git-lfs.github.com/spec/v1'){
-                Remove-Item -LiteralPath $full -Force
-                ++$quarantined
-                Write-Host "CD869_COOK_QUARANTINED_LFS_POINTER=$relative"
+                $unresolvedPointers += $relative
+                Write-Host "CD869_COOK_LFS_POINTER=$relative"
               }
             }
-            Write-Host "CD869_COOK_LFS_POINTER_QUARANTINE=PASS count=$quarantined"
+            if($unresolvedPointers.Count -ne 0){
+              throw "CD869_COOK_LFS_UNRESOLVED count=$($unresolvedPointers.Count)"
+            }
+            Write-Host 'CD869_COOK_LFS_PREFLIGHT=PASS count=0'
 
             # Preserve the fresh AssetRegistry produced by normal map authoring.
             # Deleting it here would make the next process forget a package that
