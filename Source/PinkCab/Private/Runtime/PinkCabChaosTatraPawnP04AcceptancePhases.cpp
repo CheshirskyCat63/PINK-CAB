@@ -1,4 +1,4 @@
-﻿#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabVehicleTelemetry.h"
@@ -37,7 +37,6 @@ float CounterTargetKmh(const FString& CaseName)
     if (CaseName == TEXT("counter_high")) return 120.0f;
     return 0.0f;
 }
-
 
 float AbsMeanRearDriveTorqueNmLocal(const UChaosWheeledVehicleMovementComponent& Movement)
 {
