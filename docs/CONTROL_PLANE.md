@@ -1,97 +1,71 @@
-# PINK-CAB Control Plane
+# PINK CAB · Control Plane
 
-Status: **PROTECTED INTEGRATION / P04 CANDIDATE HUMAN ACCEPTED / ADMIN CD-952**
+## Canonical authority
 
-## Current execution checkpoint
+- Repository: `CheshirskyCat63/PINK-CAB`
+- Integration branch: `main`
+- Current simplification PR: `cleanup/p4-baseline`
+- Unreal Engine: UE 5.8
+- Human game entry: `PINCKCAB.lnk`
 
-Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+There are only two active GitHub Actions entry points:
 
-Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+1. `.github/workflows/verify.yml`
+2. `.github/workflows/deliver.yml`
 
-Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+Everything named CD-648, CD-869, P00/P01/P02/P04 physics evidence, road R2/R3/R4/R5 authoring, G1 control-plane, or fast-delivery is historical evidence only.
 
-CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+## Verify
 
-## Accepted executable and rollback
+`verify.yml` runs:
 
-`C:\Users\CheCat\Desktop\PINCKCAB.lnk` targets the real executable in `E:\CHESHIRE_DIVISION\Builds\PINKCAB\CD869_ENDLESS_52239b61_RUN37149462470_ATTEMPT1`. Accepted source is 52239b61, not whichever branch is checked out. `CHESHIRE_STUDIO` retains PINKCAB_Editor and PINKCAB_Rollback_V2 (edf75e1b / 37117735294). Old Play/Test aliases were preserved outside the desktop. P02 and historical 8168d724 remain retained evidence. Original handoff and additive owner decision retain separate identities.
+- script/unit contracts;
+- code-health;
+- repository hygiene;
+- exact-head `PinkCabEditor` build on the PINKCAB self-hosted Windows runner;
+- focused playable runtime acceptance.
 
-## Current input / cockpit contract
+A runtime-changing PR is not mergeable by project policy until this workflow is green.
 
-- mouse = steering by default;
-- Space = gaze/look; release returns mouse to steering;
-- Q = clutch;
-- W = brake;
-- E = throttle;
-- Q/W/E + wheel = analog dosing; overlap priority **E → W → Q**;
-- 1/2/3/4 = ephemeral quick access for turn signals / horn / gearbox / handbrake;
-- quick-access prompt disappears when the number key is released;
-- RMB = optional contextual capture/retain of a valid control; RMB alone never actuates it;
-- LMB and mouse wheel may perform the authored contextual action directly without an RMB prerequisite;
-- Gearbox/Handbrake may be directly manipulated by LMB on the active/contextual target; RMB remains useful when the driver wants the target retained;
-- during lever manipulation mouse XY belongs only to the lever and the current steering command is held;
-- after manipulation ends, mouse XY returns to steering;
-- sustained same-direction wheel input progressively accelerates; pause or direction reversal resets the burst;
-- steering is manual/no-assist: heavy at standstill, lighter once rolling, calmer rather than sharper at high speed;
-- focus/menu loss clears transient interaction ownership;
-- no hidden auto-throttle, rev-match, countersteer, yaw rescue, ABS or ESP.
+## Deliver
 
-Detailed authority: `docs/recovery/RECOVERY_INPUT_CONTRACT_R1.md`.
+`deliver.yml` is manual.
 
-## GitHub execution policy
+It calls `scripts/deliver.ps1`, which requires a clean exact HEAD and performs:
 
-Normal verification is `.github/workflows/verify.yml`: hosted static contracts first, then an exact-head `PinkCabEditor` build and the focused playable runtime suite on the PINKCAB self-hosted runner.
+1. editor build;
+2. focused runtime acceptance;
+3. BuildCookRun package;
+4. packaged executable smoke;
+5. atomic replacement of `PINCKCAB_BUILD`;
+6. update of `PINCKCAB.lnk`;
+7. `SOURCE_HEAD.txt` written into the delivered build.
 
-Human delivery is `.github/workflows/deliver.yml`. Its single entry point is `scripts/deliver.ps1`, which requires a clean exact HEAD, builds the editor, runs the focused runtime suite, packages with BuildCookRun, smoke-tests the package, and only then atomically publishes `PINCKCAB_BUILD` plus the `PINCKCAB.lnk` shortcut.
+Delivery is never proof of owner acceptance by itself.
 
-The old CD-648/CD-869/P00–P04 workflow graph, causality evidence programs, calibration fixtures and road-authoring gates are historical evidence only. They are not active build, verification or delivery authority.
+## Vehicle authority
 
-Documentation-only administration does not require replacing the runtime package. PINK CAB and KUKURUZA registrations share one physical host; coordinate heavy Unreal work without stopping another project's processes.
+P4 uses the stock Chaos wheeled-vehicle mechanical simulation.
 
-## Jira active surface
+PINKCAB owns the gameplay/control layer above it:
 
-- **CD-519** — active product root, remains IN PROGRESS;
-- **CD-848** — current broader mechanics/FIRST EURO owner, remains IN PROGRESS;
-- **CD-868** — control-plane cleanup, DONE.
+- physical cockpit;
+- H-pattern selection and validation;
+- steering;
+- pedals;
+- parking brake;
+- ignition/gameplay state;
+- Tatra presentation;
+- taxi/game systems.
 
-Backlog/history is not an active execution lane merely because it is not Done.
+The old custom Chaos simulation override, clutch causality laboratory, cadence probes, calibration fixtures and evidence stack are not active authority.
 
-## Confluence precedence
+## Road authority
 
-1. page **6586369** — Product Family / Authority Index
-2. page **16744449** — Control & Vehicle Mechanics Release Contract
-3. page **13303842** — Native Chaos production authority
-4. page **15663105** — canonical pre-model handoff
+The active P4 world is the endless-straight map.
 
-Recovery 48-series, former duplicate 46 and pre-Chaos FGear lineage are archive/history, not current status.
+MetaRoad 3.2.0 is retained only as frozen free content needed by the baked road presentation. Its source/editor framework and StructUtils dependency are not part of the active P4 architecture.
 
-## Resource / cost policy
+## History
 
-PINK-CAB remains **FREE-FIRST / RESOURCE-CONSTRAINED**.
-
-- GitHub + self-hosted Windows UE runner is the technical execution engine.
-- Jira is production tracking truth, not build infrastructure.
-- Jira Free is the preferred account plan when eligible.
-- Billing-plan state is an account setting and is **not** a blocker for the accepted runtime or Git authority.
-- Production must not depend on paid Jira audit logs, Rovo/AI, advanced permission editing or high automation quotas.
-- Any new paid SaaS/plugin/tool requires explicit owner approval and a concrete blocker.
-
-## Integration and delivery controls
-
-Every main change requires a PR, an up-to-date branch, both GitHub Actions checks `Repository verification` and `Gameplay acceptance gate`, and resolved conversations. Both required checks are pinned to the GitHub Actions app; strict up-to-date enforcement is enabled. Rules include administrators; force-push and deletion are prohibited. Required reviewer count is zero for the current single-owner team; this does not claim independent review.
-
-The automatic coordinator is `pinkcab-repository-verification.yml`. It classifies the complete PR merge-base range (or the complete push before/after range). Only known documentation/administrative paths may skip Unreal; code, content, configuration, CI, the executable writer inventory and unknown paths require runtime checks. Missing scope/history fails closed.
-
-For runtime changes, the existing TDD workflow runs the full physics suite once, including all 240 D3 samples. It publishes a receipt bound to the candidate SHA, Actions run, run attempt, complete registered test-name set and log hash. The existing P02 workflow validates that receipt and independently repeats the slope fixture five times. Manual P02 dispatch still runs the full physics suite before its five repeats. No test thresholds or gameplay acceptance rules change.
-
-Use **Re-run all jobs** for a failed coordinated run. Re-running only a downstream failed job creates a new run attempt without a matching TDD receipt and intentionally fails closed; previous-attempt evidence is not silently reused.
-
-`Gameplay acceptance gate` always evaluates the static, TDD and P02 results. Runtime changes require successful results from every needed job; failed, cancelled, skipped or missing runtime evidence cannot pass. Administrative-only changes explicitly report N/A for gameplay. Both required contexts were activated and read back from GitHub on 2026-10-03 after PR #57 candidate `4f25b8e1ecbdd98808787035df07b8fc566a90df` passed run `37094358590`: 71 script tests, 47 physics tests, the exact 240-case D3 grid and five independent slope repeats. That coordinated run took 12 minutes 50 seconds from its first job start through the aggregate gate. It proves the automated candidate checks; it does not certify a new packaged delivery or P03 human acceptance.
-
-Self-hosted checkouts retain Unreal caches. Before building, exact SHA, tracked/untracked cleanliness, ignored authored input roots and the pinned MetaRoad package are checked. The normal UBT build still runs; cached output is never itself accepted as evidence. Unexpected authored leftovers fail and must be investigated instead of silently removed. Clean-checkout reproducibility remains a separate CD-559 obligation.
-
-Self-hosted PR jobs accept only same-repository OWNER/MEMBER/COLLABORATOR branches. Fork checks run on GitHub-hosted machines. The dedicated runner is `DESKTOP-C7VAU4V-PINKCAB`; KUKURUZA has a separate registration.
-
-Ordinary PR verification does not deliver or launch a human build. P02 delivery requires an explicit workflow dispatch with `deliver_human=true` after verification succeeds. Delivery is HUMAN_PENDING until the owner accepts that exact candidate.
-
-Never mark CD-559 Done from script checks alone. Full clean-source/full-product regression and comprehensive packaged input remain open; the current P04 fresh package, immutable install, 53-file manifest, smoke, visible handoff and owner acceptance are already verified sub-scopes.
+Research state was archived before simplification. Archive tags under `archive/20261006/*` preserve the old remote branch tips and dirty P04 research states. Historical documents remain evidence, not current operating instructions.
