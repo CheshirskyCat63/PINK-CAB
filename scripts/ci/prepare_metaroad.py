@@ -37,13 +37,14 @@ def freeze_as_content_only(root: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
-    parser.add_argument("--source", type=Path, default=Path(os.environ.get(
-        "PINKCAB_METAROAD_PACKAGE",
-        r"E:\CHESHIRE_DIVISION\Shared\Vendor\MetaRoad\3.2.0-ox4rZYlcREy004nfGp7EHg")))
+    vendor = os.environ.get("PINKCAB_METAROAD_PACKAGE")
+    parser.add_argument("--source", type=Path, default=Path(vendor) if vendor else None)
     args = parser.parse_args()
     target = args.root / "Plugins" / "MetaRoad"
     try:
         if not target.exists():
+            if args.source is None:
+                raise ValueError("PINKCAB_METAROAD_PACKAGE is required when Plugins/MetaRoad is absent")
             if read_version(args.source) != EXPECTED_VERSION:
                 raise ValueError(f"vendor version must be {EXPECTED_VERSION}")
             target.parent.mkdir(parents=True, exist_ok=True)
