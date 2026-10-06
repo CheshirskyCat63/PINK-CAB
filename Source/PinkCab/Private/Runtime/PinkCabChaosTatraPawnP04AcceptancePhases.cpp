@@ -1,6 +1,7 @@
 #include "Runtime/PinkCabChaosTatraPawn.h"
 
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabVehicleTelemetry.h"
 
 namespace
@@ -277,7 +278,54 @@ bool APinkCabChaosTatraPawn::TickP04PackagedAcceptanceForwardDrive(
     }
     const float SpeedKmh =
         FMath::Abs(GetP04PackagedAcceptanceDirectionalSpeedKmh());
-    if (GetEngagedGear() == 5 && SpeedKmh >= 80.0f)
+
+    if (P04PackagedAcceptanceCase == TEXT("top")
+        && GetEngagedGear() == 4
+        && SpeedKmh >= 145.0f)
+    {
+        if (!bP04PackagedAcceptanceTopPowerEvidenceStarted)
+        {
+            if (UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                    Cast<UPinkCabChaosVehicleMovementComponent>(GetChaosMovement()))
+            {
+                bP04PackagedAcceptanceTopPowerEvidenceStarted =
+                    PinkCabMovement->BeginPinkCabMechanicalEvidenceWindow(0.25f, 1.0f);
+            }
+        }
+        else if (!bP04PackagedAcceptanceTopPowerEvidenceLogged)
+        {
+            if (UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+                    Cast<UPinkCabChaosVehicleMovementComponent>(GetChaosMovement()))
+            {
+                FPinkCabMechanicalEvidenceSnapshot Evidence;
+                if (PinkCabMovement->ReadPinkCabMechanicalEvidenceWindow(Evidence)
+                    && Evidence.bComplete)
+                {
+                    UE_LOG(
+                        LogTemp, Display,
+                        TEXT("PINKCAB_P04_TOP_POWER_EVIDENCE speed_kmh=%.3f rpm=%.3f requested_engine_nm=%.3f observed_free_net_nm=%.3f clutch_requested_nm=%.3f clutch_transmitted_nm=%.3f wheel_mean_nm=%.3f slip_rpm=%.3f steps=%d"),
+                        SpeedKmh,
+                        Evidence.MeanEngineRpm,
+                        Evidence.MeanRequestedEngineTorqueAfterLimiterHealthNm,
+                        Evidence.MeanObservedFreeEngineNetTorqueNm,
+                        Evidence.MeanRequestedClutchTorqueNm,
+                        Evidence.MeanTransmittedClutchTorqueNm,
+                        Evidence.MeanSignedDrivenWheelTorqueNm,
+                        Evidence.MeanClutchSlipRpm,
+                        Evidence.CompletedSampleSteps);
+                    bP04PackagedAcceptanceTopPowerEvidenceLogged = true;
+                }
+            }
+        }
+    }
+
+    const bool bSettledTopFifth =
+        P04PackagedAcceptanceCase != TEXT("top")
+        || !bP04PackagedAcceptanceTopTargetReached
+        || P04PackagedAcceptancePhaseSeconds >= 0.25;
+    if (GetEngagedGear() == 5
+        && SpeedKmh >= 80.0f
+        && bSettledTopFifth)
     {
         P04PackagedAcceptanceGear5SpeedKmh = SpeedKmh;
         P04PackagedAcceptanceGear5Rpm = Telemetry.EngineRpm;
@@ -286,10 +334,47 @@ bool APinkCabChaosTatraPawn::TickP04PackagedAcceptanceForwardDrive(
     {
         return true;
     }
-    if (P04PackagedAcceptanceDriveSeconds >= 1.25
+    // P04 packaged first-ratio A/B stays in first through 60 so the
+    // measurement compares the selected launch ratio, not two different
+    // shift-event timings. The top proof shifts sequentially and derives each
+    // upshift from the actual adjacent ratios so the next gear lands near the
+    // strong part of the torque curve instead of using one impossible fixed
+    // RPM threshold for every gear.
+    const bool bForwardRatioComparison =
+        IsForwardComparisonCaseLocal(P04PackagedAcceptanceCase);
+    float RequiredShiftRpm = 6000.0f;
+    if (P04PackagedAcceptanceCase == TEXT("top")
+        && !bP04PackagedAcceptanceTopTargetReached
         && P04PackagedAcceptanceDriveGear > 0
-        && P04PackagedAcceptanceDriveGear < 5
-        && Telemetry.EngineRpm >= 6000.0f)
+        && P04PackagedAcceptanceDriveGear < 4)
+    {
+        UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
+        if (!Movement
+            || Movement->TransmissionSetup.ForwardGearRatios.Num() < 5)
+        {
+            FinishP04PackagedAcceptance(false, TEXT("TOP_SHIFT_RATIOS_UNAVAILABLE"));
+            return true;
+        }
+        const int32 CurrentIndex = P04PackagedAcceptanceDriveGear - 1;
+        const int32 NextIndex = P04PackagedAcceptanceDriveGear;
+        const float CurrentRatio =
+            Movement->TransmissionSetup.ForwardGearRatios[CurrentIndex];
+        const float NextRatio =
+            Movement->TransmissionSetup.ForwardGearRatios[NextIndex];
+        constexpr float TopShiftPostRpm = 3500.0f;
+        RequiredShiftRpm =
+            TopShiftPostRpm * CurrentRatio / FMath::Max(NextRatio, KINDA_SMALL_NUMBER);
+    }
+    const bool bMayShift =
+        P04PackagedAcceptanceCase != TEXT("top")
+            ? P04PackagedAcceptanceDriveGear < 5
+            : (!bP04PackagedAcceptanceTopTargetReached
+                && P04PackagedAcceptanceDriveGear < 4);
+    if (!bForwardRatioComparison
+        && bMayShift
+        && P04PackagedAcceptanceDriveSeconds >= 1.25
+        && P04PackagedAcceptanceDriveGear > 0
+        && Telemetry.EngineRpm >= RequiredShiftRpm)
     {
         ++P04PackagedAcceptanceDriveGear;
         EnterP04PackagedAcceptancePhase(3);
@@ -326,13 +411,26 @@ bool APinkCabChaosTatraPawn::EvaluateP04PackagedAcceptanceForwardCase(
         FinishP04PackagedAcceptance(false, TEXT("FORWARD_0_60_NOT_REACHED"));
         return true;
     }
-    if (P04PackagedAcceptanceCase == TEXT("top") && SpeedKmh >= 195.0f)
+    if (P04PackagedAcceptanceCase == TEXT("top")
+        && bP04PackagedAcceptanceTopTargetReached
+        && P04PackagedAcceptanceGear5SpeedKmh > 0.0f)
     {
         P04PackagedAcceptanceLiftEntrySpeedKmh = SpeedKmh;
         EnterP04PackagedAcceptancePhase(5);
         return true;
     }
     if (P04PackagedAcceptanceCase == TEXT("top")
+        && !bP04PackagedAcceptanceTopTargetReached
+        && SpeedKmh >= 195.0f
+        && GetEngagedGear() == 4)
+    {
+        bP04PackagedAcceptanceTopTargetReached = true;
+        P04PackagedAcceptanceDriveGear = 5;
+        EnterP04PackagedAcceptancePhase(3);
+        return true;
+    }
+    if (P04PackagedAcceptanceCase == TEXT("top")
+        && !bP04PackagedAcceptanceTopTargetReached
         && P04PackagedAcceptanceDriveSeconds >= 80.0)
     {
         FinishP04PackagedAcceptance(false, TEXT("TOP_195_NOT_REACHED"));

@@ -5,6 +5,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HARNESS = ROOT / "Source" / "PinkCab" / "Private" / "Runtime" / "PinkCabChaosTatraPawnP04Acceptance.cpp"
 PHASES = ROOT / "Source" / "PinkCab" / "Private" / "Runtime" / "PinkCabChaosTatraPawnP04AcceptancePhases.cpp"
+SIMULATION = ROOT / "Source" / "PinkCabVehicle" / "Private" / "Vehicle" / "PinkCabChaosVehicleSimulation.cpp"
 SCRIPT = ROOT / "scripts" / "ci" / "run-p04-packaged-acceptance.ps1"
 DELIVERY = ROOT / ".github" / "workflows" / "cd869-deliver.yml"
 P02 = ROOT / ".github" / "workflows" / "cd648-p02-phy009.yml"
@@ -14,6 +15,7 @@ class P04PackagedAcceptanceContractTests(unittest.TestCase):
     def setUp(self):
         self.harness = HARNESS.read_text(encoding="utf-8") + "\n" + PHASES.read_text(encoding="utf-8")
         self.script = SCRIPT.read_text(encoding="utf-8")
+        self.simulation = SIMULATION.read_text(encoding="utf-8")
         self.delivery = DELIVERY.read_text(encoding="utf-8")
         self.p02 = P02.read_text(encoding="utf-8")
 
@@ -42,10 +44,53 @@ class P04PackagedAcceptanceContractTests(unittest.TestCase):
         self.assertIn("ForwardGearRatios[0] = 4.60f", self.harness)
         self.assertIn("profile_asset_mutated=0 transient_ab_ratio_override=%d force_injection=0", self.harness)
 
-    def test_lift_off_judges_only_physics_that_consumed_zero_throttle(self):
-        self.assertIn("GetPinkCabMechanicalIntegrationStepCount()", self.harness)
+    def test_lift_off_judges_one_atomic_physics_step_snapshot(self):
+        self.assertIn("FPinkCabMechanicalDriveSnapshot", self.harness)
+        self.assertIn("ReadPinkCabMechanicalDriveSnapshot(", self.harness)
         self.assertIn("P04PackagedAcceptanceProofCommandMechanicalStep", self.harness)
-        self.assertIn("CurrentMechanicalStep <= P04PackagedAcceptanceProofCommandMechanicalStep", self.harness)
+        self.assertIn("Snapshot.MechanicalStep <= P04PackagedAcceptanceProofCommandMechanicalStep", self.harness)
+
+    def test_forward_ratio_ab_does_not_mix_in_a_shift_event_before_60(self):
+        self.assertIn("IsForwardComparisonCaseLocal(P04PackagedAcceptanceCase)", self.harness)
+        self.assertIn("P04 packaged first-ratio A/B stays in first through 60", self.harness)
+        self.assertIn("PinkCabP04FirstRatio=", self.harness)
+
+    def test_top_uses_ratio_derived_sequential_shift_schedule(self):
+        self.assertIn("bP04PackagedAcceptanceTopTargetReached", self.harness)
+        self.assertIn("TopShiftPostRpm = 3500.0f", self.harness)
+        self.assertIn("TopShiftPostRpm * CurrentRatio / FMath::Max(NextRatio", self.harness)
+        self.assertIn("P04PackagedAcceptanceDriveGear < 4", self.harness)
+        self.assertIn("GetEngagedGear() == 4", self.harness)
+        self.assertIn("P04PackagedAcceptanceDriveGear = 5;", self.harness)
+        self.assertIn("P04PackagedAcceptanceGear5SpeedKmh > 0.0f", self.harness)
+
+    def test_clutch_inertia_probe_is_opt_in_and_bounded(self):
+        self.assertIn("PinkCabP04ClutchInertia=", self.harness)
+        self.assertIn("RequestedClutchInertia < 0.10f", self.harness)
+        self.assertIn("RequestedClutchInertia > 0.35f", self.harness)
+        self.assertIn("INVALID_CLUTCH_INERTIA_OVERRIDE", self.harness)
+        self.assertIn("ClutchConfig.EngineEffectiveInertia = RequestedClutchInertia", self.harness)
+
+    def test_top_fourth_ratio_probe_is_opt_in_and_bounded(self):
+        self.assertIn("PinkCabP04FourthRatio=", self.harness)
+        self.assertIn("RequestedFourthRatio < 1.0f", self.harness)
+        self.assertIn("RequestedFourthRatio >= 1.5f", self.harness)
+        self.assertIn("INVALID_FOURTH_RATIO_OVERRIDE", self.harness)
+
+    def test_clutch_predictor_preserves_native_free_engine_authority(self):
+        self.assertIn(
+            "Input.AvailableEngineTorqueNm =\n"
+            "            FMath::Max(ObservedFreeEngineNetTorqueNm, 0.0f);",
+            self.simulation,
+        )
+        self.assertIn(
+            "FMath::Max(-ObservedFreeEngineNetTorqueNm, 0.0f)",
+            self.simulation,
+        )
+        self.assertNotIn(
+            "Input.AvailableEngineTorqueNm = RequestedCombustionTorqueNm",
+            self.simulation,
+        )
 
     def test_packaged_matrix_covers_remaining_p04_and_countersteer_gate(self):
         for case in (
