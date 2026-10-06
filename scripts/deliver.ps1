@@ -11,6 +11,12 @@ $head=(git -C $RepoRoot rev-parse HEAD).Trim()
 if($ExpectedHead -and $head -ne $ExpectedHead){ throw "PINKCAB_EXACT_HEAD_FAIL expected=$ExpectedHead actual=$head" }
 if((git -C $RepoRoot status --porcelain).Count -gt 0){ throw 'PINKCAB_DELIVERY_DIRTY_WORKTREE' }
 
+& (Join-Path $RepoRoot 'scripts\build.ps1') -EngineRoot $EngineRoot
+if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
+& (Join-Path $RepoRoot 'scripts\verify-runtime.ps1') -EngineRoot $EngineRoot
+if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
+
 & (Join-Path $RepoRoot 'scripts\build.ps1') -Package -EngineRoot $EngineRoot
 if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }
 
