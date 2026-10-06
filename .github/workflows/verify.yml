@@ -61,3 +61,39 @@ jobs:
       - name: Runtime acceptance
         shell: pwsh
         run: .\scripts\verify-runtime.ps1
+
+
+  repository-verification-compat:
+    name: Repository verification
+    needs: static
+    if: ${{ always() }}
+    runs-on: windows-latest
+    timeout-minutes: 2
+    steps:
+      - name: Mirror static gate
+        shell: pwsh
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+        run: |
+          if($env:STATIC_RESULT -ne 'success'){
+            throw "PINKCAB_STATIC_GATE_NOT_GREEN=$env:STATIC_RESULT"
+          }
+          Write-Host 'PINKCAB_REQUIRED_CONTEXT_REPOSITORY=PASS'
+
+  gameplay-acceptance-compat:
+    name: Gameplay acceptance gate
+    needs: [static, build]
+    if: ${{ always() }}
+    runs-on: windows-latest
+    timeout-minutes: 2
+    steps:
+      - name: Mirror playable gate
+        shell: pwsh
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          RUNTIME_RESULT: ${{ needs.build.result }}
+        run: |
+          if($env:STATIC_RESULT -ne 'success' -or $env:RUNTIME_RESULT -ne 'success'){
+            throw "PINKCAB_PLAYABLE_GATE_NOT_GREEN static=$env:STATIC_RESULT runtime=$env:RUNTIME_RESULT"
+          }
+          Write-Host 'PINKCAB_REQUIRED_CONTEXT_GAMEPLAY=PASS'
