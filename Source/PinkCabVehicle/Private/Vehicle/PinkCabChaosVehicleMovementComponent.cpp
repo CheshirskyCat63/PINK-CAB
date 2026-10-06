@@ -100,6 +100,31 @@ bool UPinkCabChaosVehicleMovementComponent::ReadPinkCabMechanicalEvidenceWindow(
         });
 }
 
+bool UPinkCabChaosVehicleMovementComponent::ReadPinkCabMechanicalDriveSnapshot(
+    FPinkCabMechanicalDriveSnapshot& OutSnapshot)
+{
+    OutSnapshot = {};
+    FBodyInstance* Body = GetBodyInstance();
+    if (!Body || !PinkCabSimulationPT)
+    {
+        return false;
+    }
+
+    return FPhysicsCommand::ExecuteWrite(
+        Body->ActorHandle,
+        [this, &OutSnapshot](const FPhysicsActorHandle&)
+        {
+            if (PinkCabSimulationPT)
+            {
+                OutSnapshot.MechanicalStep =
+                    MechanicalIntegrationStepCounter.GetValue();
+                OutSnapshot.MeanDrivenWheelTorqueNm =
+                    PinkCabSimulationPT->GetLastMeanDrivenWheelTorqueNm();
+                OutSnapshot.bValid = true;
+            }
+        });
+}
+
 TUniquePtr<Chaos::FSimpleWheeledVehicle>
 UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {

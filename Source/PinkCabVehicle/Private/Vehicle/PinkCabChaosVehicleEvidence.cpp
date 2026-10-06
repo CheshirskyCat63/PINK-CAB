@@ -18,6 +18,7 @@ void FPinkCabChaosWheeledVehicleSimulation::BeginEvidenceWindow(
     EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     EvidenceEngineRpmTimeIntegral = 0.0;
     EvidenceObservedFreeEngineNetTorqueTimeIntegral = 0.0;
+    EvidenceRequestedEngineTorqueTimeIntegral = 0.0;
     EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
     EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
     EvidenceClutchSlipRpmTimeIntegral = 0.0;
@@ -57,6 +58,10 @@ FPinkCabChaosWheeledVehicleSimulation::ReadEvidenceWindow() const
         Result.MeanObservedFreeEngineNetTorqueNm = static_cast<float>(
             EvidenceObservedFreeEngineNetTorqueTimeIntegral
             / EvidenceCompletedSampleSeconds);
+        Result.MeanRequestedEngineTorqueAfterLimiterHealthNm =
+            static_cast<float>(
+                EvidenceRequestedEngineTorqueTimeIntegral
+                / EvidenceCompletedSampleSeconds);
         Result.MeanRequestedClutchTorqueNm = static_cast<float>(
             EvidenceRequestedClutchTorqueTimeIntegral
             / EvidenceCompletedSampleSeconds);
@@ -154,6 +159,10 @@ void FPinkCabChaosWheeledVehicleSimulation::AccumulateEvidenceValues(
         * SampleWeightSeconds;
     EvidenceObservedFreeEngineNetTorqueTimeIntegral +=
         static_cast<double>(ObservedFreeEngineNetTorqueNm)
+        * SampleWeightSeconds;
+    EvidenceRequestedEngineTorqueTimeIntegral +=
+        static_cast<double>(
+            PhysicsThreadActuation.RequestedEngineTorqueAfterLimiterHealthNm)
         * SampleWeightSeconds;
     EvidenceRequestedClutchTorqueTimeIntegral +=
         static_cast<double>(DrivelineOutput.RequestedClutchTorqueNm)

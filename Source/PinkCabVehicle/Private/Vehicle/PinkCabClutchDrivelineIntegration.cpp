@@ -258,6 +258,17 @@ PinkCabClutchIntegration::FResult PinkCabClutchIntegration::Integrate(
         return Result;
     }
 
+    // Relative clutch slip is engine omega minus shaft-equivalent omega.
+    // The old predictor treated the shaft target as stationary during each
+    // physics step, creating a systematic lag whenever the driven wheels were
+    // accelerating. Convert the measured same-step shaft acceleration into
+    // the equivalent torque term required by ds/dt.
+    const float ShaftAccelerationOmegaPerSecondSquared =
+        Input.ShaftEquivalentEngineRpmPerSecond * RpmToRadPerSecond;
+    const float RelativeNetTorqueNm =
+        NetEngineTorqueNm
+        - Inertia * ShaftAccelerationOmegaPerSecondSquared;
+
     FState State;
     State.SlipOmega =
         (Input.EngineRpm - Input.ShaftEquivalentEngineRpm)
@@ -266,30 +277,30 @@ PinkCabClutchIntegration::FResult PinkCabClutchIntegration::Integrate(
         static_cast<double>(Input.DeltaSeconds);
 
     const float HighBoundary =
-        (TorqueCapacityNm - NetEngineTorqueNm)
+        (TorqueCapacityNm - RelativeNetTorqueNm)
         / (Inertia * Gain);
     const float LowBoundary =
-        (-TorqueCapacityNm - NetEngineTorqueNm)
+        (-TorqueCapacityNm - RelativeNetTorqueNm)
         / (Inertia * Gain);
     Result.InitialRequestedTorqueNm = RequestedTorqueNm(
-        NetEngineTorqueNm, Inertia, Gain, State.SlipOmega);
+        RelativeNetTorqueNm, Inertia, Gain, State.SlipOmega);
 
     while (State.RemainingSeconds > TimeEpsilonSeconds)
     {
         if (AdvanceHighLimited(
-                State, NetEngineTorqueNm, Inertia,
+                State, RelativeNetTorqueNm, Inertia,
                 TorqueCapacityNm, Gain, HighBoundary))
         {
             continue;
         }
         if (AdvanceLowLimited(
-                State, NetEngineTorqueNm, Inertia,
+                State, RelativeNetTorqueNm, Inertia,
                 TorqueCapacityNm, Gain, LowBoundary))
         {
             continue;
         }
         AdvanceUnclamped(
-            State, NetEngineTorqueNm, Inertia,
+            State, RelativeNetTorqueNm, Inertia,
             TorqueCapacityNm, Gain, HighBoundary, LowBoundary);
     }
 
@@ -300,7 +311,7 @@ PinkCabClutchIntegration::FResult PinkCabClutchIntegration::Integrate(
         -State.ClutchImpulse / static_cast<double>(Inertia))
         * RadPerSecondToRpm;
     Result.FinalRequestedTorqueNm = RequestedTorqueNm(
-        NetEngineTorqueNm, Inertia, Gain, State.SlipOmega);
+        RelativeNetTorqueNm, Inertia, Gain, State.SlipOmega);
     Result.FinalSlipRpm =
         State.SlipOmega * RadPerSecondToRpm;
     Result.bAnyTorqueLimited = State.bAnyTorqueLimited;

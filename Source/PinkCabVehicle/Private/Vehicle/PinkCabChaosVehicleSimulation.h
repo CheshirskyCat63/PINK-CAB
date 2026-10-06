@@ -21,6 +21,10 @@ public:
         const FPinkCabChaosDrivelineCommand& InCommand);
     void BeginEvidenceWindow(float InSettleSeconds, float InSampleSeconds);
     FPinkCabMechanicalEvidenceSnapshot ReadEvidenceWindow() const;
+    float GetLastMeanDrivenWheelTorqueNm() const
+    {
+        return LastMeanDrivenWheelTorqueNm;
+    }
 
 
     virtual void ApplyInput(
@@ -44,6 +48,8 @@ private:
     FPinkCabClutchDrivelineOutput SolveDrivelineStep(
         float EngineRpmBeforeNative,
         float ObservedFreeEngineNetTorqueNm,
+        float DrivenWheelRpmBeforeNative,
+        float DrivenWheelRpmAfterNative,
         float DeltaTime);
     void ApplyEngineReaction(
         Chaos::FSimpleEngineSim& Engine,
@@ -81,6 +87,7 @@ private:
     double EvidenceDrivenWheelRpmTimeIntegral = 0.0;
     double EvidenceEngineRpmTimeIntegral = 0.0;
     double EvidenceObservedFreeEngineNetTorqueTimeIntegral = 0.0;
+    double EvidenceRequestedEngineTorqueTimeIntegral = 0.0;
     double EvidenceRequestedClutchTorqueTimeIntegral = 0.0;
     double EvidenceTransmittedClutchTorqueTimeIntegral = 0.0;
     double EvidenceClutchSlipRpmTimeIntegral = 0.0;
@@ -88,6 +95,7 @@ private:
     double EvidenceObservedDeltaSecondsSum = 0.0;
     float EvidenceMaxDeltaSeconds = 0.0f;
     float LastMaxAppliedWheelBrakeTorqueNm = 0.0f;
+    float LastMeanDrivenWheelTorqueNm = 0.0f;
     float LastEngineInputStateErrorRpm = 0.0f;
     float EvidenceMaxEngineInputStateErrorRpm = 0.0f;
     bool bLastParkingEnabled = false;

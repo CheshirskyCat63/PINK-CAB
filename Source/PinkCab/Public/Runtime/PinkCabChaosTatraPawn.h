@@ -237,7 +237,12 @@ private:
     float P04PackagedAcceptanceRightSteering = 0.0f;
     float P04PackagedAcceptanceCounterSteering = 0.0f;
     float P04PackagedAcceptancePostLiftMaxRearDriveTorqueNm = -MAX_flt;
+    float P04PackagedAcceptanceFirstRatioOverride = -1.0f;
+    float P04PackagedAcceptanceFourthRatioOverride = -1.0f;
     int64 P04PackagedAcceptanceProofCommandMechanicalStep = -1;
+    bool bP04PackagedAcceptanceTopTargetReached = false;
+    bool bP04PackagedAcceptanceTopPowerEvidenceStarted = false;
+    bool bP04PackagedAcceptanceTopPowerEvidenceLogged = false;
     FVector P04PackagedAcceptanceStartForward = FVector::ForwardVector;
     bool bCausalTelemetryEnabled = false;
     FPinkCabCausalTelemetryTrace CausalTelemetryTrace{16384};

@@ -20,6 +20,7 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float MeanDrivenWheelRpm = 0.0f;
     float MeanEngineRpm = 0.0f;
     float MeanObservedFreeEngineNetTorqueNm = 0.0f;
+    float MeanRequestedEngineTorqueAfterLimiterHealthNm = 0.0f;
     float MeanRequestedClutchTorqueNm = 0.0f;
     float MeanTransmittedClutchTorqueNm = 0.0f;
     float MeanClutchSlipRpm = 0.0f;
@@ -30,6 +31,13 @@ struct PINKCABVEHICLE_API FPinkCabMechanicalEvidenceSnapshot
     float MaxEngineInputStateErrorRpm = 0.0f;
     bool bAnyParkingEnabled = false;
     bool bComplete = false;
+};
+
+struct PINKCABVEHICLE_API FPinkCabMechanicalDriveSnapshot
+{
+    int64 MechanicalStep = 0;
+    float MeanDrivenWheelTorqueNm = 0.0f;
+    bool bValid = false;
 };
 
 struct PINKCABVEHICLE_API FPinkCabChaosDrivelineCommand
@@ -102,6 +110,8 @@ public:
         float SampleSeconds);
     bool ReadPinkCabMechanicalEvidenceWindow(
         FPinkCabMechanicalEvidenceSnapshot& OutSnapshot);
+    bool ReadPinkCabMechanicalDriveSnapshot(
+        FPinkCabMechanicalDriveSnapshot& OutSnapshot);
 
 
 protected:

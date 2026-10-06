@@ -127,6 +127,7 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
     FSimpleTransmissionSim& Transmission = PVehicle->GetTransmission();
     Transmission.SetGear(0, true);
 
+    const float DrivenWheelRpmBeforeNative = MeanDrivenWheelRpm(*PVehicle);
     const float EngineOmegaBeforeNative = Engine.GetEngineOmega();
     // SetEngineOmega applies the preceding clutch reaction without updating
     // Chaos' cached CurrentRPM. Predict from the actual angular state at the
@@ -139,6 +140,7 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
     AdvanceAcceptedNativeEngine(Transmission, DeltaTime);
     const float EngineOmegaAfterNative =
         Engine.GetEngineOmega();
+    const float DrivenWheelRpmAfterNative = MeanDrivenWheelRpm(*PVehicle);
 
     const float ObservedFreeEngineNetTorqueNm =
         Command.bCombustionAllowed
@@ -154,11 +156,18 @@ void FPinkCabChaosWheeledVehicleSimulation::ProcessMechanicalSimulation(
         SolveDrivelineStep(
             EngineRpmBeforeNative,
             ObservedFreeEngineNetTorqueNm,
+            DrivenWheelRpmBeforeNative,
+            DrivenWheelRpmAfterNative,
             DeltaTime);
     ApplyEngineReaction(Engine, Output);
 
     const FDrivenWheelTorqueStats WheelStats =
         ApplyDrivenWheelTorque(Output);
+    LastMeanDrivenWheelTorqueNm =
+        WheelStats.DrivenWheelCount > 0
+            ? WheelStats.SignedTorqueSumNm
+                / static_cast<float>(WheelStats.DrivenWheelCount)
+            : 0.0f;
     AccumulateEvidenceStep(
         Engine,
         Output,
@@ -197,25 +206,34 @@ FPinkCabClutchDrivelineOutput
 FPinkCabChaosWheeledVehicleSimulation::SolveDrivelineStep(
     const float EngineRpmBeforeNative,
     const float ObservedFreeEngineNetTorqueNm,
+    const float DrivenWheelRpmBeforeNative,
+    const float DrivenWheelRpmAfterNative,
     const float DeltaTime)
 {
-    const float DrivenWheelRpm = MeanDrivenWheelRpm(*PVehicle);
+    const float AbsoluteGearRatio = FMath::Abs(Command.EffectiveGearRatio);
     const float ShaftEquivalentEngineRpm =
-        FMath::Abs(Command.EffectiveGearRatio) > KINDA_SMALL_NUMBER
-            ? DrivenWheelRpm * FMath::Abs(Command.EffectiveGearRatio)
+        AbsoluteGearRatio > KINDA_SMALL_NUMBER
+            ? DrivenWheelRpmBeforeNative * AbsoluteGearRatio
             : 0.0f;
+    const float ShaftEquivalentEngineRpmPerSecond =
+        AbsoluteGearRatio > KINDA_SMALL_NUMBER
+            && DeltaTime > KINDA_SMALL_NUMBER
+        ? (DrivenWheelRpmAfterNative - DrivenWheelRpmBeforeNative)
+            * AbsoluteGearRatio / DeltaTime
+        : 0.0f;
 
     FPinkCabClutchDrivelineInput Input;
     Input.DeltaSeconds = DeltaTime;
     Input.EngineRpm =
         FMath::Max(EngineRpmBeforeNative, 0.0f);
     Input.ShaftEquivalentEngineRpm = ShaftEquivalentEngineRpm;
+    Input.ShaftEquivalentEngineRpmPerSecond =
+        ShaftEquivalentEngineRpmPerSecond;
     if (Command.bCombustionAllowed)
     {
-        // P01 native Chaos is the engine authority. Convert the actual free
-        // engine angular-momentum change from this same physics step into the
-        // net engine torque consumed by the clutch predictor. This avoids
-        // duplicating/approximating the accepted engine torque/drag model.
+        // P01 native Chaos remains the single engine authority. The clutch
+        // predictor consumes the actual same-step free-engine angular-momentum
+        // change instead of re-estimating combustion or drag in a second model.
         Input.AvailableEngineTorqueNm =
             FMath::Max(ObservedFreeEngineNetTorqueNm, 0.0f);
         Input.EngineDragTorqueNm =

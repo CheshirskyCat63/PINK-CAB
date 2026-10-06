@@ -264,6 +264,59 @@ bool FPinkCabClutchDrivelineSynchronizationHorizonTest::RunTest(
 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabClutchDrivelineMovingShaftSynchronizationTest,
+    "PinkCab.Vehicle.Physics.P02.ClutchModel.MovingShaftSynchronization",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabClutchDrivelineMovingShaftSynchronizationTest::RunTest(
+    const FString&)
+{
+    FPinkCabClutchDrivelineConfig Config;
+    Config.EngineEffectiveInertia = 0.17f;
+    Config.MaxClutchTorqueNm = 390.0f;
+    Config.SynchronizationTimeSeconds = 0.20f;
+    Config.LockedSlipRpm = 25.0f;
+    FPinkCabClutchDrivelineModel Model(Config);
+
+    constexpr float ShaftRampRpmPerSecond = 1200.0f;
+    constexpr float DeltaSeconds = 1.0f / 120.0f;
+    constexpr float DurationSeconds = 0.50f;
+    float ShaftRpm = 1700.0f;
+    float EngineRpm = ShaftRpm;
+
+    for (float Elapsed = 0.0f;
+         Elapsed < DurationSeconds - KINDA_SMALL_NUMBER;
+         Elapsed += DeltaSeconds)
+    {
+        FPinkCabClutchDrivelineInput Input;
+        Input.DeltaSeconds = DeltaSeconds;
+        Input.EngineRpm = EngineRpm;
+        Input.ShaftEquivalentEngineRpm = ShaftRpm;
+        Input.ShaftEquivalentEngineRpmPerSecond = ShaftRampRpmPerSecond;
+        Input.AvailableEngineTorqueNm = 0.0f;
+        Input.EngineDragTorqueNm = 0.0f;
+        Input.ClutchCoupling01 = 1.0f;
+        Input.DrivetrainTorqueCapacity01 = 1.0f;
+        Input.EffectiveGearRatio = 4.0f;
+        Input.TransmissionEfficiency = 0.90f;
+
+        const FPinkCabClutchDrivelineOutput Out = Model.Step(Input);
+        EngineRpm += Out.EngineReactionDeltaRpm;
+        ShaftRpm += ShaftRampRpmPerSecond * DeltaSeconds;
+    }
+
+    const float FinalSlipRpm = FMath::Abs(EngineRpm - ShaftRpm);
+    TestTrue(
+        *FString::Printf(
+            TEXT("full clutch tracks an accelerating shaft inside locked-slip band final_slip_rpm=%.3f locked_slip_rpm=%.3f"),
+            FinalSlipRpm,
+            Config.LockedSlipRpm),
+        FinalSlipRpm <= Config.LockedSlipRpm);
+    return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabClutchDrivelineCapacityIndependentComplianceTest,
     "PinkCab.Vehicle.Physics.P02.ClutchModel.CapacityIndependentCompliance",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
