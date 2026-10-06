@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PINKCAB_UE_ROOT: 'C:\Program Files\Epic Games\UE_5.8'
+  PINKCAB_METAROAD_PACKAGE: 'E:\CHESHIRE_DIVISION\Shared\Vendor\MetaRoad\3.2.0-ox4rZYlcREy004nfGp7EHg'
+
 concurrency:
   group: pinkcab-deliver
   cancel-in-progress: false
