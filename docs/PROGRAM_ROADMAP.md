@@ -10,19 +10,19 @@
 
 PINK-CAB is no longer in recovery/bootstrap mode. New implementation follows:
 
-`main → one Jira-keyed branch → PR + exact-source checks → required packaged human gate → owner verdict → merge → post-merge verification`
+`main → one short-lived branch → PR → verify.yml → merge → optional exact-head deliver.yml → owner verdict`
 
 No parallel recovery lane, second vehicle solver, or feature-specific CI ecosystem is allowed.
 
 ## Current execution checkpoint
 
-Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+PR #67 / `cleanup/p4-baseline` is the active simplification candidate.
 
-Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+Its purpose is to replace the accumulated P00–P04 vehicle-research and road-authoring infrastructure with a playable P4 baseline built on stock Chaos, retained Tatra presentation, retained cockpit/H-pattern gameplay and the endless-straight road.
 
-Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+The previous accepted P03/P04 packages remain historical fallbacks until the simplified baseline is verified, merged and explicitly delivered. They are not current architecture authority.
 
-CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+Active GitHub control is only `verify.yml` and `deliver.yml`. Historical CD-648/CD-869 workflows and custom driveline research are archived under `archive/20261006/*`.
 
 ## Production technology
 
