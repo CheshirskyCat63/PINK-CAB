@@ -15,7 +15,7 @@ public:
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const override;
     virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override
     {
-        return EPinkCabMechanicalClutchCapability::ContinuousExternalTorque;
+        return EPinkCabMechanicalClutchCapability::EmulatedNeutralGate;
     }
 
     const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }

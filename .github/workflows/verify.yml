@@ -1,0 +1,99 @@
+name: PINK CAB Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PINKCAB_UE_ROOT: 'C:\Program Files\Epic Games\UE_5.8'
+  PINKCAB_METAROAD_PACKAGE: 'E:\CHESHIRE_DIVISION\Shared\Vendor\MetaRoad\3.2.0-ox4rZYlcREy004nfGp7EHg'
+
+concurrency:
+  group: pinkcab-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static contracts
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Script tests
+        shell: pwsh
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Code health
+        shell: pwsh
+        run: python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
+      - name: Repository hygiene
+        shell: pwsh
+        run: python scripts/repo_hygiene.py --root .
+
+  build:
+    name: UE build and focused runtime
+    needs: static
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          lfs: true
+          persist-credentials: false
+      - name: Build editor
+        shell: pwsh
+        run: .\scripts\build.ps1
+      - name: Runtime acceptance
+        shell: pwsh
+        run: .\scripts\verify-runtime.ps1
+
+
+  repository-verification-compat:
+    name: Repository verification
+    needs: static
+    if: ${{ always() }}
+    runs-on: windows-latest
+    timeout-minutes: 2
+    steps:
+      - name: Mirror static gate
+        shell: pwsh
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+        run: |
+          if($env:STATIC_RESULT -ne 'success'){
+            throw "PINKCAB_STATIC_GATE_NOT_GREEN=$env:STATIC_RESULT"
+          }
+          Write-Host 'PINKCAB_REQUIRED_CONTEXT_REPOSITORY=PASS'
+
+  gameplay-acceptance-compat:
+    name: Gameplay acceptance gate
+    needs: [static, build]
+    if: ${{ always() }}
+    runs-on: windows-latest
+    timeout-minutes: 2
+    steps:
+      - name: Mirror playable gate
+        shell: pwsh
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          RUNTIME_RESULT: ${{ needs.build.result }}
+        run: |
+          if($env:STATIC_RESULT -ne 'success' -or $env:RUNTIME_RESULT -ne 'success'){
+            throw "PINKCAB_PLAYABLE_GATE_NOT_GREEN static=$env:STATIC_RESULT runtime=$env:RUNTIME_RESULT"
+          }
+          Write-Host 'PINKCAB_REQUIRED_CONTEXT_GAMEPLAY=PASS'

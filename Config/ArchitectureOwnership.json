@@ -120,13 +120,7 @@
       "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
       "test_prefix": "PinkCab.Vehicle.ChaosBaseline"
     },
-    {
-      "id": "chaos_physics_actuation",
-      "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabChaosVehicleMovementComponent.h",
-      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleSimulation.cpp",
-      "test_prefix": "PinkCab.Vehicle.Physics.P02"
-    },
+
     {
       "id": "fare",
       "owner_domain": "Taxi",

@@ -9,8 +9,8 @@ public class PinkCabTests : ModuleRules
         {
             "Core", "CoreUObject", "ApplicationCore", "Engine", "InputCore", "UnrealEd", "PinkCab",
             "ChaosVehicles", "PhysicsCore",
-            "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld", "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence",
-            "MetaRoad", "MetaRoadEditor", "StructUtils", "AssetRegistry", "MaterialEditor"
+            "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld",
+            "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence", "AssetRegistry"
         });
     }
 }

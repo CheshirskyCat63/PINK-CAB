@@ -1,8 +1,8 @@
-# PINK CAB — Engineering Start Here
+# PINK CAB вЂ” Engineering Start Here
 
 This page is the five-minute entry point for changing PINK CAB code. It describes the current exact repository shape; `Config/ArchitectureOwnership.json` is the machine-readable ownership source and `scripts/code-health.ps1` rejects stale paths or missing rows.
 
-## Accepted vehicle checkpoint · CD-952
+## Accepted vehicle checkpoint В· CD-952
 
 Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
 
@@ -71,7 +71,7 @@ Hard rules:
 - presentation consumes authoritative state and does not create a second source of truth;
 - no new dependency cycle or larger code-health violation may be added over the committed baseline.
 
-## 4. I want to change X — go here
+## 4. I want to change X вЂ” go here
 
 | Concern ID | Change | Current owner | Public contract | Test prefix |
 | --- | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ Hard rules:
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
 | `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
-| `clutch` | clutch torque transfer, slip, lock and bidirectional engine↔shaft reaction | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h` | `PinkCab.Vehicle.Physics.P02.ClutchModel` |
+| `clutch` | clutch torque transfer, slip, lock and bidirectional engineв†”shaft reaction | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h` | `PinkCab.Vehicle.Physics.P02.ClutchModel` |
 | `throttle` | launch redose/target behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `brake` | brake dosing target | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |
@@ -124,3 +124,10 @@ The implementation path for each row is in `Config/ArchitectureOwnership.json`; 
 
 Architecture normalization design: `docs/superpowers/specs/2026-09-19-pink-cab-code-health-architecture-normalization-design.md`.
 Implementation plan: `docs/superpowers/plans/2026-09-19-pink-cab-code-health-architecture-normalization.md`.
+
+<!-- P4_ACTIVE_OWNERSHIP_START -->
+## Active P4 ownership
+
+The active baseline keeps ownership intentionally broad: `runtime`, `vehicle`, `cockpit`, `interaction`, `world`, `taxi`, `economy`, `traffic`, `persistence`.
+Detailed clutch, pedal, telemetry, evidence, and road-authoring research is historical and must not become a required production dependency.
+<!-- P4_ACTIVE_OWNERSHIP_END -->
