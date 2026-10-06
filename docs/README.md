@@ -25,12 +25,12 @@
 The recovery/admin freeze is over. Gameplay work is allowed.
 
 - `main` is the only integration branch.
-- PR #52/P03 and PR #62/bounded P04 are integrated; CD-641 owns remaining P04 engineering. PR #47 is a separate tyre diagnostic.
-- New work uses one short-lived Jira-keyed task branch → one PR → verification → merge.
+- Previous P03/P04 work is retained as historical evidence; PR #67 is the active simplification path.
+- New work uses one short-lived branch → one PR → `verify.yml` → merge.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
 - Code-health debt baseline is zero.
-- Accepted runtime is bounded P04 52239b61; previous V2edf75e1b and P02 remain retained. Administrative commits do not rename binaries.
+- The previous bounded-P04 package remains the retained fallback until the simplified P4 baseline is verified, merged and explicitly delivered.
 
 ## Delivery lanes
 
@@ -44,13 +44,11 @@ Documentation-only administration does not require replacing the runtime package
 
 ## Current execution checkpoint
 
-Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+Active candidate: PR #67 / `cleanup/p4-baseline`.
 
-Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+The candidate removes the custom Chaos simulation override, causality/calibration evidence lab, road-authoring CI and retired delivery paths. It keeps the Tatra presentation, cockpit, H-pattern, stock Chaos vehicle actuation, endless-straight road and exact-head delivery discipline.
 
-Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
-
-CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+Historical accepted packages and runs remain evidence/fallbacks only. Archive tags under `archive/20261006/*` preserve the old research branch tips and dirty P04 states.
 
 ## Broader FIRST EURO execution corridor (after current physics priorities)
 
