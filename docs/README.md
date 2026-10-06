@@ -34,11 +34,11 @@ The recovery/admin freeze is over. Gameplay work is allowed.
 
 ## Delivery lanes
 
-Normal coordinator: `.github/workflows/pinkcab-repository-verification.yml` — complete scope, repository checks, exact-source physics, same-run evidence plus five independent slope repeats, then aggregate technical gate. Main requires both `Repository verification` and `Gameplay acceptance gate`.
+Normal verification is `.github/workflows/verify.yml`: hosted static contracts first, then an exact-head `PinkCabEditor` build and the focused playable runtime suite on the PINKCAB self-hosted runner.
 
-Human delivery is explicit: `cd648-p02-phy009.yml` with `deliver_human=true` on the reviewed candidate ref, then its verified `cd869-deliver.yml` call. Record the full SHA/run/attempt. The route checks packaged map/four-wheel/material smoke, installs to a unique SHA/run/attempt directory, compares payload paths/sizes/SHA256, verifies an interactive window and atomically replaces only `PINCKCAB.lnk`, retaining prior link and accepted package. Delivery initially records HUMAN_PENDING; owner acceptance is a subsequent separate record.
+Human delivery is `.github/workflows/deliver.yml`. Its single entry point is `scripts/deliver.ps1`, which requires a clean exact HEAD, builds the editor, runs the focused runtime suite, packages with BuildCookRun, smoke-tests the package, and only then atomically publishes `PINCKCAB_BUILD` plus the `PINCKCAB.lnk` shortcut.
 
-Retained G1 fast/human_gate/release_gate and inline definitions are auxiliary/history, not competing routine entry points. Policy and implementation now permit only P02-mediated owner-test delivery: CD-869 is reusable-only (`workflow_call`), has no direct `workflow_dispatch`, and its delivery job requires the verified P02 caller identity plus the same GitHub run ID and attempt. The retired local fast-delivery script refuses mutation. Full clean-source/full-project/packaged-input qualification remains CD-559 engineering. Cached-package source-marker/executable-presence checks are not a complete cache-provenance certificate.
+The old CD-648/CD-869/P00–P04 workflow graph, causality evidence programs, calibration fixtures and road-authoring gates are historical evidence only. They are not active build, verification or delivery authority.
 
 Documentation-only administration does not require replacing the runtime package. PINK CAB and KUKURUZA registrations share one physical host; coordinate heavy Unreal work without stopping another project's processes.
 
