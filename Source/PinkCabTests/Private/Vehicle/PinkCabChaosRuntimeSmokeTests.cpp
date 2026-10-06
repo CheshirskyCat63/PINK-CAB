@@ -257,9 +257,9 @@ public:
         }
         Test->TestTrue(TEXT("at least two wheels remain in road contact"), ContactCount >= 2);
 
-        FPinkCabVehicleControlState StopControls;
-        StopControls.SetBrake(1.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+        FPinkCabVehicleInputFrame StopFrame;
+        StopFrame.Brake = 1.0f;
+        Pawn->ApplyVehicleInputFrame(StopFrame, 0.0f, 1.0f / 60.0f);
         return true;
     }
 
@@ -330,10 +330,9 @@ public:
             return false;
         }
 
-        FPinkCabVehicleControlState Controls;
-        Controls.SetThrottle(1.0f);
-        Controls.SetDriveline(0, 0, 0.0f);
-        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        FPinkCabVehicleInputFrame RevFrame;
+        RevFrame.Throttle = 1.0f;
+        LivePawn->ApplyVehicleInputFrame(RevFrame, 0.0f, 1.0f / 60.0f);
         PeakRpm = FMath::Max(PeakRpm, Movement->GetEngineRotationSpeed());
 
         if (StartSeconds < 0.0)
@@ -358,8 +357,8 @@ public:
         Test->TestTrue(TEXT("high-rev engine remains inside limiter overshoot band"),
             PeakRpm <= Movement->EngineSetup.MaxRPM * 1.03f);
 
-        Controls.SetThrottle(0.0f);
-        LivePawn->GetPinkCabDynamicsProvider().ApplyControls(Controls);
+        FPinkCabVehicleInputFrame IdleFrame;
+        LivePawn->ApplyVehicleInputFrame(IdleFrame, 0.0f, 1.0f / 60.0f);
         return true;
     }
 
@@ -555,9 +554,9 @@ public:
         Test->TestEqual(TEXT("normalized telemetry reports reverse gear"), Telemetry.CurrentGear, -1);
         Test->TestEqual(TEXT("reverse telemetry preserves four wheel slots"), Telemetry.Wheels.Num(), 4);
 
-        FPinkCabVehicleControlState StopControls;
-        StopControls.SetBrake(1.0f);
-        Pawn->GetPinkCabDynamicsProvider().ApplyControls(StopControls);
+        FPinkCabVehicleInputFrame StopFrame;
+        StopFrame.Brake = 1.0f;
+        Pawn->ApplyVehicleInputFrame(StopFrame, 0.0f, 1.0f / 60.0f);
         return true;
     }
 
