@@ -37,6 +37,8 @@ $argumentLine=@(
     '-nopause',
     '-NoSound',
     '-SkipAssetScan',
+    '-NoCompile',
+    '-NoCompileEditor',
     (Quote-Arg "-abslog=$LogPath"),
     (Quote-Arg "-ExecCmds=Automation RunTests $TestName"),
     (Quote-Arg '-TestExit=Automation Test Queue Empty')
@@ -53,14 +55,14 @@ if(-not $process.Start()){
     throw "PINKCAB_AUTOMATION_START_FAILED=$TestName"
 }
 
-function Stop-StalledPlatformValidation([int]$EditorPid){
+function Stop-StalledStartupBuild([int]$EditorPid){
     $buildBat=Join-Path $EngineRoot 'Engine\Build\BatchFiles\Build.bat'
     $lockName=(($buildBat -replace '[:\\/]+','-') + '.lock')
     $lockPath=Join-Path ([IO.Path]::GetTempPath()) $lockName
     $children=@(Get-CimInstance Win32_Process | Where-Object {
         $_.ParentProcessId -eq $EditorPid -and
         $_.Name -eq 'cmd.exe' -and
-        $_.CommandLine -match 'Build\.bat.*-Mode=ValidatePlatforms'
+        $_.CommandLine -match 'Build\.bat.*-Mode=(ValidatePlatforms|QueryTargets)'
     })
     foreach($child in $children){
         $age=((Get-Date) - $child.CreationDate).TotalSeconds
@@ -74,9 +76,9 @@ function Stop-StalledPlatformValidation([int]$EditorPid){
         if($lockFree){
             try {
                 Stop-Process -Id $child.ProcessId -Force -ErrorAction Stop
-                Write-Host "PINKCAB_AUTOMATION_VALIDATEPLATFORMS_STALL_RECOVERED pid=$($child.ProcessId) age_s=$([int]$age)"
+                Write-Host "PINKCAB_AUTOMATION_STARTUP_BUILD_STALL_RECOVERED pid=$($child.ProcessId) age_s=$([int]$age)"
             } catch {
-                Write-Host "PINKCAB_AUTOMATION_VALIDATEPLATFORMS_RECOVERY_WARN pid=$($child.ProcessId) error=$($_.Exception.Message)"
+                Write-Host "PINKCAB_AUTOMATION_STARTUP_BUILD_RECOVERY_WARN pid=$($child.ProcessId) error=$($_.Exception.Message)"
             }
         }
     }
@@ -88,7 +90,7 @@ while(-not $completed -and $timer.Elapsed.TotalSeconds -lt $TimeoutSeconds){
     $remainingMs=[Math]::Max(1, [int](($TimeoutSeconds - $timer.Elapsed.TotalSeconds) * 1000))
     $completed=$process.WaitForExit([Math]::Min(5000, $remainingMs))
     if(-not $completed){
-        Stop-StalledPlatformValidation -EditorPid $process.Id
+        Stop-StalledStartupBuild -EditorPid $process.Id
         $progress='waiting for automation log'
         if(Test-Path -LiteralPath $LogPath){
             $lastEvent=Get-Content -LiteralPath $LogPath -Tail 200 |
