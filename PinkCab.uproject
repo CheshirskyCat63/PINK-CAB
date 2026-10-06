@@ -67,13 +67,6 @@
         {
             "Name": "MetaRoad",
             "Enabled": true
-        },
-        {
-            "Name": "StructUtils",
-            "Enabled": true,
-            "TargetAllowList": [
-                "Editor"
-            ]
         }
     ]
 }

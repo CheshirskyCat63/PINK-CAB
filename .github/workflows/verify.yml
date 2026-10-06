@@ -1,0 +1,59 @@
+name: PINK CAB Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pinkcab-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static contracts
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Script tests
+        shell: pwsh
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Code health
+        shell: pwsh
+        run: python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt
+      - name: Repository hygiene
+        shell: pwsh
+        run: python scripts/repo_hygiene.py --root .
+
+  build:
+    name: UE build and focused runtime
+    needs: static
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, Windows, X64, pinkcab]
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          lfs: true
+          persist-credentials: false
+      - name: Build editor
+        shell: pwsh
+        run: .\scripts\build.ps1
+      - name: Runtime acceptance
+        shell: pwsh
+        run: .\scripts\verify-runtime.ps1

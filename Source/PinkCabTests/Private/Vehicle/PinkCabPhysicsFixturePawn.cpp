@@ -95,29 +95,23 @@ bool FPinkCabPhysicsFixtureRestGate::Update(
 {
     UChaosWheeledVehicleMovementComponent* Movement =
         Pawn.GetChaosMovement();
-    UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
-        Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
     USkeletalMeshComponent* Mesh = Pawn.GetMesh();
-    if (!Movement || !PinkCabMovement || !Mesh)
+    if (!Movement || !Mesh)
     {
         StableMechanicalSteps = 0;
         return false;
     }
 
-    const int64 MechanicalStep =
-        PinkCabMovement->GetPinkCabMechanicalIntegrationStepCount();
+    // The fixture now observes stock Chaos rather than a custom physics-thread
+    // integration counter. Each automation observation is one accepted sample.
     if (StartMechanicalStep < 0)
     {
-        StartMechanicalStep = MechanicalStep;
-        LastMechanicalStep = MechanicalStep;
-        return false;
-    }
-    if (MechanicalStep == LastMechanicalStep)
-    {
+        StartMechanicalStep = 0;
+        LastMechanicalStep = 0;
         return false;
     }
 
-    LastMechanicalStep = MechanicalStep;
+    const int64 MechanicalStep = ++LastMechanicalStep;
 
     Observation = {};
     Observation.MechanicalStep = MechanicalStep;

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)][string]$EngineRoot,
     [Parameter(Mandatory=$true)][string]$ProjectPath,
     [Parameter(Mandatory=$true)][string]$TestName,
@@ -53,12 +53,42 @@ if(-not $process.Start()){
     throw "PINKCAB_AUTOMATION_START_FAILED=$TestName"
 }
 
+function Stop-StalledPlatformValidation([int]$EditorPid){
+    $buildBat=Join-Path $EngineRoot 'Engine\Build\BatchFiles\Build.bat'
+    $lockName=(($buildBat -replace '[:\\/]+','-') + '.lock')
+    $lockPath=Join-Path ([IO.Path]::GetTempPath()) $lockName
+    $children=@(Get-CimInstance Win32_Process | Where-Object {
+        $_.ParentProcessId -eq $EditorPid -and
+        $_.Name -eq 'cmd.exe' -and
+        $_.CommandLine -match 'Build\.bat.*-Mode=ValidatePlatforms'
+    })
+    foreach($child in $children){
+        $age=((Get-Date) - $child.CreationDate).TotalSeconds
+        if($age -lt 15){ continue }
+        $lockFree=$false
+        try {
+            $stream=[IO.File]::Open($lockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+            $stream.Close()
+            $lockFree=$true
+        } catch {}
+        if($lockFree){
+            try {
+                Stop-Process -Id $child.ProcessId -Force -ErrorAction Stop
+                Write-Host "PINKCAB_AUTOMATION_VALIDATEPLATFORMS_STALL_RECOVERED pid=$($child.ProcessId) age_s=$([int]$age)"
+            } catch {
+                Write-Host "PINKCAB_AUTOMATION_VALIDATEPLATFORMS_RECOVERY_WARN pid=$($child.ProcessId) error=$($_.Exception.Message)"
+            }
+        }
+    }
+}
+
 $timer=[Diagnostics.Stopwatch]::StartNew()
 $completed=$false
 while(-not $completed -and $timer.Elapsed.TotalSeconds -lt $TimeoutSeconds){
     $remainingMs=[Math]::Max(1, [int](($TimeoutSeconds - $timer.Elapsed.TotalSeconds) * 1000))
-    $completed=$process.WaitForExit([Math]::Min(30000, $remainingMs))
+    $completed=$process.WaitForExit([Math]::Min(5000, $remainingMs))
     if(-not $completed){
+        Stop-StalledPlatformValidation -EditorPid $process.Id
         $progress='waiting for automation log'
         if(Test-Path -LiteralPath $LogPath){
             $lastEvent=Get-Content -LiteralPath $LogPath -Tail 200 |

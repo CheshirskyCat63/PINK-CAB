@@ -60,10 +60,9 @@ bool FPinkCabChaosCockpitBridge::Apply(
         EngineTorqueCurveNm,
         Actuation.RequestedEngineTorqueAfterLimiterHealthNm);
 
-    // PHY-009 owns one driveline solver for 0..1 coupling. Chaos' simple
-    // transmission has no clutch model and must stay neutral; otherwise 1.0
-    // would silently switch back to a different RPM/torque solver.
-    Movement.SetTargetGear(0, true);
+    // P4 uses stock Chaos transmission authority. The provider maps the
+    // validated H-pattern engagement to Chaos target gear; cockpit code must
+    // not pre-emptively force neutral here.
 
     // Compatibility transport only. No production torque is allowed through
     // the legacy external-partial path after P02.
