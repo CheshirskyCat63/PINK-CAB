@@ -3,7 +3,7 @@
 project_root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 source_root=os.environ.get(
     "PINKCAB_TATRA_RIG06_PACKAGE",
-    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG06_UE")
+    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG22_UE")
 fbx=os.path.join(source_root,"TATRA613_CHAOS_RIG_06_TEXTURED_OPENABLES.fbx")
 dest="/Game/Dev/Vehicles/Tatra613Rig06"
 unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX False")

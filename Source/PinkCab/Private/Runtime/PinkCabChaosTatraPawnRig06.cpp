@@ -5,6 +5,9 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitPresentationState.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
+#include "Components/PoseableMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 
 namespace
 {
@@ -43,6 +46,8 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
         TEXT("Phys_Wheel_FL"), TEXT("Phys_Wheel_FR"),
         TEXT("Phys_Wheel_BL"), TEXT("Phys_Wheel_BR"),
         TEXT("Steering_Wheel"), TEXT("Cabin_GearLever"),
+        TEXT("Cabin_ClutchPedal"), TEXT("Cabin_BrakePedal"),
+        TEXT("Cabin_ThrottlePedal"),
         TEXT("Cabin_Handbrake"), TEXT("Door_FL"), TEXT("Door_FR"),
         TEXT("Door_RL"), TEXT("Door_RR"), TEXT("Trunk_Front"),
         TEXT("Hood_Rear")
@@ -160,8 +165,9 @@ bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
     {
         return false;
     }
-    UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
-    if (!Movement || Movement->Wheels.Num() != 4)
+    UPinkCabChaosVehicleMovementComponent* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(GetChaosMovement());
+    const UPoseableMeshComponent* Exterior = VehicleVisualShell->GetExteriorPoseablePresentation();
+    if (!Movement || Movement->Wheels.Num() != 4 || !Exterior || !GetMesh())
     {
         return false;
     }
@@ -182,11 +188,12 @@ bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
 
         FTransform Dynamic = *Rest;
 
-        // RIG06 asset-space units are Blender meters while Chaos reports cm.
-        Dynamic.SetLocation(
-            Rest->GetLocation()
-            + ChaosWheel->GetSuspensionAxis()
-                * (ChaosWheel->GetSuspensionOffset() / 100.0f));
+        FVector PhysicalCenter;
+        if (!Movement->GetWheelPresentationCenter(Index, PhysicalCenter)) return false;
+        // Convert the one physical wheel center into authored component units.
+        // This follows both suspension and chassis pose without moving physics.
+        Dynamic.SetLocation(Exterior->GetComponentTransform().InverseTransformPosition(
+            GetMesh()->GetComponentTransform().TransformPosition(PhysicalCenter)));
 
         const FQuat Steering(
             FVector::UpVector,
@@ -214,6 +221,24 @@ void APinkCabChaosTatraPawn::SyncRig06CockpitBones(
         || !IsRig06BoneProfile(VehicleVisualShell->GetProfile()))
     {
         return;
+    }
+
+    // V22 authored pedal pivots share the vehicle's transverse axis. Preserve
+    // their measured 24/20/28 degree downward strokes in component space;
+    // the imported bone basis is not a second input or physics authority.
+    const FName Pedals[] = { TEXT("Cabin_ClutchPedal"), TEXT("Cabin_BrakePedal"), TEXT("Cabin_ThrottlePedal") };
+    const float Travel[] = { 24.0f, 20.0f, 28.0f };
+    const float Inputs[] = { Presentation.Clutch, Presentation.Brake, Presentation.Throttle };
+    for (int32 Index = 0; Index < UE_ARRAY_COUNT(Pedals); ++Index)
+    {
+        if (const FTransform* Rest = Rig06RestBoneTransforms.Find(Pedals[Index]))
+        {
+            FTransform Pedal = *Rest;
+            const FQuat Press(FVector::YAxisVector,
+                FMath::DegreesToRadians(-Travel[Index] * FMath::Clamp(Inputs[Index], 0.0f, 1.0f)));
+            Pedal.SetRotation((Press * Rest->GetRotation()).GetNormalized());
+            VehicleVisualShell->SetPoseableBoneTransform(Pedals[Index], Pedal);
+        }
     }
 
     if (const FTransform* SteeringRest =

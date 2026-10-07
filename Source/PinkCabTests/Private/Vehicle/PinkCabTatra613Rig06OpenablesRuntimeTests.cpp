@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
@@ -41,6 +42,16 @@ public:
             Test->TestNotNull(
                 TEXT("RIG06 cabin is poseable"),
                 Shell->GetCabinPoseablePresentation());
+            TArray<USkeletalMeshComponent*> SkeletalParts;
+            Pawn->GetComponents(SkeletalParts);
+            bool bFoundPrototypeDriver = false;
+            for (const USkeletalMeshComponent* Part : SkeletalParts)
+            {
+                if (Part->GetFName() != TEXT("PrototypeDriverVisual")) continue;
+                bFoundPrototypeDriver = true;
+                Test->TestTrue(TEXT("authored Tatra hides the standing prototype driver"), Part->bHiddenInGame);
+            }
+            Test->TestTrue(TEXT("prototype driver visibility was checked"), bFoundPrototypeDriver);
 
             static const FName Bones[] = {
                 TEXT("Door_FL"), TEXT("Door_FR"),
