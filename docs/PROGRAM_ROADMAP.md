@@ -16,13 +16,15 @@ No parallel recovery lane, second vehicle solver, or feature-specific CI ecosyst
 
 ## Current execution checkpoint
 
-PR #67 / `cleanup/p4-baseline` is the active simplification candidate.
+The simplified stock-Chaos P4 baseline is complete. The owner accepted the P4 + RIG06 playable build on 2026-10-07; immutable fallback tag: `accepted/p4-rig06-20261007` at `6edea7747d3a8433188c9fb394b98ae9c320d49b`.
 
-Its purpose is to replace the accumulated P00–P04 vehicle-research and road-authoring infrastructure with a playable P4 baseline built on stock Chaos, retained Tatra presentation, retained cockpit/H-pattern gameplay and the endless-straight road.
+The immediate execution lane is **Vehicle Feel 90**. It calibrates the already accepted hero-car stack toward roughly 80–90% of intended FIRST EURO driving behavior without mixing in world, taxi, traffic, economy, Neural or ServiceNode work. P4 acceptance remains closed history; failed feel candidates roll back to the accepted tag rather than accumulating compensating hacks.
 
-The previous accepted P03/P04 packages remain historical fallbacks until the simplified baseline is verified, merged and explicitly delivered. They are not current architecture authority.
+Vehicle Feel 90 closes in this order: measurements/evidence → steering/input → engine/clutch/gearbox → mass/CoM/inertia → suspension/body control → dry tyres/brakes → wet/storm → load envelope → runtime robustness → one exact-head owner acceptance. The executable contract is mirrored in `docs/PINK_CAB_VEHICLE_FEEL_90.md`.
 
-Active GitHub control is only `verify.yml` and `deliver.yml`. Historical CD-648/CD-869 workflows and custom driveline research are archived under `archive/20261006/*`.
+Only after Vehicle Feel 90 owner acceptance does the broader FIRST EURO queue below resume at R01.
+
+Active GitHub control is only `verify.yml` and `deliver.yml`. Historical CD-648/CD-869 workflows and custom driveline research remain archived evidence, not parallel production architecture.
 
 ## Production technology
 

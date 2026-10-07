@@ -4,13 +4,13 @@ This page is the five-minute entry point for changing PINK CAB code. It describe
 
 ## Accepted vehicle checkpoint В· CD-952
 
-Accepted P04 measured gearing runtime: **52239b61bc80e5a63716b9b09b87c520fa09fd05**, delivery **37149462470**, attempt 1; explicitly owner accepted on 2026-10-03. PR #62 integrated it as **4a313d38f0674a3e5048f832a07428defa31ab62**. Read GitHub for later main commits; integration/admin commits never rename accepted executable bytes.
+The current owner-accepted fallback is **`accepted/p4-rig06-20261007` → `6edea7747d3a8433188c9fb394b98ae9c320d49b`**, accepted on 2026-10-07 after the simplified stock-Chaos P4 core was restored unchanged and RIG06 was mounted as presentation only. The delivered desktop entry is `PINCKCAB`. P4 acceptance is closed and is not reopened by later feel calibration.
 
-Previous accepted fallbacks: P03/V2 `edf75e1b` / delivery `37117735294`, and P02 `8d68e456` / delivery `36868646970`. Road R1-R5 and no-assist input grammar remain frozen. Sole root desktop game entry: `PINCKCAB`; studio entries are Editor and explicitly named Rollback_V2.
+The 2026-10-03 P04 measured-gearing package (`52239b61`, PR #62, CD-952) remains immutable historical acceptance evidence and rollback context. Earlier P03/V2 and P02 evidence remains historical as well. Do not combine those trees with current results or reintroduce their retired custom driveline/evidence architecture.
 
-Coordinator `37148042881`, gated delivery `37149462470` and installed audit `37151172013` passed: 79 script tests, complete ControlRuntime, 63 physics tests, 240 D3 cases, five slope repeats and 53 installed payload files. Additive owner decision is `OWNER_ACCEPTANCE.json`, retained by run `37152180059`; original HUMAN_PENDING handoff receipts remain unchanged historical evidence. Administrative closeout: CD-952.
+The immediate execution lane is **Vehicle Feel 90** under CD-848 with CD-641 owning the engine/performance slice. Follow `docs/PINK_CAB_VEHICLE_FEEL_90.md`: measurements first, then steering/input, engine/clutch/gearbox, mass/CoM/inertia, suspension/body control, dry tyres/brakes, wet/storm, load envelope, runtime robustness, and one exact-head owner acceptance. Broader R01 world/streaming work waits behind that gate.
 
-CD-648 remains the single vehicle umbrella. CD-641 owns remaining P04 performance calibration and the non-monotonic intermediate-input observation; P05-P11 and full FIRST EURO remain unfinished. CD-559 retains clean-source/full-project/packaged-input engineering, not an absent P03 acceptance. PR #47/CD-650 remains diagnostic only. CD-855 placeholder polish/replacement is deferred until vehicle calibration and does not block internal physics/admin; public asset rights stay separate.
+CD-559 retains build/CI/evidence engineering. CD-855 now has an owner-accepted internal RIG06 presentation result, while its public provenance/licensing/exposure disposition remains a separate release gate; do not reopen vehicle physics to solve asset-rights work.
 
 ## 1. First five minutes
 

@@ -3,7 +3,7 @@
 **Status:** CURRENT FIRST-EURO IMPLEMENTATION-FACING ARCHITECTURE
 **BASE-100:** `CD-746/CD-747`; Confluence `11239425`
 **Scope:** `CD-753`
-**Vehicle stack:** `CD-730`
+**Vehicle stack:** `CD-748 / CD-848` — Native Unreal Chaos Vehicles
 
 ## Principle
 
@@ -23,7 +23,7 @@ Owns project startup, feature flags, configuration registry, plugin/version mani
 
 ### VehicleRuntime
 
-FGear is the sole physical road-dynamics solver for the hero Tatra. PINK CAB exposes normalized `VehicleTelemetry` and command adapters; unrelated systems do not depend directly on vendor classes.
+Native Unreal Chaos Vehicles behind the PINK CAB dynamics provider is the sole physical road-dynamics solver for the hero Tatra. PINK CAB exposes normalized `VehicleTelemetry` and semantic command adapters; unrelated systems do not depend directly on Chaos implementation details.
 
 ### VehicleBuild
 
@@ -31,11 +31,11 @@ Persistent installed parts/configuration/tuning schema. Garage changes this thro
 
 ### VehicleHealth
 
-Functional damage/wear/thermal state. VDS owns permanent body deformation. Authored hit-zone mappings may change Vehicle Health and approved FGear parameters; cosmetic dents need not affect function.
+Functional damage/wear/thermal state. Bounded authored/native damage presentation may deform or detach approved parts. Authored hit-zone mappings may change Vehicle Health and approved Chaos/profile parameters; cosmetic dents need not affect function.
 
 ### Interaction/Input
 
-Enhanced Input feeds one PINK CAB input/interaction layer. Current grammar is `1–4 START → LMB ATTENTION → RMB GO`, Space gaze, mouse steering. Semantic commands/events are emitted to target systems; physical control meshes do not own unrelated state.
+Enhanced Input feeds one PINK CAB input/interaction layer. Current grammar is mouse steering by default, Space gaze/target search, 1–4 non-actuating quick recall, optional RMB target retain, contextual LMB manipulation/momentary action, and mouse-wheel adjustment for controls that declare it. Semantic commands/events are emitted to target systems; physical control meshes do not own unrelated state.
 
 ### FareSession
 
@@ -79,7 +79,7 @@ One machine-readable road/lane graph is the intended common source for generatio
 
 ### TrafficRuntime
 
-Owns bounded logical traffic population/state. Expensive collision/Actor representation is materialized only where needed. Distant/ordinary traffic does not require FGear per vehicle.
+Owns bounded logical traffic population/state. Expensive collision/Actor representation is materialized only where needed. Distant/ordinary traffic does not receive hero-level Chaos simulation per vehicle by default.
 
 ### RoadRule / EnforcementEvent
 
@@ -95,7 +95,7 @@ Separate live-road FIRST EURO service. Owns only refuel-session state; reuses Fu
 
 ### VerticalContact
 
-Bounded Level1/Level2 traversal/contact state layered over FGear. It does not become a replacement vehicle solver. Level1 residual timeout uses the locked linear load rule.
+Bounded Level1/Level2 traversal/contact state layered over the authoritative Chaos hero-vehicle state. It does not become a replacement vehicle solver. Level1 residual timeout uses the locked linear load rule.
 
 ### OperatorTask
 

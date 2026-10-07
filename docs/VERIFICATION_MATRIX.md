@@ -60,7 +60,7 @@ Build PASS is never gameplay VERIFIED.
 
 ## P1 · Hero Tatra / native Chaos / input — `CD-748`
 
-Mass fixtures remain 1450 kg base, 1550 kg full fuel, crew 58 + 49 kg, reference 1657 kg and declared max 2107 kg. Native Chaos profile in current source owns engine numerics (approximately 250 hp / 260 Nm, 8500 RPM operating envelope, 925 RPM warm idle); the historical 180 hp / 240 Nm blanket statement is superseded. P04 performance-envelope acceptance remains open. No ABS/ESP or hidden driving assistance.
+Mass fixtures remain 1450 kg base, 1550 kg full fuel, crew 58 + 49 kg, reference 1657 kg and declared max 2107 kg. Native Chaos profile in current source owns engine numerics (approximately 250 hp / 260 Nm, 8500 RPM operating envelope, 925 RPM warm idle); the historical 180 hp / 240 Nm blanket statement is superseded. P4 is owner accepted; the current `Vehicle Feel 90` lane performs post-P4 measurable calibration toward the intended FIRST EURO driving envelope without reopening that acceptance. No ABS/ESP or hidden driving assistance.
 
 | Test ID | Required proof | State | Source / proof owner |
 |---|---|---|---|

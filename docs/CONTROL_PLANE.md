@@ -4,11 +4,12 @@
 
 - Repository: `CheshirskyCat63/PINK-CAB`
 - Integration branch: `main`
-- Current simplification PR: `cleanup/p4-baseline`
+- Accepted fallback: `accepted/p4-rig06-20261007` / `6edea77`
+- Current execution lane: `Vehicle Feel 90` → then FIRST EURO R01
 - Unreal Engine: UE 5.8
 - Human game entry: `PINCKCAB.lnk`
 
-There are only two active GitHub Actions entry points:
+There are only two active GitHub Actions entry points. Local environment state is inspected with `scripts/platform-status.ps1`; Vehicle Feel scope is enforced with `scripts/vehicle-feel-guard.ps1`:
 
 1. `.github/workflows/verify.yml`
 2. `.github/workflows/deliver.yml`
