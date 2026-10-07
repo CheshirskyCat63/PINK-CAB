@@ -23,7 +23,7 @@
 
 ## Tasks
 - [x] 0. Fix scripts/vehicle-feel-guard.ps1 path coverage, untracked/rename detection and native command failures; fix scripts/platform-status.ps1 missing refs; add behavioral regression tests in scripts/tests/test_vehicle_feel_guards.py; wire scope and authority checks into .github/workflows/verify.yml. Run tests and inspect CI before integrating PR69.
-- [ ] 1. Record Blender/export/import/profile/package identities and capture fixed-view baseline; measure geometry and physical contacts. Store evidence separately from acceptance claims.
+- [x] 1. Record Blender/export/import/profile/package identities and capture fixed-view baseline; measure geometry and physical contacts. Store evidence separately from acceptance claims.
 - [ ] 2. Isolate road shimmer in exact-package captures; change one demonstrated cause at a time. Preserve contact topology and friction during visual diagnosis.
 - [ ] 3. Reconcile authored model dimensions/materials/normals with scripts/import_tatra_rig06.py, scripts/configure_tatra_rig06_materials.py and PinkCabVehicleVisualProfile.cpp. Verify matched views in UE and package.
 - [ ] 4. Inventory authored bones and gameplay actions; bind pedals, windows, doors, instruments and other approved controls through existing presentation ownership. Verify neutral/mid/full travel and normal input paths.
@@ -52,3 +52,4 @@
 - The native root-body mass was measured, not inferred from the component aggregate: requested 1657 kg, simulated 1657 kg. Component GetMass reports 1924.377 kg including other skeletal bodies and must not be used as chassis-load proof. The root COM is currently at local origin, so rear-engine balance remains an open calibration requirement.
 - Expanded Pawn test selection exposed a stale CockpitBridge unit fixture (instantiates the stock component although the bridge requires the project component) and obsolete external-partial-torque expectations. This test is NOT passing; the provider/bridge production files are unchanged from main. Analog clutch/handbrake actuation and consistent coverage remain open under task 6.
 - Both import/material scripts now default to the actual V22 export folder while retaining the existing UE asset identity and explicit environment override. No asset reimport was performed as part of this correction.
+- Task 1 closed only after administrative convergence: exact `57d7779` Task-1 gate 4/4 PASS; durable receipt `docs/vehicle_physics/evidence/VF90_TASK1_IDENTITY_BASELINE_2026-10-07.md`; Jira CD-855 comment 16559 and CD-648 comment 16560; Confluence program 22413538 footer comment 31260692. Installed accepted fallback remains `6edea774`; no Task 2+ or owner-acceptance claim is implied.
