@@ -50,7 +50,16 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
 
     for (const FName BoneName : RequiredBones)
     {
-        VehicleVisualShell->ResetPoseableBoneTransform(BoneName);
+        if (!VehicleVisualShell->ResetPoseableBoneTransform(BoneName))
+        {
+            Rig06RestBoneTransforms.Reset();
+            return false;
+        }
+    }
+    VehicleVisualShell->RefreshPoseableBoneTransforms();
+
+    for (const FName BoneName : RequiredBones)
+    {
         FTransform Rest;
         if (!VehicleVisualShell->GetPoseableBoneTransform(BoneName, Rest)
             || Rest.ContainsNaN())
@@ -241,5 +250,22 @@ void APinkCabChaosTatraPawn::SyncRig06CockpitBones(
         VehicleVisualShell->SetPoseableBoneTransform(
             TEXT("Cabin_GearLever"),
             Gear);
+    }
+
+    if (const FTransform* HandbrakeRest =
+        Rig06RestBoneTransforms.Find(TEXT("Cabin_Handbrake")))
+    {
+        FTransform Handbrake = *HandbrakeRest;
+        const float AngleDegrees =
+            UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(
+                Presentation.Handbrake);
+        const FQuat LocalPull(
+            FVector::YAxisVector,
+            FMath::DegreesToRadians(AngleDegrees));
+        Handbrake.SetRotation(
+            (HandbrakeRest->GetRotation() * LocalPull).GetNormalized());
+        VehicleVisualShell->SetPoseableBoneTransform(
+            TEXT("Cabin_Handbrake"),
+            Handbrake);
     }
 }

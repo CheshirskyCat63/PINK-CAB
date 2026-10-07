@@ -302,6 +302,10 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
     {
+        if (VehicleVisualShell)
+        {
+            VehicleVisualShell->RefreshPoseableBoneTransforms();
+        }
         ResetTransientCockpitInput();
         return;
     }
@@ -311,6 +315,10 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     FPinkCabPlayerInputSample PlayerInput;
     if (!BeginDriverFrame(*PC, PlayerInput))
     {
+        if (VehicleVisualShell)
+        {
+            VehicleVisualShell->RefreshPoseableBoneTransforms();
+        }
         return;
     }
     EPinkCabPedalWheelRecipient WheelRecipient = EPinkCabPedalWheelRecipient::None;
@@ -328,6 +336,12 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
     SyncRig06CockpitBones(Presentation);
+    if (VehicleVisualShell)
+    {
+        // RIG06 writes all poseable wheel/openable/cockpit bones first, then
+        // refreshes each presentation mesh once instead of once per bone.
+        VehicleVisualShell->RefreshPoseableBoneTransforms();
+    }
     UpdateDriverUiState(Presentation);
     const double TelemetryNowSeconds = FPlatformTime::Seconds();
     RecordCausalTelemetry(TelemetryNowSeconds, DeltaSeconds);

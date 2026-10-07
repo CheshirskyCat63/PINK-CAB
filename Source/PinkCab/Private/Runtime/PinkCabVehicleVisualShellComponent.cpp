@@ -84,7 +84,6 @@ bool UPinkCabVehicleVisualShellComponent::SetPoseableBoneTransform(
             BoneName,
             Transform,
             EBoneSpaces::ComponentSpace);
-        Component->RefreshBoneTransforms();
         bApplied = true;
     }
     return bApplied;
@@ -102,10 +101,23 @@ bool UPinkCabVehicleVisualShellComponent::ResetPoseableBoneTransform(
             continue;
         }
         Component->ResetBoneTransformByName(BoneName);
-        Component->RefreshBoneTransforms();
         bApplied = true;
     }
     return bApplied;
+}
+
+void UPinkCabVehicleVisualShellComponent::RefreshPoseableBoneTransforms()
+{
+    UPoseableMeshComponent* Exterior = GetExteriorPoseablePresentation();
+    UPoseableMeshComponent* Cabin = GetCabinPoseablePresentation();
+    if (Exterior)
+    {
+        Exterior->RefreshBoneTransforms();
+    }
+    if (Cabin && Cabin != Exterior)
+    {
+        Cabin->RefreshBoneTransforms();
+    }
 }
 
 UStaticMeshComponent* UPinkCabVehicleVisualShellComponent::GetPresentationPartComponent(const FName PartId) const

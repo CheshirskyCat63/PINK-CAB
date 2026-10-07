@@ -29,6 +29,7 @@ public:
     bool GetPoseableBoneTransform(FName BoneName, FTransform& OutTransform) const;
     bool SetPoseableBoneTransform(FName BoneName, const FTransform& Transform);
     bool ResetPoseableBoneTransform(FName BoneName);
+    void RefreshPoseableBoneTransforms();
     int32 GetPresentationPartCount() const { return PresentationPartComponents.Num(); }
     UStaticMeshComponent* GetPresentationPartComponent(FName PartId) const;
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
