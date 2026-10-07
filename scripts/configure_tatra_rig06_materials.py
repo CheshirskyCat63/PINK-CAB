@@ -3,7 +3,7 @@ import unreal, os, json
 dest="/Game/Dev/Vehicles/Tatra613Rig06"
 source_root=os.environ.get(
     "PINKCAB_TATRA_RIG06_PACKAGE",
-    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG23_UE")
+    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG24_UE")
 tex_root=os.path.join(source_root,"Textures")
 asset_tools=unreal.AssetToolsHelpers.get_asset_tools()
 mel=unreal.MaterialEditingLibrary

@@ -38,5 +38,6 @@ struct FPinkCabCockpitPresentationState
     bool bHornActive = false;
     bool bLightsOn = false;
     bool bWipersOn = false;
+    int32 WiperMode = 0;
     bool bWasherActive = false;
 };

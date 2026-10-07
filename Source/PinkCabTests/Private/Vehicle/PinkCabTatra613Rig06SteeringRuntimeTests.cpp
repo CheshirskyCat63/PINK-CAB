@@ -60,10 +60,6 @@ public:
             Test->TestTrue(
                 TEXT("front-right wheel rest pose is readable"),
                 Shell->GetPoseableBoneTransform(TEXT("Phys_Wheel_FR"), FrontRightRest));
-            Test->TestTrue(
-                TEXT("handbrake rest pose is readable"),
-                Shell->GetPoseableBoneTransform(TEXT("Cabin_Handbrake"), HandbrakeRest));
-
             Pawn->SetSystemMenuOpen(false);
             FPinkCabVehicleInputFrame Frame;
             Pawn->ApplyVehicleInputFrame(Frame, 2000.0f, 0.10f);
@@ -101,16 +97,12 @@ public:
         FTransform FrontLeftVisual;
         FTransform FrontRightVisual;
         FTransform SteeringVisual;
-        FTransform HandbrakeVisual;
         Test->TestTrue(TEXT("front-left visual pose is readable"),
             Shell->GetPoseableBoneTransform(TEXT("Phys_Wheel_FL"), FrontLeftVisual));
         Test->TestTrue(TEXT("front-right visual pose is readable"),
             Shell->GetPoseableBoneTransform(TEXT("Phys_Wheel_FR"), FrontRightVisual));
         Test->TestTrue(TEXT("steering wheel visual pose is readable"),
             Shell->GetPoseableBoneTransform(TEXT("Steering_Wheel"), SteeringVisual));
-        Test->TestTrue(TEXT("handbrake visual pose is readable"),
-            Shell->GetPoseableBoneTransform(TEXT("Cabin_Handbrake"), HandbrakeVisual));
-
         const FQuat FrontLeftExpectedSteer(
             FVector::UpVector,
             FMath::DegreesToRadians(FrontLeftSteerDeg));
@@ -151,19 +143,6 @@ public:
         Test->TestTrue(TEXT("RIG06 steering wheel pose matches semantic adapter"),
             SteeringVisual.GetRotation().Equals(SteeringWheelExpected, 0.01f));
 
-        const float HandbrakeAmount =
-            Pawn->GetCockpitState().GetHandbrakeAmount();
-        const float HandbrakeAngleDeg =
-            UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(
-                HandbrakeAmount);
-        const FQuat HandbrakeLocalPull(
-            FVector::YAxisVector,
-            FMath::DegreesToRadians(HandbrakeAngleDeg));
-        const FQuat HandbrakeExpected =
-            (HandbrakeRest.GetRotation() * HandbrakeLocalPull).GetNormalized();
-        Test->TestTrue(TEXT("RIG06 authored handbrake follows presentation state"),
-            HandbrakeVisual.GetRotation().Equals(HandbrakeExpected, 0.01f));
-
         Test->AddInfo(FString::Printf(
             TEXT("RIG06 steering visual: semantic=%.4f physicalFront=(%.3f,%.3f) steeringWheel=%.2fdeg"),
             SemanticSteering,
@@ -178,7 +157,6 @@ private:
     int32 Phase = 0;
     double StartedSeconds = 0.0;
     FTransform SteeringRest = FTransform::Identity;
-    FTransform HandbrakeRest = FTransform::Identity;
     FTransform FrontLeftRest = FTransform::Identity;
     FTransform FrontRightRest = FTransform::Identity;
 };

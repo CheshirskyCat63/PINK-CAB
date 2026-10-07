@@ -3,6 +3,7 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -40,7 +41,14 @@ public:
                 TEXT("RIG06 exterior is poseable"),
                 Shell->GetExteriorPoseablePresentation());
             Test->TestNotNull(
-                TEXT("RIG06 cabin is poseable"),
+                TEXT("RIG06 cabin render exists"),
+                Shell->GetCabinPresentation());
+            Test->TestEqual(
+                TEXT("RIG06 full-car asset reuses one poseable component for exterior and cabin"),
+                Shell->GetCabinPresentation(),
+                Shell->GetExteriorPresentation());
+            Test->TestNotNull(
+                TEXT("RIG06 shared cabin/exterior component is poseable"),
                 Shell->GetCabinPoseablePresentation());
             TArray<USkeletalMeshComponent*> SkeletalParts;
             Pawn->GetComponents(SkeletalParts);

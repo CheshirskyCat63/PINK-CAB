@@ -42,9 +42,16 @@ bool FPinkCabTatra613Rig06ProfileTest::RunTest(const FString& Parameters)
         TEXT("Phys_Wheel_FL"), TEXT("Phys_Wheel_FR"),
         TEXT("Phys_Wheel_BL"), TEXT("Phys_Wheel_BR"),
         TEXT("Steering_Wheel"), TEXT("Cabin_GearLever"),
-        TEXT("Cabin_Handbrake"),
+        TEXT("Cabin_ClutchPedal"), TEXT("Cabin_BrakePedal"),
+        TEXT("Cabin_ThrottlePedal"), TEXT("Cabin_Handbrake"),
+        TEXT("Cabin_Horn"), TEXT("Cabin_Stalk_L"), TEXT("Cabin_Stalk_R"),
+        TEXT("Cabin_Radio"), TEXT("Cabin_Climate"),
         TEXT("Door_FL"), TEXT("Door_FR"), TEXT("Door_RL"), TEXT("Door_RR"),
-        TEXT("Trunk_Front"), TEXT("Hood_Rear")
+        TEXT("Window_FL"), TEXT("Window_FR"), TEXT("Window_RL"), TEXT("Window_RR"),
+        TEXT("Trunk_Front"), TEXT("Hood_Rear"),
+        TEXT("Mirror_L"), TEXT("Mirror_R"),
+        TEXT("Cabin_SpeedometerNeedle"), TEXT("Cabin_TachometerNeedle"),
+        TEXT("Cabin_FuelNeedle"), TEXT("Cabin_TemperatureNeedle")
     };
     for (const FName BoneName : RequiredBones)
     {

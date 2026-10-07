@@ -24,6 +24,83 @@ const TMap<FName, float>& Rig06BoneOpenAngles()
     return Angles;
 }
 
+const TArray<FName>& Rig06WindowBones()
+{
+    static const TArray<FName> Bones = {
+        TEXT("Window_FL"), TEXT("Window_FR"),
+        TEXT("Window_RL"), TEXT("Window_RR")
+    };
+    return Bones;
+}
+
+bool IsRig06WindowBone(const FName BoneName)
+{
+    return Rig06WindowBones().Contains(BoneName);
+}
+
+FName Rig06WindowParent(const FName BoneName)
+{
+    if (BoneName == FName(TEXT("Window_FL"))) return TEXT("Door_FL");
+    if (BoneName == FName(TEXT("Window_FR"))) return TEXT("Door_FR");
+    if (BoneName == FName(TEXT("Window_RL"))) return TEXT("Door_RL");
+    if (BoneName == FName(TEXT("Window_RR"))) return TEXT("Door_RR");
+    return NAME_None;
+}
+
+float Rig06WindowRollProgress(const float Open01, const float K)
+{
+    const float T = FMath::Clamp(Open01, 0.0f, 1.0f);
+    return (FMath::Exp(K * T) - 1.0f) / (FMath::Exp(K) - 1.0f);
+}
+
+FTransform Rig06WindowBasis(const FName BoneName, const float Open01)
+{
+    const float T = FMath::Clamp(Open01, 0.0f, 1.0f);
+    const bool bFront =
+        BoneName == FName(TEXT("Window_FL"))
+        || BoneName == FName(TEXT("Window_FR"));
+    const bool bLeft =
+        BoneName == FName(TEXT("Window_FL"))
+        || BoneName == FName(TEXT("Window_RL"));
+
+    // Final V22 source authoring. Bone channels are in asset metres.
+    const float K = bFront ? 3.25f : 7.25f;
+    const float FullAngleDegrees = bFront ? 24.715242f : 25.163946f;
+    const float AngleRadians = FMath::DegreesToRadians(
+        FullAngleDegrees * Rig06WindowRollProgress(T, K));
+    const float Dy = bFront ? -0.44960412f : -0.45914079f;
+    const float Dz = bFront ? 0.20694182f : 0.21570410f;
+    const float Py = bFront ? 0.25934423f : 0.18896753f;
+    const float Pz = bFront ? -0.12427080f : -0.09297070f;
+    const float DxMagnitude = bFront ? 0.11297098f : 0.01588345f;
+    const float Dx = bLeft ? -DxMagnitude : DxMagnitude;
+    const float C = FMath::Cos(AngleRadians);
+    const float S = FMath::Sin(AngleRadians);
+    const FVector Location(
+        Dx * T,
+        Dy * T + (1.0f - C) * Py + S * Pz,
+        Dz * T - S * Py + (1.0f - C) * Pz);
+    return FTransform(
+        FQuat(FVector::ForwardVector, AngleRadians),
+        Location,
+        FVector::OneVector);
+}
+
+FQuat Rig06GearLeverBasis(FVector2D Cursor)
+{
+    Cursor.X = FMath::Clamp(Cursor.X, -1.0f, 2.0f);
+    Cursor.Y = FMath::Clamp(Cursor.Y, -1.0f, 1.0f);
+    constexpr float ThrowDegrees = 13.75f;
+    const float LateralDegrees = Cursor.X <= 1.0f
+        ? ThrowDegrees * (1.0f - Cursor.X) * 0.5f
+        : -ThrowDegrees * (Cursor.X - 1.0f);
+    const float LongitudinalDegrees = ThrowDegrees * Cursor.Y;
+    return (
+        FQuat(FVector::UpVector, FMath::DegreesToRadians(LongitudinalDegrees))
+        * FQuat(FVector::ForwardVector, FMath::DegreesToRadians(LateralDegrees))
+    ).GetNormalized();
+}
+
 bool IsRig06BoneProfile(const FPinkCabVehicleVisualProfile& Profile)
 {
     return Profile.bUsePoseableSkeletalPresentation
@@ -48,9 +125,17 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
         TEXT("Steering_Wheel"), TEXT("Cabin_GearLever"),
         TEXT("Cabin_ClutchPedal"), TEXT("Cabin_BrakePedal"),
         TEXT("Cabin_ThrottlePedal"),
+        TEXT("root"),
         TEXT("Cabin_Handbrake"), TEXT("Door_FL"), TEXT("Door_FR"),
         TEXT("Door_RL"), TEXT("Door_RR"), TEXT("Trunk_Front"),
-        TEXT("Hood_Rear")
+        TEXT("Hood_Rear"),
+        TEXT("Window_FL"), TEXT("Window_FR"),
+        TEXT("Window_RL"), TEXT("Window_RR"),
+        TEXT("Cabin_Horn"), TEXT("Cabin_Stalk_L"), TEXT("Cabin_Stalk_R"),
+        TEXT("Cabin_Radio"), TEXT("Cabin_Climate"),
+        TEXT("Mirror_L"), TEXT("Mirror_R"),
+        TEXT("Cabin_SpeedometerNeedle"), TEXT("Cabin_TachometerNeedle"),
+        TEXT("Cabin_FuelNeedle"), TEXT("Cabin_TemperatureNeedle")
     };
 
     for (const FName BoneName : RequiredBones)
@@ -80,6 +165,11 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
         Rig06OpenableTargets.Add(Entry.Key, 0.0f);
         Rig06OpenableCurrent.Add(Entry.Key, 0.0f);
     }
+    for (const FName BoneName : Rig06WindowBones())
+    {
+        Rig06OpenableTargets.Add(BoneName, 0.0f);
+        Rig06OpenableCurrent.Add(BoneName, 0.0f);
+    }
     return true;
 }
 
@@ -106,11 +196,45 @@ bool APinkCabChaosTatraPawn::ApplyRig06BoneRotation(
     return VehicleVisualShell->SetPoseableBoneTransform(BoneName, Dynamic);
 }
 
+bool APinkCabChaosTatraPawn::ApplyRig06AuthoredLocalBasis(
+    const FName BoneName,
+    const FName ParentBoneName,
+    const FTransform& Basis)
+{
+    if (!VehicleVisualShell)
+    {
+        return false;
+    }
+    const FTransform* Rest = Rig06RestBoneTransforms.Find(BoneName);
+    const FTransform* ParentRest = Rig06RestBoneTransforms.Find(ParentBoneName);
+    if (!Rest || !ParentRest || Basis.ContainsNaN())
+    {
+        return false;
+    }
+    FTransform ParentCurrent;
+    if (!VehicleVisualShell->GetPoseableBoneTransform(
+        ParentBoneName,
+        ParentCurrent))
+    {
+        return false;
+    }
+
+    // Blender pose matrix: pose_local = rest_local * basis. Unreal's row-vector
+    // transform concatenation writes the equivalent operation in reverse order.
+    const FTransform RestLocal = Rest->GetRelativeTransform(*ParentRest);
+    const FTransform DynamicLocal = Basis * RestLocal;
+    const FTransform DynamicComponent = DynamicLocal * ParentCurrent;
+    return VehicleVisualShell->SetPoseableBoneTransform(
+        BoneName,
+        DynamicComponent);
+}
+
 bool APinkCabChaosTatraPawn::SetTatraOpenable(
     const FName BoneName,
     const float Open01)
 {
-    if (!Rig06BoneOpenAngles().Contains(BoneName)
+    if ((!Rig06BoneOpenAngles().Contains(BoneName)
+            && !IsRig06WindowBone(BoneName))
         || !Rig06RestBoneTransforms.Contains(BoneName))
     {
         return false;
@@ -122,7 +246,8 @@ bool APinkCabChaosTatraPawn::SetTatraOpenable(
 
 bool APinkCabChaosTatraPawn::ToggleTatraOpenable(const FName BoneName)
 {
-    if (!Rig06BoneOpenAngles().Contains(BoneName)
+    if ((!Rig06BoneOpenAngles().Contains(BoneName)
+            && !IsRig06WindowBone(BoneName))
         || !Rig06RestBoneTransforms.Contains(BoneName))
     {
         return false;
@@ -155,6 +280,24 @@ void APinkCabChaosTatraPawn::UpdateRig06Openables(const float DeltaSeconds)
             FMath::Max(DeltaSeconds, 0.0f),
             1.6f);
         ApplyRig06BoneRotation(Entry.Key, Entry.Value * Current);
+    }
+
+    // Windows use the final V22 authored local transform: simultaneous travel
+    // into the door plus an exponential X-roll. Evaluate after doors so the
+    // current parent transform is inherited naturally.
+    for (const FName BoneName : Rig06WindowBones())
+    {
+        const float Target = Rig06OpenableTargets.FindRef(BoneName);
+        float& Current = Rig06OpenableCurrent.FindOrAdd(BoneName);
+        Current = FMath::FInterpConstantTo(
+            Current,
+            Target,
+            FMath::Max(DeltaSeconds, 0.0f),
+            1.6f);
+        ApplyRig06AuthoredLocalBasis(
+            BoneName,
+            Rig06WindowParent(BoneName),
+            Rig06WindowBasis(BoneName, Current));
     }
 }
 
@@ -261,36 +404,89 @@ void APinkCabChaosTatraPawn::SyncRig06CockpitBones(
             Steering);
     }
 
-    if (const FTransform* GearRest =
-        Rig06RestBoneTransforms.Find(TEXT("Cabin_GearLever")))
-    {
-        FTransform Gear = *GearRest;
-        const FVector GearOffsetCm = Presentation.bGearLeverDragging
-            ? UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(
-                Presentation.GearLeverCursor)
-            : UPinkCabCockpitVisualDriverComponent::GearLeverOffset(
-                Presentation.SelectedGear);
-        // RIG06 asset-space is meters; presentation component scales it by 100.
-        Gear.SetLocation(GearRest->GetLocation() + GearOffsetCm / 100.0f);
-        VehicleVisualShell->SetPoseableBoneTransform(
-            TEXT("Cabin_GearLever"),
-            Gear);
-    }
+    const FVector2D GearCursor = Presentation.bGearLeverDragging
+        ? Presentation.GearLeverCursor
+        : UPinkCabCockpitVisualDriverComponent::GearCursorForGear(
+            Presentation.SelectedGear);
+    ApplyRig06AuthoredLocalBasis(
+        TEXT("Cabin_GearLever"),
+        TEXT("root"),
+        FTransform(Rig06GearLeverBasis(GearCursor)));
 
-    if (const FTransform* HandbrakeRest =
-        Rig06RestBoneTransforms.Find(TEXT("Cabin_Handbrake")))
-    {
-        FTransform Handbrake = *HandbrakeRest;
-        const float AngleDegrees =
-            UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(
-                Presentation.Handbrake);
-        const FQuat LocalPull(
+    // RIG11/V22 authored handbrake: lower physical hinge, local +Y axis,
+    // continuous 0..1 pull reaching -32 degrees at full application.
+    ApplyRig06AuthoredLocalBasis(
+        TEXT("Cabin_Handbrake"),
+        TEXT("root"),
+        FTransform(FQuat(
             FVector::YAxisVector,
+            FMath::DegreesToRadians(
+                -32.0f * FMath::Clamp(Presentation.Handbrake, 0.0f, 1.0f)))));
+
+    // Existing cockpit state remains authoritative. RIG11 authored the left
+    // stalk at +/-18 degrees and the two wiper detents at +14/+26 degrees.
+    const float LeftStalkDegrees = Presentation.bTurnSignalLeft
+        ? -18.0f
+        : (Presentation.bTurnSignalRight ? 18.0f : 0.0f);
+    ApplyRig06AuthoredLocalBasis(
+        TEXT("Cabin_Stalk_L"),
+        TEXT("root"),
+        FTransform(FQuat(
+            FVector::ForwardVector,
+            FMath::DegreesToRadians(LeftStalkDegrees))));
+
+    const int32 WiperMode = FMath::Clamp(Presentation.WiperMode, 0, 2);
+    const float RightStalkDegrees =
+        WiperMode == 2 ? 26.0f : (WiperMode == 1 ? 14.0f : 0.0f);
+    ApplyRig06AuthoredLocalBasis(
+        TEXT("Cabin_Stalk_R"),
+        TEXT("root"),
+        FTransform(FQuat(
+            FVector::ForwardVector,
+            FMath::DegreesToRadians(RightStalkDegrees))));
+
+    // The accepted cockpit state owns the one passenger-door function. The
+    // RIG06 donor exposes that function as the authored front-right + rear-right
+    // pair; presentation follows state without creating a second door owner.
+    const float PassengerDoorTarget = Presentation.bPassengerDoorOpen ? 1.0f : 0.0f;
+    Rig06OpenableTargets.FindOrAdd(TEXT("Door_FR")) = PassengerDoorTarget;
+    Rig06OpenableTargets.FindOrAdd(TEXT("Door_RR")) = PassengerDoorTarget;
+
+    // RIG24 adds no instrument geometry. Four existing source needle islands
+    // are rebound to bones authored from the preserved t613_needle_* pivots.
+    // Keep the already-accepted presentation ranges, but anchor source rest to
+    // the zero/empty/cold state so the imported artist pose remains the datum.
+    const auto ApplyNeedle = [this](const FName BoneName, const float AngleDegrees)
+    {
+        const FTransform* Rest = Rig06RestBoneTransforms.Find(BoneName);
+        if (!Rest || !VehicleVisualShell) return;
+        FTransform Dynamic = *Rest;
+        const FQuat LocalTurn(
+            FVector::ZAxisVector,
             FMath::DegreesToRadians(AngleDegrees));
-        Handbrake.SetRotation(
-            (HandbrakeRest->GetRotation() * LocalPull).GetNormalized());
-        VehicleVisualShell->SetPoseableBoneTransform(
-            TEXT("Cabin_Handbrake"),
-            Handbrake);
-    }
+        Dynamic.SetRotation(
+            (Rest->GetRotation() * LocalTurn).GetNormalized());
+        VehicleVisualShell->SetPoseableBoneTransform(BoneName, Dynamic);
+    };
+
+    ApplyNeedle(
+        TEXT("Cabin_SpeedometerNeedle"),
+        UPinkCabCockpitVisualDriverComponent::SpeedometerNeedleAngleDegrees(
+            Presentation.SpeedKmh)
+        - UPinkCabCockpitVisualDriverComponent::SpeedometerNeedleAngleDegrees(0.0f));
+    ApplyNeedle(
+        TEXT("Cabin_TachometerNeedle"),
+        UPinkCabCockpitVisualDriverComponent::TachometerNeedleAngleDegrees(
+            Presentation.EngineRpm)
+        - UPinkCabCockpitVisualDriverComponent::TachometerNeedleAngleDegrees(0.0f));
+    ApplyNeedle(
+        TEXT("Cabin_FuelNeedle"),
+        UPinkCabCockpitVisualDriverComponent::FuelNeedleAngleDegrees(
+            Presentation.Fuel01)
+        - UPinkCabCockpitVisualDriverComponent::FuelNeedleAngleDegrees(0.0f));
+    ApplyNeedle(
+        TEXT("Cabin_TemperatureNeedle"),
+        UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(
+            Presentation.EngineTemperature01)
+        - UPinkCabCockpitVisualDriverComponent::TemperatureNeedleAngleDegrees(0.0f));
 }
