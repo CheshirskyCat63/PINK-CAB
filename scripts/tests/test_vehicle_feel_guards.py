@@ -111,6 +111,8 @@ class VehicleFeelGuards(unittest.TestCase):
                 code, output = self.run_guard()
                 self.assertNotEqual(code, 0, output)
                 self.assertIn(path, output)
+                if state == "committed":
+                    self.git("tag", "-f", BASELINE)
 
     def test_rename_out_of_frozen_directory_still_rejected(self):
         self.write("Source/PinkCabWorld/Old.cpp")

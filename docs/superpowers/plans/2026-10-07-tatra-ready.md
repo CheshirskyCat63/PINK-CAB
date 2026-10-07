@@ -39,3 +39,6 @@
 - Local baseline test attempt: 41 tests, 42 errors caused by inaccessible Python TemporaryDirectory fixtures in this restricted session. This is not a passing baseline and not a product regression. No ACL or sandbox changes attempted.
 - Runtime stages remain blocked until actual UE/package execution and visual verification are available; source changes alone do not close them.
 - Guard regressions reproduced before edits: 6 tests, 19 failed assertions. After fixes: 6/6 tests PASS, covering permitted calibration, frozen layouts, committed/staged/unstaged changes, renamed files, untracked files and missing baseline/tag behavior.
+- Hosted CI run 37615419140 confirms all 47 script tests, authority, scope, code-health and hygiene PASS on 7aea47e. Local full-suite failures are restricted-session fixture errors; hosted proof is retained separately.
+- Independent administrative review found no Critical/Important production issue. Its staged/unstaged fixture isolation weakness was corrected by advancing the test baseline after the committed case.
+- Jira CD-559/CD-848/CD-641/CD-855/CD-921 and the two principal Confluence authority/program pages received the current checkpoint; prior records are explicitly historical. Runtime/owner acceptance remains open.
