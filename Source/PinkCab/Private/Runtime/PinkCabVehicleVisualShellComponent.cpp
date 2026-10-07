@@ -1,5 +1,6 @@
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
 
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -36,6 +37,87 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::GetCabinPresentation()
 {
     if (CabinPresentation) return CabinPresentation.Get();
     return PresentationPartComponents.Num() > 0 ? PresentationPartComponents[0].Get() : nullptr;
+}
+
+UPoseableMeshComponent* UPinkCabVehicleVisualShellComponent::GetExteriorPoseablePresentation() const
+{
+    return Cast<UPoseableMeshComponent>(ExteriorPresentation.Get());
+}
+
+UPoseableMeshComponent* UPinkCabVehicleVisualShellComponent::GetCabinPoseablePresentation() const
+{
+    return Cast<UPoseableMeshComponent>(CabinPresentation.Get());
+}
+
+bool UPinkCabVehicleVisualShellComponent::GetPoseableBoneTransform(
+    const FName BoneName,
+    FTransform& OutTransform) const
+{
+    UPoseableMeshComponent* Component = GetExteriorPoseablePresentation();
+    if (!Component)
+    {
+        Component = GetCabinPoseablePresentation();
+    }
+    if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
+    {
+        return false;
+    }
+    OutTransform = Component->GetBoneTransformByName(
+        BoneName,
+        EBoneSpaces::ComponentSpace);
+    return !OutTransform.ContainsNaN();
+}
+
+bool UPinkCabVehicleVisualShellComponent::SetPoseableBoneTransform(
+    const FName BoneName,
+    const FTransform& Transform)
+{
+    bool bApplied = false;
+    for (UPoseableMeshComponent* Component :
+        { GetExteriorPoseablePresentation(), GetCabinPoseablePresentation() })
+    {
+        if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
+        {
+            continue;
+        }
+        Component->SetBoneTransformByName(
+            BoneName,
+            Transform,
+            EBoneSpaces::ComponentSpace);
+        bApplied = true;
+    }
+    return bApplied;
+}
+
+bool UPinkCabVehicleVisualShellComponent::ResetPoseableBoneTransform(
+    const FName BoneName)
+{
+    bool bApplied = false;
+    for (UPoseableMeshComponent* Component :
+        { GetExteriorPoseablePresentation(), GetCabinPoseablePresentation() })
+    {
+        if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
+        {
+            continue;
+        }
+        Component->ResetBoneTransformByName(BoneName);
+        bApplied = true;
+    }
+    return bApplied;
+}
+
+void UPinkCabVehicleVisualShellComponent::RefreshPoseableBoneTransforms()
+{
+    UPoseableMeshComponent* Exterior = GetExteriorPoseablePresentation();
+    UPoseableMeshComponent* Cabin = GetCabinPoseablePresentation();
+    if (Exterior)
+    {
+        Exterior->RefreshBoneTransforms();
+    }
+    if (Cabin && Cabin != Exterior)
+    {
+        Cabin->RefreshBoneTransforms();
+    }
 }
 
 UStaticMeshComponent* UPinkCabVehicleVisualShellComponent::GetPresentationPartComponent(const FName PartId) const
@@ -118,15 +200,34 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildExterior()
     {
         USkeletalMesh* Mesh = Profile.ExteriorSkeletalMesh.LoadSynchronous();
         if (!Mesh) return nullptr;
-        USkeletalMeshComponent* Component = NewObject<USkeletalMeshComponent>(Owner, TEXT("VehicleExteriorPresentation"));
-        Owner->AddInstanceComponent(Component);
-        Component->SetupAttachment(this);
-        Component->SetSkeletalMesh(Mesh);
-        Component->SetRelativeTransform(Profile.ExteriorTransform);
-        Component->SetOwnerNoSee(true);
-        ConfigurePresentation(*Component);
-        Component->RegisterComponent();
-        return Component;
+        UPrimitiveComponent* Result = nullptr;
+        if (Profile.bUsePoseableSkeletalPresentation)
+        {
+            UPoseableMeshComponent* Component =
+                NewObject<UPoseableMeshComponent>(Owner, TEXT("VehicleExteriorPresentation"));
+            Owner->AddInstanceComponent(Component);
+            Component->SetupAttachment(this);
+            Component->SetSkinnedAssetAndUpdate(Mesh, true);
+            Component->SetRelativeTransform(Profile.ExteriorTransform);
+            Component->SetOwnerNoSee(true);
+            ConfigurePresentation(*Component);
+            Component->RegisterComponent();
+            Result = Component;
+        }
+        else
+        {
+            USkeletalMeshComponent* Component =
+                NewObject<USkeletalMeshComponent>(Owner, TEXT("VehicleExteriorPresentation"));
+            Owner->AddInstanceComponent(Component);
+            Component->SetupAttachment(this);
+            Component->SetSkeletalMesh(Mesh);
+            Component->SetRelativeTransform(Profile.ExteriorTransform);
+            Component->SetOwnerNoSee(true);
+            ConfigurePresentation(*Component);
+            Component->RegisterComponent();
+            Result = Component;
+        }
+        return Result;
     }
     return nullptr;
 }
@@ -156,10 +257,28 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildCabin()
     }
     if (SkeletalMesh)
     {
-        USkeletalMeshComponent* Component = NewObject<USkeletalMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
-        Owner->AddInstanceComponent(Component); Component->SetupAttachment(this);
-        Component->SetSkeletalMesh(SkeletalMesh); Component->SetRelativeTransform(Transform);
-        Component->SetOnlyOwnerSee(true); ConfigurePresentation(*Component); Component->RegisterComponent();
+        if (Profile.bUsePoseableSkeletalPresentation)
+        {
+            UPoseableMeshComponent* Component =
+                NewObject<UPoseableMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
+            Owner->AddInstanceComponent(Component);
+            Component->SetupAttachment(this);
+            Component->SetSkinnedAssetAndUpdate(SkeletalMesh, true);
+            Component->SetRelativeTransform(Transform);
+            Component->SetOnlyOwnerSee(true);
+            ConfigurePresentation(*Component);
+            Component->RegisterComponent();
+            return Component;
+        }
+        USkeletalMeshComponent* Component =
+            NewObject<USkeletalMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
+        Owner->AddInstanceComponent(Component);
+        Component->SetupAttachment(this);
+        Component->SetSkeletalMesh(SkeletalMesh);
+        Component->SetRelativeTransform(Transform);
+        Component->SetOnlyOwnerSee(true);
+        ConfigurePresentation(*Component);
+        Component->RegisterComponent();
         return Component;
     }
     return nullptr;
