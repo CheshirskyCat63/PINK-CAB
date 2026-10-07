@@ -98,6 +98,28 @@ class VehicleFeelGuards(unittest.TestCase):
                 self.assertIn("FORBIDDEN_VF90_CHANGE=" + path, output)
                 (self.root / path).unlink()
 
+    def test_allows_only_the_exact_owner_approved_task2_road_surfaces(self):
+        allowed = (
+            "Source/PinkCab/Private/World/PinkCabL1RoadChunkActor.cpp",
+            "Source/PinkCab/Private/World/PinkCabRoadMaterialAudit.cpp",
+            "Content/World/L1/Road/M_PC_RoadMarkSurface.uasset",
+        )
+        for path in allowed:
+            self.write(path)
+        code, output = self.run_guard()
+        self.assertEqual(code, 0, output)
+        self.assertIn("SCOPE=PASS", output)
+
+        # A neighboring world/content file must still fail; Task 2 is not a
+        # directory-wide permission to resume broader world work.
+        self.write("Content/World/L1/Road/AnotherRoadAsset.uasset")
+        code, output = self.run_guard()
+        self.assertNotEqual(code, 0, output)
+        self.assertIn(
+            "FORBIDDEN_VF90_CHANGE=Content/World/L1/Road/AnotherRoadAsset.uasset",
+            output,
+        )
+
     def test_rejects_committed_staged_and_unstaged_world_changes(self):
         path = "Source/PinkCab/Private/World/Road.cpp"
         self.write(path)
