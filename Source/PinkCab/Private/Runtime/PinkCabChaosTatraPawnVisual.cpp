@@ -4,6 +4,7 @@
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Cockpit/PinkCabCockpitAssemblyComponent.h"
+#include "Cockpit/PinkCabCockpitPresentationState.h"
 #include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SceneComponent.h"
@@ -16,6 +17,28 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "Math/RotationMatrix.h"
+
+namespace
+{
+const TMap<FName, float>& Rig06OpenAngles()
+{
+    static const TMap<FName, float> Angles = {
+        { TEXT("Door_FL"), -72.0f },
+        { TEXT("Door_FR"), 72.0f },
+        { TEXT("Door_RL"), -68.0f },
+        { TEXT("Door_RR"), 68.0f },
+        { TEXT("Trunk_Front"), -58.0f },
+        { TEXT("Hood_Rear"), 58.0f },
+    };
+    return Angles;
+}
+
+bool IsRig06Profile(const FPinkCabVehicleVisualProfile& Profile)
+{
+    return Profile.bUsePoseableSkeletalPresentation
+        && Profile.ProfileId == FName(TEXT("PinkCab.Visual.Tatra613.Rig06.TexturedOpenables"));
+}
+}
 
 void APinkCabChaosTatraPawn::EnsurePlayableLighting()
 {
@@ -71,6 +94,11 @@ bool APinkCabChaosTatraPawn::SyncWheelPresentationFromChaos()
     if (!Movement || Movement->Wheels.Num() != 4)
     {
         return false;
+    }
+
+    if (IsRig06Profile(VehicleVisualShell->GetProfile()))
+    {
+        return SyncRig06WheelBonesFromChaos();
     }
 
     static const FName WheelIds[4] = {
@@ -231,6 +259,28 @@ bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisu
         CockpitAssembly->SetGeneratedVisualMode(!Previous.HasVisualAsset(), Previous.CockpitBindings);
         ConfigureSourceSteeringVisual(Previous);
         return false;
+    }
+
+    if (IsRig06Profile(Profile))
+    {
+        if (!CaptureRig06RestPose())
+        {
+            VehicleVisualShell->ApplyProfile(Previous);
+            CockpitAssembly->ApplyVisualBindings(Previous.CockpitBindings);
+            CockpitAssembly->SetGeneratedVisualMode(
+                !Previous.HasVisualAsset(), Previous.CockpitBindings);
+            ConfigureSourceSteeringVisual(Previous);
+            Rig06RestBoneTransforms.Reset();
+            Rig06OpenableTargets.Reset();
+            Rig06OpenableCurrent.Reset();
+            return false;
+        }
+    }
+    else
+    {
+        Rig06RestBoneTransforms.Reset();
+        Rig06OpenableTargets.Reset();
+        Rig06OpenableCurrent.Reset();
     }
 
     CockpitAssembly->SetRelativeTransform(Profile.CockpitRootTransform);

@@ -1,5 +1,6 @@
 #include "Runtime/PinkCabVehicleVisualProfile.h"
 
+#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 
 namespace
@@ -7,6 +8,11 @@ namespace
 TSoftObjectPtr<UStaticMesh> MeshAt(const TCHAR* Path)
 {
     return TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(Path));
+}
+
+TSoftObjectPtr<USkeletalMesh> SkeletalMeshAt(const TCHAR* Path)
+{
+    return TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(Path));
 }
 
 FPinkCabVehiclePresentationPart Part(
@@ -138,5 +144,36 @@ FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613ScenePreserve
         TEXT("WheelRL"), WheelPath,
         FTransform(LeftWheelRot, FVector(RearX, -HalfTrack, WheelZ), WheelScale)));
 
+    return Result;
+}
+
+FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613Rig06()
+{
+    FPinkCabVehicleVisualProfile Result;
+    Result.ProfileId = TEXT("PinkCab.Visual.Tatra613.Rig06.TexturedOpenables");
+    const TCHAR* Rig06Path = TEXT(
+        "/Game/Dev/Vehicles/Tatra613Rig06/"
+        "SK_Tatra613_Rig06.SK_Tatra613_Rig06");
+    Result.ExteriorSkeletalMesh = SkeletalMeshAt(Rig06Path);
+    Result.CabinSkeletalMesh = SkeletalMeshAt(Rig06Path);
+    Result.bUseExteriorAsCabinWhenCabinMissing = false;
+    Result.bUsePoseableSkeletalPresentation = true;
+
+    // The accepted V22 presentation keeps the user's wheel placement under the
+    // arches (3.107 m authored axle pair). Chaos remains on the proven P4
+    // 2.980 m wheelbase, so compress presentation X only while keeping Y/Z at
+    // the native meter -> centimeter scale. The X offset centers the visual
+    // axles exactly on +135 / -163 cm without changing Chaos physics.
+    const FTransform RigTransform(
+        FRotator::ZeroRotator,
+        FVector(5.5167f, 0.0f, 0.0f),
+        FVector(95.9121f, 100.0f, 100.0f));
+    Result.ExteriorTransform = RigTransform;
+    Result.CabinTransform = RigTransform;
+    Result.CockpitRootTransform = FTransform::Identity;
+    Result.DriverHeadTransform = FTransform(
+        FRotator::ZeroRotator,
+        FVector(-18.0f, -40.0f, 112.0f));
+    Result.bHidePhysicsChassisWhenExteriorPresent = true;
     return Result;
 }

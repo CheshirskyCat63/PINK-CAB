@@ -37,6 +37,7 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
 
     static FPinkCabVehicleVisualProfile Fallback();
     static FPinkCabVehicleVisualProfile Tatra613ScenePreserved();
+    static FPinkCabVehicleVisualProfile Tatra613Rig06();
 
     bool IsValid() const;
     bool HasExteriorAsset() const;
@@ -60,6 +61,12 @@ struct PINKCAB_API FPinkCabVehicleVisualProfile
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     bool bUseExteriorAsCabinWhenCabinMissing = false;
+
+    // Use a poseable skeletal presentation when runtime code owns authored
+    // vehicle bones (wheels, doors, luggage lid, engine hood, cockpit parts).
+    // The hidden Chaos chassis remains the only physics authority.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
+    bool bUsePoseableSkeletalPresentation = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Vehicle|Visual")
     FTransform ExteriorTransform = FTransform::Identity;

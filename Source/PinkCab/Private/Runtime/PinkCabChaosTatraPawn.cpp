@@ -237,7 +237,7 @@ void APinkCabChaosTatraPawn::BeginPlay()
     Super::BeginPlay();
     DynamicsProvider = FPinkCabChaosVehicleDynamicsProvider(GetChaosMovement());
     EnsurePlayableLighting();
-    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613ScenePreserved());
+    ApplyVehicleVisualProfile(FPinkCabVehicleVisualProfile::Tatra613Rig06());
     DriverCamera->SetActive(true);
     ChaseCamera->SetActive(false);
     SyncLoadToChaos();
@@ -297,6 +297,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     if (!UGameplayStatics::IsGamePaused(this))
     {
         SyncWheelPresentationFromChaos();
+        UpdateRig06Openables(DeltaSeconds);
     }
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
@@ -326,6 +327,7 @@ void APinkCabChaosTatraPawn::Tick(const float DeltaSeconds)
     UpdateDriverLook(PlayerInput, bPhysicalManipulationActive, DeltaSeconds);
     const FPinkCabCockpitPresentationState Presentation = BuildCockpitPresentation(DeltaSeconds);
     CockpitVisualDriver->Apply(*CockpitAssembly, Presentation);
+    SyncRig06CockpitBones(Presentation);
     UpdateDriverUiState(Presentation);
     const double TelemetryNowSeconds = FPlatformTime::Seconds();
     RecordCausalTelemetry(TelemetryNowSeconds, DeltaSeconds);

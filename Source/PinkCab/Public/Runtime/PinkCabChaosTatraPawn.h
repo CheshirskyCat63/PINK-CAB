@@ -61,6 +61,9 @@ public:
     FName GetVehicleVisualProfileId() const;
     bool ApplyVehicleVisualProfile(const FPinkCabVehicleVisualProfile& Profile);
     bool SyncWheelPresentationFromChaos();
+    bool SetTatraOpenable(FName BoneName, float Open01);
+    bool ToggleTatraOpenable(FName BoneName);
+    float GetTatraOpenable(FName BoneName) const;
     const FPinkCabVehicleLoadState& GetVehicleLoadState() const { return VehicleLoadState; }
 
     bool SetFuelMassKg(float MassKg, float LongitudinalCm = 0.0f);
@@ -158,6 +161,11 @@ private:
     void UpdateDriverUiState(const FPinkCabCockpitPresentationState& Presentation);
     void EnsurePlayableLighting();
     bool ConfigureSourceSteeringVisual(const FPinkCabVehicleVisualProfile& Profile);
+    bool CaptureRig06RestPose();
+    bool SyncRig06WheelBonesFromChaos();
+    void UpdateRig06Openables(float DeltaSeconds);
+    void SyncRig06CockpitBones(const FPinkCabCockpitPresentationState& Presentation);
+    bool ApplyRig06BoneRotation(FName BoneName, float AngleDegrees);
     void EmitPackagedGateTelemetry(double NowSeconds);
     void RecordCausalTelemetry(double NowSeconds, float DeltaSeconds);
     void FlushCausalTelemetry();
@@ -201,6 +209,12 @@ private:
     float LookPitch = 0.0f;
     bool bGearLeverDragging = false;
     FVector2D GearLeverCursor = FVector2D(1.0f, 0.0f);
+
+    // Reference-pose component-space transforms for the authored RIG06 bones.
+    // These are presentation-only; Chaos remains the sole physics authority.
+    TMap<FName, FTransform> Rig06RestBoneTransforms;
+    TMap<FName, float> Rig06OpenableTargets;
+    TMap<FName, float> Rig06OpenableCurrent;
 
     bool bPackagedGateTelemetryEnabled = false;
     bool bCausalTelemetryEnabled = false;

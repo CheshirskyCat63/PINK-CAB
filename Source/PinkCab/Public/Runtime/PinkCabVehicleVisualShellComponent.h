@@ -6,6 +6,7 @@
 #include "PinkCabVehicleVisualShellComponent.generated.h"
 
 class UPrimitiveComponent;
+class UPoseableMeshComponent;
 class UStaticMeshComponent;
 
 UCLASS(ClassGroup=(PinkCab), meta=(BlueprintSpawnableComponent))
@@ -23,6 +24,11 @@ public:
     bool HasCabinAsset() const { return Profile.HasCabinAsset(); }
     UPrimitiveComponent* GetExteriorPresentation() const;
     UPrimitiveComponent* GetCabinPresentation() const;
+    UPoseableMeshComponent* GetExteriorPoseablePresentation() const;
+    UPoseableMeshComponent* GetCabinPoseablePresentation() const;
+    bool GetPoseableBoneTransform(FName BoneName, FTransform& OutTransform) const;
+    bool SetPoseableBoneTransform(FName BoneName, const FTransform& Transform);
+    bool ResetPoseableBoneTransform(FName BoneName);
     int32 GetPresentationPartCount() const { return PresentationPartComponents.Num(); }
     UStaticMeshComponent* GetPresentationPartComponent(FName PartId) const;
     bool ApplyProfile(const FPinkCabVehicleVisualProfile& InProfile);
