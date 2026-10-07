@@ -159,11 +159,12 @@ FPinkCabVehicleVisualProfile FPinkCabVehicleVisualProfile::Tatra613Rig06()
     Result.bUseExteriorAsCabinWhenCabinMissing = false;
     Result.bUsePoseableSkeletalPresentation = true;
 
-    // The accepted V22 presentation keeps the user's wheel placement under the
-    // arches (3.107 m authored axle pair). Chaos remains on the proven P4
-    // 2.980 m wheelbase, so compress presentation X only while keeping Y/Z at
-    // the native meter -> centimeter scale. The X offset centers the visual
-    // axles exactly on +135 / -163 cm without changing Chaos physics.
+    // V23 preserves the accepted V22 geometry exactly and only adds authored
+    // UV0 on the SimPedals donor pieces. The source axle pair remains 3.107 m.
+    // Chaos remains on the proven P4 2.980 m wheelbase, so compress presentation
+    // X only while keeping Y/Z at the native meter -> centimeter scale. The X
+    // offset centers the visual axles exactly on +135 / -163 cm without changing
+    // Chaos physics.
     const FTransform RigTransform(
         FRotator::ZeroRotator,
         FVector(5.5167f, 0.0f, 0.0f),
