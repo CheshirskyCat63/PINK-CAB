@@ -294,10 +294,12 @@ active_docs=(
   docs/VERIFICATION_MATRIX.md
   docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md
   docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md
+  docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md
   docs/PINK_CAB_REPOSITORY_CUTOVER.md
 )
 
 for file in "${active_docs[@]}"; do
+  reject_regex "$file" 'Road dynamics implementation =.*FGear|FGear Vehicle Physics only' "retired FGear solver presented as current"
   reject_regex "$file" 'quit anywhere is allowed|quit-anywhere is a technical proposal' "superseded unrestricted quit contract remains active"
   reject_regex "$file" 'LMB[[:space:]]*=[[:space:]]*ATTENTION|RMB[[:space:]]*=[[:space:]]*GO|attention:[[:space:]]*LMB|go:[[:space:]]*RMB' "superseded universal ATTENTION/GO mapping presented as current"
   reject_regex "$file" 'product_root:[[:space:]]*CD-418|Current gameplay authority:.*DEADRACE|active product:[[:space:]]*DEADRACE' "legacy DEADRACE pursuit authority presented as current"

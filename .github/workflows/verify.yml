@@ -35,6 +35,12 @@ jobs:
       - name: Script tests
         shell: pwsh
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Authority contract
+        shell: bash
+        run: bash scripts/check-authority.sh
+      - name: Vehicle Feel scope
+        shell: pwsh
+        run: .\scripts\vehicle-feel-guard.ps1
       - name: Code health
         shell: pwsh
         run: python scripts/code_health.py --root . --policy Config/CodeHealthPolicy.json --require-zero-debt

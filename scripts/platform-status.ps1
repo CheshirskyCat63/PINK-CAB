@@ -9,12 +9,22 @@ $AcceptedTag = 'accepted/p4-rig06-20261007'
 $ExpectedWorkflows = @('deliver.yml','verify.yml')
 $EngineRoot = if($env:PINKCAB_UE_ROOT){$env:PINKCAB_UE_ROOT}else{'C:\Program Files\Epic Games\UE_5.8'}
 
-$Head = (git rev-parse HEAD).Trim()
-$Branch = (git branch --show-current).Trim()
-$OriginMain = (git rev-parse origin/main).Trim()
-$AcceptedHead = (git rev-list -n 1 $AcceptedTag 2>$null).Trim()
-$Ahead = [int]((git rev-list --count "origin/main..HEAD").Trim())
-$Behind = [int]((git rev-list --count "HEAD..origin/main").Trim())
+function Resolve-Commit([string]$Ref){
+    $value = @(& git rev-parse --verify --quiet "$Ref^{commit}")
+    if($LASTEXITCODE -ne 0 -or $value.Count -ne 1){ return $null }
+    return ([string]$value[0]).Trim()
+}
+
+$Head = Resolve-Commit 'HEAD'
+$Branch = [string](& git branch --show-current)
+$OriginMain = Resolve-Commit 'origin/main'
+$AcceptedHead = Resolve-Commit $AcceptedTag
+$Ahead = $null
+$Behind = $null
+if($Head -and $OriginMain){
+    $Ahead = [int](& git rev-list --count "origin/main..HEAD")
+    $Behind = [int](& git rev-list --count "HEAD..origin/main")
+}
 $Dirty = @(git status --porcelain)
 $Worktrees = @((git worktree list --porcelain) | Select-String '^worktree ' | ForEach-Object {$_.Line.Substring(9)})
 $WorkflowNames = @(Get-ChildItem (Join-Path $RepoRoot '.github\workflows') -File | Select-Object -ExpandProperty Name | Sort-Object)
@@ -52,6 +62,8 @@ if($AcceptedHead){
 
 $Checks = [ordered]@{
     RepoExists = Test-Path (Join-Path $RepoRoot 'PinkCab.uproject')
+    HeadExists = -not [string]::IsNullOrWhiteSpace($Head)
+    OriginMainExists = -not [string]::IsNullOrWhiteSpace($OriginMain)
     AcceptedTagExists = -not [string]::IsNullOrWhiteSpace($AcceptedHead)
     UEExists = Test-Path (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEditor.exe')
     CanonicalWorkflowsOnly = $WorkflowDrift.Count -eq 0

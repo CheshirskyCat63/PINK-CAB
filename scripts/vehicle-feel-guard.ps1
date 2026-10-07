@@ -5,13 +5,20 @@ $ErrorActionPreference='Stop'
 $RepoRoot=Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
-git rev-parse --verify "$Baseline^{commit}" *> $null
+git rev-parse --verify --quiet "$Baseline^{commit}" *> $null
 if($LASTEXITCODE -ne 0){ throw "PINKCAB_VF90_BASELINE_MISSING=$Baseline" }
 
+function Get-ChangedPaths([string[]]$GitArguments){
+    $paths = @(& git -c core.quotepath=false @GitArguments)
+    if($LASTEXITCODE -ne 0){ throw "PINKCAB_VF90_GIT_FAILED=$($GitArguments -join ' ')" }
+    return $paths
+}
+
 $changed=@()
-$changed += @(git diff --name-only "$Baseline..HEAD")
-$changed += @(git diff --name-only)
-$changed += @(git diff --name-only --cached)
+$changed += @(Get-ChangedPaths @('diff','--name-only','--no-renames',"$Baseline..HEAD"))
+$changed += @(Get-ChangedPaths @('diff','--name-only','--no-renames'))
+$changed += @(Get-ChangedPaths @('diff','--name-only','--no-renames','--cached'))
+$changed += @(Get-ChangedPaths @('ls-files','--others','--exclude-standard'))
 $changed = @($changed | Where-Object {$_} | Sort-Object -Unique)
 
 $forbiddenPrefixes=@(
@@ -20,6 +27,20 @@ $forbiddenPrefixes=@(
     'Source/PinkCabTaxi/',
     'Source/PinkCabEconomy/',
     'Source/PinkCabPersistence/',
+    'Source/PinkCab/Private/World/',
+    'Source/PinkCab/Public/World/',
+    'Source/PinkCab/Private/Service/',
+    'Source/PinkCab/Public/Service/',
+    'Source/PinkCab/Private/Persistence/',
+    'Source/PinkCab/Public/Persistence/',
+    'Source/PinkCab/Private/Taxi/',
+    'Source/PinkCab/Public/Taxi/',
+    'Source/PinkCab/Private/Traffic/',
+    'Source/PinkCab/Public/Traffic/',
+    'Source/PinkCab/Private/Economy/',
+    'Source/PinkCab/Public/Economy/',
+    'Content/World/',
+    'Content/Dev/Maps/',
     'Content/Dev/World/',
     'Content/Game/City/',
     'Content/Game/Traffic/',
