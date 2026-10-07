@@ -6,7 +6,9 @@ First-person Tatra taxi / arcade-sim project built in Unreal Engine 5.8.
 
 - Repository: `CheshirskyCat63/PINK-CAB`
 - Integration branch: `main`
-- Active P4 simplification: PR #67 / `cleanup/p4-baseline`
+- Owner-accepted fallback: `accepted/p4-rig06-20261007` / `6edea77`
+- Pre-model vehicle / asset handoff gate: `CD-856` — DONE; internal RIG06 presentation accepted, public provenance/release disposition remains under `CD-855`
+- Immediate execution priority: `Vehicle Feel 90` before broader FIRST EURO world/gameplay work
 - Runtime vehicle authority: stock Unreal Chaos Vehicles
 - Game-specific vehicle layer: PINKCAB cockpit, physical H-pattern, controls, health/state and Tatra presentation
 - Current world target: `/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight`
@@ -72,3 +74,4 @@ Historical evidence is not an instruction to restore retired systems.
 - [Control plane](docs/CONTROL_PLANE.md)
 - [Engineering start](docs/ENGINEERING_START_HERE.md)
 - [Program roadmap](docs/PROGRAM_ROADMAP.md)
+- [Vehicle Feel 90](docs/PINK_CAB_VEHICLE_FEEL_90.md)

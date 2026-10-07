@@ -1,11 +1,11 @@
 # PINK CAB · Documentation Index
 
-**Status:** CURRENT / PROTECTED INTEGRATION / P04 CANDIDATE HUMAN ACCEPTED / ADMIN CD-952
+**Status:** CURRENT / PROTECTED INTEGRATION / P4 + RIG06 OWNER ACCEPTED / VEHICLE FEEL 90 ACTIVE
 **Active product:** Jira `CD-519`  
 **Canonical Git:** `CheshirskyCat63/PINK-CAB` → `main`  
-**Current mechanics owner:** `CD-848`  
-**Control-plane cleanup:** `CD-868` — DONE  
-**Owner-accepted runtime baseline:** `52239b61bc80e5a63716b9b09b87c520fa09fd05` / delivery `37149462470` attempt 1
+**Current mechanics owner:** `CD-848`; performance lane `CD-641`
+**Control-plane cleanup:** `CD-868` — DONE; historical P04 admin closeout `CD-952` — DONE
+**Owner-accepted fallback:** `accepted/p4-rig06-20261007` / `6edea7747d3a8433188c9fb394b98ae9c320d49b`
 
 ## Start here
 
@@ -17,20 +17,23 @@
 6. [`PINK_CAB_BASE100_CODE_ARCHITECTURE.md`](PINK_CAB_BASE100_CODE_ARCHITECTURE.md) — implementation architecture.
 7. [`FIRST_EURO_SCOPE.md`](FIRST_EURO_SCOPE.md) — first-year product boundary.
 8. [`PROGRAM_ROADMAP.md`](PROGRAM_ROADMAP.md) — current execution order.
-9. [`VERIFICATION_MATRIX.md`](VERIFICATION_MATRIX.md) — executable evidence.
-10. [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md) — unresolved design locks only.
+9. [`PINK_CAB_VEHICLE_FEEL_90.md`](PINK_CAB_VEHICLE_FEEL_90.md) — immediate hero-car calibration gate.
+10. [`VERIFICATION_MATRIX.md`](VERIFICATION_MATRIX.md) — executable evidence.
+11. [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md) — unresolved design locks only.
 
 ## Current development state
 
 The recovery/admin freeze is over. Gameplay work is allowed.
 
 - `main` is the only integration branch.
-- Previous P03/P04 work is retained as historical evidence; PR #67 is the active simplification path.
+- P4 is owner accepted and retained as immutable rollback evidence; it is not reopened by feel calibration.
+- RIG06 presentation is accepted for internal development on top of the closed P4 core.
+- Immediate work is `Vehicle Feel 90`; R01 world/streaming and every broader gameplay lane wait behind its owner gate.
 - New work uses one short-lived branch → one PR → `verify.yml` → merge.
 - Native Unreal Engine 5.8 Chaos Vehicles is the sole production hero-car road-dynamics owner.
 - FGear/VDS are archived research only and must never be treated as current dependencies.
 - Code-health debt baseline is zero.
-- The previous bounded-P04 package remains the retained fallback until the simplified P4 baseline is verified, merged and explicitly delivered.
+- `scripts/platform-status.ps1` is the local environment preflight; `scripts/vehicle-feel-guard.ps1` prevents the vehicle-calibration lane from drifting into world/taxi/etc.
 
 ## Delivery lanes
 
@@ -44,9 +47,9 @@ Documentation-only administration does not require replacing the runtime package
 
 ## Current execution checkpoint
 
-Active candidate: PR #67 / `cleanup/p4-baseline`.
+Accepted fallback: `accepted/p4-rig06-20261007` / `6edea77`. The simplified P4 vehicle/input core is closed; RIG06 is the accepted internal presentation shell.
 
-The candidate removes the custom Chaos simulation override, causality/calibration evidence lab, road-authoring CI and retired delivery paths. It keeps the Tatra presentation, cockpit, H-pattern, stock Chaos vehicle actuation, endless-straight road and exact-head delivery discipline.
+Current execution: **Vehicle Feel 90**. Finish the car’s measurable steering, drivetrain, mass/CoM/inertia, suspension, tyre/brake, wet/storm, load and runtime behavior to a representative 80–90% before resuming R01. See `PINK_CAB_VEHICLE_FEEL_90.md`.
 
 Historical accepted packages and runs remain evidence/fallbacks only. Archive tags under `archive/20261006/*` preserve the old research branch tips and dirty P04 states.
 

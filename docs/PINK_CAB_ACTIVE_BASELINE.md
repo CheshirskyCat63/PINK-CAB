@@ -2,7 +2,9 @@
 
 ## Purpose
 
-The active baseline is deliberately small: a playable P4 Tatra on a good straight road with a maintainable build and delivery path.
+The active baseline is deliberately small: a playable owner-accepted P4 Tatra on a good straight road with a maintainable build and delivery path.
+
+Accepted fallback: `accepted/p4-rig06-20261007` / `6edea7747d3a8433188c9fb394b98ae9c320d49b`. The RIG06 presentation is accepted on top of the closed P4 vehicle/input core. The immediate execution lane is `Vehicle Feel 90`; broader R01 world/streaming work resumes only after its owner gate.
 
 ## Runtime
 
@@ -15,7 +17,7 @@ The active baseline is deliberately small: a playable P4 Tatra on a good straigh
 - taxi/game modules retained
 - default map: `/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight`
 
-The custom P00–P04 driveline research stack is frozen history, not production runtime authority.
+The custom P00–P04 driveline research stack is frozen history, not production runtime authority. P4 acceptance is not reopened by post-P4 feel calibration; `Vehicle Feel 90` is a new bounded calibration lane with the accepted tag as rollback truth.
 
 ## Road
 

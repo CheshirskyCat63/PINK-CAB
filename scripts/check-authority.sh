@@ -43,6 +43,23 @@ require_text "$registry" "legacy_staging_sha: 1a4d7e05f1430a6e558b3f697aee3fbf41
 require_text "$registry" "cutover_gate: CD-558"
 require_text "$registry" "pre_fgear_program: CD-754"
 require_text "$registry" "clean_repository_status: complete"
+require_text "$registry" "snapshot_date: 2026-10-07"
+require_text "$registry" "accepted_gameplay_pr: 68"
+require_text "$registry" "gameplay_gate: P4_RIG06_OWNER_ACCEPTED_STABLE"
+require_text "$registry" "next_stage: VEHICLE_FEEL_90_THEN_R01_FIRST_EURO"
+require_text "$registry" "vehicle_feel_contract: docs/PINK_CAB_VEHICLE_FEEL_90.md"
+require_text "$registry" "vehicle_feel_scope_guard: scripts/vehicle-feel-guard.ps1"
+require_text "$registry" "local_environment_preflight: scripts/platform-status.ps1"
+require_text "$registry" "automated_coordinator: .github/workflows/verify.yml"
+require_text "$registry" "human_delivery_workflow: .github/workflows/deliver.yml"
+require_text "$registry" "current_workflow_lanes: [verify, deliver]"
+require_text "$registry" "stage: P4_STABLE_RIG06"
+require_text "$registry" "source_sha: 6edea7747d3a8433188c9fb394b98ae9c320d49b"
+require_text "$registry" "accepted_tag: accepted/p4-rig06-20261007"
+require_text "$registry" "runtime_integration_pr: 68"
+require_text "$registry" "runtime_integration_sha: 8322f9c06568f0ae122751ad8e240079824a3386"
+require_text "$registry" "full_p04_complete: true"
+require_text "$registry" "vehicle_feel_90_complete: false"
 require_text "$registry" "cutover_baseline_sha: a807db88baed881c526f2df63f87d01e913f41ef"
 require_text "$registry" "legacy_freeze_sha: bff83382e3b567e17fa01029f698204c7bce7872"
 
@@ -236,11 +253,19 @@ for file in \
   docs/PINK_CAB_PRE_MODEL_VEHICLE_FREEZE.md \
   docs/PINK_CAB_TATRA_ASSET_IMPORT_CONTRACT.md \
   docs/verification/CD-856-pre-model-handoff-closeout.md \
-  docs/PINK_CAB_REPOSITORY_CUTOVER.md; do
+  docs/PINK_CAB_REPOSITORY_CUTOVER.md \
+  docs/PINK_CAB_VEHICLE_FEEL_90.md; do
   require_file "$file"
 done
+require_file scripts/platform-status.ps1
+require_file scripts/vehicle-feel-guard.ps1
 
 # Mirror-level current locks.
+require_text docs/PINK_CAB_VEHICLE_FEEL_90.md "accepted/p4-rig06-20261007"
+require_text docs/PINK_CAB_VEHICLE_FEEL_90.md "VF9 · Owner acceptance"
+require_text docs/CONTROL_PLANE.md 'Current execution lane: `Vehicle Feel 90`'
+require_text docs/PINK_CAB_ACTIVE_BASELINE.md "Vehicle Feel 90"
+require_text docs/PROGRAM_ROADMAP.md "Only after Vehicle Feel 90 owner acceptance"
 require_text docs/PINK_CAB_START90_READINESS.md "TOTAL: **196**"
 require_text docs/PINK_CAB_START90_READINESS.md "142.5 / 196 = 72.7%"
 require_text docs/PINK_CAB_START90_READINESS.md "without consuming any of the remaining 19 OPEN rows"
@@ -269,10 +294,12 @@ active_docs=(
   docs/VERIFICATION_MATRIX.md
   docs/PINK_CAB_PRE_FGEAR_EXECUTION_INDEX.md
   docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md
+  docs/PINK_CAB_TATRA_HANDLING_E34_REFERENCE.md
   docs/PINK_CAB_REPOSITORY_CUTOVER.md
 )
 
 for file in "${active_docs[@]}"; do
+  reject_regex "$file" 'Road dynamics implementation =.*FGear|FGear Vehicle Physics only' "retired FGear solver presented as current"
   reject_regex "$file" 'quit anywhere is allowed|quit-anywhere is a technical proposal' "superseded unrestricted quit contract remains active"
   reject_regex "$file" 'LMB[[:space:]]*=[[:space:]]*ATTENTION|RMB[[:space:]]*=[[:space:]]*GO|attention:[[:space:]]*LMB|go:[[:space:]]*RMB' "superseded universal ATTENTION/GO mapping presented as current"
   reject_regex "$file" 'product_root:[[:space:]]*CD-418|Current gameplay authority:.*DEADRACE|active product:[[:space:]]*DEADRACE' "legacy DEADRACE pursuit authority presented as current"
