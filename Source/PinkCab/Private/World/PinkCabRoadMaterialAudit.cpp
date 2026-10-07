@@ -74,7 +74,7 @@ bool PinkCabRoadMaterialAudit::ValidateNativeMetaRoadStack(
             TEXT("/MetaRoad/MetaRoad/Materials/M_Sidewolk.M_Sidewolk"))
         && HasExactMaterialOnAll(
             Marks,
-            TEXT("/MetaRoad/MetaRoad/Materials/M_Mark.M_Mark"))
+            TEXT("/Game/World/L1/Road/M_PC_RoadMarkSurface.M_PC_RoadMarkSurface"))
         && HasExactMaterialOnAll(
             Curbs,
             TEXT("/MetaRoad/MetaRoad/Materials/M_Curb.M_Curb"));

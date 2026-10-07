@@ -8,6 +8,9 @@
 #include "World/PinkCabWorldMaterializationPolicy.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Components/StaticMeshComponent.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialInterface.h"
 
 namespace PinkCabL1EndlessRoadRuntimeTests
 {
@@ -92,6 +95,73 @@ bool FPinkCabL1RoadChunkBindingTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("clear resets bound index"), Chunk->GetBoundChunkIndex(), INDEX_NONE);
     TestFalse(TEXT("clear resets logical id"), Chunk->GetBoundChunkId().IsValid());
     TestTrue(TEXT("cleared representation is hidden"), Chunk->IsHidden());
+
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPinkCabL1RoadMarkSurfaceMaterialTest,
+    "PinkCab.World.L1EndlessRoad.Runtime.MarkSurfaceMaterial",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPinkCabL1RoadMarkSurfaceMaterialTest::RunTest(const FString& Parameters)
+{
+    UMaterialInterface* MarkMaterial = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/Game/World/L1/Road/M_PC_RoadMarkSurface.M_PC_RoadMarkSurface"));
+    TestNotNull(TEXT("project road-mark surface material exists"), MarkMaterial);
+    UMaterial* Material = MarkMaterial ? MarkMaterial->GetMaterial() : nullptr;
+    TestNotNull(TEXT("road-mark material resolves to a base material"), Material);
+    if (Material)
+    {
+        TestEqual(
+            TEXT("mesh marks use surface material domain"),
+            Material->MaterialDomain,
+            MD_Surface);
+        TestEqual(
+            TEXT("mesh marks use opaque blend"),
+            Material->BlendMode,
+            BLEND_Opaque);
+    }
+
+    UWorld* World = PinkCabL1EndlessRoadRuntimeTests::NewTestWorld(*this);
+    if (!World) return false;
+    APinkCabL1RoadChunkActor* Chunk =
+        PinkCabL1EndlessRoadRuntimeTests::SpawnChunk(*World, *this);
+    if (!Chunk) return false;
+
+    int32 MarkCount = 0;
+    TInlineComponentArray<UStaticMeshComponent*> Meshes(Chunk);
+    for (UStaticMeshComponent* Component : Meshes)
+    {
+        if (!Component
+            || !Component->GetName().StartsWith(TEXT("NativeRoadMarks")))
+        {
+            continue;
+        }
+
+        ++MarkCount;
+        TestEqual(
+            TEXT("road-mark mesh remains non-colliding"),
+            Component->GetCollisionEnabled(),
+            ECollisionEnabled::NoCollision);
+        TestTrue(
+            TEXT("road-mark mesh stays at authored 3 cm separation"),
+            FMath::IsNearlyEqual(Component->GetRelativeLocation().Z, 3.0, 1.0e-3));
+        const UMaterialInterface* Bound = Component->GetMaterial(0);
+        TestTrue(
+            TEXT("road-mark mesh binds project surface material"),
+            Bound && Bound->GetPathName()
+                == TEXT("/Game/World/L1/Road/M_PC_RoadMarkSurface.M_PC_RoadMarkSurface"));
+    }
+    TestEqual(TEXT("all 50 native road-mark meshes are covered"), MarkCount, 50);
+
+    const UStaticMeshComponent* Road = Chunk->GetRoadMeshComponent();
+    const UMaterialInterface* RoadMaterial = Road ? Road->GetMaterial(0) : nullptr;
+    TestTrue(
+        TEXT("road surface keeps frozen MetaRoad asphalt material"),
+        RoadMaterial && RoadMaterial->GetPathName()
+            == TEXT("/MetaRoad/MetaRoad/Materials/MI_DriveSurface.MI_DriveSurface"));
 
     return true;
 }
