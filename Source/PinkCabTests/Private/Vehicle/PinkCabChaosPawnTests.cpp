@@ -118,6 +118,7 @@ bool FPinkCabChaosTatraWheelGeometryBindingTest::RunTest(const FString& Paramete
         return false;
     }
 
+    FVector Centers[4];
     for (int32 Index = 0; Index < 4; ++Index)
     {
         const FChaosWheelSetup& Setup = Movement->WheelSetups[Index];
@@ -125,9 +126,17 @@ bool FPinkCabChaosTatraWheelGeometryBindingTest::RunTest(const FString& Paramete
             *FString::Printf(TEXT("physical wheel %d keeps a prototype wheel bone"), Index),
             Setup.BoneName.IsNone());
         TestTrue(
-            *FString::Printf(TEXT("physical wheel %d is isolated from Tatra presentation offsets"), Index),
-            Setup.AdditionalOffset.IsNearlyZero(0.01f));
+            *FString::Printf(TEXT("physical wheel %d preserves chassis vertical clearance"), Index),
+            FMath::IsNearlyZero(Setup.AdditionalOffset.Z, 0.01f));
+        Centers[Index] = ResolveChaosWheelRestPosition(*Pawn, Setup);
     }
+    const FPinkCabChaosPhysicalProfile Physical = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
+    TestTrue(TEXT("physical wheelbase matches source authority"),
+        FMath::IsNearlyEqual(Centers[0].X - Centers[2].X, Physical.WheelbaseMm.Value / 10.0f, 0.1f));
+    TestTrue(TEXT("physical front track matches source authority"),
+        FMath::IsNearlyEqual(Centers[1].Y - Centers[0].Y, Physical.FrontTrackMm.Value / 10.0f, 0.1f));
+    TestTrue(TEXT("physical rear track matches source authority"),
+        FMath::IsNearlyEqual(Centers[3].Y - Centers[2].Y, Physical.RearTrackMm.Value / 10.0f, 0.1f));
     return true;
 }
 

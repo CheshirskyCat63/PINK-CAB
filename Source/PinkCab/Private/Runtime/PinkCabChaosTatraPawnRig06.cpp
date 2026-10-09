@@ -3,8 +3,9 @@
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Cockpit/PinkCabCockpitPresentationState.h"
-#include "Cockpit/PinkCabCockpitVisualDriverComponent.h"
+#include "Components/PoseableMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 
 namespace
 {
@@ -19,6 +20,68 @@ const TMap<FName, float>& Rig06BoneOpenAngles()
         { TEXT("Hood_Rear"), 58.0f },
     };
     return Angles;
+}
+
+const TArray<FName>& Rig06WindowBones()
+{
+    static const TArray<FName> Bones = {
+        TEXT("Window_FL"), TEXT("Window_FR"),
+        TEXT("Window_RL"), TEXT("Window_RR")
+    };
+    return Bones;
+}
+
+bool IsRig06WindowBone(const FName BoneName)
+{
+    return Rig06WindowBones().Contains(BoneName);
+}
+
+FName Rig06WindowParent(const FName BoneName)
+{
+    if (BoneName == FName(TEXT("Window_FL"))) return TEXT("Door_FL");
+    if (BoneName == FName(TEXT("Window_FR"))) return TEXT("Door_FR");
+    if (BoneName == FName(TEXT("Window_RL"))) return TEXT("Door_RL");
+    if (BoneName == FName(TEXT("Window_RR"))) return TEXT("Door_RR");
+    return NAME_None;
+}
+
+float Rig06WindowRollProgress(const float Open01, const float K)
+{
+    const float T = FMath::Clamp(Open01, 0.0f, 1.0f);
+    return (FMath::Exp(K * T) - 1.0f) / (FMath::Exp(K) - 1.0f);
+}
+
+FTransform Rig06WindowBasis(const FName BoneName, const float Open01)
+{
+    const float T = FMath::Clamp(Open01, 0.0f, 1.0f);
+    const bool bFront =
+        BoneName == FName(TEXT("Window_FL"))
+        || BoneName == FName(TEXT("Window_FR"));
+    const bool bLeft =
+        BoneName == FName(TEXT("Window_FL"))
+        || BoneName == FName(TEXT("Window_RL"));
+
+    // Final V22 source authoring. Bone channels are in asset metres.
+    const float K = bFront ? 3.25f : 7.25f;
+    const float FullAngleDegrees = bFront ? 24.715242f : 25.163946f;
+    const float AngleRadians = FMath::DegreesToRadians(
+        FullAngleDegrees * Rig06WindowRollProgress(T, K));
+    const float Dy = bFront ? -0.44960412f : -0.45914079f;
+    const float Dz = bFront ? 0.20694182f : 0.21570410f;
+    const float Py = bFront ? 0.25934423f : 0.18896753f;
+    const float Pz = bFront ? -0.12427080f : -0.09297070f;
+    const float DxMagnitude = bFront ? 0.11297098f : 0.01588345f;
+    const float Dx = bLeft ? -DxMagnitude : DxMagnitude;
+    const float C = FMath::Cos(AngleRadians);
+    const float S = FMath::Sin(AngleRadians);
+    const FVector Location(
+        Dx * T,
+        Dy * T + (1.0f - C) * Py + S * Pz,
+        Dz * T - S * Py + (1.0f - C) * Pz);
+    return FTransform(
+        FQuat(FVector::ForwardVector, AngleRadians),
+        Location,
+        FVector::OneVector);
 }
 
 bool IsRig06BoneProfile(const FPinkCabVehicleVisualProfile& Profile)
@@ -43,9 +106,19 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
         TEXT("Phys_Wheel_FL"), TEXT("Phys_Wheel_FR"),
         TEXT("Phys_Wheel_BL"), TEXT("Phys_Wheel_BR"),
         TEXT("Steering_Wheel"), TEXT("Cabin_GearLever"),
+        TEXT("Cabin_ClutchPedal"), TEXT("Cabin_BrakePedal"),
+        TEXT("Cabin_ThrottlePedal"),
+        TEXT("root"),
         TEXT("Cabin_Handbrake"), TEXT("Door_FL"), TEXT("Door_FR"),
         TEXT("Door_RL"), TEXT("Door_RR"), TEXT("Trunk_Front"),
-        TEXT("Hood_Rear")
+        TEXT("Hood_Rear"),
+        TEXT("Window_FL"), TEXT("Window_FR"),
+        TEXT("Window_RL"), TEXT("Window_RR"),
+        TEXT("Cabin_Horn"), TEXT("Cabin_Stalk_L"), TEXT("Cabin_Stalk_R"),
+        TEXT("Cabin_Radio"), TEXT("Cabin_Climate"),
+        TEXT("Mirror_L"), TEXT("Mirror_R"),
+        TEXT("Cabin_SpeedometerNeedle"), TEXT("Cabin_TachometerNeedle"),
+        TEXT("Cabin_FuelNeedle"), TEXT("Cabin_TemperatureNeedle")
     };
 
     for (const FName BoneName : RequiredBones)
@@ -75,6 +148,11 @@ bool APinkCabChaosTatraPawn::CaptureRig06RestPose()
         Rig06OpenableTargets.Add(Entry.Key, 0.0f);
         Rig06OpenableCurrent.Add(Entry.Key, 0.0f);
     }
+    for (const FName BoneName : Rig06WindowBones())
+    {
+        Rig06OpenableTargets.Add(BoneName, 0.0f);
+        Rig06OpenableCurrent.Add(BoneName, 0.0f);
+    }
     return true;
 }
 
@@ -101,11 +179,45 @@ bool APinkCabChaosTatraPawn::ApplyRig06BoneRotation(
     return VehicleVisualShell->SetPoseableBoneTransform(BoneName, Dynamic);
 }
 
+bool APinkCabChaosTatraPawn::ApplyRig06AuthoredLocalBasis(
+    const FName BoneName,
+    const FName ParentBoneName,
+    const FTransform& Basis)
+{
+    if (!VehicleVisualShell)
+    {
+        return false;
+    }
+    const FTransform* Rest = Rig06RestBoneTransforms.Find(BoneName);
+    const FTransform* ParentRest = Rig06RestBoneTransforms.Find(ParentBoneName);
+    if (!Rest || !ParentRest || Basis.ContainsNaN())
+    {
+        return false;
+    }
+    FTransform ParentCurrent;
+    if (!VehicleVisualShell->GetPoseableBoneTransform(
+        ParentBoneName,
+        ParentCurrent))
+    {
+        return false;
+    }
+
+    // Blender pose matrix: pose_local = rest_local * basis. Unreal's row-vector
+    // transform concatenation writes the equivalent operation in reverse order.
+    const FTransform RestLocal = Rest->GetRelativeTransform(*ParentRest);
+    const FTransform DynamicLocal = Basis * RestLocal;
+    const FTransform DynamicComponent = DynamicLocal * ParentCurrent;
+    return VehicleVisualShell->SetPoseableBoneTransform(
+        BoneName,
+        DynamicComponent);
+}
+
 bool APinkCabChaosTatraPawn::SetTatraOpenable(
     const FName BoneName,
     const float Open01)
 {
-    if (!Rig06BoneOpenAngles().Contains(BoneName)
+    if ((!Rig06BoneOpenAngles().Contains(BoneName)
+            && !IsRig06WindowBone(BoneName))
         || !Rig06RestBoneTransforms.Contains(BoneName))
     {
         return false;
@@ -117,7 +229,8 @@ bool APinkCabChaosTatraPawn::SetTatraOpenable(
 
 bool APinkCabChaosTatraPawn::ToggleTatraOpenable(const FName BoneName)
 {
-    if (!Rig06BoneOpenAngles().Contains(BoneName)
+    if ((!Rig06BoneOpenAngles().Contains(BoneName)
+            && !IsRig06WindowBone(BoneName))
         || !Rig06RestBoneTransforms.Contains(BoneName))
     {
         return false;
@@ -151,6 +264,24 @@ void APinkCabChaosTatraPawn::UpdateRig06Openables(const float DeltaSeconds)
             1.6f);
         ApplyRig06BoneRotation(Entry.Key, Entry.Value * Current);
     }
+
+    // Windows use the final V22 authored local transform: simultaneous travel
+    // into the door plus an exponential X-roll. Evaluate after doors so the
+    // current parent transform is inherited naturally.
+    for (const FName BoneName : Rig06WindowBones())
+    {
+        const float Target = Rig06OpenableTargets.FindRef(BoneName);
+        float& Current = Rig06OpenableCurrent.FindOrAdd(BoneName);
+        Current = FMath::FInterpConstantTo(
+            Current,
+            Target,
+            FMath::Max(DeltaSeconds, 0.0f),
+            1.6f);
+        ApplyRig06AuthoredLocalBasis(
+            BoneName,
+            Rig06WindowParent(BoneName),
+            Rig06WindowBasis(BoneName, Current));
+    }
 }
 
 bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
@@ -160,8 +291,9 @@ bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
     {
         return false;
     }
-    UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
-    if (!Movement || Movement->Wheels.Num() != 4)
+    UPinkCabChaosVehicleMovementComponent* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(GetChaosMovement());
+    const UPoseableMeshComponent* Exterior = VehicleVisualShell->GetExteriorPoseablePresentation();
+    if (!Movement || Movement->Wheels.Num() != 4 || !Exterior || !GetMesh())
     {
         return false;
     }
@@ -182,11 +314,12 @@ bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
 
         FTransform Dynamic = *Rest;
 
-        // RIG06 asset-space units are Blender meters while Chaos reports cm.
-        Dynamic.SetLocation(
-            Rest->GetLocation()
-            + ChaosWheel->GetSuspensionAxis()
-                * (ChaosWheel->GetSuspensionOffset() / 100.0f));
+        FVector PhysicalCenter;
+        if (!Movement->GetWheelPresentationCenter(Index, PhysicalCenter)) return false;
+        // Convert the one physical wheel center into authored component units.
+        // This follows both suspension and chassis pose without moving physics.
+        Dynamic.SetLocation(Exterior->GetComponentTransform().InverseTransformPosition(
+            GetMesh()->GetComponentTransform().TransformPosition(PhysicalCenter)));
 
         const FQuat Steering(
             FVector::UpVector,
@@ -205,67 +338,4 @@ bool APinkCabChaosTatraPawn::SyncRig06WheelBonesFromChaos()
         }
     }
     return true;
-}
-
-void APinkCabChaosTatraPawn::SyncRig06CockpitBones(
-    const FPinkCabCockpitPresentationState& Presentation)
-{
-    if (!VehicleVisualShell
-        || !IsRig06BoneProfile(VehicleVisualShell->GetProfile()))
-    {
-        return;
-    }
-
-    if (const FTransform* SteeringRest =
-        Rig06RestBoneTransforms.Find(TEXT("Steering_Wheel")))
-    {
-        FTransform Steering = *SteeringRest;
-        // RIG06 Steering_Wheel is authored around local +Y, opposite to
-        // the legacy preserved-scene steering pivot. Keep semantic +right and
-        // adapt only at this model boundary: +right must rotate the visible
-        // wheel clockwise/right from the driver seat.
-        const float AngleDegrees =
-            FMath::Clamp(Presentation.Steering, -1.0f, 1.0f) * 450.0f;
-        const FQuat LocalTurn(
-            FVector::YAxisVector,
-            FMath::DegreesToRadians(AngleDegrees));
-        Steering.SetRotation(
-            (SteeringRest->GetRotation() * LocalTurn).GetNormalized());
-        VehicleVisualShell->SetPoseableBoneTransform(
-            TEXT("Steering_Wheel"),
-            Steering);
-    }
-
-    if (const FTransform* GearRest =
-        Rig06RestBoneTransforms.Find(TEXT("Cabin_GearLever")))
-    {
-        FTransform Gear = *GearRest;
-        const FVector GearOffsetCm = Presentation.bGearLeverDragging
-            ? UPinkCabCockpitVisualDriverComponent::GearLeverOffsetFromCursor(
-                Presentation.GearLeverCursor)
-            : UPinkCabCockpitVisualDriverComponent::GearLeverOffset(
-                Presentation.SelectedGear);
-        // RIG06 asset-space is meters; presentation component scales it by 100.
-        Gear.SetLocation(GearRest->GetLocation() + GearOffsetCm / 100.0f);
-        VehicleVisualShell->SetPoseableBoneTransform(
-            TEXT("Cabin_GearLever"),
-            Gear);
-    }
-
-    if (const FTransform* HandbrakeRest =
-        Rig06RestBoneTransforms.Find(TEXT("Cabin_Handbrake")))
-    {
-        FTransform Handbrake = *HandbrakeRest;
-        const float AngleDegrees =
-            UPinkCabCockpitVisualDriverComponent::HandbrakeAngleDegrees(
-                Presentation.Handbrake);
-        const FQuat LocalPull(
-            FVector::YAxisVector,
-            FMath::DegreesToRadians(AngleDegrees));
-        Handbrake.SetRotation(
-            (HandbrakeRest->GetRotation() * LocalPull).GetNormalized());
-        VehicleVisualShell->SetPoseableBoneTransform(
-            TEXT("Cabin_Handbrake"),
-            Handbrake);
-    }
 }

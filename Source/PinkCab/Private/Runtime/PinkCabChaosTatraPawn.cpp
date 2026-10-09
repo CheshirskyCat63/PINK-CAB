@@ -92,32 +92,24 @@ FVector ResolveWheelBoneLocalPosition(
     return RootBodyMatrix.InverseTransformPosition(BonePosition);
 }
 
-const FPinkCabVehiclePresentationPart* FindPresentationPart(
-    const FPinkCabVehicleVisualProfile& Profile,
-    const FName PartId)
-{
-    return Profile.PresentationParts.FindByPredicate([PartId](const FPinkCabVehiclePresentationPart& Part)
-    {
-        return Part.PartId == PartId;
-    });
-}
-
-bool BindChaosWheelsToTatraGeometry(
+bool ConfigureTatraPhysicalWheelGeometry(
     UChaosWheeledVehicleMovementComponent& Movement,
     const USkeletalMeshComponent& Mesh,
-    const FPinkCabVehicleVisualProfile& TatraVisual)
+    const FPinkCabChaosPhysicalProfile& Physical)
 {
     if (Movement.WheelSetups.Num() != 4)
     {
         return false;
     }
 
-    const FName PartIds[4] = { TEXT("WheelFL"), TEXT("WheelFR"), TEXT("WheelRL"), TEXT("WheelRR") };
+    // Keep the donor chassis front-axle datum and vertical clearance. Only
+    // source-authoritative wheelbase/track determine the horizontal contacts;
+    // the presentation mesh never configures the physical wheel positions.
+    const FVector FrontDatum = ResolveWheelBoneLocalPosition(Mesh, Movement.WheelSetups[0].BoneName);
     for (int32 Index = 0; Index < 4; ++Index)
     {
         FChaosWheelSetup& Setup = Movement.WheelSetups[Index];
-        const FPinkCabVehiclePresentationPart* Part = FindPresentationPart(TatraVisual, PartIds[Index]);
-        if (!Part || !Setup.WheelClass)
+        if (!Setup.WheelClass)
         {
             return false;
         }
@@ -130,7 +122,11 @@ bool BindChaosWheelsToTatraGeometry(
 
         const FVector BaseRestPosition =
             ResolveWheelBoneLocalPosition(Mesh, Setup.BoneName) + WheelDefaults->Offset;
-        Setup.AdditionalOffset = Part->LocalTransform.GetLocation() - BaseRestPosition;
+        const bool bFront = Index < 2;
+        const float TrackMm = bFront ? Physical.FrontTrackMm.Value : Physical.RearTrackMm.Value;
+        const float TargetX = FrontDatum.X - (bFront ? 0.0f : Physical.WheelbaseMm.Value / 10.0f);
+        const float TargetY = (Index % 2 == 0 ? -1.0f : 1.0f) * TrackMm / 20.0f;
+        Setup.AdditionalOffset = FVector(TargetX - BaseRestPosition.X, TargetY - BaseRestPosition.Y, 0.0f);
     }
     return true;
 }
@@ -222,14 +218,7 @@ APinkCabChaosTatraPawn::APinkCabChaosTatraPawn(
     Movement->WheelSetups[3].WheelClass = UPinkCabChaosWheelRear::StaticClass();
     Movement->WheelSetups[3].BoneName = PrototypeVisualProfile.WheelBones[3];
 
-    // Physics stays on the proven UE template wheel bones. The authored Tatra presentation
-    // wheel meshes are presentation-only and must never reposition Chaos wheels.
-    // Mixing those coordinate systems can leave all four wheels "in contact"
-    // while the template chassis is embedded in the road and unable to move.
-    for (FChaosWheelSetup& Setup : Movement->WheelSetups)
-    {
-        Setup.AdditionalOffset = FVector::ZeroVector;
-    }
+    ConfigureTatraPhysicalWheelGeometry(*Movement, *VehicleMesh, Profile);
 }
 
 void APinkCabChaosTatraPawn::BeginPlay()

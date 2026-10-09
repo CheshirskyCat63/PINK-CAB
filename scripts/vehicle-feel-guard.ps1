@@ -48,8 +48,20 @@ $forbiddenPrefixes=@(
     'Content/Game/Services/'
 )
 
+# Owner-approved Task 2 is a bounded visual-road exception inside the otherwise
+# frozen World domain. Keep this list exact: it must not become a directory-wide
+# escape hatch for world/taxi/traffic work.
+$approvedTask2RoadPaths=@(
+    'Source/PinkCab/Private/World/PinkCabL1RoadChunkActor.cpp',
+    'Source/PinkCab/Private/World/PinkCabRoadMaterialAudit.cpp',
+    'Content/World/L1/Road/M_PC_RoadMarkSurface.uasset'
+)
+
 $violations=@()
 foreach($path in $changed){
+    if($approvedTask2RoadPaths -contains $path){
+        continue
+    }
     foreach($prefix in $forbiddenPrefixes){
         if($path.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){
             $violations += $path

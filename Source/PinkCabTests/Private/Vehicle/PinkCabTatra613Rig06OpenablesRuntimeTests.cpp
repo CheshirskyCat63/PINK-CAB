@@ -3,6 +3,8 @@
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "EngineUtils.h"
+#include "Components/PoseableMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Runtime/PinkCabVehicleVisualShellComponent.h"
@@ -39,8 +41,25 @@ public:
                 TEXT("RIG06 exterior is poseable"),
                 Shell->GetExteriorPoseablePresentation());
             Test->TestNotNull(
-                TEXT("RIG06 cabin is poseable"),
+                TEXT("RIG06 cabin render exists"),
+                Shell->GetCabinPresentation());
+            Test->TestEqual(
+                TEXT("RIG06 full-car asset reuses one poseable component for exterior and cabin"),
+                Shell->GetCabinPresentation(),
+                Shell->GetExteriorPresentation());
+            Test->TestNotNull(
+                TEXT("RIG06 shared cabin/exterior component is poseable"),
                 Shell->GetCabinPoseablePresentation());
+            TArray<USkeletalMeshComponent*> SkeletalParts;
+            Pawn->GetComponents(SkeletalParts);
+            bool bFoundPrototypeDriver = false;
+            for (const USkeletalMeshComponent* Part : SkeletalParts)
+            {
+                if (Part->GetFName() != TEXT("PrototypeDriverVisual")) continue;
+                bFoundPrototypeDriver = true;
+                Test->TestTrue(TEXT("authored Tatra hides the standing prototype driver"), Part->bHiddenInGame);
+            }
+            Test->TestTrue(TEXT("prototype driver visibility was checked"), bFoundPrototypeDriver);
 
             static const FName Bones[] = {
                 TEXT("Door_FL"), TEXT("Door_FR"),

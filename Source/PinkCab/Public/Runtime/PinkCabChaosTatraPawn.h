@@ -166,6 +166,10 @@ private:
     void UpdateRig06Openables(float DeltaSeconds);
     void SyncRig06CockpitBones(const FPinkCabCockpitPresentationState& Presentation);
     bool ApplyRig06BoneRotation(FName BoneName, float AngleDegrees);
+    bool ApplyRig06AuthoredLocalBasis(
+        FName BoneName,
+        FName ParentBoneName,
+        const FTransform& Basis);
     void EmitPackagedGateTelemetry(double NowSeconds);
     void RecordCausalTelemetry(double NowSeconds, float DeltaSeconds);
     void FlushCausalTelemetry();

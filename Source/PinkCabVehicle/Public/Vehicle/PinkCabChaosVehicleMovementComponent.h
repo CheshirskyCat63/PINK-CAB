@@ -18,6 +18,9 @@ public:
     explicit UPinkCabChaosVehicleMovementComponent(
         const FObjectInitializer& ObjectInitializer);
 
+    // Read-only native suspension result in chassis component space (cm).
+    bool GetWheelPresentationCenter(int32 WheelIndex, FVector& OutCenter);
+
     void ConfigurePinkCabClutch(const FPinkCabClutchDrivelineConfig& InConfig)
     {
         ClutchConfig = InConfig;

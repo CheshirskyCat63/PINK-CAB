@@ -290,5 +290,11 @@ bool APinkCabChaosTatraPawn::ApplyVehicleVisualProfile(const FPinkCabVehicleVisu
     {
         VehicleMesh->SetVisibility(!(Profile.HasVisualAsset() && Profile.bHidePhysicsChassisWhenExteriorPresent), false);
     }
+    if (PrototypeDriverVisual)
+    {
+        // The template's standing mannequin has no authored seat pose and
+        // intersects the Tatra floor. Retain it only in the prototype fallback.
+        PrototypeDriverVisual->SetHiddenInGame(Profile.HasVisualAsset());
+    }
     return true;
 }

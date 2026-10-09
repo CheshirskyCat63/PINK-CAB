@@ -3,6 +3,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
@@ -146,6 +147,15 @@ void APinkCabL1RoadChunkActor::InitializeNativeMetaRoadMarkComponents()
     // lane-boundary/section span for this five-section 1000 m module:
     // 10 marked lane boundaries x 5 section spans = 50 native meshes.
     // Keep the exact bake transforms and never add collision to paint.
+    //
+    // The vendor M_Mark is a DeferredDecal/Translucent material. These marks
+    // are actual mesh strips, not decal components, so using that domain on a
+    // UStaticMeshComponent puts a 15 cm far-field feature on the decal/TSR
+    // history path and produces visible temporal shimmer. Use the project-side
+    // surface-domain fork while preserving the authored graph and geometry.
+    static ConstructorHelpers::FObjectFinder<UMaterialInterface> MarkMaterialFinder(
+        TEXT("/Game/World/L1/Road/M_PC_RoadMarkSurface.M_PC_RoadMarkSurface"));
+
     RoadMarkComponents.Reserve(NativeMetaRoadMarkMeshCount);
     int32 MarkMeshIndex = 0;
     for (const double LaneY : NativeMetaRoadMarkLaneY)
@@ -177,6 +187,10 @@ void APinkCabL1RoadChunkActor::InitializeNativeMetaRoadMarkComponents()
             if (MarksFinder.Succeeded())
             {
                 MarkComponent->SetStaticMesh(MarksFinder.Object);
+            }
+            if (MarkMaterialFinder.Succeeded())
+            {
+                MarkComponent->SetMaterial(0, MarkMaterialFinder.Object);
             }
 
             RoadMarkComponents.Add(MarkComponent);

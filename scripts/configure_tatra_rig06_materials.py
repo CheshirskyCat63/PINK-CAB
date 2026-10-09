@@ -3,7 +3,7 @@ import unreal, os, json
 dest="/Game/Dev/Vehicles/Tatra613Rig06"
 source_root=os.environ.get(
     "PINKCAB_TATRA_RIG06_PACKAGE",
-    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG06_UE")
+    r"E:\CHESHIRE_DIVISION\SourceAssets\PINK-CAB\Tatra613\working\export\TATRA613_RIG24_UE")
 tex_root=os.path.join(source_root,"Textures")
 asset_tools=unreal.AssetToolsHelpers.get_asset_tools()
 mel=unreal.MaterialEditingLibrary
@@ -80,7 +80,7 @@ def set_texture_settings(tex, kind):
         tex.set_editor_property("srgb",False)
         try: tex.set_editor_property("compression_settings",unreal.TextureCompressionSettings.TC_MASKS)
         except Exception as e: unreal.log_warning("mask compression: "+str(e))
-    unreal.EditorAssetLibrary.save_loaded_asset(tex,only_if_is_dirty=False)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex,only_if_is_dirty=True)
 
 def clear_material(mat):
     try:
@@ -101,6 +101,22 @@ def make_constant(mat,value,x,y):
     e=mel.create_material_expression(mat,unreal.MaterialExpressionConstant,x,y)
     e.set_editor_property("r",float(value))
     return e
+
+# Enforce the package texture convention for every authored source texture,
+# including currently-unused sets such as Carpet. Asset metadata must not
+# depend on whether a material happens to reference that texture today.
+for filename in texture_files:
+    name=os.path.splitext(os.path.basename(filename))[0]
+    tex=load(dest+"/"+name)
+    if name.endswith("_BaseColor"):
+        kind="base"
+    elif name.endswith("_Normal"):
+        kind="normal"
+    elif name.endswith("_ORM"):
+        kind="orm"
+    else:
+        continue
+    set_texture_settings(tex,kind)
 
 configured=[]
 for mat_name,set_name in mapping.items():
@@ -159,7 +175,7 @@ for mat_name,set_name in mapping.items():
             except Exception: pass
 
     mel.recompile_material(mat)
-    unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=True)
     configured.append(mat_name)
 
 for mat_name,color in indicator_colors.items():
@@ -173,7 +189,7 @@ for mat_name,color in indicator_colors.items():
     # low emission so dashboard icons read without becoming neon.
     mel.connect_material_property(e,"",unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     mel.recompile_material(mat)
-    unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=False)
+    unreal.EditorAssetLibrary.save_loaded_asset(mat,only_if_is_dirty=True)
     configured.append(mat_name)
 
 # Remove importer collision duplicates after all canonical materials have been rebuilt.
@@ -211,7 +227,7 @@ try:
 except Exception as e:
     unreal.log_warning("bounds audit unavailable: "+str(e))
 
-unreal.EditorAssetLibrary.save_directory(dest,only_if_is_dirty=False,recursive=True)
+unreal.EditorAssetLibrary.save_directory(dest,only_if_is_dirty=True,recursive=True)
 report={
     "configured_materials":configured,
     "orm_imported":[os.path.basename(x) for x in orm_files],

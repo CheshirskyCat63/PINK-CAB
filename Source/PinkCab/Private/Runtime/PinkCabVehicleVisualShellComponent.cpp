@@ -72,49 +72,50 @@ bool UPinkCabVehicleVisualShellComponent::SetPoseableBoneTransform(
     const FName BoneName,
     const FTransform& Transform)
 {
-    bool bApplied = false;
-    for (UPoseableMeshComponent* Component :
-        { GetExteriorPoseablePresentation(), GetCabinPoseablePresentation() })
+    // RIG06 reuses one full-car poseable component for both exterior and
+    // cabin views. Prefer that single pose owner; a distinct cabin component is
+    // only a generic fallback for other future profiles.
+    UPoseableMeshComponent* Component = GetExteriorPoseablePresentation();
+    if (!Component)
     {
-        if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
-        {
-            continue;
-        }
-        Component->SetBoneTransformByName(
-            BoneName,
-            Transform,
-            EBoneSpaces::ComponentSpace);
-        bApplied = true;
+        Component = GetCabinPoseablePresentation();
     }
-    return bApplied;
+    if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
+    {
+        return false;
+    }
+    Component->SetBoneTransformByName(
+        BoneName,
+        Transform,
+        EBoneSpaces::ComponentSpace);
+    return true;
 }
 
 bool UPinkCabVehicleVisualShellComponent::ResetPoseableBoneTransform(
     const FName BoneName)
 {
-    bool bApplied = false;
-    for (UPoseableMeshComponent* Component :
-        { GetExteriorPoseablePresentation(), GetCabinPoseablePresentation() })
+    UPoseableMeshComponent* Component = GetExteriorPoseablePresentation();
+    if (!Component)
     {
-        if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
-        {
-            continue;
-        }
-        Component->ResetBoneTransformByName(BoneName);
-        bApplied = true;
+        Component = GetCabinPoseablePresentation();
     }
-    return bApplied;
+    if (!Component || Component->GetBoneIndex(BoneName) == INDEX_NONE)
+    {
+        return false;
+    }
+    Component->ResetBoneTransformByName(BoneName);
+    return true;
 }
 
 void UPinkCabVehicleVisualShellComponent::RefreshPoseableBoneTransforms()
 {
-    UPoseableMeshComponent* Exterior = GetExteriorPoseablePresentation();
-    UPoseableMeshComponent* Cabin = GetCabinPoseablePresentation();
-    if (Exterior)
+    // RIG06 exterior/cabin share one pose owner, so refresh it once.
+    if (UPoseableMeshComponent* Exterior = GetExteriorPoseablePresentation())
     {
         Exterior->RefreshBoneTransforms();
+        return;
     }
-    if (Cabin && Cabin != Exterior)
+    if (UPoseableMeshComponent* Cabin = GetCabinPoseablePresentation())
     {
         Cabin->RefreshBoneTransforms();
     }
@@ -209,7 +210,10 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildExterior()
             Component->SetupAttachment(this);
             Component->SetSkinnedAssetAndUpdate(Mesh, true);
             Component->SetRelativeTransform(Profile.ExteriorTransform);
-            Component->SetOwnerNoSee(true);
+            // The RIG06 skeletal asset contains both exterior and cabin. One
+            // poseable component is sufficient for all camera views.
+            Component->SetOwnerNoSee(false);
+            Component->SetOnlyOwnerSee(false);
             ConfigurePresentation(*Component);
             Component->RegisterComponent();
             Result = Component;
@@ -259,6 +263,20 @@ UPrimitiveComponent* UPinkCabVehicleVisualShellComponent::BuildCabin()
     {
         if (Profile.bUsePoseableSkeletalPresentation)
         {
+            // RIG06 is a single full-car skeletal asset: the same mesh already
+            // contains the cabin. Reuse the exterior pose owner when the cabin
+            // references that exact asset and transform.
+            if (UPoseableMeshComponent* Exterior = GetExteriorPoseablePresentation())
+            {
+                if (Exterior->GetSkinnedAsset() == SkeletalMesh
+                    && Transform.Equals(Profile.ExteriorTransform))
+                {
+                    return Exterior;
+                }
+            }
+
+            // Generic fallback for a future poseable profile with a distinct
+            // cabin asset or transform.
             UPoseableMeshComponent* Component =
                 NewObject<UPoseableMeshComponent>(Owner, TEXT("VehicleCabinPresentation"));
             Owner->AddInstanceComponent(Component);
@@ -297,6 +315,12 @@ bool UPinkCabVehicleVisualShellComponent::ApplyProfile(const FPinkCabVehicleVisu
 
 bool UPinkCabVehicleVisualShellComponent::RebuildPresentation()
 {
+    // RIG06 may intentionally share one full-car component for exterior and
+    // cabin views. Break the alias before destruction so it is destroyed once.
+    if (CabinPresentation && CabinPresentation == ExteriorPresentation)
+    {
+        CabinPresentation = nullptr;
+    }
     DestroyPresentationComponent(ExteriorPresentation);
     DestroyPresentationComponent(CabinPresentation);
     DestroyPresentationParts();
@@ -304,6 +328,7 @@ bool UPinkCabVehicleVisualShellComponent::RebuildPresentation()
 
     ExteriorPresentation = BuildExterior();
     CabinPresentation = BuildCabin();
+
     const bool bPartsReady = BuildPresentationParts();
     const bool bExteriorReady = !Profile.HasExteriorAsset() || ExteriorPresentation != nullptr;
     const bool bCabinReady = !Profile.HasCabinAsset() || CabinPresentation != nullptr;

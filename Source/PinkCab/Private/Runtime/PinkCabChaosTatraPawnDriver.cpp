@@ -263,6 +263,7 @@ FPinkCabCockpitPresentationState APinkCabChaosTatraPawn::BuildCockpitPresentatio
     Presentation.bHornActive = CockpitState.IsHornActive();
     Presentation.bLightsOn = CockpitState.GetLightMode() > 0;
     Presentation.bWipersOn = CockpitState.GetWiperMode() > 0;
+    Presentation.WiperMode = CockpitState.GetWiperMode();
     Presentation.bWasherActive = CockpitState.IsWasherActive();
 
     FPinkCabVehicleTelemetry Telemetry;
