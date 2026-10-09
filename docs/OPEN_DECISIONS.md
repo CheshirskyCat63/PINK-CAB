@@ -7,7 +7,7 @@ BASE-100 code program: `CD-746`
 FIRST EURO scope: `CD-753`
 Code architecture: `docs/PINK_CAB_BASE100_CODE_ARCHITECTURE.md` / Confluence `11239425`
 Technical owner pack: `docs/PINK_CAB_BASE100_TECH_OWNER_PACK_01.md`
-Vehicle technology: `13303842` / `CD-785..CD-792`
+Vehicle technology: `13303842` / `CD-843`; implementation `CD-648`, terminal evidence `CD-921`; `CD-785..CD-792` is historical bootstrap, not current execution.
 Daily insurance: `10321936` / `CD-741..745` — POST-FIRST-EURO
 
 ## State rule

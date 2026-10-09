@@ -6,8 +6,22 @@
 **P01 accepted runtime baseline:** `269d8b4b5b79f33eb2160d177a282c3cec965772` (corrective stall + clean-delivery integration).  
 **PHY-001 frozen rollback baseline:** `0e1a8bce8e29e56a1c16c28c9945467aed986048`, run **36213319172**.  
 **Runtime owner:** Unreal Engine **5.8.3** Native Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` (exact Windows runner `Engine/Build/Build.version` evidence from run 36213319172).  
-**Current execution point (2026-10-03):** bounded P04 gearing HUMAN ACCEPTED / INTEGRATED, source52239b61 / delivery37149462470 attempt1 / PR62 integration4a313d38. P03/V2edf75e1b and P02 retained. CD952 owns administrative closeout; CD641 retains remaining PHY017..020; P05-P11 and full release are not complete.
+**Historical execution point (2026-10-03):** bounded P04 gearing HUMAN ACCEPTED / INTEGRATED, source52239b61 / delivery37149462470 attempt1 / PR62 integration4a313d38. P03/V2edf75e1b and P02 retained. CD952 owns administrative closeout; CD641 retains remaining PHY017..020; P05-P11 and full release are not complete.
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
+
+## Current execution checkpoint - 2026-10-09
+
+Main runtime at audit is c8459ba / PR70: existing Tasks0-4 are technically integrated in their recorded scopes. Accepted installed P4/RIG06 fallback remains accepted/p4-rig06-20261007 / 6edea774. Task5 branch feat/vf90-task5-physical-foundation / 0b395c9 adds the RED test and receipt only; no production physics correction or complete-car acceptance is claimed.
+
+Current order is the existing owner-approved Tatra Ready plan: **Task5 physical rig/collision/mass moments/CoM/inertia -> Task6 real analog actuation and steering -> Task7 dry handling and response -> Task8 wet/load/FPS/state/30-minute serviceability -> Task9 exact package and owner verdict**. See docs/PROGRAM_ROADMAP.md, docs/superpowers/plans/2026-10-07-tatra-ready.md and Confluence22413538 / CD-648. VF0-VF9 are acceptance dimensions, not an instruction to tune inputs before physical foundation.
+
+Task5 RED recorded SportsCar physical assets, root mass1657 kg, local CoM at origin and rear spring share0.451691 versus the project reference55% target. Complete base/rear-engine/crew/fuel/passenger mass moments and defensible geometry/inertia must pass empty/reference1657/max2107 fixtures and real contact/sag/load proof. A renamed asset, positive inertia or aggregate skeletal GetMass value is insufficient. The45/55 target is project design, not factory data; no tyre/steering compensation may manufacture a static pass.
+
+Task6/CD-659/CD-653 owns the current0.95 neutral/gear clutch threshold and boolean handbrake deficit. Resolve one supported native actuator integration; do not restore the retired competing simulation or add direct chassis-force propulsion. Stored floats, moving levers and dormant clutch configuration do not prove physical continuity. CD-646's historical30/35km/h reverse governor is retired. The old CockpitBridge test needs the real component and current expectations, not a return to mechanical engine-Off freezing or a separate partial-torque path.
+
+Historical accepted P02/P03/P04 rows remain exact-candidate evidence, not current actuator certification. Current nominal profile at c8459ba uses WheelLoadRatio1.0 and front/rear friction1.05/0.95; older0.38 and2.00/0.50 are historical seeds, not current instructions or final handling acceptance. Profile250hp/260Nm/8500RPM/925idle/first-R4.0 are gameplay values, not demonstrated195km/h performance.
+
+Task9 **VF90_ACCEPTED** unlocks R01/CD-869 then existing R02-R11 without falsely closing full CD-648/CD-658/CD-921. Wider world/vertical/cabin and603/77 profile requirements remain tracked; do not create a dependency cycle requiring the whole program before the world its tests need. CD-559 owns verify.yml/deliver.yml plus broader clean-source/full-regression/packaged-input/cache evidence. Nine focused tests are not whole-vehicle/full-product acceptance. Each task closes only after implementation, applicable exact-source proof and Git/Jira/Confluence reconciliation. No runtime, installed fallback or historical acceptance changes in this administrative update.
 
 ## Non-negotiable player-mechanic locks
 

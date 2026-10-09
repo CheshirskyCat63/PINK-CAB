@@ -107,7 +107,7 @@ Locked CORE decisions: `Core FeatureConfig` owns `L2 / Damage / Neural / MovingF
 
 ### VEHICLE — `CD-748`
 
-native Chaos/Vehicle Health/mass/CG/surfaces/Tatra Expression/wallride/magnet/Level2 vehicle integration. Current vehicle authority is `CD-785..CD-792`; `CD-729` is retained only for handling targets/reference direction, plus vertical owners.
+native Chaos/Vehicle Health/mass/CG/surfaces/Tatra Expression/wallride/magnet/Level2 vehicle integration. Current vehicle technology authority is `CD-843`, implementation umbrella `CD-648` and terminal evidence `CD-921`; `CD-785..CD-792` is retained bootstrap/history, not a parallel execution queue; `CD-729` is retained only for handling targets/reference direction, plus vertical owners.
 
 ### TAXI — `CD-749`
 

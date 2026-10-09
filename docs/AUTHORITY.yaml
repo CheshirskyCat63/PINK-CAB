@@ -420,7 +420,9 @@ current_canon:
     post_purchase_install_path: Fab_library_or_official_vendor_delivery
 
   vehicle_technology:
-    owner: CD-785_CD-792
+    owner: CD-843
+    execution_umbrella: CD-648
+    historical_bootstrap_program: CD-785_CD-792
     confluence_page: 13303842
     reconciliation_task: CD-843
     road_dynamics_solver: Native_Unreal_Chaos_Vehicles
@@ -481,9 +483,9 @@ current_canon:
 
   handling:
     owner_lock: CD-729
-    implementation_profile: CD-787
-    wet_surface_calibration: CD-787_CD-788
-    integrated_qa: CD-792
+    implementation_profile: CD-648
+    wet_surface_calibration: CD-650_CD-658
+    integrated_qa: CD-658_CD-921
     useful_sustained_sideslip_deg: 18_40
     mouse_center_deadzone: none_jitter_filter_only
     physical_roll_target_deg_at_0_8g: 4.5_5.5
@@ -532,7 +534,7 @@ current_canon:
     native_destruction_owner: CD-790
     functional_damage_contract: CD-600
     save_state_owner: CD-801
-    qa_owner: CD-792
+    qa_owner: CD-740_CD-921
     first_euro_enabled:
       - bounded_authored_native_damage_states
       - glass_crack_break
@@ -791,9 +793,10 @@ jira_authorities:
   base100_world: CD-751
   base100_service: CD-752
   base100_scope: CD-753
-  vehicle_technology_stack: CD-785_CD-792
-  vehicle_stack_integration: CD-786_CD-787_CD-788_CD-789_CD-790_CD-791_CD-792
-  damage_state_save_schema: CD-790_CD-801
+  vehicle_technology_stack: CD-843
+  vehicle_stack_integration: CD-648_CD-921
+  vehicle_historical_bootstrap: CD-785_CD-786_CD-787_CD-788_CD-789_CD-790_CD-791_CD-792
+  damage_state_save_schema: CD-740_CD-801
   physical_vehicle_systems: CD-722
   mass_vertical: CD-592
   mass_vertical_qa: CD-701
