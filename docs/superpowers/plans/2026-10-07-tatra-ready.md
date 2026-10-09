@@ -57,3 +57,48 @@
 - Task 2 closed only after administrative convergence: implementation 21911223a047987a175d14947b6d820e33b9b47f; durable receipt 67a7ebb / docs/vehicle_physics/evidence/VF90_TASK2_ROAD_SHIMMER_2026-10-07.md; Jira CD-648 comment 16563, CD-559 comment 16564, CD-869 boundary comment 16565; Confluence program 22413538 footer comment 31621122. Exact-source package build/audit passed; installed fallback remains 6edea774; Task 3+ and final owner acceptance remain open.
 - Task 3 closed only after administrative convergence: implementation fe60cb1dc481deed1a1f945297be5705bc1ec419; durable receipt 5a751c7 / docs/vehicle_physics/evidence/VF90_TASK3_TATRA_V23_APPEARANCE_2026-10-07.md; Jira CD-648 comment 16566, CD-559 comment 16567, CD-855 comment 16568; Confluence program 22413538 footer 31359000 and pre-model page 15663105 footer 31129603. Installed fallback remains 6edea774; Task 4+ and commercial provenance remain open.
 - Task 4 closed only after administrative convergence: implementation 3efab779901d2355964d4062ee6d30b347426235; durable receipt 1b45549 / docs/vehicle_physics/evidence/VF90_TASK4_CABIN_PARITY_2026-10-08.md; Jira CD-648 comment 16569, CD-559 comment 16570, CD-855 comment 16571, CD-604 comment 16572; Confluence program 22413538 footer 31817730 and cabin parity page 5931070 footer 31424524. Exact-source Task-4 runtime 11/11, focused runtime 9/9, tooling 52/52, D3D12 and package gates passed. Installed fallback remains 6edea774. Task 5 physical foundation is next; Task 6 WIP remains held until Task 5 closes.
+
+
+## Current task contracts and reconciliation - 2026-10-09
+
+This section refines the existing approved Tasks5-9; it does not create a new execution lane. Main at audit c8459ba / PR70 integrates Tasks0-4. Task5 branch 0b395c9 adds only a RED test/receipt. Earlier dated environment/access/candidate entries above remain historical. Preserve accepted installed fallback 6edea774.
+
+### Task5 - physical implementation, not a renamed donor
+
+Owners CD-648 (implementation), CD-748 (vehicle boundary), CD-855 (asset/provenance boundary). Existing files: PinkCabChaosTatraPawn.cpp physical rig/contact initialization; PinkCabChaosPhysicalProfile.h/.cpp and fingerprint; PinkCabTatraProfile.h; PinkCabVehicleLoadState.h/.cpp; PinkCabChaosLoadBridge.cpp; existing Tatra physical-foundation runtime test in the Task5 branch; selected project-owned physical skeletal/PhysicsAsset assets.
+
+1. Use the recorded RED as the baseline; do not rerun identical checks in place of implementation. Identify root/body coordinate frame and collision envelope from the current 613 dimensions, not the visible material/name. Keep authored appearance, wheel geometry and installed fallback intact.
+2. Correct the complete mass moments: base chassis/rear-engine distribution and crew positions plus fuel/passengers. A decomposed engine mass is a part of the base, not additional kilograms. Exactly once total and CoM/inertia for empty, reference1657 and declared max2107. Do not infer double mass from aggregate skeletal GetMass when root mass is1657.
+3. Generate/apply a defensible physical body/rig and inertia; preserve native contacts and wheel travel. Do not rename PA_SportsCar or tune grip/steering/yaw to pass geometry/load tests.
+4. Measure settled sag, all four contacts, axle reactions and CoM/inertia under the load envelope. Reference45/55 F/R is a project target, not historical car data. The current RED0.451691 rear spring fraction and origin CoM cannot serve as accepted final distribution.
+5. Gate: actual physical envelope alignment, not only path strings; root/total mass; mass moments and inertia; static equilibrium and contact through travel; load add/remove/save round-trip with no duplication; same-source runtime/package evidence and admin closure. Keep handling unchanged until this gate closes.
+
+### Task6 - actual controls-to-Chaos actuation
+
+Owners CD-659/CD-653/CD-645/CD-646; preserve CD-643/CD-644/CD-649 contracts. Existing implementation surfaces: PinkCabChaosVehicleDynamicsProvider.cpp, PinkCabChaosCockpitBridge.cpp, PinkCabChaosVehicleMovementComponent.h/.cpp, control runtime/steering controller and their actual runtime fixtures.
+
+First inspect the installed native Chaos integration boundary and choose one supported actuator owner. PR67's retired competing vehicle simulation is not silently restored. Do not invent a direct chassis-force path. The current provider's coupling>=0.95 gear switch and handbrake>epsilon boolean are the defects, not accepted analog behavior. Dormant clutch-model code/configuration is not proof of integration.
+
+Prove driver input -> commanded state -> actual wheel steering/brake/drive response -> presentation. Include right/left forward/reverse; held steering while speed changes without new input; Q re-press/release timing; partial clutch at0.5/0.949/0.95/0.999/1.0; first/R and near limiter/load/thermal cases; handbrake25/50/100 rear braking and zero release; requested versus engaged gear and no buffered focus-return shift. Keep engine-Off combustion separate from mechanical coast/back-drive. No reverse-only30/35km/h governor.
+
+Repair the existing stale CockpitBridge test's component/expectations; do not reintroduce engine-Off mechanical freeze or old external-partial torque merely to pass it. Extend the existing verification entry with applicable true-actuation regressions as their implementation lands. RED tests may remain on the Task5 branch until fixed; do not weaken contracts to force a merge.
+
+### Task7 - measured dry handling
+
+Owners CD-652/CD-650/CD-656/CD-654/CD-655/CD-641/CD-642. Use the existing versioned physical profile, suspension/wheel configuration and engine/steering response surfaces. One demonstrated cause per calibration delta. Establish declared comparison tolerances before measuring; no number invented by an administrative edit.
+
+Same input/load/surface before/after: launch/coast/engine braking, low-speed precision, straight line, lane change/constant-radius, service braking, throttle/lift/handbrake breakaway and deliberate recovery. Record wheel contact/load/slip and physical response separately from visual expression. Target speeds are tested only where physically reached; not reaching a required performance target stays open, never extrapolated to PASS. No permanent rear-grip cheat, hidden boost, speed wall or automatic correction.
+
+### Task8 - wet, load, state and soak
+
+Owners CD-658/CD-657/CD-670/CD-722/CD-740/CD-559. Reuse the same car/single dynamics owner at30/60/120FPS and empty/reference/max loads; run the agreed30-minute normal-drive serviceability test, braking/clutch work-based thermal cases and focus/menu/save/reload boundaries. Compare tolerances, discrete gear/input outcomes, drift of counters/state, stuck input, NaN and unintended repair/mass duplication. Wet road fixtures qualify the car only; R05 later proves world-weather integration. Existing wider2-hour/vertical/city requirements are retained for the applicable product gate.
+
+### Task9 - scoped owner milestone and release-safe handoff
+
+Owners CD-559 delivery, CD-648 milestone, CD-658/CD-921 scoped evidence. Read current verify.yml/deliver.yml; do not resurrect archived workflows. Build one exact source/content/profile candidate; run applicable vehicle/cabin/road regressions and package/input/smoke checks. Keep full-product unexecuted rows explicit; no summing different SHA results. Deliver only after technical gates with rollback preserved, then record the owner's visual/driving ACCEPTED or REJECTED verdict. No automatic owner approval.
+
+VF90_ACCEPTED unlocks R01/CD-869 without closing every broader CD-648/CD-658/CD-921 requirement. Unrelated wider profiles603/77, world/vertical, full cabin and public rights remain with existing owners. Rejection reopens only the failing current task.
+
+### Audit disposition
+
+314 product-filter Jira records were screened as inventory; full descriptions were inspected for active authorities/conflicts. Existing PHY48 and product97-row source/proof matrices remain scoped evidence. Closed historical/primitive tasks are not reopened wholesale or counted as complete player loops. CD-646 retires the forbidden governor; CD-869 is parked until Task9; CD-644/CD-649 historical DONE is not current physical acceptance. Correct current task descriptions and canonical entrypoints, preserve prior receipts and uncommitted trees, and perform no runtime/assets/install changes in this administrative transaction.

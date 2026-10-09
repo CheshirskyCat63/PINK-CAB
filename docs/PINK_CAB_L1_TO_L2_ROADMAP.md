@@ -7,8 +7,8 @@ FIRST EURO scope authority: `CD-746/CD-753`, `docs/PINK_CAB_BASE100_CODE_ARCHITE
 Core owners:
 
 - BASE-100 code/runtime program: `CD-746`; domain packs `CD-747..753`;
-- vehicle technology: Native Chaos `CD-785..792` / `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`; current mechanics/recovery `CD-848`;
-- Tatra handling owner-lock: `CD-729`; detailed calibration `CD-648..659`; physics/mass `CD-562`; power `CD-641`;
+- vehicle technology: Native Chaos authority `CD-843`, execution `CD-648` / `docs/PINK_CAB_VEHICLE_TECH_STACK_CHAOS.md`; current mechanics/recovery `CD-848`;
+- Tatra handling owner-lock: `CD-729`; detailed calibration `CD-648..659`; physical foundation `CD-648/CD-748`; power `CD-641`;
 - Level1 gameplay: `CD-678` / proof `CD-679`;
 - Level1 mass/contact: `CD-592` / QA `CD-701`;
 - Level1 presentation: `CD-714..718` / proof `CD-719`;
@@ -16,6 +16,10 @@ Core owners:
 - Level2: `CD-682` / proof `CD-683`;
 - ServiceNode: `CD-576`, schema `CD-711`, QA `CD-713`;
 - daily insurance `CD-741..745` is POST-FIRST-EURO and not on this first-year critical path.
+
+## Current execution precedence - 2026-10-09
+
+This is the retained full L1/L2 dependency and proof map, not a competing immediate queue. First finish CD-648 VF90 Tasks5 -> 6 -> 7 -> 8 -> 9; then R01/CD-869 through R11/CD-879 in PROGRAM_ROADMAP.md. Accepted P4/Tasks0-4 are not reopened. Retired FGear/Chaos-bootstrap cards are historical evidence, not active implementation owners.
 
 ## Maturity
 
@@ -63,25 +67,25 @@ Lock Level1 cross-section, right entry/exit, wallride/ceiling/ramp/frontage clea
 
 ## Phase B — production vehicle stack
 
-Owners: Native Chaos program `CD-785..792`; current mechanics/recovery `CD-848`; damage persistence remains in Vehicle Health/save contracts.
+Owners: Native Chaos authority `CD-843`, execution `CD-648`; current mechanics/recovery `CD-848`; damage persistence remains in Vehicle Health/save contracts.
 
 Order:
 
 1. pin Unreal Engine 5.8 Native Chaos production line and PINK-CAB provider/profile versions;
 2. build one authoritative versioned Native Chaos/PINK-CAB Tatra profile;
-3. connect physical analog controls through one adapter (`CD-733`);
-4. tune dry/wet/storm combined-grip behavior and wet >160 km/h recovery (`CD-734`);
-5. build presentation-only Tatra Expression Layer (`CD-735`);
+3. connect physical analog controls through one adapter (`CD-659/CD-653/CD-643`);
+4. tune dry/wet/storm combined-grip behavior and wet >160 km/h recovery (`CD-650/CD-658`);
+5. build presentation-only Tatra Expression Layer (`CD-855/CD-604`);
 6. integrate bounded authored/native damage states + detachable parts + Vehicle Health consequences;
-7. map authored hit zones to bounded Vehicle Health consequences (`CD-737`);
+7. map authored hit zones to bounded Vehicle Health consequences (`CD-722/CD-740`);
 8. persist damage state (`CD-740`);
-9. prove stack in `CD-738`.
+9. prove stack in `CD-658/CD-921`.
 
 Architectural rule: Native Unreal Chaos Vehicles behind `IPinkCabVehicleDynamicsProvider` is the sole hero-Tatra road-dynamics solver. Damage uses bounded authored/native states + Vehicle Health. Required third-party vehicle/damage plugins are none. No parallel solver.
 
 ## Phase C — Tatra handling / road-feel acceptance
 
-Owners `CD-729`, calibration `CD-648..659`, Native Chaos `CD-785..792`, current mechanics `CD-848`, QA/surface evidence under current recovery authority.
+Owners `CD-729`, calibration `CD-648..659`, Native Chaos authority `CD-843`, execution `CD-648`, current mechanics `CD-848`, QA/surface evidence under current recovery authority.
 
 Locked contract:
 
@@ -89,7 +93,7 @@ Locked contract:
 - rear-engined old-Tatra mass/layout/expression;
 - no BMW ABS/front-engine/power/hardware transplant;
 - no ABS / no ESP;
-- 180 hp / 240 Nm current authority, 195 km/h target;
+- current gameplay profile targets approximately 250 hp / 260 Nm / 8500 RPM, idle 925 RPM; 195 km/h is a design target, not a measured result;
 - continuous steering/throttle/brake/clutch-release/handbrake commands;
 - wet rapid lane change above roughly 160 km/h may saturate rear combined grip under excess throttle; easing throttle normally restores lateral reserve;
 - physical Native Chaos chassis state separate from expression/presentation;
@@ -129,7 +133,7 @@ Presentation work remains a production phase but **does not inflate BASE-100 cod
 
 ## Phase H — Level1 vertical oval / load-sensitive contact
 
-Owners `CD-687/CD-686/CD-689/CD-688/CD-676`; vehicle `CD-562/CD-592/CD-732`; QA `CD-701`.
+Owners `CD-687/CD-686/CD-689/CD-688/CD-676`; vehicle `CD-648/CD-748/CD-592`; QA `CD-701`.
 
 Order:
 
@@ -147,7 +151,7 @@ Order:
 
 For 1657–2107 kg: `timeout_s = 5.0 - (total_mass_kg - 1657) / 450`.
 
-Only magnetic force/contact/reacquisition calibration remains. Reacquisition reset semantics must be owner-locked before implementation guesses.
+Only magnetic force/contact/reacquisition calibration remains. M05 is already LOCKED: reset only after at least 0.25 s of continuous valid wall contact after reacquisition; briefer contact does not refresh the timer. This contract is not a current runtime PASS.
 
 ## Phase I — incident theatre
 
