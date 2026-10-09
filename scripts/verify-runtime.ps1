@@ -31,6 +31,7 @@ $tests=@(
     'PinkCab.Vehicle.Visual.TatraWheelContacts',
     # Task6 bounded disconnect/handbrake proof; does not certify partial-clutch actuation.
     'PinkCab.Vehicle.Actuation.DrivelineDisconnect',
+    'PinkCab.Vehicle.Actuation.DisconnectedCoast',
     'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque'
 )
 
