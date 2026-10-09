@@ -59,7 +59,15 @@
 - Task 4 closed only after administrative convergence: implementation 3efab779901d2355964d4062ee6d30b347426235; durable receipt 1b45549 / docs/vehicle_physics/evidence/VF90_TASK4_CABIN_PARITY_2026-10-08.md; Jira CD-648 comment 16569, CD-559 comment 16570, CD-855 comment 16571, CD-604 comment 16572; Confluence program 22413538 footer 31817730 and cabin parity page 5931070 footer 31424524. Exact-source Task-4 runtime 11/11, focused runtime 9/9, tooling 52/52, D3D12 and package gates passed. Installed fallback remains 6edea774. Task 5 physical foundation is next; Task 6 WIP remains held until Task 5 closes.
 
 
-## Current task contracts and reconciliation - 2026-10-09
+## Task5 technical closure checkpoint - 2026-10-09
+
+Task5 physical-foundation implementation is verified and review-corrected in PR72. Runtime/asset code2238b6c; final packaged sourcee0dee4e; review-corrected head4853a22 passed hosted run37982683446. Source/payload/log receipts are `docs/vehicle_physics/evidence/VF90_TASK5_PHYSICAL_FOUNDATION_2026-10-09.md` and adjacent JSON manifests. The original RED0b395c9 remains historical evidence, not current implementation state. This documentation accompanies PR72: technical scope is complete; integration is established by PR72's merged state, never inferred from this text. Task6 may start only after that merge and Jira/Confluence convergence.
+
+Verified: new separate Tatra physical mesh/PA, full XYZ mass moments and native inertia on the actual body, empty/reference/max/reference load changes, four contacts and suspension reserve, schema4 XYZ with preserved legacy thermals. Local physical tests16/16, canonical20/20, persistence34/34, final script tests56/56; full cooked package and asset startup proof. These are separate runs, not a summed whole-product result. Internal mass volumes/heights remain declared calibration seeds, not factory measurements. Raw spring output is not a calibrated absolute SI tyre-force channel. Dynamic handling, full travel at speed, long-run/FPS/wet and owner feel are still Tasks6-9.
+
+Accepted installed6edea774 is unchanged. Task6 still owns threshold-clutch/boolean-handbrake corrections and steering/gear regression. CD-559/Task9 must fix the existing installer's deletion of the prior build before real-desktop delivery. Do not reopen the foundation merely because handling remains uncalibrated, and do not claim whole-car acceptance from this closure.
+
+## Retained task contracts and reconciliation - 2026-10-09
 
 This section refines the existing approved Tasks5-9; it does not create a new execution lane. Main at audit c8459ba / PR70 integrates Tasks0-4. Task5 branch 0b395c9 adds only a RED test/receipt. Earlier dated environment/access/candidate entries above remain historical. Preserve accepted installed fallback 6edea774.
 
