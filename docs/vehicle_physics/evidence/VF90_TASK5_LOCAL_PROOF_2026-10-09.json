@@ -1,0 +1,343 @@
+{
+  "implementation_source": "e0dee4e3bb18e2bf6615ed27e1a4d13098dcba31",
+  "initial_game_code_source": "2238b6cf955a8dfec8c2c0f8bdcac962a5e99fd7",
+  "package_root": "C:\\workspace\\pinkcab-vf90-runtime-20261007\\Artifacts\\Package\\Windows",
+  "package_smoke_exit": 0,
+  "source_tree_clean_at_package": true,
+  "accepted_installed_unchanged": "6edea7747d3a8433188c9fb394b98ae9c320d49b",
+  "logs": [
+    {
+      "path": "Saved/VF90/task5-resume-build.log",
+      "sha256": "65f590cee9eca0d0ddf6804d2262796c550aafaa0d6cb7016a267834d42a187f",
+      "bytes": 8052
+    },
+    {
+      "path": "Saved/VF90/task5-final-runtime.log",
+      "sha256": "1e266b1fd34dec8c6cb7a1605f96f12d1042227b0ad7c78f3ecfa2fccc8ef9e0",
+      "bytes": 324634
+    },
+    {
+      "path": "Saved/FocusedAcceptance/focused-runtime.log",
+      "sha256": "0c6562b8b28fdae9527bca7bba565b1d6f97373f3778f554be1e3996b352d1ea",
+      "bytes": 347128
+    },
+    {
+      "path": "Saved/VF90/task5-script-tests.log",
+      "sha256": "7551ab9b03b5130cc57088de7a5f527f08ce78fb6a30fe2be23ab980996b758a",
+      "bytes": 2856
+    },
+    {
+      "path": "Saved/VF90/task5-persistence-final.log",
+      "sha256": "0586efa7e759d03181e7dbc9ca0efaca320eba7c99fb8794b33bd15fe758f2ae",
+      "bytes": 296508
+    },
+    {
+      "path": "Saved/VF90/task5-final-package.log",
+      "sha256": "f3958acdaef4d342cf18acc0fba6f9c7038929f7d4c6b46e73fc393e13df66ee",
+      "bytes": 149918
+    },
+    {
+      "path": "Saved/VF90/task5-final-package-smoke.log",
+      "sha256": "22a3c510fe15e666c8f286800df7357e6b720ffab35409c8e05c4d6360826483",
+      "bytes": 69081
+    }
+  ],
+  "packaged_payload": [
+    {
+      "path": "Engine/Binaries/ThirdParty/DbgHelp/dbghelp.dll",
+      "bytes": 2232688,
+      "sha256": "6c1484085a1f4223880c059fd093a468702d0ecb224981918336fe847f5af92f"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/MsQuic/v220/win64/msquic.dll",
+      "bytes": 2547080,
+      "sha256": "780959f289e380a21fdab0dba7ac468c8dd0606ea43b755865a7989f3c7221e9"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/NVIDIA/NVaftermath/Win64/GFSDK_Aftermath_Lib.x64.dll",
+      "bytes": 5799024,
+      "sha256": "e3e777a9644452c2772336c4b35c39ed4d8abeb9b9c0c1dceb9e10bdb378e5a2"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Ogg/Win64/VS2015/libogg_64.dll",
+      "bytes": 59832,
+      "sha256": "cf34407ec00248c208aa4b156126a725b79a4bce9f5c8034550c798a9b7a1407"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbis_64.dll",
+      "bytes": 1724856,
+      "sha256": "1cd0eba3df4915ca6498917b91b78dc1dfda1c9155f2fd5b98dedd5b5ba918f3"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbisfile_64.dll",
+      "bytes": 48568,
+      "sha256": "a00e6b073cec241d85d590ee138906ef9fdf9efef8d0d4989813359cd048a6f9"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_api_dump.dll",
+      "bytes": 8161680,
+      "sha256": "9505e2c9a30f047eaa0066bb05453f263c478b5e88d01cac7ebf16a47a018dae"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_api_dump.json",
+      "bytes": 13848,
+      "sha256": "9e55221c225dce4b5448bac7dadb7e39fd216f51354dde02e58f950f4a0dd80b"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_crash_diagnostic.dll",
+      "bytes": 2890128,
+      "sha256": "7282bec52c8edb4b79a635753f46f7c8063b9277b1fad19e5dbea6526799e9df"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_crash_diagnostic.json",
+      "bytes": 23055,
+      "sha256": "578bde354874789671dee1a96468c965619c9f3ba16cfa65f850e81a80674087"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_gfxreconstruct.dll",
+      "bytes": 8166288,
+      "sha256": "13c8d7cb4e9bc687c3679435ca391d98854cccb0b76f080d587c4e3796239f2d"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_gfxreconstruct.json",
+      "bytes": 28099,
+      "sha256": "71d4e243a2af74874f4f61378bdfe3753cb01ce5eb9b98400d83612bf882a815"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_profiles.dll",
+      "bytes": 1485200,
+      "sha256": "4098135ce3063917f46a9ee97371761b8f1b971bf6c34a94256ffaf022b36457"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_profiles.json",
+      "bytes": 66696,
+      "sha256": "6095c28691757e083a8c1bef3c69ca76a8b5017e21acaf55d1bc7e82221a0fbe"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_shader_object.dll",
+      "bytes": 415632,
+      "sha256": "6d347c053a2edc506029b8588adc115f2eb0893f5fa86a0197c9ea413e142f72"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_shader_object.json",
+      "bytes": 4455,
+      "sha256": "18ecafc9a65e1b7af8cd0e36dc936026cdb3aed333c4ea5a7c17d6d9465cfaf4"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_synchronization2.dll",
+      "bytes": 397200,
+      "sha256": "b35160cea082cfbac48e62e229b8ec9a735f3427f402a293bb354d642eb2811d"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_synchronization2.json",
+      "bytes": 1910,
+      "sha256": "a1e980a24be9a16a826b00c27d61b85ee0e2e17226dc9c4e8eec031879e5f26a"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_validation.dll",
+      "bytes": 19509136,
+      "sha256": "1413d7211cb93a94d28172553cabe1fc609ecacb5cc79e2176d664fd0bbef625"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Vulkan/Win64/VkLayer_khronos_validation.json",
+      "bytes": 95917,
+      "sha256": "5c464b84457776d92a674de506f7b7a489294583a7d7609f78fcc52bc4406d09"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Windows/WinPixEventRuntime/x64/WinPixEventRuntime.dll",
+      "bytes": 69056,
+      "sha256": "132284f41399e0186bb29c6c2655aba5403a42793500518b9ab8bfd0b1336a57"
+    },
+    {
+      "path": "Engine/Binaries/ThirdParty/Windows/XAudio2_9/x64/xaudio2_9redist.dll",
+      "bytes": 858144,
+      "sha256": "9d996ba84395c1e56604792a77775b0a7fa957d7b51b4d8b985040bcd80a6fd5"
+    },
+    {
+      "path": "Engine/Config/StagedBuild_PinkCab.ini",
+      "bytes": 3,
+      "sha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5"
+    },
+    {
+      "path": "Engine/Content/Renderer/TessellationTable.bin",
+      "bytes": 259568,
+      "sha256": "edc4f3b628a139c5e185bbaeca661c95c1f427368d3b92892c5cff36c56dd941"
+    },
+    {
+      "path": "Engine/Content/Slate/Cursor/invisible.cur",
+      "bytes": 326,
+      "sha256": "fef3980fa567e9c45d5d8dcaa432a2c1a3f3bb17fe67d7ab198164f56c142aa1"
+    },
+    {
+      "path": "Engine/Content/SlateDebug/Fonts/LastResort.tps",
+      "bytes": 930,
+      "sha256": "0f775fa99d05e21d43d2d06d55982b23dcdccdb512a9a5a07aff674f212c41b8"
+    },
+    {
+      "path": "Engine/Content/SlateDebug/Fonts/LastResort.ttf",
+      "bytes": 5395052,
+      "sha256": "fff0f8de0b868b964950fe97c9b60f893e9bc85a4f90b3629c5693db058b97b9"
+    },
+    {
+      "path": "Engine/Extras/GPUDumpViewer/GPUDumpViewer.html",
+      "bytes": 195428,
+      "sha256": "eb599b5171e99d7c2e35732abf9525baeb39b9c2ac86619522f307c57cc90384"
+    },
+    {
+      "path": "Engine/Extras/GPUDumpViewer/OpenGPUDumpViewer.bat",
+      "bytes": 879,
+      "sha256": "e8f7ef9c88697041bd87902b76e52558979ca866c7450b1da108a94a027f441b"
+    },
+    {
+      "path": "Engine/Extras/GPUDumpViewer/OpenGPUDumpViewer.sh",
+      "bytes": 2165,
+      "sha256": "1b222b5d5aad6dd9b5b9f0a1c72d38635149540f2c7a368600ec76c1d304390a"
+    },
+    {
+      "path": "Engine/Plugins/NNE/NNERuntimeORT/Binaries/ThirdParty/Onnxruntime/Win64/onnxruntime.dll",
+      "bytes": 17339384,
+      "sha256": "9fc1ca0e75480c7805b6d3c4653864eaaee2fca5daa609b5347adf0b4185791a"
+    },
+    {
+      "path": "Manifest_DebugFiles_Win64.txt",
+      "bytes": 431,
+      "sha256": "9bcf5221b76e66fa34654de63504425d7f5ff6e604a70f87d12eb14492174ff1"
+    },
+    {
+      "path": "Manifest_NonUFSFiles_Win64.txt",
+      "bytes": 3771,
+      "sha256": "56de6ced6a082575e30c7cb7e5a6f752f972688412e30b0d22ddf02bee58d470"
+    },
+    {
+      "path": "Manifest_UFSFiles_Win64.txt",
+      "bytes": 253165,
+      "sha256": "227afec2e783be561279954051e7389d0ed567f4a7b46579a1aed272a77d4c86"
+    },
+    {
+      "path": "NOTICES.txt",
+      "bytes": 111,
+      "sha256": "ba49ae5586f817b36a2772269f71f899cb1f54b5f2720fad951319edd5e140b8"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_atomic-mt-x64.dll",
+      "bytes": 28088,
+      "sha256": "cd9e249c541018fd7484069a115cc284e180d266113322ec90593e2397abfc18"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_chrono-mt-x64.dll",
+      "bytes": 45496,
+      "sha256": "61e4550c794b0ec587e5c0c18a8f02cad74dc78f9888ada7724a7a1fbaf719a7"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_container-mt-x64.dll",
+      "bytes": 65464,
+      "sha256": "1606af08c8491d978d2b4ae72a3511c2a595597afff95ab3dcebbc9eefee6a2c"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_filesystem-mt-x64.dll",
+      "bytes": 176568,
+      "sha256": "11b98f55db5db9fb7cdced1a0664acdc5db9d8e9a44cf60a4102b56f40f20b42"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_graph-mt-x64.dll",
+      "bytes": 329656,
+      "sha256": "66ef54083905380e653114d86d13230fd89d9d5cb368fdfa94d35b4f8b5b4bc7"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_iostreams-mt-x64.dll",
+      "bytes": 58808,
+      "sha256": "4d24150ace3e3d319fd55a2614c09432bb357c4fb71afd29ec07c89c5c8e42dd"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_program_options-mt-x64.dll",
+      "bytes": 374712,
+      "sha256": "00e4860433725d4012499240b19f21b367d1f19cf86e5f9fd2b9f45b1cc3aa4a"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_python311-mt-x64.dll",
+      "bytes": 207800,
+      "sha256": "83826dfea3017de2f3ce5466f2027ce105924ed4fa5542344ec543bf7b61db4e"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_random-mt-x64.dll",
+      "bytes": 40888,
+      "sha256": "054b39b5e375a059a6516ae61453a6cafb65fedc29593ac3aa9fc4e142f17570"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_regex-mt-x64.dll",
+      "bytes": 251832,
+      "sha256": "2e12ad35f8911f79f33505fabfdff0b6f3e7290bd29c4233ed8158ece5a833dd"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_system-mt-x64.dll",
+      "bytes": 20408,
+      "sha256": "ef05d679e9046c1e687e246b2f8566c9cb877175bcc87d5f49775d08a31de188"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/boost_thread-mt-x64.dll",
+      "bytes": 85432,
+      "sha256": "f4d67022eea2a653d4c5d404980e6b3265f92fca4444adb3632bc94122f6b43c"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/D3D12/x64/D3D12Core.dll",
+      "bytes": 4831768,
+      "sha256": "5d262c97239e1aff8b03a7150abcaa84cc7983d311946708f982227d146fbb37"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/D3D12/x64/d3d12SDKLayers.dll",
+      "bytes": 4943344,
+      "sha256": "66afc2d2918191f9b97026e3c630ac6e93f5f83e3bd0eab34349ec2f66a0b4af"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/DML/x64/DirectML.dll",
+      "bytes": 18538488,
+      "sha256": "579dd89146322ea2567de7db16b8e10f350eb0cf147ecaafe5b129d9fe175a84"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/PinkCab.exe",
+      "bytes": 335279616,
+      "sha256": "03df1a12c4129e12ab8f8df21fba97849b7df834f962e4848d92d8bbbb45a6a5"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/tbb12.dll",
+      "bytes": 342456,
+      "sha256": "7e58ae38fd5d47c72b750dbdcf2978a1f36719663a0a4500a9cc857316612c34"
+    },
+    {
+      "path": "PinkCab/Binaries/Win64/tbbmalloc.dll",
+      "bytes": 117176,
+      "sha256": "075ba2869e082ab5f1f159ad06614ce63c31ae51099e18b540822cc758697e56"
+    },
+    {
+      "path": "PinkCab/Content/Paks/global.ucas",
+      "bytes": 3277392,
+      "sha256": "ec78af7d90511a9099d8fd3f432200a534f23c4d74c471cce2d4c211e1215c76"
+    },
+    {
+      "path": "PinkCab/Content/Paks/global.utoc",
+      "bytes": 806,
+      "sha256": "ce222c986ab82ca482915557b2f798a5fc1a16a3aa45384624205c18c6eafcbe"
+    },
+    {
+      "path": "PinkCab/Content/Paks/PinkCab-Windows.pak",
+      "bytes": 10683363,
+      "sha256": "383c6cc6201522ca547fe9372b467822be30d0b3db85091f1521b66e8aad0617"
+    },
+    {
+      "path": "PinkCab/Content/Paks/PinkCab-Windows.ucas",
+      "bytes": 345712368,
+      "sha256": "19073feafe7bc42907e5b97ca7512fb860e6886ff292a22e4e21afe9b23b18b7"
+    },
+    {
+      "path": "PinkCab/Content/Paks/PinkCab-Windows.utoc",
+      "bytes": 239001,
+      "sha256": "a03a4e23f35394d536865d71db2b725eb5cab476b2c9a344c3acd3e03e1062c7"
+    },
+    {
+      "path": "PinkCab.exe",
+      "bytes": 171520,
+      "sha256": "94fc74a1c8ef8ff4cc43bf1d50c3abc2f5977811705d2901080c8e3dc0545db9"
+    }
+  ],
+  "status": "LOCAL_TECHNICAL_PASS_PR_REVIEW_PENDING_NOT_OWNER_ACCEPTED"
+}
