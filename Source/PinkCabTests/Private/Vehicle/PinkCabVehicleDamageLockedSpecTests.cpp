@@ -66,8 +66,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPinkCabVehicleSnapshotV3Test::RunTest(const FString& Parameters)
 {
-    TestEqual(TEXT("unified damage schema uses v3 after divergent v2 layouts"),
-        FPinkCabVehicleSnapshot::CurrentSchemaVersion, 3);
+    TestEqual(TEXT("unified longitudinal damage layout remains version 3"),
+        FPinkCabVehicleSnapshot::LongitudinalOnlySchemaVersion, 3);
+    TestEqual(TEXT("XYZ load coordinates use a distinct version 4 without renaming v3"),
+        FPinkCabVehicleSnapshot::CurrentSchemaVersion, 4);
 
     FPinkCabVehicleHealthState Health;
     FPinkCabVehicleLoadState Load;

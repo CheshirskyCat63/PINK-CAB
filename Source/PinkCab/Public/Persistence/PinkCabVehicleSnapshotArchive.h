@@ -13,7 +13,7 @@ public:
 private:
     static void SerializeLoadItem(
         FArchive& Ar,
-        FPinkCabVehicleLoadItemSnapshot& Item);
+        FPinkCabVehicleLoadItemSnapshot& Item, bool bCoordinates3D);
     static void SerializeVehicleSnapshot(
         FArchive& Ar,
         FPinkCabVehicleSnapshot& Snapshot);

@@ -17,15 +17,17 @@ bool FPinkCabVehicleStateSnapshotCodec::Capture(
     Snapshot.Health.BrakeTemperature01 = Health.BrakeTemperature01;
     Snapshot.Load.FuelMassKg = Load.FuelMassKg;
     Snapshot.Load.FuelLongitudinalCm = Load.FuelLongitudinalCm;
+    Snapshot.Load.FuelLateralCm = Load.FuelLateralCm;
+    Snapshot.Load.FuelVerticalCm = Load.FuelVerticalCm;
     Snapshot.Load.HeroineMassKg = Load.HeroineMassKg;
     Snapshot.Load.DaughterMassKg = Load.DaughterMassKg;
     for (const FPinkCabVehicleLoadItem& Item : Load.Passengers)
     {
-        Snapshot.Load.Passengers.Add({Item.MassKg, Item.LongitudinalCm});
+        Snapshot.Load.Passengers.Add({Item.MassKg, Item.LongitudinalCm, Item.LateralCm, Item.VerticalCm});
     }
     for (const FPinkCabVehicleLoadItem& Item : Load.FarePassengers)
     {
-        Snapshot.Load.FarePassengers.Add({Item.MassKg, Item.LongitudinalCm});
+        Snapshot.Load.FarePassengers.Add({Item.MassKg, Item.LongitudinalCm, Item.LateralCm, Item.VerticalCm});
     }
     Snapshot.Load.FarePassengerGroupId = Load.FarePassengerGroupId.Serialize();
     Snapshot.Load.bFarePassengerGroupActive = Load.bFarePassengerGroupActive;
@@ -52,15 +54,19 @@ bool FPinkCabVehicleStateSnapshotCodec::Restore(
     FPinkCabVehicleLoadState Load;
     Load.FuelMassKg = Snapshot.Load.FuelMassKg;
     Load.FuelLongitudinalCm = Snapshot.Load.FuelLongitudinalCm;
+    Load.FuelLateralCm = Snapshot.Load.FuelLateralCm;
+    Load.FuelVerticalCm = Snapshot.Load.FuelVerticalCm;
     Load.HeroineMassKg = Snapshot.Load.HeroineMassKg;
     Load.DaughterMassKg = Snapshot.Load.DaughterMassKg;
     for (const FPinkCabVehicleLoadItemStateSnapshot& Saved : Snapshot.Load.Passengers)
     {
-        Load.Passengers.Add(FPinkCabVehicleLoadItem(Saved.MassKg, Saved.LongitudinalCm));
+        Load.Passengers.Add(FPinkCabVehicleLoadItem(Saved.MassKg,
+            FVector(Saved.LongitudinalCm, Saved.LateralCm, Saved.VerticalCm)));
     }
     for (const FPinkCabVehicleLoadItemStateSnapshot& Saved : Snapshot.Load.FarePassengers)
     {
-        Load.FarePassengers.Add(FPinkCabVehicleLoadItem(Saved.MassKg, Saved.LongitudinalCm));
+        Load.FarePassengers.Add(FPinkCabVehicleLoadItem(Saved.MassKg,
+            FVector(Saved.LongitudinalCm, Saved.LateralCm, Saved.VerticalCm)));
     }
     if (Snapshot.Load.bFarePassengerGroupActive)
     {
@@ -96,6 +102,8 @@ bool FPinkCabVehicleStateSnapshotCodec::ValidateLoadScalars(
 {
     return FMath::IsFinite(Load.FuelMassKg)
         && FMath::IsFinite(Load.FuelLongitudinalCm)
+        && FMath::IsFinite(Load.FuelLateralCm)
+        && FMath::IsFinite(Load.FuelVerticalCm)
         && FMath::IsFinite(Load.HeroineMassKg)
         && FMath::IsFinite(Load.DaughterMassKg)
         && Load.FuelMassKg >= 0.0f
@@ -147,5 +155,7 @@ bool FPinkCabVehicleStateSnapshotCodec::ValidateItem(const FPinkCabVehicleLoadIt
 {
     return FMath::IsFinite(Item.MassKg)
         && FMath::IsFinite(Item.LongitudinalCm)
+        && FMath::IsFinite(Item.LateralCm)
+        && FMath::IsFinite(Item.VerticalCm)
         && Item.MassKg > 0.0f;
 }

@@ -16,7 +16,19 @@ $tests=@(
     'PinkCab.Vehicle.HGate.DeliberateCenterEntry',
     'PinkCab.Cockpit.Playable.Runtime',
     'PinkCab.World.L1EndlessRoad.Runtime.ChunkBinding',
-    'PinkCab.World.L1EndlessRoad.Physics.SeamCrossing'
+    'PinkCab.World.L1EndlessRoad.Physics.SeamCrossing',
+    # Task5: physical output and migration proof must travel with every future candidate.
+    'PinkCab.Vehicle.PhysicalFoundation.AuthoredRigContract',
+    'PinkCab.Vehicle.PhysicalFoundation.BaselineAudit',
+    'PinkCab.Vehicle.PhysicalFoundation.ReferenceMassMoment',
+    'PinkCab.Vehicle.PhysicalFoundation.CrewMassMoment',
+    'PinkCab.Vehicle.PhysicalFoundation.ThreeAxisMassMoment',
+    'PinkCab.Vehicle.PhysicalFoundation.MassInertiaCombination',
+    'PinkCab.Vehicle.PhysicalFoundation.MassCoordinatePersistence',
+    'PinkCab.Vehicle.PhysicalFoundation.LegacyCoordinateMigration',
+    'PinkCab.Vehicle.PhysicalFoundation.InvalidMassCoordinates',
+    'PinkCab.Vehicle.PhysicalFoundation.LiveLoadEnvelope',
+    'PinkCab.Vehicle.Visual.TatraWheelContacts'
 )
 
 $filter=$tests -join '+'

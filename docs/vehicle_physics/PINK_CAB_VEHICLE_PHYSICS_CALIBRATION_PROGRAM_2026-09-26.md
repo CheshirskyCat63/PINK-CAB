@@ -9,7 +9,15 @@
 **Historical execution point (2026-10-03):** bounded P04 gearing HUMAN ACCEPTED / INTEGRATED, source52239b61 / delivery37149462470 attempt1 / PR62 integration4a313d38. P03/V2edf75e1b and P02 retained. CD952 owns administrative closeout; CD641 retains remaining PHY017..020; P05-P11 and full release are not complete.
 **Primary Jira owners reused:** CD-848, CD-648, CD-612, CD-643..645, CD-649..659, CD-670, CD-722, CD-740, CD-855/856. No duplicate implementation epic is created.
 
-## Current execution checkpoint - 2026-10-09
+## Task5 technical closure checkpoint - 2026-10-09
+
+Task5 physical-foundation implementation is verified and review-corrected in PR72. Runtime/asset code2238b6c; final packaged sourcee0dee4e; review-corrected head4853a22 passed hosted run37982683446. Source/payload/log receipts are `docs/vehicle_physics/evidence/VF90_TASK5_PHYSICAL_FOUNDATION_2026-10-09.md` and adjacent JSON manifests. The original RED0b395c9 remains historical evidence, not current implementation state. This documentation accompanies PR72: technical scope is complete; integration is established by PR72's merged state, never inferred from this text. Task6 may start only after that merge and Jira/Confluence convergence.
+
+Verified: new separate Tatra physical mesh/PA, full XYZ mass moments and native inertia on the actual body, empty/reference/max/reference load changes, four contacts and suspension reserve, schema4 XYZ with preserved legacy thermals. Local physical tests16/16, canonical20/20, persistence34/34, final script tests56/56; full cooked package and asset startup proof. These are separate runs, not a summed whole-product result. Internal mass volumes/heights remain declared calibration seeds, not factory measurements. Raw spring output is not a calibrated absolute SI tyre-force channel. Dynamic handling, full travel at speed, long-run/FPS/wet and owner feel are still Tasks6-9.
+
+Accepted installed6edea774 is unchanged. Task6 still owns threshold-clutch/boolean-handbrake corrections and steering/gear regression. CD-559/Task9 must fix the existing installer's deletion of the prior build before real-desktop delivery. Do not reopen the foundation merely because handling remains uncalibrated, and do not claim whole-car acceptance from this closure.
+
+## Earlier execution checkpoint - 2026-10-09
 
 Main runtime at audit is c8459ba / PR70: existing Tasks0-4 are technically integrated in their recorded scopes. Accepted installed P4/RIG06 fallback remains accepted/p4-rig06-20261007 / 6edea774. Task5 branch feat/vf90-task5-physical-foundation / 0b395c9 adds the RED test and receipt only; no production physics correction or complete-car acceptance is claimed.
 

@@ -10,7 +10,7 @@ public class PinkCabTests : ModuleRules
             "Core", "CoreUObject", "ApplicationCore", "Engine", "InputCore", "UnrealEd", "PinkCab",
             "ChaosVehicles", "PhysicsCore", "RHI",
             "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld",
-            "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence", "AssetRegistry"
+            "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence", "AssetRegistry", "Json"
         });
     }
 }

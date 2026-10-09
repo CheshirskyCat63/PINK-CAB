@@ -57,9 +57,18 @@ $approvedTask2RoadPaths=@(
     'Content/World/L1/Road/M_PC_RoadMarkSurface.uasset'
 )
 
+# Task 5 requires preserving physical load XYZ in the existing vehicle snapshot.
+# Only these serializers may change; campaign/economy/world persistence stays frozen.
+$approvedTask5VehicleSnapshotPaths=@(
+    'Source/PinkCabPersistence/Private/Persistence/PinkCabVehicleSnapshot.cpp',
+    'Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h',
+    'Source/PinkCab/Private/Persistence/PinkCabVehicleSnapshotArchive.cpp',
+    'Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshotArchive.h'
+)
+
 $violations=@()
 foreach($path in $changed){
-    if($approvedTask2RoadPaths -contains $path){
+    if(($approvedTask2RoadPaths -contains $path) -or ($approvedTask5VehicleSnapshotPaths -contains $path)){
         continue
     }
     foreach($prefix in $forbiddenPrefixes){

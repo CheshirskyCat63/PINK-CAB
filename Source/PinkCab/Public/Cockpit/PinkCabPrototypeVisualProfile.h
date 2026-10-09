@@ -15,4 +15,5 @@ struct PINKCAB_API FPinkCabPrototypeVisualProfile
 
     bool IsValid() const;
     static FPinkCabPrototypeVisualProfile EpicSportsCarManny();
+    static FPinkCabPrototypeVisualProfile Tatra613Physical();
 };

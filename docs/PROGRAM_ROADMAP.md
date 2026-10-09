@@ -4,6 +4,14 @@
 **Product:** CD-519. **Mechanics Freeze:** CD-848. **Scope:** CD-753.
 **Current vehicle implementation umbrella:** CD-648. **Canonical branch:** protected main.
 
+## Task5 technical closure checkpoint - 2026-10-09
+
+Task5 physical-foundation implementation is verified and review-corrected in PR72. Runtime/asset code2238b6c; final packaged sourcee0dee4e; review-corrected head4853a22 passed hosted run37982683446. Source/payload/log receipts are `docs/vehicle_physics/evidence/VF90_TASK5_PHYSICAL_FOUNDATION_2026-10-09.md` and adjacent JSON manifests. The original RED0b395c9 remains historical evidence, not current implementation state. This documentation accompanies PR72: technical scope is complete; integration is established by PR72's merged state, never inferred from this text. Task6 may start only after that merge and Jira/Confluence convergence.
+
+Verified: new separate Tatra physical mesh/PA, full XYZ mass moments and native inertia on the actual body, empty/reference/max/reference load changes, four contacts and suspension reserve, schema4 XYZ with preserved legacy thermals. Local physical tests16/16, canonical20/20, persistence34/34, final script tests56/56; full cooked package and asset startup proof. These are separate runs, not a summed whole-product result. Internal mass volumes/heights remain declared calibration seeds, not factory measurements. Raw spring output is not a calibrated absolute SI tyre-force channel. Dynamic handling, full travel at speed, long-run/FPS/wet and owner feel are still Tasks6-9.
+
+Accepted installed6edea774 is unchanged. Task6 still owns threshold-clutch/boolean-handbrake corrections and steering/gear regression. CD-559/Task9 must fix the existing installer's deletion of the prior build before real-desktop delivery. Do not reopen the foundation merely because handling remains uncalibrated, and do not claim whole-car acceptance from this closure.
+
 ## Read this first
 
 Only after Vehicle Feel 90 owner acceptance may broader world/taxi/traffic/economy/Neural implementation resume.
@@ -14,8 +22,8 @@ Deliver one correctly presented, fully interactive Tatra on a stable road with e
 |---|---|
 | Accepted installed fallback | `accepted/p4-rig06-20261007` / `6edea7747d3a8433188c9fb394b98ae9c320d49b`; unchanged |
 | Integrated runtime at audit | `c8459ba125ee70093f0ae4c82017e9c8c849199b` / PR #70; Tasks 0-4 scoped technical/admin integration |
-| Task 5 branch | `feat/vf90-task5-physical-foundation` / `0b395c95b8866401182475f345e39350f40047b1` |
-| Task 5 result | RED test and receipt only; no production physics correction in that branch delta |
+| Task 5 branch | `feat/vf90-task5-physical-foundation` / PR72; runtime e0dee4e, review correction 4853a22 |
+| Task 5 result | Physical foundation technical PASS; review corrected, package proven; use PR72 merged state for integration |
 | Current whole-car verdict | NOT ACCEPTED; Tasks 5-9 remain open |
 
 A merge, a test PASS, a delivered package and an owner verdict are different facts. Old P02/P03/P04 acceptance remains valid only for its exact scope/candidate. Task counts are not a vehicle/game completion percentage.
@@ -33,7 +41,7 @@ These are the existing approved task numbers, not new Jira epics. Detailed imple
 | Order | Work / player result | Existing owners | Exit / dependency |
 |---|---|---|---|
 | 0-4 | Guards, exact source/contact identity, stable road marks, V23 appearance and V24 authored cabin bindings | CD-559 / CD-855 / CD-648 | Integrated through PR70; retain exact receipts. Not whole cabin, whole car or commercial release acceptance |
-| **5 NOW** | Appropriate physical Tatra rig/collision, mass moments, CoM/inertia; four coherent wheel contacts under load | CD-648 physical foundation, CD-748 boundary, CD-855 asset boundary | Real geometry and settled empty/reference/max-load measurements; no grip or steering compensation |
+| 5 technical PASS / PR72 | Appropriate physical Tatra rig/collision, mass moments, CoM/inertia; four coherent wheel contacts under load | CD-648 physical foundation, CD-748 boundary, CD-855 asset boundary | Real geometry and settled empty/reference/max-load measurements; no grip or steering compensation |
 | 6 after 5 | Real analog clutch/handbrake, correct steering and manual gearbox/reverse actuation | CD-659 / CD-653 / CD-645 / CD-646; preserve CD-643/CD-644/CD-649 accepted constraints | Actual Chaos output is continuous; direction, held target, engagement and energy/RPM continuity verified |
 | 7 after 6 | Predictable dry driving: suspension, tyres, braking, acceleration/engine braking and catchable RWD breakaway | CD-652 / CD-650 / CD-656 / CD-654 / CD-655 / CD-641 / CD-642 | Recorded same-input/load/surface before/after manoeuvres; no hidden assists or fabricated performance claims |
 | 8 after 7 | Wet/load variants, FPS independence, durable state and normal-drive serviceability | CD-658 / CD-657 / CD-670 / CD-722 / CD-740; CD-559 evidence | 30/60/120 FPS, 30-minute drive, work-based heat/wear, no stuck input/NaN/free repair; declared tolerances |
@@ -43,10 +51,10 @@ These are the existing approved task numbers, not new Jira epics. Detailed imple
 
 ## Required corrections, not more readiness theatre
 
-- Task5 must change production data/assets: SportsCar paths, zero reference CoM and 45.17% rear spring share are recorded deficiencies, not implementation progress. Renaming an asset or proving only positive inertia is insufficient.
-- The current mass-moment calculation omits base/crew positions. The reference project target is 45/55 front/rear at 1657 kg, not a historical factory claim. Geometry, load application and inertia require measured proof; do not alter tyre friction to pass a static-load check.
+- Task5 changed production data/assets: SportsCar paths, zero reference CoM and 45.17% rear spring share are retained historical RED deficiencies. Renaming an asset or proving only positive inertia is insufficient.
+- The earlier mass-moment calculation omitted base/crew positions; Task5 now includes their XYZ moments. The reference project target is 45/55 front/rear at 1657 kg, not a historical factory claim. Geometry, load application and inertia require measured proof; do not alter tyre friction to pass a static-load check.
 - The current provider uses a 0.95 neutral/gear clutch threshold and boolean handbrake. CD-659/CD-653 own continuous physical actuation. First resolve a supported native integration point; do not restore the retired competing simulation or introduce direct chassis-force propulsion.
-- Current `verify-runtime.ps1` selects nine tests. This is focused smoke/regression, not whole-vehicle/full-product acceptance. The stale CockpitBridge test uses the wrong component and obsolete expectations; repair its fixture/contract, not production behavior merely to make an old test green. Use existing verification infrastructure.
+- Current `verify-runtime.ps1` selects twenty named tests, including the original nine and physical-foundation proof. This is focused smoke/regression, not whole-vehicle/full-product acceptance. The stale CockpitBridge test uses the wrong component and obsolete expectations; repair its fixture/contract, not production behavior merely to make an old test green. Use existing verification infrastructure.
 - CD-646's former 30 km/h taper / 35 km/h reverse governor is retired; manual reverse uses the actual profile, physical load/shaft validation and recorded manoeuvres.
 - Latest correct Task5 truth already existed in CD-648 comments 16576/16578 while several main descriptions lagged. Reconciliation promotes evidence into current entrypoints; it does not imply that no earlier administration occurred.
 
@@ -82,7 +90,7 @@ Post-FIRST-EURO: multiplayer/coop/common rooms, L3 gameplay, lifestyle/social Se
 
 ## Verification / release gates kept separate
 
-CD-559 retains clean source/LFS/cook reproducibility, complete current-product regression, exact packaged OS-input coverage, crash evidence and safe cached-package provenance. Do not substitute nine focused tests for those broader obligations. Only verify.yml and deliver.yml are active; historical workflow graphs and old green runs are evidence only. Heavy Unreal work shares a physical host with KUKURUZA and must not stop another project's processes.
+CD-559 retains clean source/LFS/cook reproducibility, complete current-product regression, exact packaged OS-input coverage, crash evidence and safe cached-package provenance. Do not substitute the focused test set for those broader obligations. Only verify.yml and deliver.yml are active; historical workflow graphs and old green runs are evidence only. Heavy Unreal work shares a physical host with KUKURUZA and must not stop another project's processes.
 
 CD-856 pre-model handoff is DONE. CD-855 presentation/bindings Tasks1-4 are integrated, not deferred; remaining full-cabin features and commercial donor permission/public-exposure remediation are not closed. CD-947 being DONE means an exposure audit was completed, not rights granted. Internal engineering may continue; public/commercial delivery remains blocked until permission or a lawful replacement and exposure disposition are proven. Destructive history/LFS/visibility changes require separate authorization.
 

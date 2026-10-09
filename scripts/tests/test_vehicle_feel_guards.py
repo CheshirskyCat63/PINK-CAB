@@ -120,6 +120,30 @@ class VehicleFeelGuards(unittest.TestCase):
             output,
         )
 
+    def test_allows_only_task5_vehicle_coordinate_serializers(self):
+        allowed = (
+            "Source/PinkCabPersistence/Private/Persistence/PinkCabVehicleSnapshot.cpp",
+            "Source/PinkCabPersistence/Public/Persistence/PinkCabVehicleSnapshot.h",
+            "Source/PinkCab/Private/Persistence/PinkCabVehicleSnapshotArchive.cpp",
+            "Source/PinkCab/Public/Persistence/PinkCabVehicleSnapshotArchive.h",
+        )
+        for path in allowed:
+            self.write(path)
+        code, output = self.run_guard()
+        self.assertEqual(code, 0, output)
+        self.assertIn("SCOPE=PASS", output)
+        for path in (
+            "Source/PinkCabPersistence/Private/Persistence/OtherSave.cpp",
+            "Source/PinkCab/Private/Persistence/PinkCabCampaignSave.cpp",
+            "Source/PinkCab/Public/Persistence/PinkCabCampaignSave.h",
+        ):
+            with self.subTest(path=path):
+                self.write(path)
+                code, output = self.run_guard()
+                self.assertNotEqual(code, 0, output)
+                self.assertIn("FORBIDDEN_VF90_CHANGE=" + path, output)
+                (self.root / path).unlink()
+
     def test_rejects_committed_staged_and_unstaged_world_changes(self):
         path = "Source/PinkCab/Private/World/Road.cpp"
         self.write(path)

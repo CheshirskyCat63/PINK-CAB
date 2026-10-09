@@ -178,7 +178,7 @@ private:
     void QueueMouseWheelStep(int32 Step);
 
     FPinkCabPrototypeVisualProfile PrototypeVisualProfile =
-        FPinkCabPrototypeVisualProfile::EpicSportsCarManny();
+        FPinkCabPrototypeVisualProfile::Tatra613Physical();
     FPinkCabTatraProfile TatraProfile = FPinkCabTatraProfile::Canonical();
     FPinkCabVehicleLoadState VehicleLoadState;
     FPinkCabVehicleDamageProfile VehicleDamageProfile{TEXT("PinkCab.Damage.Fallback")};

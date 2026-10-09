@@ -4,10 +4,11 @@
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "Vehicle/PinkCabClutchDrivelineModel.h"
 #include "Vehicle/PinkCabEngineRpmEnvelope.h"
+#include "Vehicle/PinkCabVehicleMassProperties.h"
 #include "PinkCabChaosVehicleMovementComponent.generated.h"
 
-// P4 uses stock Chaos mechanical simulation. This thin component only retains
-// PINKCAB profile data so cockpit/gameplay code does not own vehicle physics.
+// Native Chaos owns mechanical simulation. This component applies versioned mass
+// properties and retains profile data; it does not implement a second dynamics solver.
 UCLASS(ClassGroup=(Physics), meta=(BlueprintSpawnableComponent))
 class PINKCABVEHICLE_API UPinkCabChaosVehicleMovementComponent final
     : public UChaosWheeledVehicleMovementComponent
@@ -17,6 +18,9 @@ class PINKCABVEHICLE_API UPinkCabChaosVehicleMovementComponent final
 public:
     explicit UPinkCabChaosVehicleMovementComponent(
         const FObjectInitializer& ObjectInitializer);
+
+    bool ConfigurePinkCabMass(const FPinkCabVehicleMassProperties& InProperties);
+    const FPinkCabVehicleMassProperties& GetPinkCabMassProperties() const { return MassProperties; }
 
     // Read-only native suspension result in chassis component space (cm).
     bool GetWheelPresentationCenter(int32 WheelIndex, FVector& OutCenter);
@@ -41,7 +45,13 @@ public:
         return ClutchConfig;
     }
 
+protected:
+    virtual void SetupVehicleMass() override;
+
 private:
+    void ApplyPinkCabMassProperties(FBodyInstance* Body);
+    FPinkCabVehicleMassProperties MassProperties;
+    FDelegateHandle MassRecalculationHandle;
     FPinkCabClutchDrivelineConfig ClutchConfig;
     FPinkCabEngineRpmEnvelope EngineRpmEnvelope;
 };

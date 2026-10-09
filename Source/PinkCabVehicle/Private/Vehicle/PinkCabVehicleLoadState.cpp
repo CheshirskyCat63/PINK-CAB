@@ -1,4 +1,5 @@
 #include "Vehicle/PinkCabVehicleLoadState.h"
+#include "Vehicle/PinkCabVehicleMassProperties.h"
 
 FPinkCabVehicleLoadItem::FPinkCabVehicleLoadItem() = default;
 
@@ -8,10 +9,26 @@ FPinkCabVehicleLoadItem::FPinkCabVehicleLoadItem(float InMassKg, float InLongitu
 {
 }
 
+FPinkCabVehicleLoadItem::FPinkCabVehicleLoadItem(float InMassKg, const FVector& InCenterCm)
+    : MassKg(FMath::Max(0.0f, InMassKg))
+    , LongitudinalCm(InCenterCm.X), LateralCm(InCenterCm.Y), VerticalCm(InCenterCm.Z)
+{
+}
+
 void FPinkCabVehicleLoadState::SetFuelMassKg(float InMassKg, float InLongitudinalCm)
 {
     FuelMassKg = FMath::Max(0.0f, InMassKg);
     FuelLongitudinalCm = InLongitudinalCm;
+    FuelLateralCm = 0.0f;
+    FuelVerticalCm = FPinkCabTatraProfile::DefaultFuelHeightCm;
+}
+
+void FPinkCabVehicleLoadState::SetFuelMassKg(float InMassKg, const FVector& InCenterCm)
+{
+    FuelMassKg = FMath::Max(0.0f, InMassKg);
+    FuelLongitudinalCm = InCenterCm.X;
+    FuelLateralCm = InCenterCm.Y;
+    FuelVerticalCm = InCenterCm.Z;
 }
 
 float FPinkCabVehicleLoadState::GetFuelMassKg() const { return FuelMassKg; }
@@ -71,17 +88,6 @@ float FPinkCabVehicleLoadState::GetTotalMassKg(const FPinkCabTatraProfile& Profi
 
 float FPinkCabVehicleLoadState::GetLongitudinalCgInputCm(const FPinkCabTatraProfile& Profile) const
 {
-    const float TotalMassKg = GetTotalMassKg(Profile);
-    if (TotalMassKg <= KINDA_SMALL_NUMBER) return 0.0f;
-
-    float WeightedCmKg = FuelMassKg * FuelLongitudinalCm;
-    for (const FPinkCabVehicleLoadItem& Item : Passengers)
-    {
-        WeightedCmKg += Item.MassKg * Item.LongitudinalCm;
-    }
-    for (const FPinkCabVehicleLoadItem& Item : FarePassengers)
-    {
-        WeightedCmKg += Item.MassKg * Item.LongitudinalCm;
-    }
-    return WeightedCmKg / TotalMassKg;
+    FPinkCabVehicleMassProperties Properties;
+    return TryGetMassProperties(Profile, Properties) ? Properties.CenterCm.X : 0.0f;
 }
