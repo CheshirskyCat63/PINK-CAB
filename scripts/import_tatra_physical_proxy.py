@@ -10,6 +10,10 @@ recipe = json.loads((source / 'Tatra613_Physical.recipe.json').read_text(encodin
 fbx = source / 'Tatra613_Physical.fbx'
 if hashlib.sha256(fbx.read_bytes()).hexdigest() != recipe['fbx_sha256']:
     raise RuntimeError('Physical FBX hash differs from authoring receipt')
+# Prepare evidence storage before importing/saving any new asset.
+output = Path(unreal.Paths.project_saved_dir()) / 'VF90' / 'task5-physical-import.json'
+output.parent.mkdir(parents=True, exist_ok=True)
+
 destination = '/Game/Dev/Vehicles/Tatra613Physics/V1'
 mesh_path = destination + '/SK_Tatra613_Physical'
 reimport = unreal.EditorAssetLibrary.does_asset_exist(mesh_path)
@@ -60,6 +64,5 @@ report = {'source_recipe_sha256': hashlib.sha256((source/'Tatra613_Physical.reci
           'mesh': mesh.get_path_name(), 'bones': names,
           'import_scale': settings.get_editor_property('import_uniform_scale'),
           'imported_paths': list(task.imported_object_paths)}
-output = Path(unreal.Paths.project_saved_dir()) / 'VF90' / 'task5-physical-import.json'
 output.write_text(json.dumps(report, indent=2), encoding='utf-8')
 unreal.log('TATRA_PHYSICAL_IMPORT=PASS ' + json.dumps(report))
