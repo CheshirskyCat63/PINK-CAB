@@ -28,7 +28,10 @@ $tests=@(
     'PinkCab.Vehicle.PhysicalFoundation.LegacyCoordinateMigration',
     'PinkCab.Vehicle.PhysicalFoundation.InvalidMassCoordinates',
     'PinkCab.Vehicle.PhysicalFoundation.LiveLoadEnvelope',
-    'PinkCab.Vehicle.Visual.TatraWheelContacts'
+    'PinkCab.Vehicle.Visual.TatraWheelContacts',
+    # Task6 bounded disconnect/handbrake proof; does not certify partial-clutch actuation.
+    'PinkCab.Vehicle.Actuation.DrivelineDisconnect',
+    'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque'
 )
 
 $filter=$tests -join '+'

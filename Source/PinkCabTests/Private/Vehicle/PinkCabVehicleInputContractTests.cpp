@@ -57,10 +57,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPinkCabChaosClutchCapabilityTest::RunTest(const FString& Parameters)
 {
     FPinkCabChaosVehicleDynamicsProvider Provider(nullptr);
-    TestEqual(
-        TEXT("stock Chaos provider exposes continuous external-torque clutch transfer"),
-        Provider.GetMechanicalClutchCapability(),
-        EPinkCabMechanicalClutchCapability::ContinuousExternalTorque);
+    TestTrue(TEXT("complete Task6 requires physical clutch authority, not a neutral-gate emulator"),
+        Provider.GetMechanicalClutchCapability() != EPinkCabMechanicalClutchCapability::EmulatedNeutralGate
+        && Provider.GetMechanicalClutchCapability() != EPinkCabMechanicalClutchCapability::Unsupported);
     return true;
 }
 

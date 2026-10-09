@@ -1,5 +1,6 @@
 #include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "ChaosVehicleWheel.h"
+#include "PinkCabChaosDrivelineSimulation.h"
 
 UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
     const FObjectInitializer& ObjectInitializer)
@@ -9,6 +10,10 @@ UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
     // Engine braking stays in the native mechanical driveline, not this brake input.
     IdleBrakeInput = 0.0f;
     StopThreshold = 0.0f;
+    // Native aggressive vehicle sleep freezes a low-speed chassis before its
+    // suspension settles after contact/load changes. Disable that shortcut,
+    // not Chaos rigid-body sleep. No frame-by-frame forced wake is introduced.
+    SleepThreshold = 0.0f;
 }
 
 bool UPinkCabChaosVehicleMovementComponent::GetWheelPresentationCenter(
@@ -60,4 +65,10 @@ void UPinkCabChaosVehicleMovementComponent::ProcessSleeping(const FControlInputs
         return;
     }
     Super::ProcessSleeping(Inputs);
+}
+
+TUniquePtr<Chaos::FSimpleWheeledVehicle> UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
+{
+    VehicleSimulationPT = MakeUnique<FPinkCabChaosDrivelineSimulation>();
+    return UChaosVehicleMovementComponent::CreatePhysicsVehicle();
 }

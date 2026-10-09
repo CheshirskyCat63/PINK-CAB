@@ -50,6 +50,7 @@ public:
     }
 
 protected:
+    virtual TUniquePtr<Chaos::FSimpleWheeledVehicle> CreatePhysicsVehicle() override;
     virtual void SetupVehicleMass() override;
     virtual void UpdateState(float DeltaTime) override;
     virtual void ProcessSleeping(const FControlInputs& Inputs) override;

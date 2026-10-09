@@ -115,6 +115,8 @@ private:
         if (!Test->TestTrue(TEXT("fixture mass properties resolve"),
             Pawn.GetVehicleLoadState().TryGetMassProperties(Profile, Expected))) return;
         const double TargetMass = Stage == 0 ? 1450.0 : Stage == 2 ? 2107.0 : 1657.0;
+        Test->AddInfo(FString::Printf(TEXT("T6_LOAD_SLEEP stage=%d awake=%d threshold=%.3f"),
+            Stage, Body.IsInstanceAwake(), Movement.SleepThreshold));
         const FTransform ActualFrame = Body.GetMassSpaceLocal();
         const FVector ActualInertia = Body.GetBodyInertiaTensor();
         const double TotalForce = FrontForce + RearForce;
