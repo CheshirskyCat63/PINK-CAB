@@ -27,8 +27,12 @@ bool UPinkCabChaosVehicleMovementComponent::GetWheelPresentationCenter(
 
 void UPinkCabChaosVehicleMovementComponent::SetPinkCabHandbrakeInput(float Value)
 {
-    AnalogHandbrakeCommand = FMath::IsFinite(Value) ? FMath::Clamp(Value, 0.0f, 1.0f) : 0.0f;
-    SetHandbrakeInput(false);
+    const float Next = FMath::IsFinite(Value) ? FMath::Clamp(Value, 0.0f, 1.0f) : 0.0f;
+    const bool bChanged = Next != AnalogHandbrakeCommand;
+    AnalogHandbrakeCommand = Next;
+    // Consume the transition in ProcessSleeping, where the native sleep counter
+    // is evaluated. Waking here alone can be undone before the next physics step.
+    bHandbrakeWakePending |= bChanged;
 }
 
 void UPinkCabChaosVehicleMovementComponent::UpdateState(float DeltaTime)
@@ -43,5 +47,17 @@ void UPinkCabChaosVehicleMovementComponent::UpdateState(float DeltaTime)
 void UPinkCabChaosVehicleMovementComponent::ClearRawInput()
 {
     Super::ClearRawInput();
-    AnalogHandbrakeCommand = 0.0f;
+    SetPinkCabHandbrakeInput(0.0f);
+}
+
+void UPinkCabChaosVehicleMovementComponent::ProcessSleeping(const FControlInputs& Inputs)
+{
+    if (bHandbrakeWakePending)
+    {
+        VehicleState.SleepCounter = 0;
+        SetSleeping(false);
+        bHandbrakeWakePending = false;
+        return;
+    }
+    Super::ProcessSleeping(Inputs);
 }

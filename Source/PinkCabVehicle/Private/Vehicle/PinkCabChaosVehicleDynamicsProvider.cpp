@@ -78,6 +78,7 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
             ? LastCausalActuation.ChaosThrottleInput01
             : 0.0f);
     Movement->SetBrakeInput(FMath::Clamp(Controls.Brake, 0.0f, 1.0f));
+    Movement->SetHandbrakeInput(false); // Only the semantic adapter writes raw native controls.
     NativeInput->SetPinkCabHandbrakeInput(Controls.Handbrake);
 
     // Stock Chaos does not expose a continuous clutch input. Preserve the

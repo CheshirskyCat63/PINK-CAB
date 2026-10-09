@@ -4,6 +4,8 @@
 #include "EngineUtils.h"
 #include "ChaosVehicleWheel.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "PhysicsEngine/BodyInstance.h"
+#include "UObject/UnrealType.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
 #include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "Vehicle/PinkCabVehicleControlState.h"
@@ -13,8 +15,8 @@ namespace
 class FAnalogHandbrakeCommand final : public IAutomationLatentCommand
 {
 public:
-    explicit FAnalogHandbrakeCommand(FAutomationTestBase* InTest)
-        : Test(InTest), StartWall(FPlatformTime::Seconds()) {}
+    explicit FAnalogHandbrakeCommand(FAutomationTestBase* InTest, bool bInBrakeOnly = false)
+        : Test(InTest), StartWall(FPlatformTime::Seconds()), bBrakeOnly(bInBrakeOnly) {}
 
     bool Update() override
     {
@@ -34,16 +36,35 @@ public:
         {
             Pawn->SetSystemMenuOpen(false);
             Pawn->SetActorTickEnabled(false); // Isolate the production actuation seam, not a second control writer.
+            if (bBrakeOnly && !bFixtureInitialized)
+            {
+                // Brake-only diagnostic fixture: same native wheel/suspension solver,
+                // with engine drag explicitly zeroed only for this test instance.
+                // The original full-driveline test below retains all zero-drag assertions.
+                SavedEngineBrakeEffect = Movement->EngineSetup.EngineBrakeEffect;
+                Movement->EngineSetup.EngineBrakeEffect = 0.0f;
+                Movement->RecreatePhysicsState();
+                bFixtureInitialized = true;
+            }
             Controls.SetHandbrake(Commands[Stage]);
             Controls.SetBrake(0.0f);
             Controls.SetThrottle(0.0f);
             Controls.SetDriveline(0, 0, 0.0f);
+            // Provider-level fixture cannot assert cockpit reset semantics: parked
+            // lever state and transient mouse capture are separate owners.
             if (!Test->TestTrue(TEXT("provider applies physical handbrake command"),
                 Pawn->GetPinkCabDynamicsProvider().ApplyControls(Controls))) return true;
             StageStart = World->GetTimeSeconds();
             return false;
         }
         if (World->GetTimeSeconds() - StageStart < 0.8) return false;
+        const FBodyInstance* Body = Pawn->GetMesh()->GetBodyInstance();
+        const FFloatProperty* NativeHandbrake = FindFProperty<FFloatProperty>(
+            Movement->GetClass(), TEXT("HandbrakeInput"));
+        Test->AddInfo(FString::Printf(TEXT("T6_SLEEP_PROBE stage=%d command=%.3f awake=%d native=%.3f gear=%d rpm=%.3f"),
+            Stage, Commands[Stage], Body && Body->IsInstanceAwake(),
+            NativeHandbrake ? NativeHandbrake->GetPropertyValue_InContainer(Movement) : -1.0f,
+            Movement->GetCurrentGear(), Movement->GetEngineRotationSpeed()));
         for (int32 Index = 0; Index < 4; ++Index)
         {
             const UChaosVehicleWheel* Wheel = Movement->Wheels[Index];
@@ -58,6 +79,11 @@ public:
         }
         if (++Stage == UE_ARRAY_COUNT(Commands))
         {
+            if (bFixtureInitialized)
+            {
+                Movement->EngineSetup.EngineBrakeEffect = SavedEngineBrakeEffect;
+                Movement->RecreatePhysicsState();
+            }
             Pawn->SetActorTickEnabled(true);
             return true;
         }
@@ -69,8 +95,11 @@ private:
     double StartWall;
     double StageStart = -1.0;
     int32 Stage = 0;
+    bool bBrakeOnly = false;
+    bool bFixtureInitialized = false;
+    float SavedEngineBrakeEffect = 0.0f;
     FPinkCabVehicleControlState Controls;
-    const float Commands[5] = {0.0f, 0.25f, 0.5f, 1.0f, 0.0f};
+    const float Commands[8] = {0.0f, 0.25f, 0.5f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f};
 };
 }
 
@@ -82,6 +111,17 @@ bool FPinkCabAnalogHandbrakeRuntimeTest::RunTest(const FString& Parameters)
     if (!TestTrue(TEXT("handbrake fixture opens production Tatra map"),
         AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"), true))) return false;
     ADD_LATENT_AUTOMATION_COMMAND(FAnalogHandbrakeCommand(this));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabAnalogHandbrakeIsolatedRuntimeTest,
+    "PinkCab.Vehicle.Actuation.AnalogHandbrakeIsolated",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabAnalogHandbrakeIsolatedRuntimeTest::RunTest(const FString& Parameters)
+{
+    if (!TestTrue(TEXT("brake-only fixture opens production Tatra map"),
+        AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"), true))) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FAnalogHandbrakeCommand(this, true));
     return true;
 }
 #endif
