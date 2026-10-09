@@ -16,6 +16,48 @@ BINDINGS = {
     "Cabin_TemperatureNeedle": ("t613_needle_temp", "t613_white_material.002"),
 }
 
+REQUIRED_RIG06_BONES = {
+    "root",
+    "Phys_Wheel_FL",
+    "Phys_Wheel_FR",
+    "Phys_Wheel_BL",
+    "Phys_Wheel_BR",
+    "Steering_Wheel",
+    "Cabin_GearLever",
+    "Cabin_ClutchPedal",
+    "Cabin_BrakePedal",
+    "Cabin_ThrottlePedal",
+    "Cabin_Handbrake",
+    "Door_FL",
+    "Door_FR",
+    "Door_RL",
+    "Door_RR",
+    "Trunk_Front",
+    "Hood_Rear",
+    "Window_FL",
+    "Window_FR",
+    "Window_RL",
+    "Window_RR",
+    "Cabin_Horn",
+    "Cabin_Stalk_L",
+    "Cabin_Stalk_R",
+    "Cabin_Radio",
+    "Cabin_Climate",
+    "Mirror_L",
+    "Mirror_R",
+    "Cabin_SpeedometerNeedle",
+    "Cabin_TachometerNeedle",
+    "Cabin_FuelNeedle",
+    "Cabin_TemperatureNeedle",
+}
+
+def require_rig06_bones(actual_bones):
+    missing = sorted(REQUIRED_RIG06_BONES - set(actual_bones))
+    if missing:
+        raise RuntimeError("RIG06 export missing runtime-required bones: " + str(missing))
+    return missing
+
+
 def geometry_digest():
     h=hashlib.sha256()
     for o in sorted((x for x in bpy.data.objects if x.type=="MESH"), key=lambda x:x.name):
@@ -98,6 +140,9 @@ existing_after=bone_snapshot(exclude=BINDINGS.keys())
 if existing_before!=existing_after:
     raise RuntimeError("Existing bone transforms changed while adding needle bindings")
 
+# Validate before writing a new Blend or FBX; a partial cabin rig is unusable.
+require_rig06_bones(b.name for b in arm.data.bones)
+
 arm["RIG24"]="V23 geometry/UV preserved; 4 instrument needles bound to existing source pivot empties"
 arm["RIG24_NeedleBones"]=",".join(BINDINGS.keys())
 arm["RIG24_NeedlePolicy"]="Existing presentation state drives source-pivot bones; no generated cockpit needle geometry"
@@ -135,11 +180,7 @@ bpy.ops.export_scene.fbx(
     axis_forward="-Y",axis_up="Z")
 
 bones=[b.name for b in arm.data.bones]
-required={"root","Phys_Wheel_FL","Phys_Wheel_FR","Phys_Wheel_BL","Phys_Wheel_BR",
-          "Steering_Wheel","Cabin_GearLever","Cabin_Handbrake",
-          "Cabin_ClutchPedal","Cabin_BrakePedal","Cabin_ThrottlePedal",
-          "Door_FL","Door_FR","Door_RL","Door_RR","Trunk_Front","Hood_Rear",
-          "Window_FL","Window_FR","Window_RL","Window_RR",*BINDINGS.keys()}
+required_missing=require_rig06_bones(bones)
 report={
     "source":SRC,"blend":DST,"fbx":FBX,"blender":bpy.app.version_string,
     "geometry_digest_before":geo_before,"geometry_digest_after":geo_after,
@@ -147,7 +188,7 @@ report={
     "existing_bones_unchanged":existing_before==existing_after,
     "instrument_bindings":weight_report,
     "object_count":len(selected),"bone_count":len(bones),
-    "required_missing":sorted(required-set(bones)),
+    "required_missing":required_missing,
     "fbx_bytes":os.path.getsize(FBX),
     "fbx_sha256":hashlib.sha256(open(FBX,"rb").read()).hexdigest(),
 }

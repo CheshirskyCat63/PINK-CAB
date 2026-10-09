@@ -144,15 +144,45 @@ for prop in ("materials","skeletal_materials"):
     except Exception:
         pass
 
-required={"root","Phys_Wheel_FL","Phys_Wheel_FR","Phys_Wheel_BL","Phys_Wheel_BR",
-          "Steering_Wheel","Cabin_GearLever","Cabin_Handbrake",
-          "Door_FL","Door_FR","Door_RL","Door_RR","Trunk_Front","Hood_Rear"}
-if bone_names:
-    missing=sorted(required-set(bone_names))
-    if missing:
-        raise RuntimeError("RIG06 imported but missing required bones: "+str(missing))
-else:
-    missing=[]
+REQUIRED_RIG06_BONES = {
+    "root",
+    "Phys_Wheel_FL",
+    "Phys_Wheel_FR",
+    "Phys_Wheel_BL",
+    "Phys_Wheel_BR",
+    "Steering_Wheel",
+    "Cabin_GearLever",
+    "Cabin_ClutchPedal",
+    "Cabin_BrakePedal",
+    "Cabin_ThrottlePedal",
+    "Cabin_Handbrake",
+    "Door_FL",
+    "Door_FR",
+    "Door_RL",
+    "Door_RR",
+    "Trunk_Front",
+    "Hood_Rear",
+    "Window_FL",
+    "Window_FR",
+    "Window_RL",
+    "Window_RR",
+    "Cabin_Horn",
+    "Cabin_Stalk_L",
+    "Cabin_Stalk_R",
+    "Cabin_Radio",
+    "Cabin_Climate",
+    "Mirror_L",
+    "Mirror_R",
+    "Cabin_SpeedometerNeedle",
+    "Cabin_TachometerNeedle",
+    "Cabin_FuelNeedle",
+    "Cabin_TemperatureNeedle",
+}
+if not bone_names:
+    raise RuntimeError("RIG06 imported but skeletal bone inventory could not be verified")
+missing=sorted(REQUIRED_RIG06_BONES-set(bone_names))
+if missing:
+    raise RuntimeError("RIG06 imported but missing required runtime bones: "+str(missing))
 
 report={
     "source":fbx,
