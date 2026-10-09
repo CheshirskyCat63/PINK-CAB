@@ -1,5 +1,6 @@
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
 #include "Vehicle/PinkCabChaosEngineAdapter.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 
 #include "ChaosVehicleWheel.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
@@ -61,7 +62,8 @@ FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
 bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
     const FPinkCabVehicleControlState& Controls)
 {
-    if (!Movement)
+    UPinkCabChaosVehicleMovementComponent* NativeInput = Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    if (!NativeInput)
     {
         return false;
     }
@@ -76,7 +78,7 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
             ? LastCausalActuation.ChaosThrottleInput01
             : 0.0f);
     Movement->SetBrakeInput(FMath::Clamp(Controls.Brake, 0.0f, 1.0f));
-    Movement->SetHandbrakeInput(Controls.Handbrake > KINDA_SMALL_NUMBER);
+    NativeInput->SetPinkCabHandbrakeInput(Controls.Handbrake);
 
     // Stock Chaos does not expose a continuous clutch input. Preserve the
     // physical H-pattern UX as a control layer: an open/slipping clutch maps

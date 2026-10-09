@@ -19,6 +19,10 @@ public:
     explicit UPinkCabChaosVehicleMovementComponent(
         const FObjectInitializer& ObjectInitializer);
 
+    // Native float handbrake input; no boolean quantization or custom brake forces.
+    void SetPinkCabHandbrakeInput(float Value);
+    float GetPinkCabHandbrakeInput() const { return AnalogHandbrakeCommand; }
+
     bool ConfigurePinkCabMass(const FPinkCabVehicleMassProperties& InProperties);
     const FPinkCabVehicleMassProperties& GetPinkCabMassProperties() const { return MassProperties; }
 
@@ -47,9 +51,12 @@ public:
 
 protected:
     virtual void SetupVehicleMass() override;
+    virtual void UpdateState(float DeltaTime) override;
+    virtual void ClearRawInput() override;
 
 private:
     void ApplyPinkCabMassProperties(FBodyInstance* Body);
+    float AnalogHandbrakeCommand = 0.0f;
     FPinkCabVehicleMassProperties MassProperties;
     FDelegateHandle MassRecalculationHandle;
     FPinkCabClutchDrivelineConfig ClutchConfig;
