@@ -6,6 +6,8 @@
 
 ## Read this first
 
+Only after Vehicle Feel 90 owner acceptance may broader world/taxi/traffic/economy/Neural implementation resume.
+
 Deliver one correctly presented, fully interactive Tatra on a stable road with enjoyable manual driving before expanding the world/taxi/traffic/economy/Neural product.
 
 | Identity / scope | Actual checkpoint |
