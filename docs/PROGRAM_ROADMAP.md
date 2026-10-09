@@ -1,5 +1,11 @@
 # PINK CAB - FIRST EURO Execution Roadmap
 
+## Current Task6 draft checkpoint - 2026-10-10
+
+Task5 main remains ed18a57. Task6 neutral/open-clutch correction is in draft PR73: runtime1d6929d, additional live-coast test/list e6950e1. Branch-local canonical23/23 passed; joint controls75/77 passed with two genuine partial-clutch failures. Actual neutral and fully pressed clutch now isolate engine drive/braking while service/handbrake and native1/R drive remain. A native-road launch/coast test confirms continued travel without engine torque; no injected velocity/force. The stock aggressive vehicle-sleep shortcut is disabled, ordinary rigid-body sleep retained, and unchanged load/sag criteria pass again. No mass/grip/spring tuning or old competing simulator was restored.
+
+The complete Task6 is NOT accepted: physical partial coupling and its capability gate remain RED, with further combined thermal/parking/focus/FPS proof pending. Draft is not merged or installed. Accepted desktop6edea774 is unchanged. See docs/vehicle_physics/evidence/VF90_TASK6_DISCONNECTION_2026-10-10.md for exact source, scopes and hashed logs. Earlier dated checkpoints below retain their historical meaning; they do not overrule this current draft status.
+
 **Status:** CURRENT EXECUTION MIRROR - reconciled 2026-10-09.
 **Product:** CD-519. **Mechanics Freeze:** CD-848. **Scope:** CD-753.
 **Current vehicle implementation umbrella:** CD-648. **Canonical branch:** protected main.
@@ -24,7 +30,7 @@ Deliver one correctly presented, fully interactive Tatra on a stable road with e
 | Integrated runtime at audit | `c8459ba125ee70093f0ae4c82017e9c8c849199b` / PR #70; Tasks 0-4 scoped technical/admin integration |
 | Task 5 branch | `feat/vf90-task5-physical-foundation` / PR72; runtime e0dee4e, review correction 4853a22 |
 | Task 5 result | Physical foundation technical PASS; review corrected, package proven; use PR72 merged state for integration |
-| Current whole-car verdict | NOT ACCEPTED; Tasks 5-9 remain open |
+| Current whole-car verdict | NOT ACCEPTED; Task5 technical scope integrated, Tasks6-9 open |
 
 A merge, a test PASS, a delivered package and an owner verdict are different facts. Old P02/P03/P04 acceptance remains valid only for its exact scope/candidate. Task counts are not a vehicle/game completion percentage.
 
