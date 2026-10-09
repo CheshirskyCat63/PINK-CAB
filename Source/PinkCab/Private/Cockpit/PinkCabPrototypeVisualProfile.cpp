@@ -36,3 +36,14 @@ FPinkCabPrototypeVisualProfile FPinkCabPrototypeVisualProfile::EpicSportsCarMann
         TEXT("Phys_Wheel_BL"), TEXT("Phys_Wheel_BR")};
     return Result;
 }
+
+FPinkCabPrototypeVisualProfile FPinkCabPrototypeVisualProfile::Tatra613Physical()
+{
+    FPinkCabPrototypeVisualProfile Result = EpicSportsCarManny();
+    Result.ProfileId = TEXT("PinkCab.Physics.Tatra613.V1");
+    Result.VehicleMeshPath = FSoftObjectPath(TEXT(
+        "/Game/Dev/Vehicles/Tatra613Physics/V1/SK_Tatra613_Physical.SK_Tatra613_Physical"));
+    Result.PhysicsAssetPath = FSoftObjectPath(TEXT(
+        "/Game/Dev/Vehicles/Tatra613Physics/V1/PA_Tatra613_Physical.PA_Tatra613_Physical"));
+    return Result;
+}

@@ -40,10 +40,24 @@ public:
         Pawn->SetSystemMenuOpen(false);
         if (SettlingStarted == 0.0)
         {
-            SettlingStarted = FPlatformTime::Seconds();
+            SettlingStarted = World->GetTimeSeconds();
             return false;
         }
-        if (FPlatformTime::Seconds() - SettlingStarted < 2.0) return false;
+        // Static axle balance is a settled interval, not one launch-transient frame.
+        const double SettledSeconds = World->GetTimeSeconds() - SettlingStarted;
+        if (SettledSeconds < 3.0) return false;
+        UChaosWheeledVehicleMovementComponent* SampleMovement = Pawn->GetChaosMovement();
+        for (int32 Index = 0; Index < SampleMovement->Wheels.Num(); ++Index)
+        {
+            const FWheelStatus& Sample = SampleMovement->GetWheelState(Index);
+            if (Index < 2) FrontSamples += Sample.SpringForce;
+            else RearSamples += Sample.SpringForce;
+            bAllSamplesInContact &= Sample.bInContact;
+        }
+        ++SampleCount;
+        if (SettledSeconds < 4.0) return false;
+        Test->TestTrue(TEXT("static load sample covers an interval with four contacts"),
+            SampleCount >= 10 && bAllSamplesInContact && SampleMovement->Wheels.Num() == 4);
 
         USkeletalMeshComponent* Mesh = Pawn->GetMesh();
         UChaosWheeledVehicleMovementComponent* Movement = Pawn->GetChaosMovement();
@@ -97,18 +111,16 @@ public:
                 *Setup->DefaultInstance.InertiaTensorScale.ToString()));
         }
 
-        float FrontLoadN = 0.0f;
-        float RearLoadN = 0.0f;
+        float FrontSpringRaw = FrontSamples / FMath::Max(SampleCount, 1);
+        float RearSpringRaw = RearSamples / FMath::Max(SampleCount, 1);
         for (int32 Index = 0; Index < Movement->Wheels.Num(); ++Index)
         {
             const FWheelStatus& State = Movement->GetWheelState(Index);
             const UChaosVehicleWheel* Wheel = Movement->Wheels[Index];
-            const float ForceN = State.SpringForce;
-            if (Index < 2) FrontLoadN += ForceN;
-            else RearLoadN += ForceN;
+            const float ForceRaw = State.SpringForce;
             Test->AddInfo(FString::Printf(
                 TEXT("T5_CORNER wheel=%d contact=%d spring_force=%.3f suspension_offset=%.3f radius=%.3f"),
-                Index, State.bInContact, ForceN,
+                Index, State.bInContact, ForceRaw,
                 Wheel ? Wheel->GetSuspensionOffset() : 0.0f,
                 Wheel ? Wheel->WheelRadius : 0.0f));
             Test->TestTrue(
@@ -116,12 +128,12 @@ public:
                 State.bInContact);
         }
 
-        const float TotalSpringN = FrontLoadN + RearLoadN;
+        const float TotalSpringRaw = FrontSpringRaw + RearSpringRaw;
         Test->AddInfo(FString::Printf(
             TEXT("T5_AXLE front_force=%.3f rear_force=%.3f rear_fraction=%.6f total_force=%.3f"),
-            FrontLoadN, RearLoadN,
-            TotalSpringN > KINDA_SMALL_NUMBER ? RearLoadN / TotalSpringN : 0.0f,
-            TotalSpringN));
+            FrontSpringRaw, RearSpringRaw,
+            TotalSpringRaw > KINDA_SMALL_NUMBER ? RearSpringRaw / TotalSpringRaw : 0.0f,
+            TotalSpringRaw));
 
         // Acceptance RED gate: a finite number is not physical Tatra evidence.
         const FString BodyMeshPath = Mesh->GetSkeletalMeshAsset()
@@ -136,7 +148,7 @@ public:
             ComComponent.X < -1.0f);
         Test->TestTrue(TEXT("four native wheel instances are active"), Movement->Wheels.Num() == 4);
         const float RearFraction =
-            TotalSpringN > KINDA_SMALL_NUMBER ? RearLoadN / TotalSpringN : 0.0f;
+            TotalSpringRaw > KINDA_SMALL_NUMBER ? RearSpringRaw / TotalSpringRaw : 0.0f;
         // Confluence 33 reference static balance = 45% front / 55% rear at 1657 kg.
         // This is a physical measurement gate; never make it pass by a tire shortcut.
         Test->TestTrue(TEXT("reference axle loads are rear-heavy (55% rear +/- 2%)"),
@@ -155,6 +167,10 @@ private:
     FAutomationTestBase* Test = nullptr;
     double Started = 0.0;
     double SettlingStarted = 0.0;
+    double FrontSamples = 0.0;
+    double RearSamples = 0.0;
+    int32 SampleCount = 0;
+    bool bAllSamplesInContact = true;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

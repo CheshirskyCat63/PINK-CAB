@@ -9,10 +9,20 @@ void FPinkCabVehicleSnapshotArchive::Serialize(
 
 void FPinkCabVehicleSnapshotArchive::SerializeLoadItem(
     FArchive& Ar,
-    FPinkCabVehicleLoadItemSnapshot& Item)
+    FPinkCabVehicleLoadItemSnapshot& Item, bool bCoordinates3D)
 {
     Ar << Item.MassKg;
     Ar << Item.LongitudinalCm;
+    if (bCoordinates3D)
+    {
+        Ar << Item.LateralCm;
+        Ar << Item.VerticalCm;
+    }
+    else if (Ar.IsLoading())
+    {
+        Item.LateralCm = 0.0f;
+        Item.VerticalCm = FPinkCabTatraProfile::DefaultPassengerHeightCm;
+    }
 }
 
 void FPinkCabVehicleSnapshotArchive::SerializeVehicleSnapshot(
@@ -20,6 +30,7 @@ void FPinkCabVehicleSnapshotArchive::SerializeVehicleSnapshot(
     FPinkCabVehicleSnapshot& Snapshot)
 {
     Ar << Snapshot.SchemaVersion;
+    const bool bCoordinates3D = Snapshot.SchemaVersion >= FPinkCabVehicleSnapshot::CurrentSchemaVersion;
     SerializeArray(
         Ar,
         Snapshot.Health.ChannelHealth,
@@ -32,7 +43,7 @@ void FPinkCabVehicleSnapshotArchive::SerializeVehicleSnapshot(
 
     bool bSerializeThermals =
         Snapshot.SchemaVersion
-        >= FPinkCabVehicleSnapshot::CurrentSchemaVersion;
+        >= FPinkCabVehicleSnapshot::LongitudinalOnlySchemaVersion;
     if (Snapshot.SchemaVersion
         == FPinkCabVehicleSnapshot::DivergentSchemaVersion)
     {
@@ -54,23 +65,33 @@ void FPinkCabVehicleSnapshotArchive::SerializeVehicleSnapshot(
 
     Ar << Snapshot.Load.FuelMassKg;
     Ar << Snapshot.Load.FuelLongitudinalCm;
+    if (bCoordinates3D)
+    {
+        Ar << Snapshot.Load.FuelLateralCm;
+        Ar << Snapshot.Load.FuelVerticalCm;
+    }
+    else if (Ar.IsLoading())
+    {
+        Snapshot.Load.FuelLateralCm = 0.0f;
+        Snapshot.Load.FuelVerticalCm = FPinkCabTatraProfile::DefaultFuelHeightCm;
+    }
     Ar << Snapshot.Load.HeroineMassKg;
     Ar << Snapshot.Load.DaughterMassKg;
     SerializeArray(
         Ar,
         Snapshot.Load.Passengers,
         64,
-        [](FArchive& A, FPinkCabVehicleLoadItemSnapshot& Value)
+        [bCoordinates3D](FArchive& A, FPinkCabVehicleLoadItemSnapshot& Value)
         {
-            SerializeLoadItem(A, Value);
+            SerializeLoadItem(A, Value, bCoordinates3D);
         });
     SerializeArray(
         Ar,
         Snapshot.Load.FarePassengers,
         5,
-        [](FArchive& A, FPinkCabVehicleLoadItemSnapshot& Value)
+        [bCoordinates3D](FArchive& A, FPinkCabVehicleLoadItemSnapshot& Value)
         {
-            SerializeLoadItem(A, Value);
+            SerializeLoadItem(A, Value, bCoordinates3D);
         });
     Ar << Snapshot.Load.FarePassengerGroupId;
     Ar << Snapshot.Load.bFarePassengerGroupActive;

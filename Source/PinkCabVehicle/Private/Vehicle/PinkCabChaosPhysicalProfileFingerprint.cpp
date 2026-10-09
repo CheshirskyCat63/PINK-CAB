@@ -1,4 +1,5 @@
 #include "Vehicle/PinkCabChaosPhysicalProfile.h"
+#include "Vehicle/PinkCabTatraProfile.h"
 
 #include "Containers/StringConv.h"
 
@@ -153,6 +154,22 @@ FString BuildProfileFingerprint(const FPinkCabChaosPhysicalProfile& P)
     AppendFloatArrayParameter(Out, TEXT("ForwardGearRatios"), P.ForwardGearRatios);
     AppendFloatArrayParameter(Out, TEXT("ReverseGearRatios"), P.ReverseGearRatios);
     AppendFloatParameter(Out, TEXT("SteeringAngleRatio"), P.SteeringAngleRatio);
+    const FPinkCabTatraProfile Mass = FPinkCabTatraProfile::Canonical();
+    AppendIntToken(Out, TEXT("MassDistributionVersion"), Mass.MassDistributionVersion);
+    const double MassValues[] = {Mass.BaseVehicleMassKg, Mass.FullFuelMassKg,
+        Mass.HeroineMassKg, Mass.DaughterMassKg, Mass.DeclaredMaxFixtureKg,
+        Mass.BaseLongitudinalCm, Mass.HeroineLongitudinalCm, Mass.DaughterLongitudinalCm,
+        Mass.RearAssemblyMassKg, Mass.RearAssemblyCenterCm.X, Mass.RearAssemblyCenterCm.Y,
+        Mass.RearAssemblyCenterCm.Z, Mass.RearAssemblySizeCm.X, Mass.RearAssemblySizeCm.Y,
+        Mass.RearAssemblySizeCm.Z, Mass.ChassisCenterHeightCm, Mass.ChassisSizeCm.X,
+        Mass.ChassisSizeCm.Y, Mass.ChassisSizeCm.Z, Mass.CrewHalfTrackCm, Mass.CrewCenterHeightCm,
+        Mass.OccupantSizeCm.X, Mass.OccupantSizeCm.Y, Mass.OccupantSizeCm.Z,
+        Mass.FuelSizeCm.X, Mass.FuelSizeCm.Y, Mass.FuelSizeCm.Z,
+        Mass.DefaultFuelHeightCm, Mass.DefaultPassengerHeightCm};
+    for (int32 Index = 0; Index < UE_ARRAY_COUNT(MassValues); ++Index)
+    {
+        Out.Appendf(TEXT("|Mass[%d]=%lld"), Index, QuantizeProfileFloat(static_cast<float>(MassValues[Index])));
+    }
     AppendWheelFingerprint(Out, TEXT("Front"), P.FrontWheel);
     AppendWheelFingerprint(Out, TEXT("Rear"), P.RearWheel);
     return Out;

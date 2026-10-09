@@ -17,12 +17,16 @@ struct FPinkCabVehicleLoadItemStateSnapshot
 {
     float MassKg = 0.0f;
     float LongitudinalCm = 0.0f;
+    float LateralCm = 0.0f;
+    float VerticalCm = FPinkCabTatraProfile::DefaultPassengerHeightCm;
 };
 
 struct FPinkCabVehicleLoadStateSnapshot
 {
     float FuelMassKg = 0.0f;
     float FuelLongitudinalCm = 0.0f;
+    float FuelLateralCm = 0.0f;
+    float FuelVerticalCm = FPinkCabTatraProfile::DefaultFuelHeightCm;
     float HeroineMassKg = 0.0f;
     float DaughterMassKg = 0.0f;
     TArray<FPinkCabVehicleLoadItemStateSnapshot> Passengers;

@@ -38,6 +38,21 @@ bool FPinkCabVehicleSnapshotCodec::Restore(
 
     FPinkCabVehicleStateSnapshot StateSnapshot;
     StateSnapshot.Load = Snapshot.Load;
+    if (Snapshot.SchemaVersion < FPinkCabVehicleSnapshot::CurrentSchemaVersion)
+    {
+        // Old payloads had only longitudinal coordinates. Preserve that layout
+        // explicitly; never reinterpret old bytes as new lateral/height values.
+        StateSnapshot.Load.FuelLateralCm = 0.0f;
+        StateSnapshot.Load.FuelVerticalCm = FPinkCabTatraProfile::DefaultFuelHeightCm;
+        for (auto* Items : {&StateSnapshot.Load.Passengers, &StateSnapshot.Load.FarePassengers})
+        {
+            for (FPinkCabVehicleLoadItemSnapshot& Item : *Items)
+            {
+                Item.LateralCm = 0.0f;
+                Item.VerticalCm = FPinkCabTatraProfile::DefaultPassengerHeightCm;
+            }
+        }
+    }
     MigrateHealth(Snapshot, StateSnapshot.Health);
     StateSnapshot.Health.FunctionalDamageSerial =
         Snapshot.Health.FunctionalDamageSerial;
@@ -73,8 +88,8 @@ FPinkCabVehicleSnapshotCodec::ResolveSchemaLayout(
     {
         return ESchemaLayout::PresentationV2;
     }
-    if (Snapshot.SchemaVersion
-            == FPinkCabVehicleSnapshot::CurrentSchemaVersion
+    if ((Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::CurrentSchemaVersion
+            || Snapshot.SchemaVersion == FPinkCabVehicleSnapshot::LongitudinalOnlySchemaVersion)
         && Count == static_cast<int32>(
             EPinkCabVehicleHealthChannel::Count))
     {

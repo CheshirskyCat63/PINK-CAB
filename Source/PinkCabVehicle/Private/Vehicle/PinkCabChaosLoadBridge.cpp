@@ -6,23 +6,24 @@
 #include "PhysicsEngine/BodyInstance.h"
 #include "Vehicle/PinkCabTatraProfile.h"
 #include "Vehicle/PinkCabVehicleLoadState.h"
+#include "Vehicle/PinkCabVehicleMassProperties.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 
 bool FPinkCabChaosLoadBridge::Apply(
     const FPinkCabVehicleLoadState& Load,
     const FPinkCabTatraProfile& Profile,
     UChaosWheeledVehicleMovementComponent& Movement)
 {
-    const float TotalMassKg = Load.GetTotalMassKg(Profile);
-    const float LongitudinalCgCm = Load.GetLongitudinalCgInputCm(Profile);
-    if (!FMath::IsFinite(TotalMassKg) || TotalMassKg <= KINDA_SMALL_NUMBER
-        || !FMath::IsFinite(LongitudinalCgCm))
+    FPinkCabVehicleMassProperties Properties;
+    if (!Load.TryGetMassProperties(Profile, Properties)) return false;
+    if (UPinkCabChaosVehicleMovementComponent* PinkCabMovement =
+            Cast<UPinkCabChaosVehicleMovementComponent>(&Movement))
     {
-        return false;
+        return PinkCabMovement->ConfigurePinkCabMass(Properties);
     }
-
-    Movement.Mass = TotalMassKg;
+    Movement.Mass = Properties.MassKg;
     Movement.bEnableCenterOfMassOverride = true;
-    Movement.CenterOfMassOverride.X = LongitudinalCgCm;
+    Movement.CenterOfMassOverride = Properties.CenterCm;
     AActor* Owner = Movement.GetOwner();
     if (UPrimitiveComponent* Chassis = Owner ? Cast<UPrimitiveComponent>(Owner->GetRootComponent()) : nullptr)
     {

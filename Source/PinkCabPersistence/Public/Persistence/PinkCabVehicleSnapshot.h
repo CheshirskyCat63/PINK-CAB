@@ -11,7 +11,8 @@ struct FPinkCabVehicleSnapshot
 {
     static constexpr int32 LegacySchemaVersion = 1;
     static constexpr int32 DivergentSchemaVersion = 2;
-    static constexpr int32 CurrentSchemaVersion = 3;
+    static constexpr int32 LongitudinalOnlySchemaVersion = 3;
+    static constexpr int32 CurrentSchemaVersion = 4;
 
     static constexpr int32 LegacySchema1HealthChannelCount = 12;
     static constexpr int32 RuntimeSchema2HealthChannelCount = 14;
