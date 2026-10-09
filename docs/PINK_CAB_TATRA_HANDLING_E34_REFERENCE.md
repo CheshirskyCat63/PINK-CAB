@@ -6,7 +6,7 @@
 
 ## Current checkpoint
 
-Accepted P4 fallback is accepted/p4-rig06-20261007 at 6edea77. Integration is main@8322f9c. Historical acceptance is retained; complete appearance, authored cabin motion and enjoyable handling requested on 2026-10-07 are not yet accepted.
+Accepted P4 fallback is accepted/p4-rig06-20261007 at 6edea77. Tasks 0-4 integration is main@c8459ba / PR70. Task5 baseline is RED at 0b395c9; no production physical correction is implied. Historical acceptance is retained; complete appearance, authored cabin motion and enjoyable handling requested on 2026-10-07 are not yet accepted.
 
 Native Unreal Chaos Vehicles is the sole road-dynamics solver. FGear/VDS references in the previous revision are historical research, not implementation instructions.
 
@@ -22,7 +22,7 @@ No ABS, TC, ESP, automatic countersteer, yaw rescue, velocity overwrite or force
 
 The executable physical profile and measured runtime state own current values. PinkCabChaosPhysicalProfile.cpp records targets of 250 hp / 260 Nm, 8500 max RPM and 925 idle RPM. These are gameplay profile values, not measured performance or historical factory claims. The reference crew/fuel fixture is 1657 kg; the declared maximum fixture is 2107 kg.
 
-Previous tables of 180 hp, 240 Nm, 2750 mm wheelbase, fixed 45/55 balance and expression gains are retained in Git history only. They must not override the current 613 measurements or executable profile. Wheel geometry, CoM, inertia and suspension need evidence before handling acceptance.
+Previous tables of 180 hp, 240 Nm, 2750 mm wheelbase and expression gains are retained in Git history only. Separately, the current project reference-load target remains 45/55 F/R at 1657 kg under the mass/load contract; it is a gameplay design target requiring measured geometry/load justification, not a factory specification or licence to force a test green. They must not override the current 613 measurements or executable profile. Wheel geometry, CoM, inertia and suspension need evidence before handling acceptance.
 
 ## Open requirements
 

@@ -25,7 +25,9 @@ No world, taxi, economy, traffic, Neural or ServiceNode feature may be mixed int
 
 Vehicle Feel 90 means the car is already representative of how it will drive in the shipped FIRST EURO product. Remaining work after this gate may include final road-specific polish, sound, presentation vibration, camera polish and narrow content-specific calibration, but not basic corrections to steering, grip, suspension, mass balance, braking, gearing or engine behavior.
 
-## Ordered gates
+## Acceptance dimensions (not execution order)
+
+Execution follows the owner-approved existing Tatra Ready Tasks 0-9: Tasks 0-4 integrated, Task 5 physical foundation first, then Task 6 steering/actuation, Task 7 dry handling, Task 8 robustness and Task 9 owner acceptance. The VF0-VF9 sections below are coverage dimensions; their numbering must not move actuation tuning before the physical foundation. See docs/PROGRAM_ROADMAP.md.
 
 ### VF0 · Measurements and evidence
 - record accepted baseline tag/SHA/profile hash;
