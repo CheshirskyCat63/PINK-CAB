@@ -4,7 +4,9 @@
 
 #include "PinkCabChaosDrivelineSimulation.h"
 #include "SimpleVehicle.h"
+#include "Vehicle/PinkCabNativeWheelResponse.h"
 #include "ChaosVehicleWheel.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 
 namespace
@@ -109,21 +111,76 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
 }
 
 
+namespace PinkCabNativeWheelBoundary
+{
 namespace
 {
-struct FNativeWheelResponse
+bool ValidNativeWheelInput(double Torque, double Ratio, double Efficiency, double Dt, int32 WheelCount)
 {
-    double ShaftOmega = 0.0;
-    double WheelWorkJ = 0.0;
-    double TorqueFactor = 1.0;
-    double PredictedOmega[4] = {};
-    bool bValid = false;
-};
+    return FMath::IsFinite(Torque) && FMath::IsFinite(Ratio)
+        && FMath::IsFinite(Efficiency) && Efficiency > 0.0 && Efficiency <= 1.0
+        && FMath::IsFinite(Dt) && Dt > 0.0 && WheelCount > 0 && WheelCount <= 4;
+}
+
+bool CrossedGearboxZeroPower(double Before, double After)
+{
+    return (Before > 0.0 && After < 0.0)
+        || (Before < 0.0 && After > 0.0)
+        || (Before == 0.0 && After < 0.0);
+}
+
+FNativeWheelResponse SimulateNativeWheelFactor(
+    const Chaos::FSimpleWheeledVehicle& Vehicle, const FWheelState& State,
+    double Torque, double Ratio, double Weight, double Factor, double Dt)
+{
+    FNativeWheelResponse Out;
+    Out.TorqueFactor = Factor;
+    for (int32 Index = 0; Index < Vehicle.Wheels.Num(); ++Index)
+    {
+        const auto& Original = Vehicle.Wheels[Index];
+        if (!State.LocalWheelVelocity.IsValidIndex(Index)
+            || !State.TraceResult.IsValidIndex(Index)) return Out;
+        const FHitResult& Contact = State.TraceResult[Index];
+        const float CurrentLoad = Contact.bBlockingHit
+            ? (Vehicle.Suspension.IsValidIndex(Index)
+                ? Vehicle.Suspension[Index].Setup().WheelLoadRatio
+                    * Vehicle.Suspension[Index].GetSuspensionForce()
+                    + (1.0f - Vehicle.Suspension[Index].Setup().WheelLoadRatio)
+                        * Vehicle.Suspension[Index].Setup().RestingForce
+                : Original.ForceIntoSurface)
+            : 0.0f;
+        const UPhysicalMaterial* CurrentMaterial = Contact.PhysMaterial.Get();
+        if (!FMath::IsFinite(CurrentLoad)
+            || (CurrentMaterial && !FMath::IsFinite(CurrentMaterial->Friction))) return Out;
+        // Same Chaos wheel and this-frame collision data as the real step;
+        // copy-only response must never advance actual chassis/wheels.
+        auto Wheel = Original;
+        Wheel.SetWheelLoadForce(CurrentLoad);
+        // Native Chaos retains the previous surface if the trace has no
+        // physical material. Do not invent a default of 1.0 on the copy.
+        if (CurrentMaterial) Wheel.SetSurfaceFriction(CurrentMaterial->Friction);
+        Wheel.SetVehicleGroundSpeed(FRotator(0, Wheel.GetSteeringAngle(), 0)
+            .UnrotateVector(State.LocalWheelVelocity[Index]));
+        const double Share = Original.EngineEnabled ? Original.Setup().TorqueRatio / Weight : 0.0;
+        const double WheelTorque = Torque * Ratio * Factor * Share;
+        Wheel.SetDriveTorque(Chaos::TorqueMToCm(static_cast<float>(WheelTorque)));
+        Wheel.Simulate(static_cast<float>(Dt));
+        Out.PredictedOmega[Index] = Wheel.GetAngularVelocity();
+        Out.ShaftOmega += Share * Wheel.GetAngularVelocity() * Ratio;
+        // Native wheel Simulate advances angle with its end-step omega.
+        Out.WheelWorkJ += WheelTorque * Dt * Wheel.GetAngularVelocity();
+    }
+    Out.bValid = FMath::IsFinite(Out.ShaftOmega) && FMath::IsFinite(Out.WheelWorkJ);
+    return Out;
+}
+}
 
 FNativeWheelResponse EvaluateNativeWheels(const Chaos::FSimpleWheeledVehicle& Vehicle,
     const FWheelState& State, double ClutchTorque, double Ratio, double Efficiency, double Dt)
 {
-    FNativeWheelResponse Out;
+    FNativeWheelResponse Invalid;
+    if (!ValidNativeWheelInput(ClutchTorque, Ratio, Efficiency, Dt, Vehicle.Wheels.Num()))
+        return Invalid;
     double Weight = 0.0, BeforeShaft = 0.0;
     for (const auto& Wheel : Vehicle.Wheels)
     {
@@ -131,39 +188,30 @@ FNativeWheelResponse EvaluateNativeWheels(const Chaos::FSimpleWheeledVehicle& Ve
         Weight += Wheel.Setup().TorqueRatio;
         BeforeShaft += Wheel.Setup().TorqueRatio * Wheel.GetAngularVelocity() * Ratio;
     }
-    if (Weight <= 0.0 || Vehicle.Wheels.Num() > 4) return Out;
+    if (Weight <= 0.0) return Invalid;
     BeforeShaft /= Weight;
-    Out.TorqueFactor = ClutchTorque * BeforeShaft < 0.0 ? 1.0 / Efficiency : Efficiency;
-    for (int32 DirectionPass = 0; DirectionPass < 2; ++DirectionPass)
-    {
-        Out.ShaftOmega = Out.WheelWorkJ = 0.0;
-        for (int32 Index = 0; Index < Vehicle.Wheels.Num(); ++Index)
-        {
-            const auto& Original = Vehicle.Wheels[Index];
-            if (!State.LocalWheelVelocity.IsValidIndex(Index)) return Out;
-            // Pure native component evaluation. No force reaches a scene and no
-            // actual wheel/chassis state is advanced during these candidates.
-            auto Wheel = Original;
-            Wheel.SetVehicleGroundSpeed(FRotator(0, Wheel.GetSteeringAngle(), 0)
-                .UnrotateVector(State.LocalWheelVelocity[Index]));
-            const double Share = Original.EngineEnabled ? Original.Setup().TorqueRatio / Weight : 0.0;
-            const double WheelTorque = ClutchTorque * Ratio * Out.TorqueFactor * Share;
-            Wheel.SetDriveTorque(Chaos::TorqueMToCm(static_cast<float>(WheelTorque)));
-            Wheel.Simulate(static_cast<float>(Dt));
-            Out.PredictedOmega[Index] = Wheel.GetAngularVelocity();
-            Out.ShaftOmega += Share * Wheel.GetAngularVelocity() * Ratio;
-            // Native wheel Simulate advances angle using its end-step omega.
-            // Match that implicit power port; pre-step wheel spin is not clutch work.
-            Out.WheelWorkJ += WheelTorque * Dt * Wheel.GetAngularVelocity();
-        }
-        const double Direction = ClutchTorque * Out.ShaftOmega;
-        const double Factor = Direction < 0.0 ? 1.0 / Efficiency : Efficiency;
-        if (Factor == Out.TorqueFactor) break;
-        Out.TorqueFactor = Factor;
-    }
-    Out.bValid = FMath::IsFinite(Out.ShaftOmega) && FMath::IsFinite(Out.WheelWorkJ);
-    return Out;
+
+    // A directional gearbox efficiency must use the same factor for both
+    // native prediction and the one actual Chaos torque scatter.
+    // A step crossing zero shaft power uses the passive zero-power boundary,
+    // rather than a stale drive/backdrive coefficient.
+    const double IncomingPower = ClutchTorque * BeforeShaft;
+    const double Factor = IncomingPower < 0.0 ? 1.0 / Efficiency : Efficiency;
+    const FNativeWheelResponse Initial = SimulateNativeWheelFactor(
+        Vehicle, State, ClutchTorque, Ratio, Weight, Factor, Dt);
+    if (!Initial.bValid) return Invalid;
+    const double OutgoingPower = ClutchTorque * Initial.ShaftOmega;
+    return CrossedGearboxZeroPower(IncomingPower, OutgoingPower)
+        ? SimulateNativeWheelFactor(Vehicle, State, ClutchTorque, Ratio, Weight, 1.0, Dt)
+        : Initial;
 }
+
+}
+
+namespace
+{
+using PinkCabNativeWheelBoundary::FNativeWheelResponse;
+using PinkCabNativeWheelBoundary::EvaluateNativeWheels;
 
 struct FNativeCoupledClutch
 {
