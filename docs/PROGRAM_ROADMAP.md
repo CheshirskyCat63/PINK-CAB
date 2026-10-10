@@ -2,6 +2,12 @@
 
 ## Current Task6 draft checkpoint - 2026-10-10
 
+Steering publication update: **59dcb4d is committed and pushed**, resolving the prior local-only state. The native steering-speed curve preserves held wheel angles; forward/reverse, profile identity and shared-curve ownership passed nine freshly rerun checks. Original mandatory29 results remain27PASS/2FAIL; joint82 results remain80PASS/2FAIL, both blocked by partial clutch. These prior full runs are not relabelled as a new full-source run. Evidence: VF90_TASK6_STEERING_AUTHORITY_2026-10-10.md. Major scoped-stage closure remains6/10=60%; Task6 reporting3/6=50%, not effort/realism or complete-car acceptance.
+
+Native capacity-joint feasibility now passes84 standalone cases plus loaded-release checks via the exported engine API, without world objects or custom solver code. This is NOT Tatra integration or Task6 acceptance. A fresh final clean-source mandatory29 rerun remains27PASS/2FAIL. See the steering/native feasibility evidence for input-thread, inertia, torque-ownership and lifecycle requirements still open.
+
+### Prior cleanup checkpoint (retained scope)
+
 Task5 main remains ed18a57; accepted installed6edea774 is untouched. Draft PR73 preserves the verified neutral/open-clutch/handbrake/coast correction1d6929d and live-coast test e6950e1. Current cleanup/gate commit be80247 removes the uncalled custom clutch solver, retains its versioned configuration verbatim and updates ownership to the actual native adapter. No new dynamics solver, physical calibration, input grammar, plugin migration or installed package is introduced.
 
 **Current mandatory runtime selection:25 executed,23 PASS,2 FAIL.** PartialClutchTransfer and ClutchCapability are now included in verify-runtime.ps1 rather than omitted from the green focused subset. All previous23 checks passed in the same run. Script suite58/58, Editor build and static guards passed. The earlier23/23 and75/77 records remain scoped history, not completion. Task6 still lacks actual continuous partial clutch plus combined thermal/focus/parking/FPS proof; Tasks7-9 remain held.

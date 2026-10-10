@@ -27,7 +27,7 @@
 - [x] 2. Isolate road shimmer in exact-package captures; change one demonstrated cause at a time. Preserve contact topology and friction during visual diagnosis.
 - [x] 3. Reconcile authored model dimensions/materials/normals with scripts/import_tatra_rig06.py, scripts/configure_tatra_rig06_materials.py and PinkCabVehicleVisualProfile.cpp. Verify matched views in UE and package.
 - [x] 4. Inventory authored bones and gameplay actions; bind pedals, windows, doors, instruments and other approved controls through existing presentation ownership. Verify neutral/mid/full travel and normal input paths.
-- [ ] 5. Establish wheel geometry, body collision, base/fuel/crew mass, rear-engine CoM and inertia. Verify static sag, contact and loaded fixtures before changing grip.
+- [x] 5. Establish wheel geometry, body collision, base/fuel/crew mass, rear-engine CoM and inertia. Verify static sag, contact and loaded fixtures before changing grip.
 - [ ] 6. Resolve steering authority and real analog actuation requirements in Chaos; add executable regressions for direction, clutch coupling, handbrake dosage and drivetrain continuity.
 - [ ] 7. Calibrate suspension, dry tyres, brakes and recoverable rear-wheel-drive handling with recorded before/after maneuvers.
 - [ ] 8. Verify wet surfaces, load envelope, 30/60/120 FPS and sustained driving. No assist contributions.
@@ -134,3 +134,8 @@ Ruling: remove the demonstrably uncalled custom clutch solver from compiled Sour
 Ruling: the two existing partial-clutch failures must run in the existing mandatory verification list. Current25-test run is23PASS/2FAIL; green23-only historical runs cannot authorize Task6 closure. No new workflow or acceptance weakening.
 
 Native capability boundary: the standard Chaos vehicle's engine-speed coupling is explicitly without clutch simulation. Chaos Modular's native clutch and installed skeletal sample are a different runtime surface. Corrected session-only sample setup demonstrated driving, not the project's torque/disengagement/back-drive contract. The first finite-output/loadable sample successes are NOT clutch acceptance. Research probes are outside Source; project plugin/config/assets are unchanged. Do not adopt a second/mixed solver or silently convert the vehicle. Next remains proving native partial actuation and recording an explicit compatible single-owner integration boundary; no Tasks7-9 expansion until Task6 is actually proven.
+
+
+### Task6 steering publication checkpoint - 2026-10-10
+
+Resumed and verified nine steering/profile cases, then committed and pushed59dcb4d. The prior local-only blocker in PR73 comment6096234118 is resolved. Native SteeringCurve configuration now preserves held angles; shared asset ownership and calibration8 fingerprint/provenance are covered. Exact bounded evidence: docs/vehicle_physics/evidence/VF90_TASK6_STEERING_AUTHORITY_2026-10-10.md. Both partial-clutch requirements remain RED; Tasks7-9 are held. Correct Task5 checkbox to existing merged PR72 scope, not a new owner acceptance.
