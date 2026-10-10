@@ -6,6 +6,7 @@ UPinkCabChaosVehicleMovementComponent::UPinkCabChaosVehicleMovementComponent(
     const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
+    CommandChannel = MakeShared<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe>();
     // A manual car does not apply service brakes just because throttle/speed is low.
     // Engine braking stays in the native mechanical driveline, not this brake input.
     IdleBrakeInput = 0.0f;
@@ -37,7 +38,7 @@ void UPinkCabChaosVehicleMovementComponent::SetPinkCabHandbrakeInput(float Value
     AnalogHandbrakeCommand = Next;
     // Consume the transition in ProcessSleeping, where the native sleep counter
     // is evaluated. Waking here alone can be undone before the next physics step.
-    bHandbrakeWakePending |= bChanged;
+    bControlWakePending |= bChanged;
 }
 
 void UPinkCabChaosVehicleMovementComponent::UpdateState(float DeltaTime)
@@ -52,16 +53,20 @@ void UPinkCabChaosVehicleMovementComponent::UpdateState(float DeltaTime)
 void UPinkCabChaosVehicleMovementComponent::ClearRawInput()
 {
     Super::ClearRawInput();
+    PendingControlState = {};
+    bHasPendingControlState = false;
+    if (CommandChannel) CommandChannel->Reset();
+    bControlWakePending = true;
     SetPinkCabHandbrakeInput(0.0f);
 }
 
 void UPinkCabChaosVehicleMovementComponent::ProcessSleeping(const FControlInputs& Inputs)
 {
-    if (bHandbrakeWakePending)
+    if (bControlWakePending)
     {
         VehicleState.SleepCounter = 0;
         SetSleeping(false);
-        bHandbrakeWakePending = false;
+        bControlWakePending = false;
         return;
     }
     Super::ProcessSleeping(Inputs);
@@ -69,6 +74,54 @@ void UPinkCabChaosVehicleMovementComponent::ProcessSleeping(const FControlInputs
 
 TUniquePtr<Chaos::FSimpleWheeledVehicle> UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {
-    VehicleSimulationPT = MakeUnique<FPinkCabChaosDrivelineSimulation>();
+    VehicleSimulationPT = MakeUnique<FPinkCabChaosDrivelineSimulation>(CommandChannel.ToSharedRef());
     return UChaosVehicleMovementComponent::CreatePhysicsVehicle();
+}
+
+
+void UPinkCabChaosVehicleMovementComponent::SetPinkCabControlState(const FPinkCabVehicleControlState& Controls)
+{
+    const bool bConnectionChanged = !bHasPendingControlState
+        || Controls.ClutchCoupling != PendingControlState.ClutchCoupling
+        || Controls.EngagedGear != PendingControlState.EngagedGear
+        || Controls.DrivetrainTorqueCapacity != PendingControlState.DrivetrainTorqueCapacity
+        || Controls.IsCombustionAllowed() != PendingControlState.IsCombustionAllowed();
+    bControlWakePending |= bConnectionChanged;
+    PendingControlState = Controls;
+    bHasPendingControlState = true;
+}
+
+void UPinkCabChaosVehicleMovementComponent::Update(float DeltaTime)
+{
+    Super::Update(DeltaTime);
+    if (!CurAsyncInput || !CommandChannel) return;
+    FPinkCabChaosCommandFrame Frame;
+    Frame.Native = CurAsyncInput->PhysicsInputs.NetworkInputs;
+    Frame.Controls = PendingControlState;
+    Frame.ClutchConfig = ClutchConfig;
+    Frame.RpmEnvelope = EngineRpmEnvelope;
+    Frame.bValid = bHasPendingControlState && ClutchConfig.IsValid();
+    if (!Frame.bValid)
+    {
+        Frame.Controls = {};
+        Frame.Native.VehicleInputs.ThrottleInput = 0.0f;
+    }
+    Frame.Native.TransmissionCurrentGear = Frame.Controls.EngagedGear;
+    Frame.Native.TransmissionTargetGear = Frame.Controls.EngagedGear;
+    Frame.Native.TransmissionChangeTime = 0.0f;
+    CommandChannel->Publish(MoveTemp(Frame));
+}
+
+void UPinkCabChaosVehicleMovementComponent::ResetVehicleState()
+{
+    Super::ResetVehicleState();
+    PendingControlState = {};
+    bHasPendingControlState = false;
+    if (CommandChannel) CommandChannel->Reset();
+    bControlWakePending = true;
+}
+
+FPinkCabDrivelineStepTelemetry UPinkCabChaosVehicleMovementComponent::GetPinkCabDrivelineStepTelemetry() const
+{
+    return CommandChannel ? CommandChannel->ReadFeedback() : FPinkCabDrivelineStepTelemetry{};
 }

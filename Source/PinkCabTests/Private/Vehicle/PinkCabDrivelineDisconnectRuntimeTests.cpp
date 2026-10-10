@@ -49,6 +49,12 @@ public:
         }
         if (World->GetTimeSeconds() - StageStart < 0.8) return false;
         Test->TestTrue(TEXT("native mechanical simulation stays enabled"), Movement->bMechanicalSimEnabled);
+        const auto Step = Movement->GetPinkCabDrivelineStepTelemetry();
+        Test->AddInfo(FString::Printf(TEXT("T6_JOINT seq=%llu step=%llu gear=%d c=%.4f native=%d engine=(%.3f,%.3f) shaft=%.3f torque_nm=%.5f cap_nm=%.3f loss_j=%.6f momentum_residual=%.9f"),
+            Step.CommandSequence, Step.PhysicsStep, Step.Gear, Step.Coupling, Step.bNativeJointApplied,
+            Step.EngineOmegaBefore, Step.EngineOmegaAfter, Step.ShaftOmega,
+            Step.TransferredTorqueNm, Step.CapacityNm, Step.DissipatedEnergyJ, Step.MomentumResidual));
+
         for (int32 Index = 0; Index < 4; ++Index)
         {
             const auto& State = Movement->GetWheelState(Index);

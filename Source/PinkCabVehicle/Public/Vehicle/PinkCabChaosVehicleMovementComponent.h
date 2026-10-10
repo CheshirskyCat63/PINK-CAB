@@ -5,7 +5,11 @@
 #include "Vehicle/PinkCabClutchDrivelineConfig.h"
 #include "Vehicle/PinkCabEngineRpmEnvelope.h"
 #include "Vehicle/PinkCabVehicleMassProperties.h"
+#include "Vehicle/PinkCabVehicleControlState.h"
+#include "Vehicle/PinkCabDrivelineStepTelemetry.h"
 #include "PinkCabChaosVehicleMovementComponent.generated.h"
+
+class FPinkCabChaosCommandChannel;
 
 // Native Chaos owns mechanical simulation. This component applies versioned mass
 // properties and retains profile data; it does not implement a second dynamics solver.
@@ -18,6 +22,11 @@ class PINKCABVEHICLE_API UPinkCabChaosVehicleMovementComponent final
 public:
     explicit UPinkCabChaosVehicleMovementComponent(
         const FObjectInitializer& ObjectInitializer);
+
+    void SetPinkCabControlState(const FPinkCabVehicleControlState& Controls);
+    FPinkCabDrivelineStepTelemetry GetPinkCabDrivelineStepTelemetry() const;
+    virtual void Update(float DeltaTime) override;
+    virtual void ResetVehicleState() override;
 
     // Native float handbrake input; no boolean quantization or custom brake forces.
     void SetPinkCabHandbrakeInput(float Value);
@@ -58,8 +67,11 @@ protected:
 
 private:
     void ApplyPinkCabMassProperties(FBodyInstance* Body);
+    TSharedPtr<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe> CommandChannel;
+    FPinkCabVehicleControlState PendingControlState;
+    bool bHasPendingControlState = false;
     float AnalogHandbrakeCommand = 0.0f;
-    bool bHandbrakeWakePending = false;
+    bool bControlWakePending = false;
     FPinkCabVehicleMassProperties MassProperties;
     FDelegateHandle MassRecalculationHandle;
     FPinkCabClutchDrivelineConfig ClutchConfig;

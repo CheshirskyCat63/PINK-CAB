@@ -278,7 +278,8 @@ bool FPinkCabChaosCockpitBridgeTest::RunTest(const FString& Parameters)
     Controls.SetClutch(1.0f);
     Controls.SetDriveline(1, 1, 0.0f);
     FPinkCabChaosCockpitBridge::Apply(Cockpit, *Movement, Controls, Provider);
-    TestEqual(TEXT("fully pressed clutch carries zero transmission gear"), Movement->GetTargetGear(), 0);
+    TestEqual(TEXT("open clutch preserves physically selected gear without neutral emulation"), Movement->GetTargetGear(), 1);
+    TestEqual(TEXT("open clutch command transmits zero coupling"), Provider.GetLastControls().ClutchCoupling, 0.0f);
     return true;
 }
 

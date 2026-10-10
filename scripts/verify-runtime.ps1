@@ -39,7 +39,12 @@ $tests=@(
     'PinkCab.Vehicle.Actuation.NativeSteeringAuthority',
     'PinkCab.Vehicle.Actuation.HeldSteeringRuntime',
     'PinkCab.Vehicle.Actuation.HeldSteeringReverse',
-    'PinkCab.Vehicle.Actuation.NativeSteeringCurveOwnership'
+    'PinkCab.Vehicle.Actuation.NativeSteeringCurveOwnership',
+    'PinkCab.Vehicle.Actuation.NativeJointCapacity',
+    'PinkCab.Vehicle.Actuation.ClutchCommandWake',
+    'PinkCab.Vehicle.Actuation.ClutchBackDrivePower',
+    'PinkCab.Vehicle.Actuation.ClutchEnvelopeRuntime',
+    'PinkCab.Vehicle.Actuation.ClutchLoadedLock'
 )
 
 $filter=$tests -join '+'

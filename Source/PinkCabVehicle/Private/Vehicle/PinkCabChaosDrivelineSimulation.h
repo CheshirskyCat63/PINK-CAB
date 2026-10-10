@@ -1,10 +1,23 @@
 #pragma once
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "PinkCabChaosCommandChannel.h"
+#include "Vehicle/PinkCabChaosNativeClutchJoint.h"
 
-// One native simulation instance. Only the engine-to-wheel connection differs;
-// wheel friction, suspension, steering and chassis integration stay inherited.
 class FPinkCabChaosDrivelineSimulation final : public UChaosWheeledVehicleSimulation
 {
 public:
+    explicit FPinkCabChaosDrivelineSimulation(TSharedRef<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe> InChannel)
+        : Channel(MoveTemp(InChannel)) {}
+    virtual void TickVehicle(UWorld* WorldIn, float DeltaTime,
+        const FChaosVehicleAsyncInput& InputData, FChaosVehicleAsyncOutput& OutputData,
+        Chaos::FRigidBodyHandle_Internal* Handle) override;
     virtual void ApplyInput(const FControlInputs& Inputs, float DeltaTime) override;
+    virtual void ProcessMechanicalSimulation(float DeltaTime) override;
+    virtual void FillOutputState(FChaosVehicleAsyncOutput& Output) override;
+private:
+    TSharedRef<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe> Channel;
+    FPinkCabChaosCommandFrame Frame;
+    FPinkCabChaosNativeClutchJoint ClutchJoint;
+    FPinkCabDrivelineStepTelemetry Step;
+    uint64 PhysicsStep = 0;
 };

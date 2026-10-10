@@ -16,6 +16,11 @@ class VehicleRuntimeSelection(unittest.TestCase):
         for required in (
             "PinkCab.Vehicle.Actuation.PartialClutchTransfer",
             "PinkCab.Vehicle.Input.ClutchCapability",
+            "PinkCab.Vehicle.Actuation.NativeJointCapacity",
+            "PinkCab.Vehicle.Actuation.ClutchCommandWake",
+            "PinkCab.Vehicle.Actuation.ClutchBackDrivePower",
+            "PinkCab.Vehicle.Actuation.ClutchEnvelopeRuntime",
+            "PinkCab.Vehicle.Actuation.ClutchLoadedLock",
         ):
             with self.subTest(required=required):
                 self.assertIn(required, entries, "known Task6 failure must block the PR")

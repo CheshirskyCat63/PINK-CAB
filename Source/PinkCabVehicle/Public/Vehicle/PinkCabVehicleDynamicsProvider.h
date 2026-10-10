@@ -14,7 +14,8 @@ enum class EPinkCabMechanicalClutchCapability : uint8
     Unsupported,
     EmulatedNeutralGate,
     ContinuousExternalTorque,
-    Native
+    Native,
+    NativeConstraintExtension
 };
 
 class PINKCABVEHICLE_API IPinkCabVehicleDynamicsProvider
