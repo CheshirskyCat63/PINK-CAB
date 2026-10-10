@@ -13,10 +13,7 @@ public:
 
     virtual bool ApplyControls(const FPinkCabVehicleControlState& Controls) override;
     virtual bool ReadTelemetry(FPinkCabVehicleTelemetry& OutTelemetry) const override;
-    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override
-    {
-        return EPinkCabMechanicalClutchCapability::NativeConstraintExtension;
-    }
+    virtual EPinkCabMechanicalClutchCapability GetMechanicalClutchCapability() const override;
 
     const FPinkCabVehicleControlState& GetLastControls() const { return LastControls; }
     const FPinkCabCausalActuationTelemetry& GetLastCausalActuationTelemetry() const

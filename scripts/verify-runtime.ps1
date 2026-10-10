@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$EngineRoot = $env:PINKCAB_UE_ROOT)
 
 $ErrorActionPreference='Stop'
@@ -44,7 +44,11 @@ $tests=@(
     'PinkCab.Vehicle.Actuation.ClutchCommandWake',
     'PinkCab.Vehicle.Actuation.ClutchBackDrivePower',
     'PinkCab.Vehicle.Actuation.ClutchEnvelopeRuntime',
-    'PinkCab.Vehicle.Actuation.ClutchLoadedLock'
+    'PinkCab.Vehicle.Actuation.ClutchLoadedLock',
+    'PinkCab.Vehicle.Input.UnconfiguredClutchCapability',
+    'PinkCab.Vehicle.Actuation.ClutchAsyncFrameIdentity',
+    'PinkCab.Vehicle.Actuation.ClutchQueuedReset',
+    'PinkCab.Vehicle.Actuation.ClutchFrameRetention'
 )
 
 $filter=$tests -join '+'

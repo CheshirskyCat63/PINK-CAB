@@ -74,6 +74,7 @@ void UPinkCabChaosVehicleMovementComponent::ProcessSleeping(const FControlInputs
 
 TUniquePtr<Chaos::FSimpleWheeledVehicle> UPinkCabChaosVehicleMovementComponent::CreatePhysicsVehicle()
 {
+    CommandChannel = MakeShared<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe>();
     VehicleSimulationPT = MakeUnique<FPinkCabChaosDrivelineSimulation>(CommandChannel.ToSharedRef());
     return UChaosVehicleMovementComponent::CreatePhysicsVehicle();
 }
@@ -109,7 +110,11 @@ void UPinkCabChaosVehicleMovementComponent::Update(float DeltaTime)
     Frame.Native.TransmissionCurrentGear = Frame.Controls.EngagedGear;
     Frame.Native.TransmissionTargetGear = Frame.Controls.EngagedGear;
     Frame.Native.TransmissionChangeTime = 0.0f;
-    CommandChannel->Publish(MoveTemp(Frame));
+    // Complete the actual native input on its preparation thread; PT must not
+    // replace an older packet with controls sampled from a later GT update.
+    CurAsyncInput->PhysicsInputs.NetworkInputs = Frame.Native;
+    ensureMsgf(CommandChannel->Publish(MoveTemp(Frame), CurAsyncInput),
+        TEXT("PINKCAB_ASYNC_COMMAND_CAPACITY: native input extension was not retained"));
 }
 
 void UPinkCabChaosVehicleMovementComponent::ResetVehicleState()

@@ -61,6 +61,21 @@ FPinkCabChaosVehicleDynamicsProvider::FPinkCabChaosVehicleDynamicsProvider(
 {
 }
 
+EPinkCabMechanicalClutchCapability FPinkCabChaosVehicleDynamicsProvider::GetMechanicalClutchCapability() const
+{
+    const auto* Native = Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+    // Availability of the configured extension, not proof of clutch acceptance.
+    if (!IsValid(Native) || !Native->IsPhysicsStateCreated()
+        || !Native->GetPinkCabClutchConfig().IsValid()
+        || Native->Wheels.IsEmpty() || Native->Wheels.Num() != Native->WheelSetups.Num())
+    {
+        return EPinkCabMechanicalClutchCapability::Unsupported;
+    }
+    for (const auto& Wheel : Native->Wheels)
+        if (!IsValid(Wheel.Get())) return EPinkCabMechanicalClutchCapability::Unsupported;
+    return EPinkCabMechanicalClutchCapability::NativeConstraintExtension;
+}
+
 bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
     const FPinkCabVehicleControlState& Controls)
 {

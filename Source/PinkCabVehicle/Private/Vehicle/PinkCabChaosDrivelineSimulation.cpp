@@ -5,15 +5,15 @@ void FPinkCabChaosDrivelineSimulation::TickVehicle(UWorld* WorldIn, float DeltaT
     const FChaosVehicleAsyncInput& InputData, FChaosVehicleAsyncOutput& OutputData,
     Chaos::FRigidBodyHandle_Internal* Handle)
 {
-    // One coherent local command for this entire physics step. Chassis/trace data
-    // stays in the native packet. Never pair a new clutch with an older throttle.
-    Frame = Channel->ReadCommand();
-    FChaosVehicleAsyncInput EffectiveInput(InputData);
-    if (Frame.Sequence != 0) EffectiveInput.PhysicsInputs.NetworkInputs = Frame.Native;
+    // Select by the actual native async packet, including delayed/repeated ticks.
+    // Do not replace native controls or advance them to an independent GT clock.
+    Frame = Channel->ReadCommand(&InputData);
+    ensureMsgf(Frame.Sequence != 0,
+        TEXT("PINKCAB_ASYNC_COMMAND_MISSING: no snapshot for the native input"));
     Step = {};
     Step.CommandSequence = Frame.Sequence;
     Step.PhysicsStep = ++PhysicsStep;
-    UChaosWheeledVehicleSimulation::TickVehicle(WorldIn, DeltaTime, EffectiveInput, OutputData, Handle);
+    UChaosWheeledVehicleSimulation::TickVehicle(WorldIn, DeltaTime, InputData, OutputData, Handle);
 }
 
 void FPinkCabChaosDrivelineSimulation::ApplyInput(const FControlInputs& Inputs, float DeltaTime)
