@@ -71,9 +71,18 @@ public:
         if (!World) return false;
         for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
         {
-            const auto* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(It->GetChaosMovement());
+            auto* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(It->GetChaosMovement());
             if (!Movement || !Movement->IsPhysicsStateCreated() || Movement->Wheels.Num() != 4) continue;
             Test->TestEqual(TEXT("configured real car exposes native integration availability, not full-lock acceptance"),
+                It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
+                EPinkCabMechanicalClutchCapability::NativeConstraintExtension);
+            const bool WasEnabled = Movement->bMechanicalSimEnabled;
+            Movement->EnableMechanicalSim(false);
+            Test->TestEqual(TEXT("disabled native mechanics cannot advertise an executing clutch"),
+                It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
+                EPinkCabMechanicalClutchCapability::Unsupported);
+            Movement->EnableMechanicalSim(WasEnabled);
+            Test->TestEqual(TEXT("restoring native mechanics restores configured capability"),
                 It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
                 EPinkCabMechanicalClutchCapability::NativeConstraintExtension);
             return true;

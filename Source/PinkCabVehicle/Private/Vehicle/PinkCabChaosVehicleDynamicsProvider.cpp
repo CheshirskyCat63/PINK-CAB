@@ -66,6 +66,7 @@ EPinkCabMechanicalClutchCapability FPinkCabChaosVehicleDynamicsProvider::GetMech
     const auto* Native = Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
     // Availability of the configured extension, not proof of clutch acceptance.
     if (!IsValid(Native) || !Native->IsPhysicsStateCreated()
+        || !Native->bMechanicalSimEnabled
         || !Native->GetPinkCabClutchConfig().IsValid()
         || Native->Wheels.IsEmpty() || Native->Wheels.Num() != Native->WheelSetups.Num())
     {
