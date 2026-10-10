@@ -154,6 +154,7 @@ FString BuildProfileFingerprint(const FPinkCabChaosPhysicalProfile& P)
     AppendFloatArrayParameter(Out, TEXT("ForwardGearRatios"), P.ForwardGearRatios);
     AppendFloatArrayParameter(Out, TEXT("ReverseGearRatios"), P.ReverseGearRatios);
     AppendFloatParameter(Out, TEXT("SteeringAngleRatio"), P.SteeringAngleRatio);
+    AppendVectorArrayParameter(Out, TEXT("SteeringSpeedScaleCurve"), P.SteeringSpeedScaleCurve);
     const FPinkCabTatraProfile Mass = FPinkCabTatraProfile::Canonical();
     AppendIntToken(Out, TEXT("MassDistributionVersion"), Mass.MassDistributionVersion);
     const double MassValues[] = {Mass.BaseVehicleMassKg, Mass.FullFuelMassKg,

@@ -28,7 +28,32 @@ $tests=@(
     'PinkCab.Vehicle.PhysicalFoundation.LegacyCoordinateMigration',
     'PinkCab.Vehicle.PhysicalFoundation.InvalidMassCoordinates',
     'PinkCab.Vehicle.PhysicalFoundation.LiveLoadEnvelope',
-    'PinkCab.Vehicle.Visual.TatraWheelContacts'
+    'PinkCab.Vehicle.Visual.TatraWheelContacts',
+    # Task6 bounded disconnect/handbrake proof; does not certify partial-clutch actuation.
+    'PinkCab.Vehicle.Actuation.DrivelineDisconnect',
+    'PinkCab.Vehicle.Actuation.DisconnectedCoast',
+    'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque',
+    # Task6 cannot pass while its required physical clutch is still missing.
+    'PinkCab.Vehicle.Actuation.PartialClutchTransfer',
+    'PinkCab.Vehicle.Input.ClutchCapability',
+    'PinkCab.Vehicle.Actuation.NativeSteeringAuthority',
+    'PinkCab.Vehicle.Actuation.HeldSteeringRuntime',
+    'PinkCab.Vehicle.Actuation.HeldSteeringReverse',
+    'PinkCab.Vehicle.Actuation.NativeSteeringCurveOwnership',
+    'PinkCab.Vehicle.Actuation.NativeJointCapacity',
+    'PinkCab.Vehicle.Actuation.ClutchCommandWake',
+    'PinkCab.Vehicle.Actuation.ClutchBackDrivePower',
+    'PinkCab.Vehicle.Actuation.ClutchEnvelopeRuntime',
+    'PinkCab.Vehicle.Actuation.ClutchLoadedLock',
+    'PinkCab.Vehicle.Input.UnconfiguredClutchCapability',
+    'PinkCab.Vehicle.Actuation.ClutchAsyncFrameIdentity',
+    'PinkCab.Vehicle.Actuation.ClutchQueuedReset',
+    'PinkCab.Vehicle.Actuation.ClutchFrameRetention',
+    'PinkCab.Vehicle.Actuation.NativeClutchHolding',
+    'PinkCab.Vehicle.Actuation.NativeRoadShaftHolding',
+    'PinkCab.Vehicle.Actuation.NativeWheelRollingBoundary',
+    'PinkCab.Vehicle.Actuation.ClutchLoadedLockReverse',
+    'PinkCab.Vehicle.Actuation.NativeClutchOverload'
 )
 
 $filter=$tests -join '+'

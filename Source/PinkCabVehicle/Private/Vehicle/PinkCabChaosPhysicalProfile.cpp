@@ -137,7 +137,7 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ModelId = FName(TEXT("TATRA_613"));
     R.ProfileId = FName(TEXT("PINKCAB_TATRA613_CHAOS"));
     R.SchemaVersion = 1;
-    R.CalibrationVersion = 7;
+    R.CalibrationVersion = 8;
     R.UnitSystemId = FName(TEXT("PINKCAB_PHYSICS_UNITS_V1"));
     R.ProvenanceSetId = FName(TEXT("PINKCAB_TATRA613_BASELINE_2026_09_26"));
     R.CompatibilityId = FName(TEXT("PINKCAB_CHAOS_PROFILE_V1"));
@@ -192,6 +192,10 @@ FPinkCabChaosPhysicalProfile FPinkCabChaosPhysicalProfile::ForVariant(
     R.ForwardGearRatios = P(TArray<float>{4.0f, 2.2f, 1.5f, 1.1f, 0.85f}, A::Calibration);
     R.ReverseGearRatios = P(TArray<float>{4.0f}, A::Calibration);
     R.SteeringAngleRatio = P(0.72f, A::Calibration);
+    // CD-649: speed may shape new mouse input, never an already-held wheel target.
+    // A positive final X is needed by native FillSteeringSetup sampling (MPH).
+    R.SteeringSpeedScaleCurve = P(TArray<FVector2D>{FVector2D(0.0, 1.0),
+        FVector2D(120.0, 1.0)}, A::DesignTarget);
     R.FrontWheel = MakeWheel(true, Variant);
     R.RearWheel = MakeWheel(false, Variant);
     return R;
@@ -228,6 +232,7 @@ bool FPinkCabChaosPhysicalProfile::HasCompleteProvenance() const
         ForwardGearRatios.Authority,
         ReverseGearRatios.Authority,
         SteeringAngleRatio.Authority,
+        SteeringSpeedScaleCurve.Authority,
     };
     return HasValidEnvelope()
         && AllAuthoritiesSpecified(Authorities)
@@ -291,6 +296,14 @@ void FPinkCabChaosPhysicalProfile::ApplyToMovement(
     Movement.TransmissionSetup.ReverseGearRatios = ReverseGearRatios.Value;
     Movement.SteeringSetup.SteeringType = ESteeringType::Ackermann;
     Movement.SteeringSetup.AngleRatio = SteeringAngleRatio.Value;
+    // Never modify a shared curve asset left by a Blueprint or prior setup.
+    Movement.SteeringSetup.SteeringCurve.ExternalCurve = nullptr;
+    FRichCurve* SteeringCurve = Movement.SteeringSetup.SteeringCurve.GetRichCurve();
+    SteeringCurve->Reset();
+    for (const FVector2D& Key : SteeringSpeedScaleCurve.Value)
+    {
+        SteeringCurve->AddKey(static_cast<float>(Key.X), static_cast<float>(Key.Y));
+    }
 
     Movement.TorqueControl.Enabled = false;
     Movement.TargetRotationControl.Enabled = false;

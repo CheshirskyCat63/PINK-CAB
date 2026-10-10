@@ -6,6 +6,10 @@
 #include "Vehicle/PinkCabVehicleInputFrame.h"
 #include "Vehicle/PinkCabVehicleInputResponse.h"
 #include "Vehicle/PinkCabChaosVehicleDynamicsProvider.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
+#include "Runtime/PinkCabChaosTatraPawn.h"
+#include "Tests/AutomationCommon.h"
+#include "EngineUtils.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FPinkCabCanonicalPedalMappingTest,
@@ -49,18 +53,79 @@ bool FPinkCabVehicleInputFrameTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("cockpit handbrake feeds control state"), Controls.Handbrake, 1.0f);
     return true;
 }
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FPinkCabChaosClutchCapabilityTest,
+namespace
+{
+class FVerifyLiveClutchCapability final : public IAutomationLatentCommand
+{
+public:
+    explicit FVerifyLiveClutchCapability(FAutomationTestBase* InTest)
+        : Test(InTest), Started(FPlatformTime::Seconds()) {}
+    bool Update() override
+    {
+        if (FPlatformTime::Seconds() - Started > 15.0)
+        {
+            Test->AddError(TEXT("real clutch capability fixture did not initialize"));
+            return true;
+        }
+        UWorld* World = AutomationCommon::GetAnyGameWorld();
+        if (!World) return false;
+        for (TActorIterator<APinkCabChaosTatraPawn> It(World); It; ++It)
+        {
+            auto* Movement = Cast<UPinkCabChaosVehicleMovementComponent>(It->GetChaosMovement());
+            if (!Movement || !Movement->IsPhysicsStateCreated() || Movement->Wheels.Num() != 4) continue;
+            Test->TestEqual(TEXT("configured real car exposes native integration availability, not full-lock acceptance"),
+                It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
+                EPinkCabMechanicalClutchCapability::NativeConstraintExtension);
+            const bool WasEnabled = Movement->bMechanicalSimEnabled;
+            Movement->EnableMechanicalSim(false);
+            Test->TestEqual(TEXT("disabled native mechanics cannot advertise an executing clutch"),
+                It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
+                EPinkCabMechanicalClutchCapability::Unsupported);
+            Movement->EnableMechanicalSim(WasEnabled);
+            Test->TestEqual(TEXT("restoring native mechanics restores configured capability"),
+                It->GetPinkCabDynamicsProvider().GetMechanicalClutchCapability(),
+                EPinkCabMechanicalClutchCapability::NativeConstraintExtension);
+            return true;
+        }
+        return false;
+    }
+private:
+    FAutomationTestBase* Test;
+    double Started;
+};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabChaosClutchCapabilityTest,
     "PinkCab.Vehicle.Input.ClutchCapability",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
 bool FPinkCabChaosClutchCapabilityTest::RunTest(const FString& Parameters)
 {
-    FPinkCabChaosVehicleDynamicsProvider Provider(nullptr);
-    TestEqual(
-        TEXT("stock Chaos provider exposes continuous external-torque clutch transfer"),
-        Provider.GetMechanicalClutchCapability(),
-        EPinkCabMechanicalClutchCapability::ContinuousExternalTorque);
+    if (!AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"), true)) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FVerifyLiveClutchCapability(this));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabUnconfiguredClutchCapabilityTest,
+    "PinkCab.Vehicle.Input.UnconfiguredClutchCapability",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabUnconfiguredClutchCapabilityTest::RunTest(const FString& Parameters)
+{
+    const FPinkCabChaosVehicleDynamicsProvider NullProvider(nullptr);
+    TestEqual(TEXT("null provider cannot expose a usable clutch"), NullProvider.GetMechanicalClutchCapability(),
+        EPinkCabMechanicalClutchCapability::Unsupported);
+    auto* Movement = NewObject<UPinkCabChaosVehicleMovementComponent>();
+    const FPinkCabChaosVehicleDynamicsProvider Unregistered(Movement);
+    TestEqual(TEXT("uncreated physics is not a configured runtime capability"), Unregistered.GetMechanicalClutchCapability(),
+        EPinkCabMechanicalClutchCapability::Unsupported);
+    FPinkCabClutchDrivelineConfig Invalid;
+    Invalid.MaxClutchTorqueNm = 0.0f;
+    Movement->ConfigurePinkCabClutch(Invalid);
+    TestEqual(TEXT("invalid clutch configuration cannot advertise availability"), Unregistered.GetMechanicalClutchCapability(),
+        EPinkCabMechanicalClutchCapability::Unsupported);
+    auto* Stock = NewObject<UChaosWheeledVehicleMovementComponent>();
+    const FPinkCabChaosVehicleDynamicsProvider WrongType(Stock);
+    TestEqual(TEXT("stock movement has no project clutch extension"), WrongType.GetMechanicalClutchCapability(),
+        EPinkCabMechanicalClutchCapability::Unsupported);
     return true;
 }
 

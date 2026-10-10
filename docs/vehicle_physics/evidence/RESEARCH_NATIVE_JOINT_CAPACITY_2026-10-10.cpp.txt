@@ -1,0 +1,82 @@
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Misc/AutomationTest.h"
+#include "Chaos/PBDJointConstraints.h"
+#include "Physics/ImmediatePhysics/ImmediatePhysicsChaos/ImmediatePhysicsSimulation_Chaos.h"
+#include "Physics/ImmediatePhysics/ImmediatePhysicsChaos/ImmediatePhysicsActorHandle_Chaos.h"
+#include "Physics/ImmediatePhysics/ImmediatePhysicsChaos/ImmediatePhysicsJointHandle_Chaos.h"
+
+// Uses the exported engine API, not private/unexported solver functions.
+// Research only: native rotational connection, no Tatra or world-body changes.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabNativeImmediateClutchResearch,
+    "PinkCab.Research.NativeImmediateClutch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabNativeImmediateClutchResearch::RunTest(const FString& Parameters)
+{
+    using namespace ImmediatePhysics_Chaos;
+    for (const double Dt : {1.0/30.0, 1.0/60.0, 1.0/120.0})
+    for (const bool BackDrive : {false, true})
+    for (const double CapacityScale : {1.0, 0.4})
+    for (const double Coupling : {0.0, 0.25, 0.5, 0.949, 0.95, 0.999, 1.0})
+    {
+        const double Initial0=BackDrive ? 100.0 : 200.0;
+        const double Initial1=BackDrive ? 200.0 : 100.0;
+        FSimulation Native;
+        Native.SetSolverSettings(Dt, -1, -1, 1, 1, 1, 0, 0);
+        FActorHandle* Rotors[2] = {};
+        for (int Index=0; Index<2; ++Index)
+        {
+            FActorSetup Setup;
+            Setup.ActorType=EActorType::DynamicActor;
+            Setup.Transform=FTransform::Identity;
+            Setup.CoMTransform=FTransform::Identity;
+            Setup.Mass=1;
+            Setup.Inertia=FVector(Index==0 ? 0.016 : 0.032);
+            Setup.LinearDamping=Setup.AngularDamping=0;
+            Setup.bInertiaConditioningEnabled=false;
+            Setup.bEnableGravity=false;
+            Setup.bGyroscopicTorqueEnabled=false;
+            Setup.CollisionEnabled=ECollisionEnabled::NoCollision;
+            Rotors[Index]=Native.CreateActor(MoveTemp(Setup));
+            if (!TestNotNull(TEXT("exported native rotor construction"),Rotors[Index])) return false;
+            Native.SetEnabled(Rotors[Index],true);
+            Native.SetHasCollision(Rotors[Index],false);
+            Rotors[Index]->SetMaxAngularVelocitySquared(1000000);
+            Rotors[Index]->SetAngularVelocity(FVector(Index==0 ? Initial0 : Initial1,0,0));
+        }
+        Chaos::FPBDJointSettings Settings;
+        Settings.ConnectorTransforms=Chaos::FTransformPair(Chaos::FRigidTransform3::Identity,Chaos::FRigidTransform3::Identity);
+        Settings.LinearMotionTypes=Chaos::TVector<Chaos::EJointMotionType,3>(Chaos::EJointMotionType::Free);
+        Settings.AngularMotionTypes=Chaos::TVector<Chaos::EJointMotionType,3>(Chaos::EJointMotionType::Free);
+        Settings.bMassConditioningEnabled=false;
+        Settings.bProjectionEnabled=false;
+        Settings.bShockPropagationEnabled=false;
+        Settings.AngularDriveForceMode=Chaos::EJointForceMode::Force;
+        Settings.bAngularTwistVelocityDriveEnabled=Coupling>0;
+        Settings.AngularDriveDamping=Chaos::FVec3(100);
+        Settings.AngularDriveStiffness=Chaos::FVec3(0);
+        Settings.AngularDriveMaxTorque=Chaos::FVec3(Coupling*CapacityScale);
+        Settings.AngularDriveVelocityTarget=Chaos::FVec3(0);
+        auto* Joint=Native.CreateJoint(FJointSetup(Settings,Rotors[0],Rotors[1]));
+        if(!TestNotNull(TEXT("exported native joint construction"),Joint)) return false;
+        Native.Simulate(Dt,Dt,1,FVector::ZeroVector);
+        const double W0=Rotors[0]->GetAngularVelocity().X;
+        const double W1=Rotors[1]->GetAngularVelocity().X;
+        const double Torque=0.016*(Initial0-W0)/Dt;
+        const double MomentumDelta=0.016*(W0-Initial0)+0.032*(W1-Initial1);
+        const double EnergyDelta=0.5*(0.016*(W0*W0-Initial0*Initial0)+0.032*(W1*W1-Initial1*Initial1));
+        AddInfo(FString::Printf(TEXT("NATIVE_IMMEDIATE dt=%.8f c=%.3f w=(%.8f,%.8f) torque_nm=%.8f dL=%.8f dE=%.8f"),Dt,Coupling,W0,W1,Torque,MomentumDelta,EnergyDelta));
+        TestTrue(TEXT("exported native connection respects torque cap"),FMath::Abs(Torque-(BackDrive ? -1.0 : 1.0)*Coupling*CapacityScale)<0.02);
+        TestTrue(TEXT("exported native connection conserves angular momentum"),FMath::Abs(MomentumDelta)<0.0001);
+        TestTrue(TEXT("zero target clutch cannot generate energy"),EnergyDelta<0.01);
+        if(Coupling==0) TestTrue(TEXT("open rotor velocities are independent"),FMath::Abs(W0-Initial0)<0.0001&&FMath::Abs(W1-Initial1)<0.0001);
+        // Release an already-loaded connection without resetting either shaft.
+        Settings.bAngularTwistVelocityDriveEnabled=false;
+        Joint->GetConstraint()->SetSettings(Settings);
+        Native.Simulate(Dt,Dt,1,FVector::ZeroVector);
+        TestTrue(TEXT("opening an existing clutch adds no delayed reaction"),
+            FMath::Abs(Rotors[0]->GetAngularVelocity().X-W0)<0.0001 &&
+            FMath::Abs(Rotors[1]->GetAngularVelocity().X-W1)<0.0001);
+
+    }
+    return true;
+}
+#endif

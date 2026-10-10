@@ -15,8 +15,8 @@
 class FPinkCabTatraPhysicalFoundationAuditCommand final : public IAutomationLatentCommand
 {
 public:
-    explicit FPinkCabTatraPhysicalFoundationAuditCommand(FAutomationTestBase* InTest)
-        : Test(InTest), Started(FPlatformTime::Seconds()) {}
+    explicit FPinkCabTatraPhysicalFoundationAuditCommand(FAutomationTestBase* InTest, bool bInNativeSleepOnly = false)
+        : Test(InTest), Started(FPlatformTime::Seconds()), bNativeSleepOnly(bInNativeSleepOnly) {}
 
     virtual bool Update() override
     {
@@ -38,8 +38,12 @@ public:
         if (!Pawn || !Pawn->GetMesh() || !Pawn->GetChaosMovement()) return false;
 
         Pawn->SetSystemMenuOpen(false);
-        if (SettlingStarted == 0.0)
+        if (SettlingStarted < 0.0)
         {
+            SavedSleepThreshold = Pawn->GetChaosMovement()->SleepThreshold;
+            if (bNativeSleepOnly) Pawn->GetChaosMovement()->SleepThreshold = 0.0f;
+            Test->AddInfo(FString::Printf(TEXT("T6_SETTLEMENT sleep_threshold_before=%.3f diagnostic_native_sleep_only=%d"),
+                SavedSleepThreshold, bNativeSleepOnly));
             SettlingStarted = World->GetTimeSeconds();
             return false;
         }
@@ -68,6 +72,9 @@ public:
         FBodyInstance* RootBody = Mesh->GetBodyInstance();
         Test->TestNotNull(TEXT("root physics body exists"), RootBody);
         if (!RootBody) return true;
+        Test->AddInfo(FString::Printf(TEXT("T6_SETTLEMENT final_awake=%d velocity=%s angular=%s"),
+            RootBody->IsInstanceAwake(), *Pawn->GetVelocity().ToString(),
+            *Mesh->GetPhysicsAngularVelocityInRadians().ToString()));
 
         Test->AddInfo(FString::Printf(
             TEXT("T5_CHASSIS mesh=%s physics_asset=%s bodies=%d constraints=%d movement_mass=%.3f aggregate_mesh_mass=%.3f root_mass=%.3f"),
@@ -160,17 +167,20 @@ public:
         Test->TestTrue(TEXT("root mass is finite"), FMath::IsFinite(RootBody->GetBodyMass()));
         Test->TestTrue(TEXT("CoM is finite"), !ComComponent.ContainsNaN());
         Test->TestTrue(TEXT("inertia is finite"), !Inertia.ContainsNaN());
+        if (bNativeSleepOnly) Movement->SleepThreshold = SavedSleepThreshold;
         return true;
     }
 
 private:
     FAutomationTestBase* Test = nullptr;
     double Started = 0.0;
-    double SettlingStarted = 0.0;
+    double SettlingStarted = -1.0;
     double FrontSamples = 0.0;
     double RearSamples = 0.0;
     int32 SampleCount = 0;
     bool bAllSamplesInContact = true;
+    bool bNativeSleepOnly = false;
+    float SavedSleepThreshold = 0.0f;
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -189,4 +199,13 @@ bool FPinkCabTatraPhysicalFoundationBaselineAuditTest::RunTest(const FString& Pa
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPinkCabNativeSettlementDiagnostic,
+    "PinkCab.Vehicle.PhysicalFoundation.NativeSleepSettlementDiagnostic",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPinkCabNativeSettlementDiagnostic::RunTest(const FString& Parameters)
+{
+    if (!AutomationOpenMap(TEXT("/Game/Dev/Maps/L_PinkCab_L1_EndlessStraight"), true)) return false;
+    ADD_LATENT_AUTOMATION_COMMAND(FPinkCabTatraPhysicalFoundationAuditCommand(this, true));
+    return true;
+}
 #endif

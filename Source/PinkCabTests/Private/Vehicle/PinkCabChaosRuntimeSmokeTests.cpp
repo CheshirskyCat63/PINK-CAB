@@ -5,6 +5,7 @@
 #include "EngineUtils.h"
 #include "Math/RotationMatrix.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "Vehicle/PinkCabChaosVehicleMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "Interaction/PinkCabInteractionModel.h"
 #include "Runtime/PinkCabChaosTatraPawn.h"
@@ -81,7 +82,11 @@ public:
             {
                 Test->TestTrue(TEXT("stock Chaos mechanical simulation remains available with ignition off"),
                     Movement->bMechanicalSimEnabled);
-                Test->TestTrue(TEXT("stock Chaos handbrake mirrors the engaged parking lever"),
+                const auto* AnalogMovement = Cast<UPinkCabChaosVehicleMovementComponent>(Movement);
+                Test->TestTrue(TEXT("native analog command mirrors engaged parking lever"),
+                    AnalogMovement && FMath::IsNearlyEqual(AnalogMovement->GetPinkCabHandbrakeInput(),
+                        Pawn->GetCockpitState().GetHandbrakeAmount(), 1.e-4f));
+                Test->TestFalse(TEXT("legacy boolean handbrake is not a second actuator"),
                     Movement->GetHandbrakeInput());
             }
             Test->TestTrue(TEXT("live cockpit begins with parking lever engaged"),

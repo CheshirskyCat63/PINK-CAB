@@ -110,6 +110,8 @@ struct PINKCABVEHICLE_API FPinkCabChaosPhysicalProfile
     TPinkCabPhysicalParameter<TArray<float>> ForwardGearRatios;
     TPinkCabPhysicalParameter<TArray<float>> ReverseGearRatios;
     TPinkCabPhysicalParameter<float> SteeringAngleRatio;
+    // Native maximum-steer multiplier by speed (X in MPH). No second steering owner.
+    TPinkCabPhysicalParameter<TArray<FVector2D>> SteeringSpeedScaleCurve;
 
     FPinkCabChaosWheelPhysicalProfile FrontWheel;
     FPinkCabChaosWheelPhysicalProfile RearWheel;

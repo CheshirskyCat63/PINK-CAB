@@ -194,7 +194,7 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         Partial.ExternalRearDriveTorquePerWheelNm, 0.0f);
     TestEqual(TEXT("partial clutch uses authoritative PinkCab driveline"),
         Provider.GetLastCausalActuationTelemetry().DriveTorquePath,
-        EPinkCabCausalDriveTorquePath::PinkCabClutchDriveline);
+        EPinkCabCausalDriveTorquePath::NativeConstraintClutch);
     TestEqual(TEXT("provider adapts authoritative throttle to Chaos square-law input"),
         Movement->GetThrottleInput(),
         FPinkCabChaosEngineAdapter::ToChaosThrottleInput(
@@ -212,7 +212,7 @@ bool FPinkCabCombustionPermissionRunningPathTest::RunTest(const FString& Paramet
         Full.ExternalRearDriveTorquePerWheelNm, 0.0f);
     TestEqual(TEXT("full coupling stays on the same PinkCab driveline path"),
         Provider.GetLastCausalActuationTelemetry().DriveTorquePath,
-        EPinkCabCausalDriveTorquePath::PinkCabClutchDriveline);
+        EPinkCabCausalDriveTorquePath::NativeConstraintClutch);
     TestEqual(TEXT("full coupling uses the same Chaos square-law adapter"),
         Movement->GetThrottleInput(),
         FPinkCabChaosEngineAdapter::ToChaosThrottleInput(

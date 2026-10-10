@@ -8,7 +8,7 @@ public class PinkCabTests : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Core", "CoreUObject", "ApplicationCore", "Engine", "InputCore", "UnrealEd", "PinkCab",
-            "ChaosVehicles", "PhysicsCore", "RHI",
+            "ChaosVehicles", "ChaosVehiclesCore", "PhysicsCore", "RHI",
             "PinkCabCore", "PinkCabInteraction", "PinkCabVehicle", "PinkCabEconomy", "PinkCabWorld",
             "PinkCabTraffic", "PinkCabTaxi", "PinkCabPersistence", "AssetRegistry", "Json"
         });

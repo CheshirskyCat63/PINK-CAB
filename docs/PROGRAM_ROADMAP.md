@@ -1,5 +1,35 @@
 # PINK CAB - FIRST EURO Execution Roadmap
 
+## Current Task6 review correction checkpoint - 2026-10-10
+
+Runtime `cfd9bfe` (including `9fdc7f0`) corrects900b5e4's two integration-review defects: real configured/enabled capability instead of a constant, and exact-native-packet command snapshots instead of newest-command replacement on PT. Capability disable/restore, queued inputs/reset, bounded retention and2048 recycled packet identities are tested; no joint algorithm, profile/engine/gear/tyre/spring/body/input-grammar/Content/Config/workflow change. Local single-player only; full lifetime/soak is still open.
+
+Fresh final Editor build PASS; mandatory38=37PASS/1FAIL; combined99=98PASS/1FAIL;58script tests and static gates PASS. The only failed runtime test is ClutchLoadedLock: mean~1415-1420RPM slip vs unchanged25RPM limit. Full holding behavior is NOT fixed. Prior900b5e4 partial transfer exists, but its coherence/availability claims are superseded by these fixes, not treated as proof.
+
+Tasks0-5 remain6/10 scoped stages=60%; Task6 reporting3/6=50%, not realism/time. Next: physical full holding/load connection, then complete lifecycle/thermal/FPS and integration; Tasks7-9 held. PR73 remains DRAFT; mained18a57 and installed6edea774 unchanged. Current detailed evidence: docs/vehicle_physics/evidence/VF90_TASK6_REVIEW_CORRECTIONS_2026-10-10.md.
+
+## Historical Task6 integration checkpoint - 2026-10-10
+
+**Runtime900b5e4 in draftPR73: native partial-clutch integration exists; full Task6 remains RED.** Actual gear stays selected and continuous pressure/capacity reaches the existing wheeled mechanical step through one complete synchronized local command. Exported native angular-joint output drives the original native rear-wheel path once. No restored homemade solver, Modular/world-body migration, chassis/tyre/steering replacement or physical-profile retune. Handbrake, N/open/coast, held-steering and foundation/load checks remain passing in final scopes.
+
+Fresh mandatory34 =33PASS/1FAIL; joint controls/engine/interaction95 =94PASS/1FAIL. In BOTH the sole failure is **ClutchLoadedLock**, now mandatory: full healthy engagement under normal load retains mean~1400RPM slip versus unchanged25RPM diagnostic tolerance. Former partial-transfer/capability tests pass but do not certify a complete clutch. Native-wrapper126cases and real-car28pressure/gear/capacity configurations pass;58script tests, Editor compilation and static guards pass. No package, owner acceptance or main integration.
+
+Next: resolve full engagement under actual load, then finish reset/save/focus/parking/limiter/idle/terminal-health/work-based thermal/FPS evidence and independent review. Tasks7-9 stay held;6/10stages=60%, Task6 full-clutch block still open. Mained18a57 and installed6edea774 unchanged. Exact source/log hashes: docs/vehicle_physics/evidence/VF90_TASK6_NATIVE_CLUTCH_INTEGRATION_2026-10-10.md.
+
+## Historical Task6 draft checkpoint - 2026-10-10
+
+Steering publication update: **59dcb4d is committed and pushed**, resolving the prior local-only state. The native steering-speed curve preserves held wheel angles; forward/reverse, profile identity and shared-curve ownership passed nine freshly rerun checks. Original mandatory29 results remain27PASS/2FAIL; joint82 results remain80PASS/2FAIL, both blocked by partial clutch. These prior full runs are not relabelled as a new full-source run. Evidence: VF90_TASK6_STEERING_AUTHORITY_2026-10-10.md. Major scoped-stage closure remains6/10=60%; Task6 reporting3/6=50%, not effort/realism or complete-car acceptance.
+
+Native capacity-joint feasibility now passes84 standalone cases plus loaded-release checks via the exported engine API, without world objects or custom solver code. This is NOT Tatra integration or Task6 acceptance. A fresh final clean-source mandatory29 rerun remains27PASS/2FAIL. See the steering/native feasibility evidence for input-thread, inertia, torque-ownership and lifecycle requirements still open.
+
+### Prior cleanup checkpoint (retained scope)
+
+Task5 main remains ed18a57; accepted installed6edea774 is untouched. Draft PR73 preserves the verified neutral/open-clutch/handbrake/coast correction1d6929d and live-coast test e6950e1. Current cleanup/gate commit be80247 removes the uncalled custom clutch solver, retains its versioned configuration verbatim and updates ownership to the actual native adapter. No new dynamics solver, physical calibration, input grammar, plugin migration or installed package is introduced.
+
+**Current mandatory runtime selection:25 executed,23 PASS,2 FAIL.** PartialClutchTransfer and ClutchCapability are now included in verify-runtime.ps1 rather than omitted from the green focused subset. All previous23 checks passed in the same run. Script suite58/58, Editor build and static guards passed. The earlier23/23 and75/77 records remain scoped history, not completion. Task6 still lacks actual continuous partial clutch plus combined thermal/focus/parking/FPS proof; Tasks7-9 remain held.
+
+Native-first boundary: standard Chaos FSimpleEngineSim has no clutch simulation in its wheel/engine speed coupling. The separate installed Chaos Modular Vehicle plugin has a native clutch and an official skeletal sample. Isolated setup testing made that sample drive, but did NOT prove full disengagement, continuous torque capacity or shaft-energy reaction. No Modular runtime has been adopted for the Tatra. Resolve that native capability before any explicit coherent integration decision; never disguise migration as coefficient tuning or restore the retired solver. Evidence and hashed local probes: docs/vehicle_physics/evidence/VF90_TASK6_NATIVE_FIRST_CLEANUP_2026-10-10.md. Previous bounded disconnection proof remains VF90_TASK6_DISCONNECTION_2026-10-10.md.
+
 **Status:** CURRENT EXECUTION MIRROR - reconciled 2026-10-09.
 **Product:** CD-519. **Mechanics Freeze:** CD-848. **Scope:** CD-753.
 **Current vehicle implementation umbrella:** CD-648. **Canonical branch:** protected main.
@@ -24,7 +54,7 @@ Deliver one correctly presented, fully interactive Tatra on a stable road with e
 | Integrated runtime at audit | `c8459ba125ee70093f0ae4c82017e9c8c849199b` / PR #70; Tasks 0-4 scoped technical/admin integration |
 | Task 5 branch | `feat/vf90-task5-physical-foundation` / PR72; runtime e0dee4e, review correction 4853a22 |
 | Task 5 result | Physical foundation technical PASS; review corrected, package proven; use PR72 merged state for integration |
-| Current whole-car verdict | NOT ACCEPTED; Tasks 5-9 remain open |
+| Current whole-car verdict | NOT ACCEPTED; Task5 technical scope integrated, Tasks6-9 open |
 
 A merge, a test PASS, a delivered package and an owner verdict are different facts. Old P02/P03/P04 acceptance remains valid only for its exact scope/candidate. Task counts are not a vehicle/game completion percentage.
 

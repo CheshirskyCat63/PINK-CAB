@@ -18,6 +18,7 @@ const TCHAR* DrivePathToken(const EPinkCabCausalDriveTorquePath Path)
     {
     case EPinkCabCausalDriveTorquePath::ExternalPartialClutch: return TEXT("ExternalPartialClutch");
     case EPinkCabCausalDriveTorquePath::ChaosMechanical: return TEXT("ChaosMechanical");
+    case EPinkCabCausalDriveTorquePath::NativeConstraintClutch: return TEXT("NativeConstraintClutch");
     default: return TEXT("None");
     }
 }

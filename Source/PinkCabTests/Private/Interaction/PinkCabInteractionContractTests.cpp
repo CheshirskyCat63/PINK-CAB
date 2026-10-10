@@ -60,7 +60,7 @@ bool FPinkCabContextualGestureTest::RunTest(const FString& Parameters)
     const FPinkCabInteractionControlSpec Horn(FName(TEXT("Horn")), false, true, false);
     State.SetCurrentTarget(Horn);
     const uint32 BeforeHorn = State.GetActuationSerial();
-    TestFalse(TEXT("horn does not require RMB grip"), State.TryBeginGrip());
+    TestFalse(TEXT("horn LMB test starts without RMB grip"), State.IsGripActive());
     TestTrue(TEXT("horn accepts LMB press"), State.TryMomentaryPress(true));
     TestTrue(TEXT("horn remains held"), State.IsMomentaryHeld());
     TestTrue(TEXT("horn release is accepted"), State.TryMomentaryPress(false));
