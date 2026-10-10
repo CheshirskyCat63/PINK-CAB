@@ -138,7 +138,7 @@ bool FPinkCabP03HumanFeelCorrectionContractTest::RunTest(const FString&)
     // and WheelLoadRatio=0.38 are no longer an admissible way to manufacture
     // oversteer. Reuse the already-proven R6 physical-reference candidate.
     TestEqual(TEXT("P04 calibration retains the accepted P03 correction"),
-        Profile.CalibrationVersion, 7);
+        Profile.CalibrationVersion, 8);
     TestEqual(TEXT("front load sensitivity uses physical reference"),
         Profile.FrontWheel.WheelLoadRatio.Value, 1.0f);
     TestEqual(TEXT("rear load sensitivity uses physical reference"),
@@ -217,7 +217,7 @@ bool FPinkCabPhysicsProfileEnvelopeIdentityTest::RunTest(const FString& Paramete
     TestEqual(TEXT("profile id is stable"),
         Profile.ProfileId, FName(TEXT("PINKCAB_TATRA613_CHAOS")));
     TestEqual(TEXT("schema starts at v1"), Profile.SchemaVersion, 1);
-    TestEqual(TEXT("P04 gearing advances calibration to v7"), Profile.CalibrationVersion, 7);
+    TestEqual(TEXT("Task6 steering authority advances calibration to v8"), Profile.CalibrationVersion, 8);
     TestEqual(TEXT("unit contract id is explicit"),
         Profile.UnitSystemId, FName(TEXT("PINKCAB_PHYSICS_UNITS_V1")));
     TestEqual(TEXT("provenance set id is explicit"),
@@ -321,7 +321,7 @@ bool FPinkCabP04GearingCandidateTest::RunTest(const FString&)
     const auto Profile = FPinkCabChaosPhysicalProfile::ForVariant(EPinkCabCalibrationVariant::Nominal);
     const FPinkCabGearboxControllerConfig Config;
     const FPinkCabGearboxController Controller;
-    TestEqual(TEXT("P04 candidate advances calibration identity"), Profile.CalibrationVersion, 7);
+    TestEqual(TEXT("current profile retains explicit calibration identity"), Profile.CalibrationVersion, 8);
     TestEqual(TEXT("P04 measured moderate first ratio"), Profile.ForwardGearRatios.Value[0], 4.0f);
     TestEqual(TEXT("P04 reverse uses the same explicit launch ratio"), Profile.ReverseGearRatios.Value[0], 4.0f);
     TestEqual(TEXT("P04 leaves second gear unchanged"), Profile.ForwardGearRatios.Value[1], 2.2f);

@@ -35,7 +35,11 @@ $tests=@(
     'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque',
     # Task6 cannot pass while its required physical clutch is still missing.
     'PinkCab.Vehicle.Actuation.PartialClutchTransfer',
-    'PinkCab.Vehicle.Input.ClutchCapability'
+    'PinkCab.Vehicle.Input.ClutchCapability',
+    'PinkCab.Vehicle.Actuation.NativeSteeringAuthority',
+    'PinkCab.Vehicle.Actuation.HeldSteeringRuntime',
+    'PinkCab.Vehicle.Actuation.HeldSteeringReverse',
+    'PinkCab.Vehicle.Actuation.NativeSteeringCurveOwnership'
 )
 
 $filter=$tests -join '+'
