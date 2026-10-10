@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
-#include "Vehicle/PinkCabClutchDrivelineModel.h"
+#include "Vehicle/PinkCabClutchDrivelineConfig.h"
 #include "Vehicle/PinkCabEngineRpmEnvelope.h"
 #include "Vehicle/PinkCabVehicleMassProperties.h"
 #include "PinkCabChaosVehicleMovementComponent.generated.h"

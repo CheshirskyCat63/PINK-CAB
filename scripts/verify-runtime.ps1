@@ -32,7 +32,10 @@ $tests=@(
     # Task6 bounded disconnect/handbrake proof; does not certify partial-clutch actuation.
     'PinkCab.Vehicle.Actuation.DrivelineDisconnect',
     'PinkCab.Vehicle.Actuation.DisconnectedCoast',
-    'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque'
+    'PinkCab.Vehicle.Actuation.AnalogHandbrakeTorque',
+    # Task6 cannot pass while its required physical clutch is still missing.
+    'PinkCab.Vehicle.Actuation.PartialClutchTransfer',
+    'PinkCab.Vehicle.Input.ClutchCapability'
 )
 
 $filter=$tests -join '+'

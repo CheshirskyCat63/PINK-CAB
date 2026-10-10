@@ -85,7 +85,7 @@ Hard rules:
 | `vehicle_control_orchestration` | per-frame vehicle control orchestration | Vehicle | `Source/PinkCab/Public/Vehicle/PinkCabVehicleControlRuntime.h` | `PinkCab.Vehicle.ControlRuntime.Runtime` |
 | `steering` | steering response/feel logic | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabSteeringController.h` | `PinkCab.Vehicle.ControlRuntime.Steering` |
 | `gearbox` | H-gate/requested/engaged behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabGearboxController.h` | `PinkCab.Vehicle.ControlRuntime.Gearbox` |
-| `clutch` | clutch torque transfer, slip, lock and bidirectional engineв†”shaft reaction | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h` | `PinkCab.Vehicle.Physics.P02.ClutchModel` |
+| `clutch` | native adapter boundary; partial torque/capacity/back-drive still OPEN under CD-659; profile data is not actuation | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h` | `PinkCab.Vehicle.Actuation` (partial-transfer gate currently RED) |
 | `throttle` | launch redose/target behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabLaunchController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `brake` | brake dosing target | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabPedalDosingController.h` | `PinkCab.Vehicle.ControlRuntime` |
 | `handbrake` | analog parking/hydraulic behavior | Vehicle | `Source/PinkCabVehicle/Public/Vehicle/PinkCabHandbrakeActuator.h` | `PinkCab.Vehicle.ControlRuntime.Handbrake` |

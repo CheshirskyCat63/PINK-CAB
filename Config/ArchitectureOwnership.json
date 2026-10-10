@@ -74,9 +74,9 @@
     {
       "id": "clutch",
       "owner_domain": "Vehicle",
-      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabClutchDrivelineModel.h",
-      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabClutchDrivelineModel.cpp",
-      "test_prefix": "PinkCab.Vehicle.Physics.P02.ClutchModel"
+      "public_contract": "Source/PinkCabVehicle/Public/Vehicle/PinkCabVehicleDynamicsProvider.h",
+      "implementation_root": "Source/PinkCabVehicle/Private/Vehicle/PinkCabChaosVehicleDynamicsProvider.cpp",
+      "test_prefix": "PinkCab.Vehicle.Actuation"
     },
     {
       "id": "throttle",
