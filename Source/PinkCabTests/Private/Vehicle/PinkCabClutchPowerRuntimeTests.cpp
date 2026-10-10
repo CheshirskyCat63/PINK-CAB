@@ -39,7 +39,11 @@ public:
         }
         const double Time = World->GetTimeSeconds() - StageStart;
         const auto Step = Movement->GetPinkCabDrivelineStepTelemetry();
-        if (Stage == 2 && Time > 0.1 && Step.PhysicsStep != LastStep)
+        // Observe from the first actual matching packet. An arbitrary 0.1s delay
+        // discards the strongest wheel-to-engine impulse after correct fast locking.
+        if (Stage == 2 && !Step.bCombustionAllowed && Step.Gear == 1
+            && FMath::IsNearlyEqual(Step.Coupling, 0.5f) && Step.bCommandMatchesPreparedFrame
+            && Step.PhysicsStep != LastStep)
         {
             LastStep = Step.PhysicsStep;
             MaxEnergyGain = FMath::Max(MaxEnergyGain, Step.ConnectionEnergyDeltaJ);

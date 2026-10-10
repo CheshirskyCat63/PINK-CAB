@@ -55,10 +55,18 @@ public:
             Test->TestTrue(TEXT("actual selected gear and continuous pressure reach same physical step"),
                 Step.Gear == Gear && Step.NativeGear == Gear && FMath::IsNearlyEqual(Step.Coupling, Coupling, 0.00001f));
             const double ExpectedCapacity = Movement->GetPinkCabClutchConfig().MaxClutchTorqueNm * Coupling * Health;
+            const double ActualShaft = Step.EffectiveGearRatio * (Step.NativeWheelOmegaRad[2] + Step.NativeWheelOmegaRad[3]) * 0.5;
+            Test->TestTrue(TEXT("native coupled response matches real subsequent wheel integration"),
+                Step.bNativeResponseConverged && FMath::Abs(ActualShaft - Step.PredictedShaftOmega) <= 0.001);
             Test->TestTrue(TEXT("live torque capacity follows pedal and health without the old0.95 threshold"),
                 FMath::Abs(Step.CapacityNm - ExpectedCapacity) <= 0.002 && Step.bNativeJointApplied);
             Test->TestTrue(TEXT("actual native torque stays within continuous capacity"), FMath::Abs(Step.TransferredTorqueNm) <= ExpectedCapacity + 0.002);
             Test->TestTrue(TEXT("integrated connection is passive outside combustion"), Step.ConnectionEnergyDeltaJ <= 0.02 && Step.GearLossJ >= -0.02);
+            if (!Step.bNativeJointApplied || Step.ConnectionEnergyDeltaJ > 0.02 || Step.GearLossJ < -0.02)
+                Test->AddInfo(FString::Printf(TEXT("T6_ENVELOPE_BOUNDARY case=%d c=%.3f e=%.4f shaft=%.4f tau=%.5f cap=%.5f residual=%.8f valid=%d energy=%.8f loss=%.8f"),
+                    Case, Coupling, Step.EngineOmegaBefore, Step.ShaftOmega, Step.TransferredTorqueNm,
+                    Step.CapacityNm, Step.NativeCouplingResidualNm, Step.bNativeResponseConverged,
+                    Step.ConnectionEnergyDeltaJ, Step.GearLossJ));
             Test->TestTrue(TEXT("physical front axle is never a propulsion owner"), Step.NativeWheelCount == 4
                 && FMath::Abs(Step.NativeWheelDriveNm[0]) < 0.01 && FMath::Abs(Step.NativeWheelDriveNm[1]) < 0.01);
             LargestTorque = FMath::Max(LargestTorque, FMath::Abs(Step.NativeWheelDriveNm[2]));

@@ -11,6 +11,7 @@ void FPinkCabChaosDrivelineSimulation::TickVehicle(UWorld* WorldIn, float DeltaT
     ensureMsgf(Frame.Sequence != 0,
         TEXT("PINKCAB_ASYNC_COMMAND_MISSING: no snapshot for the native input"));
     Step = {};
+    bClutchStepPending = false;
     Step.CommandSequence = Frame.Sequence;
     Step.PhysicsStep = ++PhysicsStep;
     UChaosWheeledVehicleSimulation::TickVehicle(WorldIn, DeltaTime, InputData, OutputData, Handle);

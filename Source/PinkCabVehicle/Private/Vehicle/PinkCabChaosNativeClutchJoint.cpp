@@ -4,7 +4,20 @@
 #include "Physics/ImmediatePhysics/ImmediatePhysicsChaos/ImmediatePhysicsActorHandle_Chaos.h"
 #include "Physics/ImmediatePhysics/ImmediatePhysicsChaos/ImmediatePhysicsJointHandle_Chaos.h"
 
-namespace { constexpr double MetreSquaredToCentimetreSquared = 10000.0; }
+namespace
+{
+constexpr double MetreSquaredToCentimetreSquared = 10000.0;
+
+bool ValidShaftInputs(double EngineOmega, double ShaftOmega, double EngineInertia,
+    double ShaftInertia, double Capacity, double SynchronizationSeconds, double DeltaSeconds)
+{
+    const double Values[] = {EngineOmega, ShaftOmega, EngineInertia, ShaftInertia,
+        Capacity, SynchronizationSeconds, DeltaSeconds};
+    for (const double Value : Values) if (!FMath::IsFinite(Value)) return false;
+    return EngineInertia > 0.0 && ShaftInertia > 0.0 && Capacity >= 0.0
+        && SynchronizationSeconds > 0.0 && DeltaSeconds > 0.0;
+}
+}
 
 struct FPinkCabChaosNativeClutchJoint::FImplementation
 {
@@ -60,36 +73,67 @@ FPinkCabChaosNativeClutchJoint::~FPinkCabChaosNativeClutchJoint() = default;
 
 FPinkCabNativeClutchResult FPinkCabChaosNativeClutchJoint::Solve(
     double EngineOmega, double ShaftOmega, double EngineInertiaKgM2,
-    double ShaftInertiaKgM2, double CapacityNm, double SynchronizationSeconds, double DeltaSeconds)
+    double ShaftInertiaKgM2, double CapacityNm, double SynchronizationSeconds, double DeltaSeconds, bool bPrescribedRoadShaft)
 {
     FPinkCabNativeClutchResult Result;
     Result.EngineOmega = EngineOmega;
-    const double Values[] = {EngineOmega, ShaftOmega, EngineInertiaKgM2,
-        ShaftInertiaKgM2, CapacityNm, SynchronizationSeconds, DeltaSeconds};
-    for (const double Value : Values) if (!FMath::IsFinite(Value)) return Result;
-    if (EngineInertiaKgM2 <= 0 || ShaftInertiaKgM2 <= 0 || CapacityNm < 0
-        || SynchronizationSeconds <= 0 || DeltaSeconds <= 0) return Result;
+    if (!ValidShaftInputs(EngineOmega, ShaftOmega, EngineInertiaKgM2,
+        ShaftInertiaKgM2, CapacityNm, SynchronizationSeconds, DeltaSeconds)) return Result;
+    if (CapacityNm == 0.0)
+    {
+        Result.bValid = true; // Exact open interface: no impulse, including roundoff from a free solve.
+        return Result;
+    }
     if (!Implementation) Implementation = MakeUnique<FImplementation>();
     auto& Native = *Implementation;
     const double Scale = MetreSquaredToCentimetreSquared;
+    Native.Simulation.SetIsKinematic(Native.Rotors[1], bPrescribedRoadShaft);
     Native.Rotors[0]->SetInverseInertia(FVector(1.0 / (EngineInertiaKgM2 * Scale)));
     Native.Rotors[1]->SetInverseInertia(FVector(1.0 / (ShaftInertiaKgM2 * Scale)));
-    Native.Rotors[0]->SetAngularVelocity(FVector(EngineOmega, 0, 0));
-    Native.Rotors[1]->SetAngularVelocity(FVector(ShaftOmega, 0, 0));
-    Native.Settings.bAngularTwistVelocityDriveEnabled = CapacityNm > 0;
+    const double Damping = EngineInertiaKgM2 / SynchronizationSeconds;
     Native.Settings.AngularDriveMaxTorque = Chaos::FVec3(CapacityNm * Scale);
-    Native.Settings.AngularDriveDamping = Chaos::FVec3(EngineInertiaKgM2 * Scale / SynchronizationSeconds);
-    Native.Joint->GetConstraint()->SetSettings(Native.Settings);
-    Native.Simulation.SetSolverSettings(DeltaSeconds, -1, -1, 1, 1, 1, 0, 0);
-    Native.Simulation.Simulate(DeltaSeconds, DeltaSeconds, 1, FVector::ZeroVector, &Native.SolverSettings);
-    const double After0 = Native.Rotors[0]->GetAngularVelocity().X;
-    const double After1 = Native.Rotors[1]->GetAngularVelocity().X;
+    Native.Settings.AngularDriveDamping = Chaos::FVec3(Damping * Scale);
+    auto SolveNative = [&]()
+    {
+        // These are transient gathered shaft states, not world actors or wheels.
+        // A rejected candidate must not advance the accepted physical state twice.
+        for (auto* Rotor : Native.Rotors) Rotor->SetWorldTransform(FTransform::Identity);
+        // Co-rotating shaft coordinates keep a prescribed boundary stationary.
+        // Kinematic bodies without targets otherwise have zero native velocity.
+        Native.Rotors[0]->SetAngularVelocity(FVector(EngineOmega - ShaftOmega, 0, 0));
+        Native.Rotors[1]->SetAngularVelocity(FVector::ZeroVector);
+        Native.Joint->GetConstraint()->SetSettings(Native.Settings);
+        Native.Simulation.SetSolverSettings(DeltaSeconds, -1, -1, 1, 1, 1, 0, 0);
+        Native.Simulation.Simulate(DeltaSeconds, DeltaSeconds, 1, FVector::ZeroVector, &Native.SolverSettings);
+    };
+    Native.Settings.AngularMotionTypes[0] = CapacityNm > 0
+        ? Chaos::EJointMotionType::Locked : Chaos::EJointMotionType::Free;
+    Native.Settings.bAngularTwistVelocityDriveEnabled = false;
+    Native.Settings.AngularDriveVelocityTarget = Chaos::FVec3(0);
+    SolveNative();
+    const double HoldingTorque = EngineInertiaKgM2
+        * (EngineOmega - ShaftOmega - Native.Rotors[0]->GetAngularVelocity().X) / DeltaSeconds;
+    if (CapacityNm > 0 && FMath::Abs(HoldingTorque) > CapacityNm)
+    {
+        // The native holding reaction exceeds pressure-limited friction. Use the
+        // SAME joint's capped motor from the original state, never an extra force.
+        Native.Settings.AngularMotionTypes[0] = Chaos::EJointMotionType::Free;
+        Native.Settings.bAngularTwistVelocityDriveEnabled = true;
+        Native.Settings.AngularDriveVelocityTarget = Chaos::FVec3(
+            -FMath::Sign(HoldingTorque) * CapacityNm / Damping, 0, 0);
+        SolveNative();
+    }
+    const double After0 = Native.Rotors[0]->GetAngularVelocity().X + ShaftOmega;
+    const double After1 = Native.Rotors[1]->GetAngularVelocity().X + ShaftOmega;
     Result.EngineOmega = After0;
-    Result.TransferredTorqueNm = ShaftInertiaKgM2 * (After1 - ShaftOmega) / DeltaSeconds;
-    Result.MomentumResidual = EngineInertiaKgM2 * (After0 - EngineOmega)
-        + ShaftInertiaKgM2 * (After1 - ShaftOmega);
-    Result.DissipatedEnergyJ = 0.5 * (EngineInertiaKgM2 * (EngineOmega * EngineOmega - After0 * After0)
-        + ShaftInertiaKgM2 * (ShaftOmega * ShaftOmega - After1 * After1));
+    Result.TransferredTorqueNm = EngineInertiaKgM2 * (EngineOmega - After0) / DeltaSeconds;
+    const double ShaftImpulse = bPrescribedRoadShaft
+        ? Result.TransferredTorqueNm * DeltaSeconds : ShaftInertiaKgM2 * (After1 - ShaftOmega);
+    Result.MomentumResidual = EngineInertiaKgM2 * (After0 - EngineOmega) + ShaftImpulse;
+    const double ShaftWork = bPrescribedRoadShaft
+        ? Result.TransferredTorqueNm * ShaftOmega * DeltaSeconds
+        : 0.5 * ShaftInertiaKgM2 * (After1 * After1 - ShaftOmega * ShaftOmega);
+    Result.DissipatedEnergyJ = 0.5 * EngineInertiaKgM2 * (EngineOmega * EngineOmega - After0 * After0) - ShaftWork;
     Result.bValid = FMath::IsFinite(After0) && FMath::IsFinite(Result.TransferredTorqueNm)
         && FMath::IsFinite(Result.DissipatedEnergyJ);
     return Result;

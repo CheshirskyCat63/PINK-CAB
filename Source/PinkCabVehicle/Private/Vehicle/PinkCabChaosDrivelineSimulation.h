@@ -14,7 +14,10 @@ public:
     virtual void ApplyInput(const FControlInputs& Inputs, float DeltaTime) override;
     virtual void ProcessMechanicalSimulation(float DeltaTime) override;
     virtual void FillOutputState(FChaosVehicleAsyncOutput& Output) override;
+    virtual void ApplyWheelFrictionForces(float DeltaTime) override;
 private:
+    void ApplyNativeClutchAtWheelBoundary(float DeltaTime);
+    bool bClutchStepPending = false;
     TSharedRef<FPinkCabChaosCommandChannel, ESPMode::ThreadSafe> Channel;
     FPinkCabChaosCommandFrame Frame;
     FPinkCabChaosNativeClutchJoint ClutchJoint;

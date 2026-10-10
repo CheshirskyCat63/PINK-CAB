@@ -29,4 +29,7 @@ struct FPinkCabDrivelineStepTelemetry
     double MomentumResidual = 0.0;
     double ConnectionEnergyDeltaJ = 0.0;
     double GearLossJ = 0.0;
+    bool bNativeResponseConverged = false;
+    double NativeCouplingResidualNm = 0.0;
+    double PredictedShaftOmega = 0.0;
 };

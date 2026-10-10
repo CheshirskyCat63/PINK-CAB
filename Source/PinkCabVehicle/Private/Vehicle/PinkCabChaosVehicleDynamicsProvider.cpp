@@ -111,144 +111,161 @@ bool FPinkCabChaosVehicleDynamicsProvider::ApplyControls(
 
 namespace
 {
-struct FPinkCabReflectedAxle
+struct FNativeWheelResponse
 {
-    double Weight = 0.0;
-    double Omega = 0.0;
-    double InertiaKgM2 = 0.0;
+    double ShaftOmega = 0.0;
+    double WheelWorkJ = 0.0;
+    double TorqueFactor = 1.0;
+    double PredictedOmega[4] = {};
+    bool bValid = false;
 };
 
-bool GatherReflectedAxle(const Chaos::FSimpleWheeledVehicle& Vehicle,
-    double Ratio, FPinkCabReflectedAxle& Out)
+FNativeWheelResponse EvaluateNativeWheels(const Chaos::FSimpleWheeledVehicle& Vehicle,
+    const FWheelState& State, double ClutchTorque, double Ratio, double Efficiency, double Dt)
 {
-    double Weight = 0.0, WeightedOmega = 0.0, InverseShaftInertia = 0.0;
+    FNativeWheelResponse Out;
+    double Weight = 0.0, BeforeShaft = 0.0;
     for (const auto& Wheel : Vehicle.Wheels)
     {
         if (!Wheel.EngineEnabled) continue;
-        const double Portion = Wheel.Setup().TorqueRatio;
-        const double InertiaKgM2 = Wheel.Inertia / 10000.0;
-        if (Portion <= 0 || InertiaKgM2 <= 0) continue;
-        Weight += Portion;
-        WeightedOmega += Portion * Wheel.GetAngularVelocity();
-        InverseShaftInertia += Portion * Portion / InertiaKgM2;
+        Weight += Wheel.Setup().TorqueRatio;
+        BeforeShaft += Wheel.Setup().TorqueRatio * Wheel.GetAngularVelocity() * Ratio;
     }
-    if (Weight <= 0 || InverseShaftInertia <= 0) return false;
-    Out.Weight = Weight;
-    Out.Omega = Ratio * WeightedOmega / Weight;
-    Out.InertiaKgM2 = Weight * Weight / (InverseShaftInertia * Ratio * Ratio);
-    return true;
-}
-
-struct FPinkCabClutchTransmissionResult
-{
-    FPinkCabNativeClutchResult Clutch;
-    double TorqueFactor = 1.0;
-};
-
-FPinkCabClutchTransmissionResult SolveNativeTransmissionConnection(
-    FPinkCabChaosNativeClutchJoint& Joint, const FPinkCabChaosCommandFrame& Frame,
-    double EngineOmega, const FPinkCabReflectedAxle& Axle, double Efficiency, double Dt)
-{
-    FPinkCabClutchTransmissionResult Out;
-    if (!FMath::IsFinite(Efficiency) || Efficiency <= 0.0 || Efficiency > 1.0) return Out;
-    const auto& Config = Frame.ClutchConfig;
-    const double Capacity = Config.MaxClutchTorqueNm * Frame.Controls.ClutchCoupling
-        * Frame.Controls.DrivetrainTorqueCapacity;
-    Out.TorqueFactor = (EngineOmega - Axle.Omega) * Axle.Omega < 0.0 ? 1.0 / Efficiency : Efficiency;
-    auto Solve = [&]()
+    if (Weight <= 0.0 || Vehicle.Wheels.Num() > 4) return Out;
+    BeforeShaft /= Weight;
+    Out.TorqueFactor = ClutchTorque * BeforeShaft < 0.0 ? 1.0 / Efficiency : Efficiency;
+    for (int32 DirectionPass = 0; DirectionPass < 2; ++DirectionPass)
     {
-        return Joint.Solve(EngineOmega, Axle.Omega, Config.EngineEffectiveInertia,
-            Axle.InertiaKgM2 / Out.TorqueFactor, Capacity, Config.SynchronizationTimeSeconds, Dt);
-    };
-    Out.Clutch = Solve();
-    if (!Out.Clutch.bValid) return Out;
-    const double Impulse = Out.Clutch.TransferredTorqueNm * Dt;
-    const double ShaftWork = Axle.Omega * Impulse
-        + 0.5 * Impulse * Impulse * Out.TorqueFactor / Axle.InertiaKgM2;
-    const double CorrectFactor = ShaftWork < 0.0 ? 1.0 / Efficiency : Efficiency;
-    // At a zero crossing, choose loss direction by the complete impulse work.
-    // Re-evaluate the SAME native joint before scattering any real wheel torque.
-    if (CorrectFactor != Out.TorqueFactor)
-    {
-        Out.TorqueFactor = CorrectFactor;
-        Out.Clutch = Solve();
+        Out.ShaftOmega = Out.WheelWorkJ = 0.0;
+        for (int32 Index = 0; Index < Vehicle.Wheels.Num(); ++Index)
+        {
+            const auto& Original = Vehicle.Wheels[Index];
+            if (!State.LocalWheelVelocity.IsValidIndex(Index)) return Out;
+            // Pure native component evaluation. No force reaches a scene and no
+            // actual wheel/chassis state is advanced during these candidates.
+            auto Wheel = Original;
+            Wheel.SetVehicleGroundSpeed(FRotator(0, Wheel.GetSteeringAngle(), 0)
+                .UnrotateVector(State.LocalWheelVelocity[Index]));
+            const double Share = Original.EngineEnabled ? Original.Setup().TorqueRatio / Weight : 0.0;
+            const double WheelTorque = ClutchTorque * Ratio * Out.TorqueFactor * Share;
+            Wheel.SetDriveTorque(Chaos::TorqueMToCm(static_cast<float>(WheelTorque)));
+            Wheel.Simulate(static_cast<float>(Dt));
+            Out.PredictedOmega[Index] = Wheel.GetAngularVelocity();
+            Out.ShaftOmega += Share * Wheel.GetAngularVelocity() * Ratio;
+            // Native wheel Simulate advances angle using its end-step omega.
+            // Match that implicit power port; pre-step wheel spin is not clutch work.
+            Out.WheelWorkJ += WheelTorque * Dt * Wheel.GetAngularVelocity();
+        }
+        const double Direction = ClutchTorque * Out.ShaftOmega;
+        const double Factor = Direction < 0.0 ? 1.0 / Efficiency : Efficiency;
+        if (Factor == Out.TorqueFactor) break;
+        Out.TorqueFactor = Factor;
     }
+    Out.bValid = FMath::IsFinite(Out.ShaftOmega) && FMath::IsFinite(Out.WheelWorkJ);
     return Out;
 }
 
-// Native gearbox efficiency removes energy in BOTH power directions. Reflect
-// that load before the joint solve; never damp only the output reaction torque.
-double ScatterNativeWheelTorque(Chaos::FSimpleWheeledVehicle& Vehicle,
-    double TotalTorqueNm, double Weight, double Dt)
+struct FNativeCoupledClutch
 {
-    double EnergyDelta = 0.0;
-    for (auto& Wheel : Vehicle.Wheels)
+    FPinkCabNativeClutchResult Connection;
+    FNativeWheelResponse Wheels;
+    double ResidualNm = 0.0;
+    bool bValid = false;
+};
+
+FNativeCoupledClutch SolveNativeCoupledClutch(FPinkCabChaosNativeClutchJoint& Joint,
+    const FPinkCabChaosCommandFrame& Frame, const Chaos::FSimpleWheeledVehicle& Vehicle,
+    const FWheelState& State, double EngineOmega, double Ratio, double Efficiency, double Dt)
+{
+    FNativeCoupledClutch Out;
+    const auto& Config = Frame.ClutchConfig;
+    const double Capacity = Config.MaxClutchTorqueNm * Frame.Controls.ClutchCoupling * Frame.Controls.DrivetrainTorqueCapacity;
+    double Lower = -Capacity, Upper = Capacity;
+    // Bounded interface convergence, not a replacement tyre/engine equation.
+    // Each candidate uses only native wheel and native joint responses. All
+    // candidates start from the same state; only the final torque is scattered.
+    for (int32 Iteration = 0; Iteration < 24; ++Iteration)
     {
-        if (!Wheel.EngineEnabled) continue;
-        const double TorqueNm = TotalTorqueNm * Wheel.Setup().TorqueRatio / Weight;
-        const double Impulse = TorqueNm * Dt;
-        EnergyDelta += Wheel.GetAngularVelocity() * Impulse
-            + 0.5 * Impulse * Impulse / (Wheel.Inertia / 10000.0);
-        Wheel.SetDriveTorque(Chaos::TorqueMToCm(static_cast<float>(TorqueNm)));
+        const double Candidate = 0.5 * (Lower + Upper);
+        Out.Wheels = EvaluateNativeWheels(Vehicle, State, Candidate, Ratio, Efficiency, Dt);
+        if (!Out.Wheels.bValid) return Out;
+        Out.Connection = Joint.Solve(EngineOmega, Out.Wheels.ShaftOmega, Config.EngineEffectiveInertia,
+            1.0, Capacity, Config.SynchronizationTimeSeconds, Dt, true);
+        if (!Out.Connection.bValid) return Out;
+        Out.ResidualNm = Out.Connection.TransferredTorqueNm - Candidate;
+        const double RoundoffNm = 4.0 * FLT_EPSILON * Config.EngineEffectiveInertia
+            * FMath::Max(1.0, FMath::Max(FMath::Abs(EngineOmega), FMath::Abs(Out.Wheels.ShaftOmega))) / Dt;
+        if (FMath::Abs(Out.ResidualNm) <= FMath::Max(RoundoffNm, 32.0 * FLT_EPSILON * FMath::Max(1.0, Capacity)))
+        {
+            Out.Wheels = EvaluateNativeWheels(Vehicle, State, Out.Connection.TransferredTorqueNm, Ratio, Efficiency, Dt);
+            Out.bValid = Out.Wheels.bValid;
+            return Out;
+        }
+        if (Out.ResidualNm > 0.0) Lower = Candidate; else Upper = Candidate;
     }
-    return EnergyDelta;
+    return Out;
 }
 }
 
-// Physics-thread implementation of this provider. Native Chaos alone integrates
-// road contacts/chassis/wheels; all clutch positions use one native torque path.
 void FPinkCabChaosDrivelineSimulation::ProcessMechanicalSimulation(float DeltaTime)
 {
     if (!PVehicle || !PVehicle->HasEngine() || !PVehicle->HasTransmission() || DeltaTime <= 0) return;
     auto& Engine = PVehicle->GetEngine();
     auto& Transmission = PVehicle->GetTransmission();
     for (auto& Wheel : PVehicle->Wheels) Wheel.SetDriveTorque(0.0f);
-    if (!Frame.bValid)
-    {
-        Engine.StopEngine();
-        return;
-    }
-    const bool Running = Frame.Controls.IsCombustionAllowed();
-    if (Running) Engine.StartEngine(); else Engine.StopEngine();
+    if (!Frame.bValid) { Engine.StopEngine(); return; }
+    if (Frame.Controls.IsCombustionAllowed()) Engine.StartEngine(); else Engine.StopEngine();
     Transmission.SetGear(Frame.Controls.EngagedGear, true);
     Transmission.Simulate(DeltaTime);
     const double Ratio = Transmission.GetGearRatio(Transmission.GetCurrentGear());
     Step.EffectiveGearRatio = Ratio;
     Engine.SetEngineRPM(true, 0.0f);
-    // Preserve native free-rev/drag response. The joint supplies the missing load
-    // reaction; stock direct RPM-to-wheel locking is not run as a second path.
     Engine.Simulate(DeltaTime);
     Step.EngineOmegaBefore = Engine.GetEngineOmega();
     Step.EngineOmegaAfter = Step.EngineOmegaBefore;
     if (FMath::IsNearlyZero(Ratio)) return;
-    FPinkCabReflectedAxle Axle;
-    if (!GatherReflectedAxle(*PVehicle, Ratio, Axle)) return;
-    const double Weight = Axle.Weight;
-    const double ShaftOmega = Axle.Omega;
-    const auto& Config = Frame.ClutchConfig;
-    const double Capacity = Config.MaxClutchTorqueNm * Frame.Controls.ClutchCoupling
-        * Frame.Controls.DrivetrainTorqueCapacity;
+    bClutchStepPending = true;
+}
+
+void FPinkCabChaosDrivelineSimulation::ApplyWheelFrictionForces(float DeltaTime)
+{
+    if (bClutchStepPending) ApplyNativeClutchAtWheelBoundary(DeltaTime);
+    bClutchStepPending = false;
+    UChaosWheeledVehicleSimulation::ApplyWheelFrictionForces(DeltaTime);
+}
+
+void FPinkCabChaosDrivelineSimulation::ApplyNativeClutchAtWheelBoundary(float DeltaTime)
+{
+    if (!PVehicle || !Frame.bValid) return;
+    auto& Engine = PVehicle->GetEngine();
+    auto& Transmission = PVehicle->GetTransmission();
+    const double Ratio = Transmission.GetGearRatio(Transmission.GetCurrentGear());
     const double Efficiency = Transmission.Setup().TransmissionEfficiency;
-    const auto Connection = SolveNativeTransmissionConnection(ClutchJoint, Frame,
-        Step.EngineOmegaBefore, Axle, Efficiency, DeltaTime);
-    const auto& Result = Connection.Clutch;
-    if (!Result.bValid) return;
+    if (!FMath::IsFinite(Efficiency) || Efficiency <= 0.0 || Efficiency > 1.0) return;
+    const auto Coupled = SolveNativeCoupledClutch(ClutchJoint, Frame, *PVehicle,
+        WheelState, Step.EngineOmegaBefore, Ratio, Efficiency, DeltaTime);
+    Step.NativeCouplingResidualNm = Coupled.ResidualNm;
+    Step.bNativeResponseConverged = Coupled.bValid;
+    if (!ensureMsgf(Coupled.bValid, TEXT("PINKCAB_CLUTCH_NATIVE_INTERFACE_NOT_CONVERGED residual_nm=%.8f sequence=%llu"),
+        Coupled.ResidualNm, Step.CommandSequence)) return;
+    const auto& Result = Coupled.Connection;
     Engine.SetEngineOmega(static_cast<float>(Result.EngineOmega));
     Transmission.SetEngineRPM(Chaos::OmegaToRPM(static_cast<float>(Result.EngineOmega)));
-    // Match the native mechanical boundary: wheel storage is kg*cm^2/s^2,
-    // while transmission and public wheel telemetry are N*m. This is units, not boost.
-    const double WheelTorque = Transmission.GetTransmissionTorque(static_cast<float>(Result.TransferredTorqueNm))
-        * Connection.TorqueFactor / Efficiency;
-    const double WheelEnergyDelta = ScatterNativeWheelTorque(*PVehicle, WheelTorque, Weight, DeltaTime);
-    const double EngineEnergyDelta = 0.5 * Config.EngineEffectiveInertia
+    double Weight = 0.0;
+    for (const auto& Wheel : PVehicle->Wheels) if (Wheel.EngineEnabled) Weight += Wheel.Setup().TorqueRatio;
+    const double TotalWheelTorque = Result.TransferredTorqueNm * Ratio * Coupled.Wheels.TorqueFactor;
+    for (auto& Wheel : PVehicle->Wheels)
+        if (Wheel.EngineEnabled) Wheel.SetDriveTorque(Chaos::TorqueMToCm(static_cast<float>(TotalWheelTorque * Wheel.Setup().TorqueRatio / Weight)));
+    const double EngineDeltaJ = 0.5 * Frame.ClutchConfig.EngineEffectiveInertia
         * (Result.EngineOmega * Result.EngineOmega - Step.EngineOmegaBefore * Step.EngineOmegaBefore);
-    Step.ConnectionEnergyDeltaJ = EngineEnergyDelta + WheelEnergyDelta;
+    Step.ConnectionEnergyDeltaJ = EngineDeltaJ + Coupled.Wheels.WheelWorkJ;
     Step.GearLossJ = -Step.ConnectionEnergyDeltaJ - Result.DissipatedEnergyJ;
     Step.bNativeJointApplied = true;
     Step.EngineOmegaAfter = Result.EngineOmega;
-    Step.ShaftOmega = ShaftOmega;
+    Step.ShaftOmega = Coupled.Wheels.ShaftOmega;
+    Step.PredictedShaftOmega = Coupled.Wheels.ShaftOmega;
     Step.TransferredTorqueNm = Result.TransferredTorqueNm;
-    Step.CapacityNm = Capacity;
+    Step.CapacityNm = Frame.ClutchConfig.MaxClutchTorqueNm * Frame.Controls.ClutchCoupling * Frame.Controls.DrivetrainTorqueCapacity;
     Step.DissipatedEnergyJ = Result.DissipatedEnergyJ;
     Step.MomentumResidual = Result.MomentumResidual;
 }
